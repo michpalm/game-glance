@@ -1,0 +1,11 @@
+{
+  "name": "Game Glance",
+  "author": "Michael Palma",
+  "flags": [],
+  "api_version": 1,
+  "publish": {
+    "tags": ["theme", "hltb", "library"],
+    "description": "Immersive game page: full-screen art, HowLongToBeat times, descriptions and store info.",
+    "image": ""
+  }
+}
