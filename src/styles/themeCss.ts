@@ -7,6 +7,7 @@ export interface ThemeClasses {
     overview: ClassMap; // overview panel module: Backdrop
     root: ClassMap; // app details root module: AppDetailsRoot, PlaySection, ActionRow, ActionButtonAndStatusPanel, AppButtons, AppDetailsContainer
     play: ClassMap; // playSectionClasses: StatusAndStats, MenuButton, CloudStatus*, OfflineMode
+    launch?: ClassMap; // Steam's launch overlay module: Container, ConfigurationHeader, ControlOverviewContainer, LaunchStatus
 }
 
 function cls(map: ClassMap, key: string): string | null {
@@ -34,7 +35,8 @@ const u = (n: number) => `calc(${n} * var(--gg-u))`;
  * screen. Nothing in Steam's page structure moves, so controller navigation and scrolling stay Steam's.
  * If any class the layout needs is missing, none of the layout applies and the page stays stacked.
  */
-export function buildThemeCss({ header, details, overview, root, play }: ThemeClasses): string {
+export function buildThemeCss({ header, details, overview, root, play, launch }: ThemeClasses): string {
+    const launchOverlay = cls(launch, 'Container');
     const topCapsule = cls(header, 'TopCapsule');
     const logoBox = cls(header, 'BoxSizer');
     const inner = cls(details, 'InnerContainer');
@@ -143,6 +145,10 @@ export function buildThemeCss({ header, details, overview, root, play }: ThemeCl
         rule(cloud && problem && [`${cloud}${problem}`, `${problem} ${cloud}`, `${cloud} ${problem}`], ` color: var(--gg-bad) !important; `),
         rule(cloud && fail && [`${cloud}${fail}`, `${fail} ${cloud}`, `${cloud} ${fail}`], ` color: var(--gg-bad) !important; `),
         rule(cloud && offline && `${offline} ${cloud}`, ` color: var(--gg-off) !important; `),
+
+        // Steam's launch overlay (controller layout and "Starting launch..." text) sits straight on our art and cards.
+        // Dimming what is behind it makes its text readable; it fades in with the overlay.
+        rule(launchOverlay, ` background: rgba(0, 0, 0, 0.75) !important; `),
     ];
 
     if (layout) {

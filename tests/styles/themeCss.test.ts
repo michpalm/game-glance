@@ -173,3 +173,18 @@ describe('buildThemeCss bottom anchoring', () => {
         expect(css).toContain('--gg-play-top: calc(100vh - calc(261 * var(--gg-u)));');
     });
 });
+
+describe('buildThemeCss launch overlay', () => {
+    const withLaunch: ThemeClasses = { ...full, launch: { Container: 'ln_Container', ConfigurationHeader: 'ln_Header' } };
+
+    it('dims what is behind Steam’s launch overlay so its text is easier to read', () => {
+        const rule = ruleFor(buildThemeCss(withLaunch), '.ln_Container {');
+        expect(rule).toMatch(/background(-color)?: rgba\(0, 0, 0, 0\.\d+\)/);
+    });
+    it('does nothing if Steam’s launch overlay class is not known, and never touches the layout', () => {
+        expect(buildThemeCss(full)).not.toContain('ln_Container');
+        expect(buildThemeCss({ ...full, launch: {} })).toBe(buildThemeCss(full));
+        const stripped = buildThemeCss(withLaunch).replace(/\n?\.ln_Container \{[^}]*\}/, '');
+        expect(stripped).toBe(buildThemeCss(full));
+    });
+});

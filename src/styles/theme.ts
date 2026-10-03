@@ -22,6 +22,7 @@ function themeClasses(): ThemeClasses {
             play: playSectionClasses as unknown as ClassMap,
             root: safeFind((m) => Boolean(m.AppDetailsRoot && m.PlaySection && m.AppDetailsContainer)),
             overview: safeFind((m) => Boolean(m.Backdrop && m.BackdropGlass)),
+            launch: safeFind((m) => Boolean(m.Container && m.ConfigurationHeader && m.ControlOverviewContainer)),
         };
     }
     return classes;
