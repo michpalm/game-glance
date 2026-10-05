@@ -6,8 +6,6 @@ what it is about, and where it came from.
 
 ![Game Glance on a handheld: The Witcher 3](docs/images/handheld-witcher3.jpg)
 
-![Spotlight Home](docs/images/home-demo.gif)
-
 <details>
 <summary>More screenshots: a GOG game from Heroic, a TV, and the Quick Access menu</summary>
 
@@ -39,6 +37,8 @@ what it is about, and where it came from.
 - **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.
 
 ## Spotlight Home (new in 2.0)
+
+![Spotlight Home](docs/images/home-demo.gif)
 
 Spotlight Home is an optional new Home screen. It is off by default; turn it on in Quick Access.
 
