@@ -78,7 +78,10 @@ Quick Access → Game Glance has two toggles:
 Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
 with Steam's own game page.
 
-**Show wishlist deals** (off by default) adds up to six wishlist games that are on sale (the biggest discounts)
+**What's new, Friends, Recommended** (on by default) shows the tabs under your games. Turn it off and Home shows only
+the selected game; nothing for the tabs is loaded then.
+
+**Show wishlist deals** (off by default, shown while the tabs are on) adds up to six wishlist games that are on sale (the biggest discounts)
 to the Recommended tab, as a second row. To find them it sends your Steam ID to Steam's web API to read your wishlist, which must
 be public, then checks the prices of the whole wishlist on Steam's store (app IDs only) and looks up the name and
 Steam Deck rating of the deals shown; their header art loads from Steam's image servers. Nothing else leaves the
@@ -108,7 +111,7 @@ If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same t
 Quick Access (…) → Game Glance:
 
 - **Game Glance page:** turn it off to get Steam's own game page back.
-- **Spotlight Home** and **Show wishlist deals:** see above.
+- **Spotlight Home**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**

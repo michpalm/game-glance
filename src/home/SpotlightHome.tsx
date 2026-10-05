@@ -5,6 +5,7 @@ import { FeedSheet } from './FeedSheet';
 import { FEED_VIEWPORT_INSET, feedSpace } from './feedLayout';
 import { focusElement, focusElementSettled } from './homeNav';
 import { LOG_PREFIX } from '../constants';
+import { useSettings } from '../data/settings';
 import { edgeStep, stepSelection, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
@@ -115,6 +116,9 @@ export function SpotlightHome() {
     // a cold start. It is applied as soon as the recents are known and before the content mounts, so Home never shows
     // the first game and then jumps. `restoring` also keeps the Play pill from claiming focus while it runs.
     const [restore] = useState(takeRestore);
+    // The bottom section (What's new, Friends, Recommended tabs); off: Home is the selected game only, focus stays on
+    // the action row and a remembered tab or feed zone restores to the actions instead.
+    const { homeFeed: feed } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -122,7 +126,7 @@ export function SpotlightHome() {
     const onLibrary = isLibraryFocus(data.games.length, focusIndex);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.
     const [zone, setZone] = useState<Zone>('actions');
-    const sheetUp = zone === 'tabs' || zone === 'feed';
+    const sheetUp = feed && (zone === 'tabs' || zone === 'feed');
     const gameIds = useMemo(() => data.games.map((g) => g.appId), [data.games]);
     // The games either side of the selection, whose hero art is pre-loaded so L1/R1 crossfade at once.
     const heroNeighbours = useMemo(() => neighbourIds(gameIds, focusIndex, HERO_PRELOAD_RADIUS), [gameIds, focusIndex]);
@@ -130,7 +134,7 @@ export function SpotlightHome() {
         if (resolved || !restore || (gameIds.length === 0 && !data.recentsSettled)) return;
         if (gameIds.length > 0) {
             setRecentIndex(recentIndexFor(restore.recent, gameIds));
-            setZone(restore.zone);
+            setZone(feed ? restore.zone : 'actions');
         } else {
             setRestoring(false);
         }
@@ -209,6 +213,13 @@ export function SpotlightHome() {
             bumpers.stop();
         }
     };
+    // The bottom section turned off while focus was in it (Quick Access): focus goes back to the Play pill.
+    useEffect(() => {
+        if (feed || zone === 'actions') return;
+        setZone('actions');
+        backToActions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [feed]);
     // Remember the selection and focus for the way back (homeMemory); not before the restore has been applied.
     useEffect(() => {
         if (!resolved) return;
@@ -235,7 +246,7 @@ export function SpotlightHome() {
     const contentUp = measuredScale !== null && resolved;
     // Once the content is up: focus what was focused. The actions here; the tabs and the feed are the feed sheet's
     // (their cards may still be loading), which says when it is done.
-    const restoreZone = restore?.zone === 'tabs' || restore?.zone === 'feed' ? restore.zone : 'actions';
+    const restoreZone = feed && (restore?.zone === 'tabs' || restore?.zone === 'feed') ? restore.zone : 'actions';
     useEffect(() => {
         if (!contentUp || !restoring) return;
         if (restoreZone === 'actions') {
@@ -290,16 +301,18 @@ export function SpotlightHome() {
                                 {/* The selected game's store, as the game page's pill; not on the Library card. */}
                                 {!onLibrary && data.source && <SourcePill label={data.source} className="gh-source" iconClassName="gh-source-icon" />}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} />
-                                <FeedSheet
-                                    data={data}
-                                    raised={sheetUp}
-                                    viewport={canvas.logicalWidth - FEED_VIEWPORT_INSET}
-                                    space={feedSpace(logicalHeight, legend, raiseDelta)}
-                                    onZone={setZone}
-                                    onBackToActions={backToActions}
-                                    restore={restore}
-                                    onRestored={() => setRestoring(false)}
-                                />
+                                {feed && (
+                                    <FeedSheet
+                                        data={data}
+                                        raised={sheetUp}
+                                        viewport={canvas.logicalWidth - FEED_VIEWPORT_INSET}
+                                        space={feedSpace(logicalHeight, legend, raiseDelta)}
+                                        onZone={setZone}
+                                        onBackToActions={backToActions}
+                                        restore={restore}
+                                        onRestored={() => setRestoring(false)}
+                                    />
+                                )}
                             </>
                         ) : showEmptyMessage(data.games.length, data.recentsSettled) ? (
                             // No recents once the boot-time retries are over: the Library action, so Home is never

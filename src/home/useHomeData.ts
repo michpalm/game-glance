@@ -236,13 +236,14 @@ function useAppDetailsVersion(appId: number | null): number {
     return version;
 }
 
-function useRecommended(games: HomeGame[], wishlistDeals: boolean): { cards: RecommendedCard[]; deals: DealCard[] } {
+function useRecommended(games: HomeGame[], wishlistDeals: boolean, enabled: boolean): { cards: RecommendedCard[]; deals: DealCard[] } {
     const [cards, setCards] = useState<RecommendedCard[]>(recommendedMemo);
     const [deals, setDeals] = useState<DealCard[]>(() => (wishlistDeals ? dealsMemo : []));
     const [installed] = useState(readPlayNextApps);
     const installedKey = installed.map((a) => a.appid).join(',');
     const excludeKey = games.slice(0, PLAY_NEXT_EXCLUDE).map((g) => g.appId).join(',');
     useEffect(() => {
+        if (!enabled) return undefined;
         let active = true;
         (async () => {
             const exclude = new Set(excludeKey ? excludeKey.split(',').map(Number) : []);
@@ -270,7 +271,8 @@ function useRecommended(games: HomeGame[], wishlistDeals: boolean): { cards: Rec
         };
         // `installed` is read once per mount; installedKey stands for it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [installedKey, excludeKey, wishlistDeals]);
+    }, [installedKey, excludeKey, wishlistDeals, enabled]);
+    if (!enabled) return { cards: [], deals: [] };
     return { cards, deals: wishlistDeals ? deals : [] };
 }
 
@@ -303,9 +305,10 @@ export function useCardAccents(appIds: number[], enabled: boolean): (appId: numb
 const UPDATED_DELAY_MS = 1500;
 
 /** The What's new tab's "Recently updated" games (recentlyUpdated.loadRecentlyUpdated: local IPC, memoised for 10 minutes). */
-function useRecentlyUpdated(): UpdatedCard[] {
+function useRecentlyUpdated(enabled: boolean): UpdatedCard[] {
     const [cards, setCards] = useState<UpdatedCard[]>([]);
     useEffect(() => {
+        if (!enabled) return undefined;
         let active = true;
         const timer = setTimeout(() => {
             loadRecentlyUpdated(Date.now, () => !active).then((list) => {
@@ -316,8 +319,8 @@ function useRecentlyUpdated(): UpdatedCard[] {
             active = false;
             clearTimeout(timer);
         };
-    }, []);
-    return cards;
+    }, [enabled]);
+    return enabled ? cards : [];
 }
 
 /** Steam's trending list is re-read this often (Steam itself refreshes it once a day), and once soon after mount, when its store names may have arrived. */
@@ -325,9 +328,10 @@ const STEAM_TRENDING_REFRESH_MS = 5 * 60_000;
 const STEAM_TRENDING_SECOND_READ_MS = 3000;
 
 /** Steam's own "Trending among friends" list (steamTrending.readSteamTrending); null when Steam's source is missing or failed. */
-function useSteamTrending(): TrendingCard[] | null {
-    const [cards, setCards] = useState<TrendingCard[] | null>(() => guarded('steam trending', readSteamTrending, null));
+function useSteamTrending(enabled: boolean): TrendingCard[] | null {
+    const [cards, setCards] = useState<TrendingCard[] | null>(() => (enabled ? guarded('steam trending', readSteamTrending, null) : null));
     useEffect(() => {
+        if (!enabled) return undefined;
         const read = () => setCards((old) => {
             const next = guarded('steam trending', readSteamTrending, null);
             return JSON.stringify(old) === JSON.stringify(next) ? old : next;
@@ -338,9 +342,12 @@ function useSteamTrending(): TrendingCard[] | null {
             clearTimeout(soon);
             clearInterval(timer);
         };
-    }, []);
-    return cards;
+    }, [enabled]);
+    return enabled ? cards : null;
 }
+
+/** No friends (the bottom section is hidden): one stable empty list, so nothing downstream recomputes. */
+const NO_FRIENDS: RawFriend[] = [];
 
 /** How often the friends list is re-read while Home is open (an in-memory read of Steam's friend store). */
 const FRIENDS_POLL_MS = 2000;
@@ -350,12 +357,13 @@ const FRIENDS_POLL_MS = 2000;
  * shows changed (friends.friendsKey), so statuses, rings, order and "Playing" update within about two seconds
  * without re-rendering Home for nothing. Cleaned up on unmount; a failed read keeps the last list.
  */
-function useLiveFriends(): RawFriend[] {
+function useLiveFriends(enabled: boolean): RawFriend[] {
     const [state, setState] = useState(() => {
-        const list = guarded('friends', readFriends, [] as RawFriend[]);
+        const list = enabled ? guarded('friends', readFriends, [] as RawFriend[]) : [];
         return { list, key: friendsKey(list) };
     });
     useEffect(() => {
+        if (!enabled) return undefined;
         const timer = setInterval(() => {
             if (pageHidden()) return;
             const list = guarded('friends', readFriends, null as RawFriend[] | null);
@@ -364,8 +372,8 @@ function useLiveFriends(): RawFriend[] {
             setState((old) => (old.key === key ? old : { list, key }));
         }, FRIENDS_POLL_MS);
         return () => clearInterval(timer);
-    }, []);
-    return state.list;
+    }, [enabled]);
+    return enabled ? state.list : NO_FRIENDS;
 }
 
 /** The friend last-played cache for the session (loaded once, then kept in step with what Home observes). */
@@ -402,7 +410,8 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals } = useSettings();
+    // With the bottom section hidden (homeFeed off) nothing for it is read, polled or fetched.
+    const { wishlistDeals, homeFeed: feed } = useSettings();
     const { games, settled: recentsSettled } = useRecentGames();
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -443,18 +452,20 @@ export function useHomeData(focusIndex = 0): HomeData {
         () => guarded('library chips', () => libraryChips({ ...readLibraryCounts(), storageBytes: readStorageBytes() }, locale), []),
         [locale],
     );
-    const [news] = useState(() => guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []));
-    const updated = useRecentlyUpdated();
-    const rawFriends = useLiveFriends();
+    // Read once per mount (and again if the bottom section is turned back on while Home is open).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const news = useMemo(() => (feed ? guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []) : []), [feed]);
+    const updated = useRecentlyUpdated(feed);
+    const rawFriends = useLiveFriends(feed);
     const lastGames = useFriendLastGames(rawFriends);
     const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
-    const steamTrending = useSteamTrending();
+    const steamTrending = useSteamTrending(feed);
     const derivedTrending = useMemo(() => guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []), [rawFriends, lastGames]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
-    const { cards: recommended, deals } = useRecommended(games, wishlistDeals);
+    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, feed);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
