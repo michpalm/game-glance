@@ -1,7 +1,8 @@
 /**
  * Home's focus zones, top to bottom. Up/down moves between zones (Steam's own spatial navigation does the
  * moving; these rules say where it should land), left/right moves within one. The recents card row is display
- * only (bumper navigation): it is not a zone, L1/R1 on the action row changes the selected game. Pure.
+ * only (bumper navigation): it is not a zone, L1/R1 on the action row changes the selected game, and so do Left
+ * past the row's first button and Right past its last (edgeStep). Pure.
  */
 export type Zone = 'actions' | 'tabs' | 'feed';
 
@@ -65,12 +66,38 @@ const START = 14;
  */
 export function selectionForButton(index: number, button: number, count: number, isRepeat = false): number | null {
     const step = button === BUMPER_LEFT ? -1 : button === BUMPER_RIGHT ? 1 : 0;
-    if (step === 0 || !Number.isFinite(count) || count < 1) return null;
+    if (step === 0) return null;
+    return stepSelection(index, step, count, isRepeat);
+}
+
+/**
+ * The selected recents item one step (-1 or 1) from `index`, as L1/R1 step: through the Library card at `count`,
+ * wrapping unless `isRepeat` (then it stops at the ends). null: no games. A broken index is clamped into 0..count.
+ */
+export function stepSelection(index: number, step: -1 | 1, count: number, isRepeat = false): number | null {
+    if (!Number.isFinite(count) || count < 1) return null;
     const n = Math.floor(count);
     const at = Number.isFinite(index) ? Math.min(n, Math.max(0, Math.floor(index))) : 0;
     const next = at + step;
     if (isRepeat) return Math.min(n, Math.max(0, next));
     return (next + n + 1) % (n + 1);
+}
+
+/** GamepadButton.DIR_LEFT / DIR_RIGHT in @decky/ui: the d-pad and the left stick, which Steam sends as the same buttons. */
+const DIR_LEFT = 11;
+const DIR_RIGHT = 12;
+
+/**
+ * Edge navigation on the action row: Left on its first button (the Play pill) steps to the previous game, Right on
+ * its last button to the next one; anywhere else Left/Right just move between the buttons (Steam's own navigation, so
+ * null). `at`: the focused button's index among the row's `buttons` (-1: unknown, nothing happens). A held direction
+ * (`isRepeat`) never crosses, so holding Right walks to the last button and stops there instead of running through games.
+ */
+export function edgeStep(button: number, at: number, buttons: number, isRepeat = false): -1 | 1 | null {
+    if (isRepeat || !Number.isInteger(at) || at < 0 || !Number.isFinite(buttons) || at >= buttons) return null;
+    if (button === DIR_LEFT && at === 0) return -1;
+    if (button === DIR_RIGHT && at === buttons - 1) return 1;
+    return null;
 }
 
 /**
