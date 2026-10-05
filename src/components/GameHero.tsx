@@ -17,7 +17,7 @@ import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { useDownload } from '../home/useDownload';
 import { useLaunchOverlay } from '../styles/launchOverlay';
-import { accentCss, downloadCss, launchCss, launchSelectors, themeCss } from '../styles/theme';
+import { accentCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
@@ -98,6 +98,7 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
             )}
             <div className="gg-hero" ref={heroRef}>
                 <style>{themeCss({ restyle })}</style>
+                <style>{unifideckCss({ restyle })}</style>
                 {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}

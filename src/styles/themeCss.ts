@@ -204,6 +204,42 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
     return rules.filter((r) => r.length > 0).join('\n');
 }
 
+/**
+ * Unifideck (https://github.com/mubaraknumann/unifideck, read 2026-10-05 at ed43931): on the games it manages it marks
+ * Steam's page container with this class, hides Steam's Play row and tabs, and puts its own Play row (a Focusable with
+ * its buttons) and an info panel right after the header. Our header is screen-tall, so its row would sit on the next
+ * screen ("broken view" on Reddit); these rules place it where Steam's Play row sits on the art.
+ */
+export const UNIFIDECK_PAGE = '.unifideck-hide-native-play';
+/** Unifideck's primary buttons (Play, Install, Resume, Update), each as one pill like ours. Cancel and Stop keep its look. */
+const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn'];
+
+/**
+ * The Game Glance layout on a Unifideck game's page, as its own stylesheet next to buildThemeCss's (with the layout only;
+ * scoped to Unifideck's own page class, so no other page is touched; '' when the layout's classes are missing). Its Play row moves onto the art at the Play row's place (its info panel then starts the next
+ * screen, as Steam's tabs do) and its primary button becomes our accent pill. Its circle buttons wear Steam's
+ * MenuButton class, so the round buttons above already apply to them; its icon group wears AppButtons (no push right).
+ */
+export function buildUnifideckCss({ header, details, root }: ThemeClasses, options: ThemeOptions = {}): string {
+    const inner = cls(details, 'InnerContainer');
+    // Only with the full-screen layout (the same classes buildThemeCss needs for it); otherwise the page is stacked and
+    // Unifideck's row is already where it belongs.
+    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
+    const primary = UNIFIDECK_PRIMARY.map((c) => `${UNIFIDECK_PAGE} ${c}`);
+    const focused = UNIFIDECK_PRIMARY.flatMap((c) => ['.gpfocus', ':focus', ':focus-within', ':hover'].map((f) => `${UNIFIDECK_PAGE} ${c}${f}`));
+    return [
+        rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` position: absolute !important; top: var(--gg-play-top) !important;
+            left: 0 !important; right: 0 !important; width: auto !important; z-index: 2 !important; box-sizing: border-box !important;
+            padding: ${u(16)} var(--gg-side) !important; gap: var(--gg-gap) !important; background: transparent !important; `),
+        rule(primary, ` width: var(--gg-play-w) !important; min-width: 0 !important; flex: 0 0 var(--gg-play-w) !important; height: var(--gg-icon) !important;
+            justify-content: center !important; border-radius: 999px !important; background: var(--gg-accent) !important; box-shadow: none !important;
+            color: #ffffff !important; font-size: ${u(16)} !important; `),
+        rule(focused, ` background: var(--gg-accent) !important; box-shadow: 0 0 0 ${u(2)} rgba(255, 255, 255, 0.9) !important; `),
+        // Spotlight Home's look: the handoff's pill type, dark text on the accent, as on our own Play pill.
+        options.restyle ? rule(primary, ` font-size: ${d(22)} !important; font-weight: 700 !important; color: #0b0d10 !important; `) : '',
+    ].filter((r) => r.length > 0).join('\n');
+}
+
 /** How long the page takes to fade away under Steam's launch overlay (and back if the launch is cancelled). */
 const LAUNCH_FADE_MS = 200;
 

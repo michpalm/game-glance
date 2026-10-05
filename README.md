@@ -31,7 +31,8 @@ what it is about, and where it came from.
 - **Store pill.** Where the game comes from, with the store's icon: Steam, GOG, Epic, Amazon, Battle.net,
   Ubisoft, Xbox Cloud or Heroic.
 - **Non-Steam games.** Games added by [Heroic](https://heroicgameslauncher.com) or
-  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too.
+  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too. On a
+  Unifideck game's page, Unifideck's own Play row (Install, Play) sits on the art in the same style.
 - **Works offline.** Times and descriptions are kept on the device. A Quick Access button pre-loads them for
   every installed game, and new installs are picked up automatically.
 - **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.
