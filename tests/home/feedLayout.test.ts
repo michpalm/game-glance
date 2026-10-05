@@ -90,12 +90,14 @@ describe('feedItems', () => {
         recommended: [{ appId: 30, name: 'Game 30', pill: 'Not started', pillKey: 'notStarted' as const, sub: '' }],
     };
 
-    it('maps news: featured 623 then 332 (the handoff 600/320 at row 1\'s 270), event art first, opens the news update', () => {
+    it('maps news: featured 623 then 332 (the handoff 600/320 at row 1\'s 270), event art fitted over the hero, opens the news update', () => {
         const items = feedItems('news', data, art);
         expect(items.map((i) => i.width)).toEqual([623, 332]);
         expect(items.map((i) => i.featured)).toEqual([true, false]);
-        expect(items[0].art).toEqual(['https://event/1.png', 'hero-10']);
+        expect(items[0].art).toEqual(['hero-10']);
+        expect(items[0].fit).toBe('https://event/1.png');
         expect(items[1].art).toEqual(['hero-11']);
+        expect(items[1]).not.toHaveProperty('fit');
         expect(items[0]).toMatchObject({ pill: 'Major update', title: 'Big update', sub: 'GAME 10 - TODAY', accentAppId: 10, avatar: null });
         expect(items[0].opens).toEqual({ kind: 'news', appId: 10, gid: '1' });
         expect(items[1].opens).toEqual({ kind: 'news', appId: 11, gid: '2' });
