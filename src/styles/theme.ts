@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { buildAccentCss, buildDownloadCss, buildThemeCss, ClassMap, ThemeClasses, ThemeOptions } from './themeCss';
+import { buildAccentCss, buildDownloadCss, buildLaunchCss, buildThemeCss, ClassMap, launchTargets, ThemeClasses, ThemeOptions } from './themeCss';
 
 let classes: ThemeClasses | null = null;
 
@@ -40,4 +40,14 @@ export function accentCss(color: string): string {
 /** The restyled Play pill's download fill (and Steam's bar hidden); '' without a percent. */
 export function downloadCss(percent: number | null): string {
     return buildDownloadCss(themeClasses(), percent);
+}
+
+/** The page's look while Steam's launch overlay is up (themeCss.buildLaunchCss); '' if the overlay's class is unknown. */
+export function launchCss(): string {
+    return buildLaunchCss(themeClasses());
+}
+
+/** The launch overlay's selector and what hides under it (themeCss.launchTargets). */
+export function launchSelectors(): { overlay: string | null; hide: string[] } {
+    return launchTargets(themeClasses());
 }

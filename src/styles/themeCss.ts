@@ -204,6 +204,41 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
     return rules.filter((r) => r.length > 0).join('\n');
 }
 
+/** How long the page takes to fade away under Steam's launch overlay (and back if the launch is cancelled). */
+const LAUNCH_FADE_MS = 200;
+
+/**
+ * What hides while Steam's launch overlay is up: `overlay`, the overlay's selector (null: unknown, nothing hides), and
+ * `hide`, everything on the page with text on it (our title and cards, Steam's logo and title, its Play row and tabs).
+ * Steam's art (the header itself) is not in the list, so only the game's art is left under the overlay.
+ */
+export function launchTargets({ header, details, root, launch }: ThemeClasses): { overlay: string | null; hide: string[] } {
+    const overlay = cls(launch, 'Container');
+    if (!overlay) return { overlay: null, hide: [] };
+    const hide = present([
+        cls(header, 'BoxSizer'),
+        cls(header, 'TitleImageContainer'),
+        cls(header, 'SVGTitle'),
+        cls(details, 'AppDetailsOverviewPanel'),
+        cls(root, 'AppDetailsContainer'),
+    ]);
+    return { overlay, hide: ['.gg-titleblock', '.gg-hero', ...hide] };
+}
+
+/**
+ * While a game launches (only while the overlay is shown, see launchOverlay.launchOverlayShown): the page's text fades
+ * away and the overlay dims the art less than its resting dim, so Steam's launch screen sits on the game's art alone
+ * (Reddit feedback: the page's text bled through the overlay's). '' when the overlay's class is unknown.
+ */
+export function buildLaunchCss(classes: ThemeClasses): string {
+    const { overlay, hide } = launchTargets(classes);
+    if (!overlay) return '';
+    return [
+        `${hide.join(', ')} { opacity: 0 !important; transition: opacity ${LAUNCH_FADE_MS}ms ease !important; }`,
+        `:root ${overlay} { background: rgba(0, 0, 0, 0.55) !important; }`,
+    ].join('\n');
+}
+
 /**
  * Spotlight Home's details look (handoff "2. Game Glance (details)"), appended after the 1.1.1 rules so they win
  * without touching them. Same defensive pattern: a rule needing a Steam class that is missing is skipped. On Steam's
