@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, selectionForButton, tabForButton,
+    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, edgeStep, nextZone, onBack, opensGameMenu, selectionForButton, stepSelection, tabForButton,
 } from '../../src/home/focusZones';
 
 describe('focusZones', () => {
@@ -20,6 +20,51 @@ describe('focusZones', () => {
         expect(onBack('feed')).toBe('tabs');
         expect(onBack('tabs')).toBe('actions');
         expect(onBack('actions')).toBe('stock');
+    });
+
+    describe('edgeStep (Left/Right past the action row\'s ends)', () => {
+        const LEFT = 11;
+        const RIGHT = 12;
+        it('Left on the Play pill steps back a game, Right on the last button steps forward', () => {
+            expect(edgeStep(LEFT, 0, 4)).toBe(-1);
+            expect(edgeStep(RIGHT, 3, 4)).toBe(1);
+        });
+        it('inside the row Left/Right are Steam\'s own moves between buttons', () => {
+            expect(edgeStep(RIGHT, 0, 4)).toBeNull();
+            expect(edgeStep(LEFT, 3, 4)).toBeNull();
+            expect(edgeStep(LEFT, 2, 4)).toBeNull();
+            expect(edgeStep(RIGHT, 1, 4)).toBeNull();
+        });
+        it('the Library card\'s single pill is both ends: Left goes back, Right forward', () => {
+            expect(edgeStep(LEFT, 0, 1)).toBe(-1);
+            expect(edgeStep(RIGHT, 0, 1)).toBe(1);
+        });
+        it('a held direction never crosses to another game', () => {
+            expect(edgeStep(RIGHT, 3, 4, true)).toBeNull();
+            expect(edgeStep(LEFT, 0, 4, true)).toBeNull();
+        });
+        it('other buttons, an unknown focus or a broken count do nothing', () => {
+            expect(edgeStep(9, 0, 4)).toBeNull();
+            expect(edgeStep(10, 3, 4)).toBeNull();
+            expect(edgeStep(5, 0, 4)).toBeNull();
+            expect(edgeStep(LEFT, -1, 4)).toBeNull();
+            expect(edgeStep(RIGHT, 4, 4)).toBeNull();
+            expect(edgeStep(RIGHT, 0, 0)).toBeNull();
+            expect(edgeStep(RIGHT, Number.NaN, 4)).toBeNull();
+        });
+    });
+
+    describe('stepSelection (the step L1/R1 and the row\'s edges share)', () => {
+        it('wraps through the Library card like L1/R1', () => {
+            expect(stepSelection(2, 1, 3)).toBe(3);
+            expect(stepSelection(3, 1, 3)).toBe(0);
+            expect(stepSelection(0, -1, 3)).toBe(3);
+            expect(stepSelection(3, -1, 3)).toBe(2);
+            expect(stepSelection(1, 1, 3)).toBe(selectionForButton(1, 6, 3));
+        });
+        it('no games: null', () => {
+            expect(stepSelection(0, 1, 0)).toBeNull();
+        });
     });
 
     describe('selectionForButton (L1/R1 on the action row)', () => {

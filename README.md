@@ -45,7 +45,8 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
 - **Selected game.** The selected game fills the screen with its art (your custom SteamGridDB art when you have
   set some), with chips (play time, achievements, last played, HowLongToBeat main story), a Play button and
   actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on Play; **L1 and R1 pick the previous or next
-  game** (hold to keep going). For Steam games with cloud saves, a cloud button after the info button shows the
+  game** (hold to keep going). The d-pad or stick does too: **Left on Play** goes to the previous game and **Right on
+  the last button** to the next, with focus back on Play. For Steam games with cloud saves, a cloud button after the info button shows the
   sync state (green, yellow, red, grey) and opens Steam's sync dialog when there is a problem. The gear button, or
   the View/Select button, opens Steam's own menu for the game (favourites, collections, Manage, Properties...), the
   same one as on the game's page.

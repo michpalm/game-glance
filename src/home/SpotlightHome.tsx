@@ -1,9 +1,11 @@
+import type { GamepadEvent } from '@decky/ui';
 import { CSSProperties, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { FEED_VIEWPORT_INSET, feedSpace } from './feedLayout';
 import { focusElement, focusElementSettled } from './homeNav';
-import type { Zone } from './focusZones';
+import { LOG_PREFIX } from '../constants';
+import { edgeStep, stepSelection, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
@@ -161,6 +163,30 @@ export function SpotlightHome() {
         setRecentIndex(next);
     };
     const bumpers = useBumperSelect(actionsRef, focusIndex, data.games.length, select);
+    // Left on the Play pill and Right on the last button step to the previous / next game (focusZones.edgeStep), the
+    // same step as L1/R1, with focus on the Play pill. Everything else goes on to the bumpers.
+    const onRowButtonDown = (evt: GamepadEvent) => {
+        try {
+            const buttons = actionButtons();
+            const active = rootRef.current?.ownerDocument?.activeElement ?? null;
+            const at = buttons.findIndex((b) => b.contains(active));
+            const step = edgeStep(Number(evt?.detail?.button), at, buttons.length, Boolean(evt?.detail?.is_repeat));
+            const next = step === null ? null : stepSelection(focusIndex, step, data.games.length);
+            if (next !== null) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                bumpers.stop();
+                // Focus first, so the row remembers the pill (onActionsFocus) before a circle that is about to go away.
+                focusElement(buttons[0], 'the Play pill');
+                setRecentIndex(next);
+                return;
+            }
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} Home: edge navigation failed`, error);
+        }
+        bumpers.onButtonDown(evt);
+    };
+    const rowButtons = { onButtonDown: onRowButtonDown, onButtonUp: bumpers.onButtonUp };
     // Which action button holds focus (its index among the row's buttons), remembered for the way back.
     const onActionsFocus = (event: { target: EventTarget }) => {
         setZone('actions');
@@ -257,7 +283,7 @@ export function SpotlightHome() {
                                         download={data.download}
                                         status={data.pillStatus}
                                         preferred={!restoring}
-                                        buttons={bumpers}
+                                        buttons={rowButtons}
                                         cloud={onLibrary ? null : cloud}
                                     />
                                 </section>
