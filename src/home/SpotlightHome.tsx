@@ -229,7 +229,8 @@ export function SpotlightHome() {
     const size = useBoxSize(rootRef);
     const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0);
     // Width is the authored one; height follows the real screen so the reserved bars sit on Steam's bars, and the
-    // whole stack moves down into the slack under the tab strip (homeCss.stackShift).
+    // whole stack moves down into the slack under the tab strip (homeCss.stackShift), or with the bottom section hidden
+    // into the tab strip's place too.
     const logicalHeight = size ? size.height / canvas.scale : canvas.logicalHeight;
     // Bigger cards docked to a TV: the shared TV check (screenScale: a 1080p-class TV only, the Deck is not docked), from Home's own
     // measured box (the Big Picture window's CSS px: 828x466 handheld, 1500x844 on a 1080p TV). Null until measured:
@@ -260,7 +261,7 @@ export function SpotlightHome() {
     }, [contentUp, restoring]);
 
     return (
-        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
+        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, feed)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
             <style>{css}</style>
             <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
             <div className="gh-scrim gh-scrim-dim" />
