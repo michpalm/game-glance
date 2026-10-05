@@ -153,6 +153,11 @@ export interface FeedItem {
     featured: boolean;
     /** Background art, stacked: the first url that loads paints over the rest. Empty = glass only. */
     art: string[];
+    /**
+     * Art shown whole, never cropped: a news event's own image, fitted inside the card over a blurred copy of itself
+     * (which covers `art`). When it fails to load, `art` shows as before. Missing = none.
+     */
+    fit?: string;
     /** Empty = no pill. */
     pill: string;
     title: string;
@@ -217,8 +222,8 @@ export function secondRowTitle(tab: FeedTab): string {
 }
 
 /**
- * The selected tab's cards, row 1 first, then row 2 (`row` says which). News: the event's own art, then the game's
- * hero art; row 2: recently updated games, wide, with their update line, opening the game's page. Friends: the
+ * The selected tab's cards, row 1 first, then row 2 (`row` says which). News: the event's own art fitted whole (`fit`)
+ * over the game's hero art; row 2: recently updated games, wide, with their update line, opening the game's page. Friends: the
  * capsule of the game being played, else of the last played game (when its name is known), else glass only.
  * Recommended: the portrait capsule; row 2: wishlist sales, wide, with the discount and price. A opens a news card's event (its game page when it has no gid), a wishlist
  * deal's store page, a play-next or updated game's page; nothing on a friend. `space`: the height the raised
@@ -239,7 +244,8 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             width: feedCardWidthAt('news', c.featured, rows.row1),
             height: rows.row1,
             featured: c.featured,
-            art: [...(c.imageUrl ? [c.imageUrl] : []), ...art(c.appId).hero],
+            art: art(c.appId).hero,
+            ...(c.imageUrl ? { fit: c.imageUrl } : {}),
             pill: c.pill,
             title: c.title,
             sub: c.sub,

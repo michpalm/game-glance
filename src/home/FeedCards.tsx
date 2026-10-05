@@ -75,6 +75,7 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef }: {
     const classes = ['gh-card'];
     if (item.featured) classes.push('gh-card-featured');
     if (item.row === 1) classes.push('gh-card-wide');
+    if (item.fit) classes.push('gh-card-fitted');
     if (item.avatar?.inGame) classes.push('gh-card-ingame');
     if (item.avatar) classes.push(item.avatar.ring ? `gh-card-ring-${item.avatar.ring}` : 'gh-card-offline');
     return (
@@ -103,6 +104,14 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef }: {
                 </>
             )}
             {item.art.length > 0 && <div className="gh-card-art" style={backgrounds(item.art)} />}
+            {item.fit && (
+                // News art shown whole: a blurred copy fills the card (and covers the hero art once it loads), the image
+                // itself is fitted inside it, never cropped.
+                <>
+                    <div className="gh-card-fit-blur" style={backgrounds([item.fit])} />
+                    <div className="gh-card-fit" style={backgrounds([item.fit])} />
+                </>
+            )}
             <div className="gh-card-shade" />
             {item.avatar && <Avatar avatar={item.avatar} />}
             {item.friends && item.friends.length > 0 && (

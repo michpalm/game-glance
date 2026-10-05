@@ -323,6 +323,16 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-tint-online', `background: ${hexAlpha(FRIEND_COLOURS.online, 0.12)}`),
         rule('.gh-card-tint-away', `background: ${hexAlpha(FRIEND_COLOURS.away, 0.12)}`),
         rule('.gh-card-art', `position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat; animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        // News art shown whole (feedLayout `fit`): any aspect fits inside the card, at the top of a news card so the text
+        // sits under it on the blurred fill, centred on the wide featured card. The fill is the same image scaled to cover
+        // and blurred once (one filter per card, as the friend backdrop), so the bands around the art carry its colours.
+        rule('.gh-card-fit-blur', `position: absolute; inset: -28px; margin: 0; padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat;
+            filter: blur(24px) saturate(.8) brightness(.55); animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        rule('.gh-card-fit', `position: absolute; inset: 0; margin: 0; padding: 0; background-size: contain; background-position: center top; background-repeat: no-repeat;
+            animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        rule('.gh-card-featured .gh-card-fit', 'background-position: center'),
+        // Under fitted art the text has the fill below the image: two title lines keep it there.
+        rule('.gh-card-fitted .gh-card-title', '-webkit-line-clamp: 2'),
         // 1px past the art at the top and bottom, so no un-shaded sliver can show at a fractional edge.
         rule('.gh-card-shade', `position: absolute; inset: -1px 0; background: linear-gradient(180deg, rgba(${SCRIM},0) 30%, rgba(${SCRIM},.88) 100%)`),
         rule('.gh-card-text', 'position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 7px'),

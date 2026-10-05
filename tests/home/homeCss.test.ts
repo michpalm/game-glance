@@ -276,6 +276,13 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card-friend \{[^}]*width: 24px[^}]*border-radius: 3px/);
         expect(css).toMatch(/\.gh-card-friend-more \{[^}]*width: auto/);
     });
+    it('news art is fitted whole: contained at the top (centred on the featured card) over a blurred cover copy', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-card-fit-blur \{[^}]*inset: -28px[^}]*background-size: cover[^}]*filter: blur\(24px\)/);
+        expect(css).toMatch(/\.gh-card-fit \{[^}]*inset: 0[^}]*background-size: contain[^}]*background-position: center top/);
+        expect(css).toMatch(/\.gh-card-featured \.gh-card-fit \{\s*background-position: center/);
+        expect(css).toMatch(/\.gh-card-fitted \.gh-card-title \{\s*-webkit-line-clamp: 2/);
+    });
     it('friend card placeholder: blurred, darkened avatar backdrop, faint presence tint, accent gradient without an avatar', () => {
         const css = homeCss();
         expect(css).toMatch(/\.gh-card-backdrop \{[^}]*inset: -28px[^}]*background-size: cover[^}]*filter: blur\(28px\) saturate\(\.55\) brightness\(\.5\)/);
