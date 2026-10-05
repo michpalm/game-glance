@@ -6,7 +6,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
-import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, recentsGeometry } from './recentsLayout';
+import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -116,13 +116,24 @@ export const MAX_STACK_SHIFT = 120;
 export const MIN_STACK_SHIFT = -60;
 
 /**
+ * With the bottom section hidden (no tab strip), how much further the stack moves down so the recents row ends where
+ * the tab strip ended (`tabClearance` above the legend) instead of leaving its room empty: 733.6 - 688 -> 45.
+ */
+export const FEEDLESS_DROP = Math.floor(FEED_SHEET.tabsTop + FEED_SHEET.tabHeight - RECENTS_BOTTOM);
+
+/**
  * How far the whole Home stack (title block, actions, recents, tabs, feed) moves down on a canvas `logicalHeight`
  * tall, so the tab strip ends `tabClearance` above the legend reserve instead of leaving slack under it. Every gap
  * between elements stays; the raised sheet keeps its old place (the page rises by `raise` plus the shift). Whole px,
  * never upwards, at most MAX_STACK_SHIFT. 1440 x 810.75 (1080p TV, Ally) -> 13, 1280 x 800 (Deck) -> 2.
+ * `feed` false (the bottom section hidden): FEEDLESS_DROP more, so the recents row takes the tab strip's place.
  */
-export function stackShift(logicalHeight: number, legendReserve: number = FEED_SHEET.legendReserve): number {
-    if (!Number.isFinite(logicalHeight)) return 0;
+export function stackShift(logicalHeight: number, legendReserve: number = FEED_SHEET.legendReserve, feed = true): number {
+    if (!Number.isFinite(logicalHeight)) return feed ? 0 : FEEDLESS_DROP;
+    return clampedShift(logicalHeight, legendReserve) + (feed ? 0 : FEEDLESS_DROP);
+}
+
+function clampedShift(logicalHeight: number, legendReserve: number): number {
     const f = FEED_SHEET;
     const legend = Number.isFinite(legendReserve) ? legendReserve : f.legendReserve;
     const slack = logicalHeight - legend - f.tabClearance - (f.tabsTop + f.tabHeight);
