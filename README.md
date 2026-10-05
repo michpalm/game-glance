@@ -6,6 +6,8 @@ what it is about, and where it came from.
 
 ![Game Glance on a handheld: The Witcher 3](docs/images/handheld-witcher3.jpg)
 
+![Spotlight Home](docs/images/home-demo.gif)
+
 <details>
 <summary>More screenshots: a GOG game from Heroic, a TV, and the Quick Access menu</summary>
 
