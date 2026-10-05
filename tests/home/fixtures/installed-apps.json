@@ -1,0 +1,7 @@
+[
+    { "appid": 1675830, "display_name": "1000xRESIST", "installed": true, "app_type": 1 },
+    { "appid": 3443630667, "display_name": "Battle.net", "installed": true, "app_type": 1073741824, "shortcut": true },
+    { "appid": 1588550, "display_name": "Cairn", "installed": true, "app_type": 1 },
+    { "appid": 228980, "display_name": "Steamworks Common Redistributables", "installed": true, "app_type": 4 },
+    { "appid": 292030, "display_name": "The Witcher 3: Wild Hunt", "installed": false, "app_type": 1 }
+]

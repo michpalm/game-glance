@@ -1,0 +1,5 @@
+{
+    "1001": {"success": true, "data": {"name": "Sale Game", "price_overview": {"currency": "USD", "initial": 5999, "final": 2999, "discount_percent": 50, "initial_formatted": "$59.99", "final_formatted": "$29.99"}}},
+    "1002": {"success": true, "data": {"name": "Full Price Game", "price_overview": {"currency": "USD", "initial": 1999, "final": 1999, "discount_percent": 0, "initial_formatted": "", "final_formatted": "$19.99"}}},
+    "1003": {"success": true, "data": []}
+}

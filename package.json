@@ -1,6 +1,6 @@
 {
   "name": "game-glance",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "Immersive game page for Steam Game Mode: full-screen art, HowLongToBeat times, descriptions and store info",
   "type": "module",
   "scripts": {

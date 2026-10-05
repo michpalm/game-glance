@@ -1,0 +1,5 @@
+[
+    { "steamId": "76561190000000001", "name": "Friend 1", "avatarUrl": "https://avatars.steamstatic.com/0000000000000000000000000000000000000001_medium.jpg", "personaState": 4, "gameAppId": 0, "onlineStatus": "Away" },
+    { "steamId": "76561190000000002", "name": "Friend 2", "avatarUrl": "https://avatars.steamstatic.com/0000000000000000000000000000000000000002_medium.jpg", "personaState": 0, "gameAppId": 0, "onlineStatus": "Last online 4 weeks ago" },
+    { "steamId": "76561190000000003", "name": "Friend 3", "avatarUrl": null, "personaState": 0, "gameAppId": 0, "onlineStatus": "Last online 7 hours ago" }
+]

@@ -1,15 +1,22 @@
 import { useEffect } from 'react';
+import { LOG_PREFIX } from '../constants';
+import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel } from '../data/source';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
+import { accentFor } from '../home/accent';
+import { sampleAccent } from '../home/accentSample';
+import { homeMode } from '../home/mode';
+import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
-import { themeCss } from '../styles/theme';
+import { useDownload } from '../home/useDownload';
+import { accentCss, downloadCss, themeCss } from '../styles/theme';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
@@ -20,7 +27,32 @@ interface Props {
     details: unknown;
 }
 
-function Hero({ overview, details }: Props) {
+/** Accents resolved this session, so a page opened again starts on its game's colour instead of the default. */
+const accentMemo = new Map<number, string>();
+
+/** The game's accent (same source and cache as Spotlight Home), only while restyled; undefined until known. */
+function useGameAccent(appId: number, active: boolean): string | undefined {
+    const loaded = useAsync(active && appId !== 0 ? `accent:${appId}` : null, async () => {
+        const color = await accentFor(appId, { cache, sample: sampleAccent });
+        accentMemo.set(appId, color);
+        return color;
+    });
+    return active ? (loaded ?? accentMemo.get(appId)) : undefined;
+}
+
+/** "Last played · Today" from Steam's overview (Unix seconds); null if never played or unreadable. */
+function lastPlayedEyebrow(overview: unknown, locale: string): string | null {
+    try {
+        const seconds = Number((overview as { rt_last_time_played?: unknown } | null)?.rt_last_time_played ?? 0);
+        if (!Number.isFinite(seconds) || seconds <= 0) return null;
+        return `Last played · ${formatLastPlayed(seconds, Math.floor(Date.now() / 1000), locale)}`;
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} could not read last played`, error);
+        return null;
+    }
+}
+
+function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
     const game = readGameInfo(overview, details);
     const overrideVersion = useOverrideVersion();
     const knownLang = peekSteamLanguage();
@@ -38,31 +70,50 @@ function Hero({ overview, details }: Props) {
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
 
+    const accent = useGameAccent(game.appId, restyle);
+    // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
+    const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
+    const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
+
     useEffect(() => {
         setCurrentGame(game, hltb);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [game.appId, hltb]);
 
     if (game.appId === 0) return null;
+    const eyebrow = restyle ? lastPlayedEyebrow(overview, locale) : null;
     return (
-        <div className="gg-hero">
-            <style>{themeCss()}</style>
-            {source && <SourcePill label={source} />}
-            <div className="gg-cards">
-                <InfoCard game={game} locale={locale} description={description} />
-                <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} />
+        <>
+            {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
+            {restyle && game.name !== '' && (
+                <div className="gg-titleblock">
+                    {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
+                    <div className="gg-title">{game.name}</div>
+                </div>
+            )}
+            <div className="gg-hero">
+                <style>{themeCss({ restyle })}</style>
+                {accent && <style>{accentCss(accent)}</style>}
+                {fillCss && <style>{fillCss}</style>}
+                {source && <SourcePill label={source} />}
+                <div className="gg-cards">
+                    <InfoCard game={game} locale={locale} description={description} />
+                    <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} />
+                </div>
+                <div className="gg-more" aria-hidden="true">⌄</div>
             </div>
-            <div className="gg-more" aria-hidden="true">⌄</div>
-        </div>
+        </>
     );
 }
 
 export function GameHero(props: Props) {
-    const { enabled } = useSettings();
-    if (!enabled) return null;
+    const settings = useSettings();
+    if (!settings.enabled) return null;
+    // Spotlight Home's look applies only when both toggles are on; otherwise the page is exactly 1.1.1's.
+    const { restyleDetails } = homeMode(settings);
     return (
         <ErrorBoundary>
-            <Hero {...props} />
+            <Hero {...props} restyle={restyleDetails} />
         </ErrorBoundary>
     );
 }

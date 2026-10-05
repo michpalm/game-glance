@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { buildThemeCss, ClassMap, ThemeClasses } from './themeCss';
+import { buildAccentCss, buildDownloadCss, buildThemeCss, ClassMap, ThemeClasses, ThemeOptions } from './themeCss';
 
 let classes: ThemeClasses | null = null;
 
@@ -28,6 +28,16 @@ function themeClasses(): ThemeClasses {
     return classes;
 }
 
-export function themeCss(): string {
-    return buildThemeCss(themeClasses());
+export function themeCss(options?: ThemeOptions): string {
+    return buildThemeCss(themeClasses(), options);
+}
+
+/** The game's accent for the restyled page (Spotlight Home on); '' if the colour or Steam's class is unusable. */
+export function accentCss(color: string): string {
+    return buildAccentCss(themeClasses(), color);
+}
+
+/** The restyled Play pill's download fill (and Steam's bar hidden); '' without a percent. */
+export function downloadCss(percent: number | null): string {
+    return buildDownloadCss(themeClasses(), percent);
 }

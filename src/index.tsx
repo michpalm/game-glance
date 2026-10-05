@@ -1,3 +1,4 @@
+import { stopDownloads } from './home/downloadStore';
 import { definePlugin } from '@decky/api';
 import { staticClasses } from '@decky/ui';
 import { FaGamepad } from 'react-icons/fa';
@@ -7,11 +8,13 @@ import { startAutoPreload } from './data/autoPreload';
 import { settings } from './data/settings';
 import { getSteamLanguage } from './data/steam';
 import { patchGamePage } from './patches/gamePage';
+import { patchHomePage } from './patches/homePage';
 
 export default definePlugin(() => {
     settings.load().catch((error) => console.error(`${LOG_PREFIX} failed to load settings`, error));
     void getSteamLanguage(); // resolve early so game pages render in the right locale immediately
     const unpatch = patchGamePage();
+    const unpatchHome = patchHomePage(); // never throws; applied after and independent of the game page patch
     const stopAutoPreload = startAutoPreload();
     console.log(`${LOG_PREFIX} loaded`);
     return {
@@ -20,8 +23,20 @@ export default definePlugin(() => {
         content: <SettingsPanel />,
         icon: <FaGamepad />,
         onDismount() {
-            unpatch();
-            stopAutoPreload();
+            // Each step on its own: one that throws must not leave the others applied.
+            const steps: [string, () => void][] = [
+                ['game page unpatch', unpatch],
+                ['Home unpatch', unpatchHome],
+                ['auto preload stop', stopAutoPreload],
+                ['downloads stop', stopDownloads],
+            ];
+            for (const [what, step] of steps) {
+                try {
+                    step();
+                } catch (error) {
+                    console.error(`${LOG_PREFIX} ${what} failed`, error);
+                }
+            }
             console.log(`${LOG_PREFIX} unloaded`);
         },
     };

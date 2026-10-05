@@ -8,6 +8,11 @@ export const TTL = {
     description: 365 * DAY_MS, // descriptions rarely change; kept so pre-loaded ones last
     steamMatch: 365 * DAY_MS,
     steamMatchMiss: DAY_MS,
+    accent: 3650 * DAY_MS,
+    accentMiss: DAY_MS,
+    friendLast: 3650 * DAY_MS, // a friend's last game stays until they play something else
+    wishlist: 6 * 3_600_000,
+    wishlistEmpty: 30 * 60_000, // private, empty or no discounts: retry soon, but not on every Home open
 };
 
 const CACHE_PREFIX = 'cache:';

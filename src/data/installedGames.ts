@@ -2,8 +2,8 @@ import { callable } from '@decky/api';
 import { HeroicRef, parseHeroicLaunch } from '../logic/heroic';
 import type { HltbGame } from './hltb';
 
-const GAME_APP_TYPE = 1;
-const SHORTCUT_APP_TYPE = 1073741824;
+export const GAME_APP_TYPE = 1;
+export const SHORTCUT_APP_TYPE = 1073741824;
 
 export interface LibraryApp {
     appid: number;

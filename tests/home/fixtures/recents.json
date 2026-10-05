@@ -1,0 +1,11 @@
+[
+    { "appid": 3001, "display_name": "Game A", "app_type": 1, "rt_last_time_played": 1791000000, "minutes_playtime_forever": 50 },
+    { "appid": 3002, "display_name": "Game B", "app_type": 1, "rt_last_time_played": 1790990000, "minutes_playtime_forever": 40 },
+    { "appid": 3003, "display_name": "Game C", "app_type": 1, "rt_last_time_played": 1790980000, "minutes_playtime_forever": 100 },
+    { "appid": 3004, "display_name": "Game D", "app_type": 1, "rt_last_time_played": 1790970000, "minutes_playtime_forever": 1 },
+    { "appid": 3000000001, "display_name": "Shortcut E", "app_type": 1073741824, "rt_last_time_played": 1790960000, "minutes_playtime_forever": 0 },
+    { "appid": 3005, "display_name": "Game F", "app_type": 1, "rt_last_time_played": 1790950000, "minutes_playtime_forever": 20 },
+    { "appid": 3000000002, "display_name": "Shortcut G", "app_type": 1073741824, "rt_last_time_played": 0, "minutes_playtime_forever": 0 },
+    { "appid": 3006, "display_name": "Game H", "app_type": 1, "rt_last_time_played": 0, "minutes_playtime_forever": 0 },
+    { "appid": 3007, "display_name": "Tool I", "app_type": 2, "rt_last_time_played": 1500000000, "minutes_playtime_forever": 15 }
+]

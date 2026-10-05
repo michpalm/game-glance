@@ -51,3 +51,15 @@ const LEFT_IN: Record<Tier, string> = {
 export function towardCaption(playedHours: number, goalHours: number, tier: Tier, locale: string): string {
     return `${formatHours(Math.max(goalHours - playedHours, 0.01), locale)} ${LEFT_IN[tier]}`;
 }
+
+/**
+ * The restyled page's progress (the handoff's HLTB card): the bar is played / main-story time and the caption is
+ * "{x} h left in main story" or "Main story complete". Without a main-story time it falls back to computeProgress.
+ */
+export function mainStoryProgress(playedHours: number, times: HltbTimes): Progress | { kind: 'complete' } {
+    const main = times.main;
+    if (main === null || !(main > 0)) return computeProgress(playedHours, times);
+    if (!(playedHours > 0)) return { kind: 'notPlayed' };
+    if (playedHours < main) return { kind: 'toward', tier: 'main', goalHours: main, percent: Math.floor((playedHours / main) * 100) };
+    return { kind: 'complete' };
+}

@@ -1,0 +1,234 @@
+[
+ {
+  "appid": 2001,
+  "active": false,
+  "paused": false,
+  "completed": true,
+  "queue_index": -1,
+  "completed_time": 1791105720,
+  "buildid": 0,
+  "target_buildid": 20000001,
+  "update_type_info": [
+   {
+    "has_update": true,
+    "completed_update": true,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 3600000000,
+      "bytes_total": 3600000000
+     },
+     {
+      "bytes_in_progress": 1800000000,
+      "bytes_total": 1800000000
+     },
+     {
+      "bytes_in_progress": 3600000000,
+      "bytes_total": 3600000000
+     }
+    ],
+    "overall_percent_complete": 100
+   },
+   {
+    "has_update": false,
+    "completed_update": false,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     }
+    ],
+    "overall_percent_complete": 0
+   }
+  ]
+ },
+ {
+  "appid": 2002,
+  "active": false,
+  "paused": false,
+  "completed": true,
+  "queue_index": -1,
+  "completed_time": 1791021600,
+  "buildid": 20000100,
+  "target_buildid": 20000200,
+  "update_type_info": [
+   {
+    "has_update": true,
+    "completed_update": true,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 102400,
+      "bytes_total": 102400
+     },
+     {
+      "bytes_in_progress": 51200,
+      "bytes_total": 51200
+     },
+     {
+      "bytes_in_progress": 102400,
+      "bytes_total": 102400
+     }
+    ],
+    "overall_percent_complete": 100
+   },
+   {
+    "has_update": false,
+    "completed_update": false,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     }
+    ],
+    "overall_percent_complete": 0
+   }
+  ]
+ },
+ {
+  "appid": 2003,
+  "active": false,
+  "paused": false,
+  "completed": true,
+  "queue_index": -1,
+  "completed_time": 1790951400,
+  "buildid": 0,
+  "target_buildid": 20000300,
+  "update_type_info": [
+   {
+    "has_update": true,
+    "completed_update": true,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 2800000000,
+      "bytes_total": 2800000000
+     },
+     {
+      "bytes_in_progress": 1400000000,
+      "bytes_total": 1400000000
+     },
+     {
+      "bytes_in_progress": 2800000000,
+      "bytes_total": 2800000000
+     }
+    ],
+    "overall_percent_complete": 100
+   },
+   {
+    "has_update": false,
+    "completed_update": false,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     }
+    ],
+    "overall_percent_complete": 0
+   },
+   {
+    "has_update": true,
+    "completed_update": true,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 500000,
+      "bytes_total": 500000
+     },
+     {
+      "bytes_in_progress": 400000,
+      "bytes_total": 400000
+     },
+     {
+      "bytes_in_progress": 500000,
+      "bytes_total": 500000
+     }
+    ],
+    "overall_percent_complete": 100
+   }
+  ]
+ },
+ {
+  "appid": 2004,
+  "active": false,
+  "paused": false,
+  "completed": true,
+  "queue_index": -1,
+  "completed_time": 1790841600,
+  "buildid": 20000400,
+  "target_buildid": 20000500,
+  "update_type_info": [
+   {
+    "has_update": true,
+    "completed_update": true,
+    "progress": [
+     {
+      "bytes_in_progress": 0,
+      "bytes_total": 0
+     },
+     {
+      "bytes_in_progress": 120000000,
+      "bytes_total": 120000000
+     },
+     {
+      "bytes_in_progress": 60000000,
+      "bytes_total": 60000000
+     },
+     {
+      "bytes_in_progress": 120000000,
+      "bytes_total": 120000000
+     }
+    ],
+    "overall_percent_complete": 100
+   }
+  ]
+ }
+]

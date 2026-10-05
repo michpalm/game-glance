@@ -9,7 +9,7 @@ import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -52,7 +52,25 @@ export function SettingsPanel() {
         <>
             <PanelSection title="Game page">
                 <PanelSectionRow>
-                    <ToggleField label="Redesigned game page" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
+                    <ToggleField label="Game Glance page" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
+                </PanelSectionRow>
+            </PanelSection>
+            <PanelSection title="Spotlight Home">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Spotlight Home"
+                        description="Replaces Steam's Home screen. Off returns Steam's own Home."
+                        checked={spotlightHome}
+                        onChange={(value) => settings.setSpotlightHome(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Show wishlist deals"
+                        description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
+                        checked={wishlistDeals}
+                        onChange={(value) => settings.setWishlistDeals(value)}
+                    />
                 </PanelSectionRow>
             </PanelSection>
             <PanelSection title="HowLongToBeat match">

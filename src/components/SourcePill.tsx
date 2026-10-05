@@ -15,11 +15,20 @@ const ICONS: Record<StoreIconKey, IconType> = {
     generic: FaGamepad,
 };
 
-export function SourcePill({ label }: { label: string }) {
+/** The store's icon for a source label. */
+export function StoreIcon({ label, className }: { label: string; className?: string }) {
     const Icon = ICONS[storeIconKey(label)];
+    return <Icon className={className} aria-hidden="true" />;
+}
+
+/**
+ * The store pill (icon + name): the game page's (`gg-pill`) and Spotlight Home's (`gh-source`); both are styled from
+ * styles/sourcePill.ts.
+ */
+export function SourcePill({ label, className = 'gg-pill', iconClassName = 'gg-pill-icon' }: { label: string; className?: string; iconClassName?: string }) {
     return (
-        <span className="gg-pill">
-            <Icon className="gg-pill-icon" aria-hidden="true" />
+        <span className={className}>
+            <StoreIcon label={label} className={iconClassName} />
             {label}
         </span>
     );

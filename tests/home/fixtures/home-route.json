@@ -1,0 +1,15 @@
+{
+    "note": "Structure of the props Decky's routerHook passes to a patch for the Home route, captured read-only from Steam's gamepad router on the ROG Xbox Ally (SteamOS client, React 19.1.1) on 2026-10-03. Functions and symbols are recorded as descriptors and rebuilt by the test. Unlike /library/app/:appid there is no renderFunc: children is Steam's memo Home element with no props, which Decky wraps in a plain function component before calling the patch.",
+    "routeProps": {
+        "path": "/library/home",
+        "children": {
+            "_note": "type/originalType describe what the patch receives: type is Decky's plain wrapper function around Steam's Home, not Steam's Home component itself; Steam's own Home type is the React.memo recorded as originalType.",
+            "$$typeof": "Symbol(react.transitional.element)",
+            "type": "function",
+            "originalType": "Symbol(react.memo)",
+            "key": null,
+            "ref": null,
+            "props": {}
+        }
+    }
+}

@@ -1,11 +1,13 @@
 import { HltbResult } from '../data/hltb';
 import { formatHours, minutesToHours } from '../logic/format';
-import { beyondCaption, computeProgress, Tier, towardCaption } from '../logic/progress';
+import { beyondCaption, computeProgress, mainStoryProgress, Tier, towardCaption } from '../logic/progress';
 
 interface Props {
     result: HltbResult | undefined;
     playedMinutes: number;
     locale: string;
+    /** The restyled page (Spotlight Home on): the bar and caption follow the main story only. */
+    restyle?: boolean;
 }
 
 const COLUMNS: Array<{ tier: Tier; label: string }> = [
@@ -14,7 +16,7 @@ const COLUMNS: Array<{ tier: Tier; label: string }> = [
     { tier: 'completionist', label: '100%' },
 ];
 
-export function HltbCard({ result, playedMinutes, locale }: Props) {
+export function HltbCard({ result, playedMinutes, locale, restyle = false }: Props) {
     const header = <div className="gg-label">How long to beat</div>;
 
     if (result === undefined) {
@@ -57,8 +59,8 @@ export function HltbCard({ result, playedMinutes, locale }: Props) {
     }
 
     const played = minutesToHours(playedMinutes);
-    const progress = computeProgress(played, result.times);
-    const goalTier = progress.kind === 'toward' ? progress.tier : null;
+    const progress = restyle ? mainStoryProgress(played, result.times) : computeProgress(played, result.times);
+    const goalTier = !restyle && progress.kind === 'toward' ? progress.tier : null;
     return (
         <div className="gg-card gg-hltb">
             {header}
@@ -85,6 +87,12 @@ export function HltbCard({ result, playedMinutes, locale }: Props) {
                 <>
                     <div className="gg-bar"><div style={{ width: '100%' }} /></div>
                     <div className="gg-caption">{beyondCaption(progress.lastTier)}</div>
+                </>
+            )}
+            {progress.kind === 'complete' && (
+                <>
+                    <div className="gg-bar"><div style={{ width: '100%' }} /></div>
+                    <div className="gg-caption">Main story complete</div>
                 </>
             )}
             {progress.kind === 'notPlayed' && <div className="gg-caption">Not played yet</div>}

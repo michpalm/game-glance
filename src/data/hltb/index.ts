@@ -43,6 +43,11 @@ function toFound(stats: HLTBGameStats): HltbResult {
     };
 }
 
+/** Where a game's HLTB result is cached (also read directly by Spotlight Home's Play next). */
+export function hltbCacheKey(appId: number, overrideId: number | null): string {
+    return `hltb:${appId}:${overrideId ?? 'auto'}`;
+}
+
 export type PrefetchOutcome = { status: HltbResult['status']; fetched: boolean };
 
 type Found = Extract<HltbResult, { status: 'found' }>;
@@ -63,7 +68,7 @@ export function createHltbLookup(deps: HltbDeps) {
 
     async function read(game: HltbGame) {
         const overrideId = await attempt('override read', () => deps.overrides.get(game.appId), null);
-        const key = `hltb:${game.appId}:${overrideId ?? 'auto'}`;
+        const key = hltbCacheKey(game.appId, overrideId);
         const cached = await attempt('cache read', () => deps.cache.get<Stored>(key), null);
         const usable = cached && (cached.status === 'found' || cached.status === 'notFound') ? cached : null;
         const stale = usable?.status === 'found' && now() - (usable.fetchedAt ?? 0) >= TTL.hltbRefresh;

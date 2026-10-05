@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCache, createOverrides } from '../../src/data/cache';
-import { createHltbLookup, HltbGame, parseStat } from '../../src/data/hltb';
+import { createHltbLookup, hltbCacheKey, HltbGame, parseStat } from '../../src/data/hltb';
 import { memoryKv } from '../../src/data/kv';
 
 const STATS = { mainStat: '51.7', mainPlusStat: '103.8', completeStat: '--', allStylesStat: '80.0', gameId: 10270, lastUpdatedAt: new Date() };
@@ -24,7 +24,23 @@ describe('parseStat', () => {
     });
 });
 
+describe('hltbCacheKey', () => {
+    it('pins the cache key format shared by the lookup and Spotlight Home', () => {
+        expect(hltbCacheKey(292030, null)).toBe('hltb:292030:auto');
+        expect(hltbCacheKey(292030, 999)).toBe('hltb:292030:999');
+    });
+});
+
 describe('createHltbLookup', () => {
+    it('writes found results under hltbCacheKey', async () => {
+        const fetchStats = vi.fn(async () => STATS);
+        const { lookup, cache, overrides } = setup(fetchStats);
+        await lookup(W3);
+        expect(await cache.get<{ status: string }>(hltbCacheKey(292030, null))).toMatchObject({ status: 'found' });
+        await overrides.set(292030, 999);
+        await lookup(W3);
+        expect(await cache.get<{ status: string }>(hltbCacheKey(292030, 999))).toMatchObject({ status: 'found' });
+    });
     it('returns parsed times and passes the Steam app id', async () => {
         const fetchStats = vi.fn(async () => STATS);
         const { lookup } = setup(fetchStats);

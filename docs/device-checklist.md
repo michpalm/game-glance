@@ -3,7 +3,7 @@
 Run this after a Steam client update, a Bazzite update, or a plugin reinstall. It takes about ten minutes.
 Most items need only the handheld; the TV items need it docked.
 
-If something looks wrong, first turn **Quick Access → Game Glance → Redesigned game page** off and on.
+If something looks wrong, first turn **Quick Access → Game Glance → Game Glance page** off and on.
 Off must give Steam's stock page. If stock is fine and the redesign is broken, the plugin needs a fix; if the
 redesign is simply missing (stock page with the switch on), Steam renamed something the theme depends on. The
 theme turns its layout off by design rather than breaking the page.
@@ -59,7 +59,7 @@ Result per item: PASS, FAIL (with a note), or "not checked yet".
 | 18 | "Pre-load game info for installed games" | Button shows "Stop (n / total)"; ends with "Game data for N games found." | not checked yet |
 | 19 | "Pre-load new games automatically" | On by default; a newly installed game shows its times offline after 30 minutes | not checked yet |
 | 20 | "Clear cached data" | Toast; the next page open fetches again | not checked yet |
-| 21 | "Redesigned game page" off / on | Stock page / redesign | PASS |
+| 21 | "Game Glance page" off / on (called "Redesigned game page" before 2.0) | Stock page / redesign | PASS |
 
 ### Offline (airplane mode)
 
@@ -67,6 +67,85 @@ Result per item: PASS, FAIL (with a note), or "not checked yet".
 |---|---|---|---|
 | 22 | A game that was pre-loaded | Times and description still shown | not checked yet |
 | 23 | A game never opened or pre-loaded | Page renders; "HowLongToBeat unavailable"; no description | not checked yet |
+
+## Spotlight Home (2.0.0)
+
+Everything in this section is "not checked yet": it has not had a full device pass.
+
+**If Spotlight Home looks wrong:** turn **Quick Access → Game Glance → Spotlight Home** off. Steam's stock Home
+must come back at once. If stock is fine, the plugin needs a fix; note what you saw and the steps.
+
+Result per item: PASS, FAIL (with a note), or "not checked yet". Handheld unless a row says docked.
+
+### Toggles
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 24 | Game Glance page on, Spotlight Home off | Exactly the 1.1.1 game page and Steam's stock Home | not checked yet |
+| 25 | Both on | Spotlight Home, and the game page restyled to match the design handoff: accent eyebrow, 64 px title, Play pill 340x60 and 60 px circles with the row's top at screen height minus 386, cards at height minus 290, the HLTB MAIN value always in the accent, no chevron at the bottom, and the store pill (icon and name) kept at the right of the Play row | not checked yet |
+| 26 | Game Glance page off, Spotlight Home off | Steam's stock game page and stock Home | not checked yet |
+| 27 | Game Glance page off, Spotlight Home on | Spotlight Home, with Steam's stock game page | not checked yet |
+
+### Home: focus and navigation
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 28 | Open Home | Focus is on the first game's Play pill; the first recent card is the selected (wide) one | not checked yet |
+| 29 | D-pad order | Actions (Play and buttons), tabs, feed, in that order with Up and Down; the recents row is skipped (it never takes focus). Up from the tabs lands on Play. Left and Right on the action row move between Play and the small buttons only; Left from Play stays put and never changes the game | not checked yet |
+| 30 | Selected card | The wide card shows the whole landscape art, including custom art (SteamGridDB); nothing cut off | not checked yet |
+| 31 | L1 / R1 on the action row | R1 selects the next game, L1 the previous: hero, title, chips and Play change and the row slides to follow. R1 past the last game lands on the Library card (an Open Library pill, hero stays on the last game); R1 again wraps to game 1; L1 from game 1 goes to the Library card, then the last game. Works from Play and from the small buttons (from a small button onto the Library card, focus moves to the Open Library pill). Holding a bumper keeps stepping at a steady rate, without focus jumping, and stops at the Library card (R1) or game 1 (L1) | not checked yet |
+| 32 | Loop preview and display-only row | Games after the Library card fade out toward the right edge. Tapping or clicking any card (game, Library card, preview) does nothing; no card ever shows a focus ring | not checked yet |
+| 33 | B button | From the feed: back to the tabs; from the tabs: back to the Play pill; from the action row: stock behaviour | not checked yet |
+| 34 | L1 / R1 in the tabs and feed | Switch tabs, from the tabs and from inside the feed (the selected game does not change) | not checked yet |
+
+### Home: feed
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 35 | Friends tab header | Small icon and the number of friends online. Faded grey with 0; online green (not the game's accent colour) with anyone online, away or in game. It changes within about 2 s when a friend comes online or goes offline while Home is open | not checked yet |
+| 36 | Friend cards | In game: "Playing {game}" with the game's art and a green ring. Online: green ring and status. Away: blue ring (the same blue as Steam's friends menu), and "Last played {game}" with that game's art if the game is known (for example, they were seen playing earlier), else "Away". Offline: no ring, dimmed picture, "Last played {game}" with art if known, else "Last online ...". Changes (a friend starting a game, going away) show within about 2 s Pictures are small squares with slightly rounded corners (as in Steam), framed by the presence colour. | not checked yet |
+| 37 | What's new card | Opens that news update | not checked yet |
+| 38 | Wishlist deal card (only with Show wishlist deals on) | Opens the game's store page. With the setting off, no deal cards and no network request for the wishlist | not checked yet |
+| 39 | Play next cards | Installed games not started or short; not the games already in the first recents | not checked yet |
+| 40 | Wishlist set to private | The wishlist shelf hides; Play next still shows; no error | not checked yet |
+
+### Home: look and motion
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 41 | Open to details: the info button and a feed card | The game page opens with the expand transition; B returns to Home. The recents cards take no press at all: touching or clicking a card does nothing, and A never lands on one (only the Play pill, the circle buttons and the feed are focusable) | not checked yet |
+| 42 | The info button pressed twice quickly | Opens once; no overlay left behind | not checked yet |
+| 43 | Switch speed and smoothness | Tap and hold L1/R1: the hero crossfades in about a quarter second, the cards slide and widen without stutter, the accent colour follows at once; rapid presses never pile up fades (the art always shows the latest game within about 0.3 s). The feed sheet still rises at its old pace. If anything stutters, note which part (hero, cards, colours) | not checked yet |
+| 44 | Card size, docked vs handheld | Recents cards are 1.6x docked and 1.6x handheld (the most the layout above the cards allows: 28 logical px under the action row); no slide when Home opens. "Docked" is decided by the same TV check as the game page: Home's measured size at least 1.7x the Ally's handheld layout (828x466), so only a 1080p-class TV counts. A Steam Deck's 1280x800 handheld screen (1.55x) is not docked and gets card scale 1.5 (see 52) | not checked yet |
+| 45 | Title lengths and the Library card | Step through games with short and long (2-line) titles and onto the Library card with R1: only the title changes height (it grows upward); the eyebrow (now between the title and the chips), the chips and the Play row stay exactly in place. A very long title stops at two lines with an ellipsis | not checked yet |
+| 46 | Home with no games | Empty state with an Open Library button that has focus; A opens the Library; no error | not checked yet |
+| 47 | Guard fallback | If Home shows Steam's stock screen with Spotlight Home on (for example after a Steam update): toggle Spotlight Home off and on. If it is still stock, report it, with the Steam client version | not checked yet |
+
+### Home: actions, art, other screens
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| 48 | Play pill | The pill shows Steam's own word and icon for the selected game (the same as the game page's Play button): Play for an installed game (A launches it), Install for one that is not installed, Resume while that game is running. A runs Steam's own handler for that action, with no navigation: Install starts Steam's install flow and Resume brings back the running game (nothing relaunches). Only if Steam's action module is not found does Home use its own pill: Play launches, Install and Resume open the game's page | not checked yet |
+| 49 | Controller and settings circle buttons | Controller opens Steam's controller configurator for the game. The settings gear opens Steam's game menu for the selected game, at the gear: the same menu as the game page's gear (Add to Favorites, Add to, Manage > Hide / Mark as private / Uninstall..., Developer, Properties..., Cancel). Each item works (try Properties and Add to Favorites); B closes the menu and focus returns to the gear. If Steam's menu is missing, the gear opens Properties; if Steam lacks either call, the game page opens instead | not checked yet |
+| 50 | Hero art, a game with custom (SteamGridDB) art (ULTRAKILL, Neva…) | The full-screen background and the portrait capsule use your custom hero and portrait art when you set them; Steam's own art otherwise (a game with only custom landscape art keeps Steam's hero) | not checked yet |
+| 51 | Hero art, a non-Steam shortcut with custom art | Custom hero full-screen and custom portrait capsule; without a custom hero, the blurred-capsule fallback | not checked yet |
+| 52 | Steam Deck (1280x800) parity | Same layout as the Ally, cards at 1.6x (see 44), nothing cut off; text legible at arm's length | not checked yet |
+| 53 | Handheld legibility (Ally) | Card text is about 8.6 CSS px (10.5 in 1.1.1): readable at arm's length; note any text that is too small | not checked yet |
+| 54 | Cold boot with Spotlight Home on | Home opens with the hero only while recents load; focus lands on the first game's Play pill once they arrive. With an empty library the Open Library button appears and has focus | not checked yet |
+| 55 | Wishlist deals, public wishlist (Show wishlist deals on) | A game that is on sale anywhere on the wishlist (not only the first items) appears in the Recommended tab's second row, biggest discounts first, at most six, with the price; A opens its store page | not checked yet |
+| 56 | B from a store page, news page or game page returns to where you were | Select a later game (or the Library card) with R1, then open a wishlist deal on Recommended (store page), a news card, a feed card, and the game page with the info button, each with A; B from each lands on the same selected game, the same tab, card or action button and the same zone (no jump to game 1). A cold start (after a reboot) still focuses game 1's Play pill | not checked yet |
+| 57 | Play pill while a game installs or updates | Start an install or update from Steam: the pill keeps Steam's own word (Pause while downloading, Download or Update when queued or paused) and fills left to right with a lighter fill as the percent grows; no bar below it. A while downloading pauses ALL downloads (Steam's `EnableAllDownloads(false, '0')`, as Steam's own button does), and A on the paused pill resumes (Steam's `ResumeAppUpdate`); the game page is not opened and focus stays on the pill. If the percent stays 0 or the word never changes, the overview's `status_percentage` / `display_status` or the download list are not what the code reads | not checked yet |
+| 58 | Store pill on Home | A pill with the store's icon and name ("Steam", "GOG", "Epic"...) sits at the right edge, level with the Play row, looking exactly like the game page's store pill; it changes as L1/R1 change the game, is absent on the Library card, and never takes focus. The chip row has no store badge any more | not checked yet |
+| 59 | View/Select and Menu on the action row | With a game selected and focus anywhere on the action row, the View (Select) button opens the same game menu as the gear, at the gear; so does the Menu button. Nothing happens on the Library card, and the buttons do nothing extra in the tabs or feed | not checked yet |
+| 60 | Vertical placement, docked and handheld | At rest the tab strip (labels and underline) ends just above Steam's button legend (about 20-25 px), with every gap between title, buttons, cards and tabs as before; nothing is hidden behind the legend or the top bar. Entering the tabs or feed raises the sheet to the same place as before, cards fully visible. Home fills the full width (no 5% smaller layout after opening Home). On the handheld the whole stack sits 13 logical px higher than on the TV so the tab strip ends about 18 logical px above Steam's real legend (about 41 css px tall, measured live); with the sheet raised the second-row cards end about 12 logical px above the legend line, never under it. Raised view: the gap above the recents cards equals the gap between the last feed row and the legend (about 12 logical px, 7 css px on the Ally), by a slightly higher rise (Ally +12). | not checked yet |
+| 61 | Cloud button on Home, and the game page's cloud circle | Home: for a Steam game with cloud saves a fifth circle sits after info. It is green when synced, yellow while syncing, red on a problem and grey when Steam is offline; it is the same dark circle as the others and readable over bright art. It is absent for non-Steam games, games without cloud saves and on the Library card. Right from info reaches it; moving to a game without it puts focus on info. On a sync problem A opens Steam's conflict or retry dialog. Game page (both toggles on): the cloud circle has the same dark fill as the controller and settings circles, icon in the same colours | not checked yet |
+| 62 | What's new, two rows | Raise the sheet on What's new: news cards on top and, below a "Recently updated" line, short wide cards with the same games as Steam's own "Recently updated on this device" shelf, newest first, each with "Updated Today at 11:22 AM" (or Yesterday / a date) and the size; A opens the game page. Both rows fully visible above the button legend, handheld, docked and on a Deck. With none: no second row, the news cards keep their size Valve runtime tools with no art (Steamworks Common Redistributables) are not listed; a card whose art is missing shows a soft accent gradient, never an empty dark box. | not checked yet |
+| 63 | Recommended, two rows | With Show wishlist deals on and games on sale: Play next on top, and below an "On sale from your wishlist" line up to six short wide cards with the discount badge and the price ("$4.99 - was $19.99"), biggest discount first; A opens the store page. Setting off, a private wishlist, or nothing on sale: only Play next, at the same card size (the space below stays empty, the hero shows) | not checked yet |
+| 64 | Two-row navigation | Down from the tabs lands on the first row; Down/Up move between the rows, each keeping its own selected card and scroll; Up from the first row returns to the tabs; L1/R1 switch tabs from either row; B goes to the tabs. Open a card in the second row (game page or store), press B: Home returns to that same card in the second row | not checked yet |
+| 65 | Trending among friends | Friends tab: a "Trending among friends" line and small wide cards with the same games, in the same order, as Steam's own Home shelf (owned games first unless Steam shows store content on Home): "In library" tag for owned games, "-85%" with the price or "Free to play" for others, up to three friend pictures and "+N", "N friends play". A opens the game page (owned) or the store page. With Steam's list unavailable: the games friends played in the last week instead. With none at all: no line and no row | not checked yet |
+| 66 | Friend card placeholder | Friend cards without game art show the friend's own picture, large and blurred, darkened, with a faint green (online) or blue (away) tint; a friend without a picture gets a soft colour gradient; never a black card. Scrolling the friends row stays smooth | not checked yet |
+| 67 | Join a friend | When a friend is in a joinable game (Steam's friends list offers Join Game), their card reads "Join". A asks "Join {name} in {game}?" with Cancel selected; Join starts joining exactly as Steam's own Join Game does (for a game you don't have installed, Steam's own flow follows). A friend in a game that cannot be joined: A opens that game's page (or its store page). B or Cancel closes the question | not checked yet |
+| 68 | Dark accent text | A game whose art gives a dark accent (Metro 2033 Redux: dark red): the eyebrow ("CONTINUE PLAYING ...") is lighter than the bars and Play pill but the same hue, and clearly legible; a bright accent looks unchanged; the restyled game page's eyebrow and MAIN time match | not checked yet |
 
 ## When HowLongToBeat breaks
 
