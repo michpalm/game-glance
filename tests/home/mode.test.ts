@@ -8,6 +8,7 @@ const make = (enabled: boolean, spotlightHome: boolean): Settings => ({
     spotlightHome,
     wishlistDeals: false,
     homeFeed: true,
+    homeNewGames: false,
 });
 
 describe('homeMode', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, recentsButton, selectionForButton, stepSelection, tabForButton,
+    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, recentsButton, repeatStep, selectionForButton, stepSelection, tabForButton,
 } from '../../src/home/focusZones';
 
 describe('focusZones', () => {
@@ -50,6 +50,26 @@ describe('focusZones', () => {
             for (const b of [1, 2, 9, 10]) expect(recentsButton(b, 1, 3)).toBeNull();
             expect(recentsButton(RIGHT, 0, 0)).toBeNull();
             expect(recentsButton(5, 0, Number.NaN)).toBeNull();
+        });
+    });
+
+    describe('repeatStep (a held Left/Right on the cards, at a held bumper\'s pace)', () => {
+        it('a fresh press always steps and starts over', () => {
+            expect(repeatStep(1000, null, false)).toEqual({ step: true, next: { at: 1000, repeats: 0 } });
+            expect(repeatStep(1050, { at: 1000, repeats: 5 }, false)).toEqual({ step: true, next: { at: 1050, repeats: 0 } });
+        });
+        it('Steam\'s fast repeats are swallowed until the bumper delay has passed: 400 ms first, then 170 ms', () => {
+            let last = repeatStep(0, null, false).next;
+            expect(repeatStep(100, last, true).step).toBe(false);
+            expect(repeatStep(399, last, true).step).toBe(false);
+            const first = repeatStep(400, last, true);
+            expect(first).toEqual({ step: true, next: { at: 400, repeats: 1 } });
+            last = first.next;
+            expect(repeatStep(500, last, true).step).toBe(false);
+            expect(repeatStep(570, last, true)).toEqual({ step: true, next: { at: 570, repeats: 2 } });
+        });
+        it('a repeat with nothing held yet steps (focus arrived mid-hold)', () => {
+            expect(repeatStep(10, null, true)).toEqual({ step: true, next: { at: 10, repeats: 0 } });
         });
     });
 

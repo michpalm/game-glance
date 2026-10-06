@@ -2,8 +2,10 @@ import { DownloadState, fillPercent, pillToggle, pillWords } from './downloadPro
 
 /** Small pure helpers behind the Spotlight Home components. */
 
-export function eyebrowText(lastPlayedLabel: string | null, onLibrary = false): string {
+export function eyebrowText(lastPlayedLabel: string | null, onLibrary = false, isNew = false): string {
     if (onLibrary) return 'Your library';
+    // A game new to the library: when it was added ("New to library · Added Yesterday"), as on Steam's Home.
+    if (isNew) return lastPlayedLabel ? `New to library · Added ${lastPlayedLabel}` : 'New to library';
     return lastPlayedLabel ? `Continue playing · ${lastPlayedLabel}` : 'Continue playing';
 }
 

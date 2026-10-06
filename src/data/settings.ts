@@ -7,10 +7,11 @@ export interface Settings {
     spotlightHome: boolean; // replace Steam's Home screen with Spotlight Home
     wishlistDeals: boolean; // look up wishlist sales on Steam's public store
     homeFeed: boolean; // Spotlight Home's bottom section: the What's new, Friends and Recommended tabs
+    homeNewGames: boolean; // Spotlight Home's recents also show the games Steam lists as new to the library (unplayed)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -27,6 +28,7 @@ export function createSettingsStore(kv: KvBackend) {
                 spotlightHome: pick('spotlightHome'),
                 wishlistDeals: pick('wishlistDeals'),
                 homeFeed: pick('homeFeed'),
+                homeNewGames: pick('homeNewGames'),
             };
             emit();
         },
@@ -53,6 +55,11 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setHomeFeed(homeFeed: boolean): Promise<void> {
             current = { ...current, homeFeed };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setHomeNewGames(homeNewGames: boolean): Promise<void> {
+            current = { ...current, homeNewGames };
             emit();
             await kv.set(KEY, current);
         },

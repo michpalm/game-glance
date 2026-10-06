@@ -5,6 +5,11 @@ describe('eyebrowText', () => {
     it('says continue playing with the last-played label', () => {
         expect(eyebrowText('Today')).toBe('Continue playing · Today');
     });
+    it('a game new to the library says so, with when it was added', () => {
+        expect(eyebrowText('Yesterday', false, true)).toBe('New to library · Added Yesterday');
+        expect(eyebrowText(null, false, true)).toBe('New to library');
+        expect(eyebrowText('Yesterday', true, true)).toBe('Your library');
+    });
     it('drops the separator when there is no label', () => {
         expect(eyebrowText(null)).toBe('Continue playing');
         expect(eyebrowText('')).toBe('Continue playing');
