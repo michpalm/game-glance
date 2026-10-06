@@ -8,10 +8,11 @@ export interface Settings {
     wishlistDeals: boolean; // look up wishlist sales on Steam's public store
     homeFeed: boolean; // Spotlight Home's bottom section: the What's new, Friends and Recommended tabs
     homeNewGames: boolean; // Spotlight Home's recents also show the games Steam lists as new to the library (unplayed)
+    cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -29,6 +30,7 @@ export function createSettingsStore(kv: KvBackend) {
                 wishlistDeals: pick('wishlistDeals'),
                 homeFeed: pick('homeFeed'),
                 homeNewGames: pick('homeNewGames'),
+                cleanPage: pick('cleanPage'),
             };
             emit();
         },
@@ -60,6 +62,11 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setHomeNewGames(homeNewGames: boolean): Promise<void> {
             current = { ...current, homeNewGames };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setCleanPage(cleanPage: boolean): Promise<void> {
+            current = { ...current, cleanPage };
             emit();
             await kv.set(KEY, current);
         },

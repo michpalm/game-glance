@@ -17,7 +17,8 @@ import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { useDownload } from '../home/useDownload';
 import { useLaunchOverlay } from '../styles/launchOverlay';
-import { accentCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
+import { accentCss, cleanCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
+import { CleanInfo } from './CleanInfo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
@@ -53,7 +54,7 @@ function lastPlayedEyebrow(overview: unknown, locale: string): string | null {
     }
 }
 
-function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
+function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean; clean: boolean }) {
     const game = readGameInfo(overview, details);
     const overrideVersion = useOverrideVersion();
     const knownLang = peekSteamLanguage();
@@ -87,6 +88,8 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
     }, [game.appId, hltb]);
 
     if (game.appId === 0) return null;
+    // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
+    const cleanStyle = clean ? cleanCss() : '';
     const eyebrow = restyle ? lastPlayedEyebrow(overview, locale) : null;
     return (
         <>
@@ -100,10 +103,12 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
             <div className="gg-hero" ref={heroRef}>
                 <style>{themeCss({ restyle })}</style>
                 <style>{unifideckCss({ restyle })}</style>
+                {cleanStyle && <style>{cleanStyle}</style>}
                 {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
                 {source && <SourcePill label={source} />}
+                {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} />}
                 <div className="gg-cards">
                     <InfoCard game={game} locale={locale} description={description} />
                     <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} />
@@ -117,11 +122,12 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
 export function GameHero(props: Props) {
     const settings = useSettings();
     if (!settings.enabled) return null;
-    // Spotlight Home's look applies only when both toggles are on; otherwise the page is exactly 1.1.1's.
-    const { restyleDetails } = homeMode(settings);
+    // Spotlight Home's look applies when both toggles are on, or with the Clean look (built on it); otherwise the page is
+    // exactly 1.1.1's.
+    const { restyleDetails, cleanDetails } = homeMode(settings);
     return (
         <ErrorBoundary>
-            <Hero {...props} restyle={restyleDetails} />
+            <Hero {...props} restyle={restyleDetails} clean={cleanDetails} />
         </ErrorBoundary>
     );
 }

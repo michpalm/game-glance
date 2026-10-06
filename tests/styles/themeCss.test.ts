@@ -1,6 +1,6 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
-import { buildAccentCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
+import { buildAccentCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -238,6 +238,25 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
     it('nothing without the full-screen layout (the page is stacked then, Unifideck\u2019s row already in place)', () => {
         expect(buildUnifideckCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
         expect(buildUnifideckCss({ ...full, details: undefined })).toBe('');
+    });
+});
+
+describe('buildCleanCss (the Clean look)', () => {
+    it('moves the Play row to the bottom and puts our block on it, letting clicks through', () => {
+        const css = buildCleanCss(full);
+        expect(css).toMatch(/:root \{ --gg-play-top: calc\(100vh - calc\(132 \* var\(--gg-d\)\)\); \}/);
+        expect(css).toMatch(/\.ad_Inner > \.gg-hero \{[^}]*top: var\(--gg-play-top\) !important;[^}]*pointer-events: none;/);
+    });
+    it('hides the description and HowLongToBeat cards; the info card goes right, the store pill above the row, the title just above it', () => {
+        const css = buildCleanCss(full);
+        expect(css).toContain('.gg-cards { display: none !important; }');
+        expect(css).toMatch(/\.gg-clean-info \{[^}]*position: absolute; right: 0;[^}]*border-radius:/);
+        expect(css).toMatch(/\.gg-pill \{ top: auto; bottom: calc\(100% \+ /);
+        expect(css).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - [^}]*transform: translateY\(-100%\)/);
+    });
+    it('nothing without the full-screen layout, so the page keeps its cards', () => {
+        expect(buildCleanCss({ ...full, details: undefined })).toBe('');
+        expect(buildCleanCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
     });
 });
 

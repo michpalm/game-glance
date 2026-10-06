@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { buildAccentCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, ThemeClasses, ThemeOptions } from './themeCss';
+import { buildAccentCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, ThemeClasses, ThemeOptions } from './themeCss';
 
 let classes: ThemeClasses | null = null;
 
@@ -55,4 +55,9 @@ export function launchSelectors(): { overlay: string | null; hide: string[] } {
 /** The layout on a Unifideck game's page (themeCss.buildUnifideckCss); '' without the layout's classes. */
 export function unifideckCss(options?: ThemeOptions): string {
     return buildUnifideckCss(themeClasses(), options);
+}
+
+/** The Game Glance page's Clean look (themeCss.buildCleanCss); '' without the layout's classes. */
+export function cleanCss(): string {
+    return buildCleanCss(themeClasses());
 }
