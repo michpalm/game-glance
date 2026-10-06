@@ -51,7 +51,7 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
   sync state (green, yellow, red, grey) and opens Steam's sync dialog when there is a problem. The gear button, or
   the View/Select button, opens Steam's own menu for the game (favourites, collections, Manage, Properties...), the
   same one as on the game's page.
-- **Recents row.** Your recent games as capsules (custom portrait art included); the selected one opens into a
+- **Recents row.** Your recent games as capsules, as many as Steam's own Home lists (up to 20; custom portrait art included); the selected one opens into a
   wide card with the game's landscape art (custom art included) and the row slides to follow L1/R1. The row ends in
   a Library card (R1 past the last game; R1 again goes back to the first) with a faded preview of more games. The
   row is for show only: tapping a card does nothing. With no recent games, Home shows an Open Library button.
