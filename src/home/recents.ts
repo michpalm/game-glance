@@ -39,6 +39,26 @@ const DAY_SECONDS = 86400;
 const AGO_DAYS_MAX = 14;
 
 /** "Today", "Yesterday", "N days ago", then a date. Timestamps are Unix seconds. */
+/**
+ * The apps to pick recents from. Steam's recent apps list comes first; when it gives fewer than `limit` played games
+ * (on the Ally it gave 10, while Steam's Home shows more), the rest of the library (`all`, every app overview) fills
+ * up, without hidden apps (`isHidden`) or duplicates. pickRecents then sorts by last played and keeps `limit`.
+ */
+export function mergeRecentSources<T extends RawApp>(recent: T[], all: T[], isHidden: (appId: number) => boolean, limit = RECENTS_LIMIT): T[] {
+    if (pickRecents(recent, limit).length >= limit) return recent;
+    const seen = new Set(recent.map((a) => a.appid));
+    const extra = all.filter((a) => {
+        if (!a || seen.has(a.appid)) return false;
+        seen.add(a.appid);
+        try {
+            return !isHidden(a.appid);
+        } catch {
+            return false;
+        }
+    });
+    return [...recent, ...extra];
+}
+
 export function formatLastPlayed(lastPlayed: number, now: number, locale: string): string {
     const days = Math.floor((now - lastPlayed) / DAY_SECONDS);
     if (days < 1) return 'Today';

@@ -25,7 +25,7 @@ import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
-import { formatLastPlayed, pickRecents, RawApp, RecentGame } from './recents';
+import { formatLastPlayed, mergeRecentSources, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
 import { noteDetails } from './detailsMemo';
@@ -79,7 +79,7 @@ type StoreGlobals = {
         localGamesCollection?: { allApps?: AnyApp[] };
         BIsHidden?(appId: number): boolean;
     };
-    appStore?: { GetAppOverviewByAppID?(appId: number): (AnyApp & Record<string, unknown>) | undefined | null };
+    appStore?: { GetAppOverviewByAppID?(appId: number): (AnyApp & Record<string, unknown>) | undefined | null; allApps?: AnyApp[] };
     appDetailsStore?: { GetAppDetails?(appId: number): unknown };
     SteamUIStore?: { RunningApps?: Array<{ appid?: number }>; MainRunningAppID?: number };
     App?: { m_CurrentUser?: { strSteamID?: string } };
@@ -118,11 +118,25 @@ function appName(appId: number): string {
     return typeof name === 'string' ? name : '';
 }
 
-/** Verified on the Ally: `collectionStore.recentAppsCollection.allApps` (20 items, newest first, `installed`, `m_gameid` for shortcuts). */
+/** Logged once per session: where the recents came from (Steam's recent list, the rest of the library). */
+let recentsSourcesLogged = false;
+
+/**
+ * `collectionStore.recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
+ * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
+ * on the Ally it gave 10 while Steam's Home shows more).
+ */
 function readRecentGames(): HomeGame[] {
     return guarded('recents', () => {
-        const apps = steam.collectionStore?.recentAppsCollection?.allApps;
-        if (!Array.isArray(apps)) return [];
+        const recent = steam.collectionStore?.recentAppsCollection?.allApps;
+        if (!Array.isArray(recent)) return [];
+        const all = guarded('library apps', () => steam.appStore?.allApps, undefined);
+        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
+        const apps = mergeRecentSources(recent, Array.isArray(all) ? all : [], isHidden);
+        if (!recentsSourcesLogged && recent.length > 0) {
+            recentsSourcesLogged = true;
+            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${pickRecents(apps).length}`);
+        }
         const byId = new Map(apps.map((a) => [a.appid, a]));
         return pickRecents(apps).map((g) => {
             const app = byId.get(g.appId);
