@@ -42,6 +42,12 @@ describe('pickRelease', () => {
         const assets = [{ name: 'game-glance.zip', browser_download_url: 'https://github.com/a/game-glance.zip' }];
         expect(pickRelease(release({ assets }))?.sha256).toBe('');
     });
+    it('a zip uploaded under a versioned name (v2.0.0\'s game-glance-v2.0.0.zip) counts too; the plain name wins', () => {
+        const versioned = { name: 'game-glance-v2.0.0.zip', browser_download_url: 'https://github.com/michpalm/game-glance/releases/download/v2.0.0/game-glance-v2.0.0.zip', digest: `sha256:${SHA}` };
+        expect(pickRelease(release({ tag_name: 'v2.0.0', assets: [versioned] }))).toEqual({ version: '2.0.0', url: versioned.browser_download_url, sha256: SHA });
+        expect(pickRelease(release({ assets: [versioned, ...release().assets] }))?.url).toBe('https://github.com/michpalm/game-glance/releases/download/v2.1.0/game-glance.zip');
+        expect(pickRelease(release({ assets: [{ name: 'game-glance-source.zip', browser_download_url: 'https://github.com/x/s.zip' }] }))).toBeNull();
+    });
     it('nothing installable: drafts, pre-releases, no zip, a non-https url, a bad tag or junk', () => {
         expect(pickRelease(release({ draft: true }))).toBeNull();
         expect(pickRelease(release({ prerelease: true }))).toBeNull();

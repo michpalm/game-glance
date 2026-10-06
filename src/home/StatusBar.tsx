@@ -1,5 +1,5 @@
-import { CSSProperties, ReactElement, RefObject, useEffect, useState, useSyncExternalStore } from 'react';
-import { avatarPlacement, BatteryView, Box, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, StatusPlacement } from './statusItems';
+import { ReactElement, useEffect, useState, useSyncExternalStore } from 'react';
+import { BatteryView, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona } from './statusItems';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
 
 /** Steam's clock setting, else the locale's. */
@@ -89,7 +89,7 @@ function useSelfPersona(): SelfPersona | null {
     useEffect(() => {
         const timer = setInterval(() => {
             const next = readSelfPersona(globalThis);
-            setSelf((old) => (old && next && old.state === next.state && old.inGame === next.inGame && old.avatarHash === next.avatarHash) || old === next ? old : next);
+            setSelf((old) => (old && next && old.state === next.state && old.inGame === next.inGame) || old === next ? old : next);
         }, PERSONA_POLL_MS);
         return () => clearInterval(timer);
     }, []);
@@ -98,68 +98,20 @@ function useSelfPersona(): SelfPersona | null {
 
 const DOT_LABEL: Record<PersonaDot, string> = { online: 'Online', away: 'Away', off: 'Invisible or offline' };
 
-/** The last placement found this session, so the dot starts in the right place when Home opens again. */
-let knownPlacement: StatusPlacement | null = null;
-
-/**
- * Steam's top-bar avatar: the images showing your avatar (by its hash) outside Home, as boxes relative to Home's box.
- * Skipped while Home's box is transformed (Steam's route animation scales it while Home mounts).
- */
-function avatarBoxes(root: HTMLElement, hash: string): { boxes: Box[]; home: { width: number; height: number } } | null {
-    const rootRect = root.getBoundingClientRect();
-    if (Math.abs(rootRect.width - root.offsetWidth) > 1 || Math.abs(rootRect.height - root.offsetHeight) > 1) return null;
-    const boxes: Box[] = [];
-    for (const img of root.ownerDocument.querySelectorAll<HTMLImageElement>(`img[src*="${hash}"]`)) {
-        if (root.contains(img)) continue;
-        const r = img.getBoundingClientRect();
-        boxes.push({ left: r.left - rootRect.left, top: r.top - rootRect.top, width: r.width, height: r.height });
-    }
-    return { boxes, home: { width: rootRect.width, height: rootRect.height } };
-}
-
-/**
- * Where the dot goes: centred on Steam's top-bar avatar once it has been seen (measured shortly after Home opens, and
- * again each time focus moves up into Steam's bar, where the avatar is surely showing); kept for the session.
- */
-function useAvatarPlacement(rootRef: RefObject<HTMLElement | null>, hash: string, away: boolean, scale: number, logicalWidth: number): StatusPlacement | null {
-    const [placement, setPlacement] = useState<StatusPlacement | null>(knownPlacement);
-    useEffect(() => {
-        if (!hash) return undefined;
-        const measure = () => {
-            try {
-                const root = rootRef.current;
-                const found = root ? avatarBoxes(root, hash) : null;
-                const next = found ? avatarPlacement(found.boxes, found.home, scale, logicalWidth) : null;
-                if (!next) return;
-                knownPlacement = next;
-                setPlacement((old) => (old && old.right === next.right && old.centreY === next.centreY ? old : next));
-            } catch {
-                // keep the last placement
-            }
-        };
-        const delays = away ? [300, 900] : [0, 500, 2000];
-        const timers = delays.map((ms) => setTimeout(measure, ms));
-        return () => timers.forEach(clearTimeout);
-    }, [rootRef, hash, away, scale, logicalWidth]);
-    return placement;
-}
-
 /**
  * Spotlight Home's status bar: connection, battery and clock in one glass pill at the top-right (homeCss `.gh-status`),
- * then a dot for your own online status, centred where Steam's top bar shows your avatar. `away` fades it all out while
- * focus is in Steam's own top bar, so the avatar takes the dot's place. An item Steam has not reported is left out.
+ * then a dot for your own online status. `away` fades it all out while focus is in Steam's own top bar. An item Steam
+ * has not reported is left out.
  */
-export function StatusBar({ away, rootRef, scale, logicalWidth }: { away: boolean; rootRef: RefObject<HTMLElement | null>; scale: number; logicalWidth: number }) {
+export function StatusBar({ away }: { away: boolean }) {
     useEffect(() => startStatus(), []);
     const { battery, connection } = useSyncExternalStore(subscribeStatus, statusState, statusState);
     const clock = useClock();
     const self = useSelfPersona();
     const dot = personaDot(self);
-    const placement = useAvatarPlacement(rootRef, self?.avatarHash ?? '', away, scale, logicalWidth);
     const conn = connection ? CONNECTION[connection] : null;
-    const style = placement ? ({ '--gh-status-right': `${placement.right}px`, '--gh-status-cy': `${placement.centreY}px` } as CSSProperties) : undefined;
     return (
-        <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away} style={style}>
+        <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away}>
             <div className="gh-status-pill">
                 {conn && (
                     <span className={`gh-status-item gh-status-${connection}`} aria-label={conn.label}>

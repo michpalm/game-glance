@@ -75,9 +75,9 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
 - **Status bar.** The time, battery (with a bolt while charging, red under 20%) and connection (Wi-Fi, wired or
   offline) sit in a glass pill at the top-right, near the screen edge. The clock follows Steam's 12/24-hour
   setting. Next to it, a small dot shows your own online status in the Friends tab's colours: green online (or in a
-  game), blue away, grey invisible or offline. The dot sits where Steam's top bar shows your profile picture, so moving
-  up from the Play row to Steam's own top bar (search, notifications, your profile) fades the bar out and your picture
-  takes the dot's place; it comes back when focus returns to Home. Without a battery (a desktop) the battery is left out.
+  game), blue away, grey invisible or offline. Moving up from the Play row to Steam's own top bar (search,
+  notifications, your profile) fades the bar out; it comes back when focus returns to Home. Without a battery (a
+  desktop) the battery is left out.
 
 Quick Access → Game Glance has two toggles:
 

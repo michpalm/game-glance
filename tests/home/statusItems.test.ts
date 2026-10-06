@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avatarHash, avatarPlacement, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, toBytes } from '../../src/home/statusItems';
+import { connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, toBytes } from '../../src/home/statusItems';
 
 // Minimal protobuf encoder for the fixtures (varint and length-delimited fields).
 const varint = (n: number): number[] => {
@@ -130,17 +130,15 @@ describe('connection', () => {
 });
 
 describe('your online status dot', () => {
-    const HASH = 'fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb';
     const store = (persona: Record<string, unknown>) => ({ friendStore: { self: { persona } } });
     it("reads your persona from the friends UI store, where Steam keeps you", () => {
         const ui = (extra: Record<string, unknown>) => ({ friendStore: { allFriends: [], m_FriendsUIFriendStore: extra } });
-        expect(readSelfPersona(ui({ m_eUserPersonaState: 1, self: { persona: { m_ePersonaState: 1, m_unGamePlayedAppID: 0, avatar_url_medium: `https://avatars.steamstatic.com/${HASH}_medium.jpg` } } })))
-            .toEqual({ state: 1, inGame: false, avatarHash: HASH });
+        expect(readSelfPersona(ui({ m_eUserPersonaState: 1, self: { persona: { m_ePersonaState: 1, m_unGamePlayedAppID: 0 } } }))).toEqual({ state: 1, inGame: false });
         // The status you chose wins over the persona's (invisible shows as offline to others).
         expect(readSelfPersona(ui({ m_eUserPersonaState: 7, self: { persona: { m_ePersonaState: 0 } } }))?.state).toBe(7);
         // Only one of the two known.
-        expect(readSelfPersona(ui({ m_eUserPersonaState: 3 }))).toEqual({ state: 3, inGame: false, avatarHash: '' });
-        expect(readSelfPersona(ui({ m_self: { persona: { m_ePersonaState: 3, m_unGamePlayedAppID: 570 } } }))).toEqual({ state: 3, inGame: true, avatarHash: '' });
+        expect(readSelfPersona(ui({ m_eUserPersonaState: 3 }))).toEqual({ state: 3, inGame: false });
+        expect(readSelfPersona(ui({ m_self: { persona: { m_ePersonaState: 3, m_unGamePlayedAppID: 570 } } }))).toEqual({ state: 3, inGame: true });
     });
     it('falls back to self on the friend store itself; nothing known gives null', () => {
         expect(readSelfPersona(store({ m_ePersonaState: 1 }))?.state).toBe(1);
@@ -149,13 +147,8 @@ describe('your online status dot', () => {
         expect(readSelfPersona(store({ m_ePersonaState: 'x' }))).toBeNull();
         expect(readSelfPersona(null)).toBeNull();
     });
-    it('the avatar hash comes from any Steam avatar url', () => {
-        expect(avatarHash(`https://avatars.akamai.steamstatic.com/${HASH.toUpperCase()}_full.jpg`)).toBe(HASH);
-        expect(avatarHash('/images/default.png')).toBe('');
-        expect(avatarHash(undefined)).toBe('');
-    });
     it('online and busy are green, in a game too; away and snooze blue; invisible and offline grey', () => {
-        const dot = (state: number, inGame = false) => personaDot({ state, inGame, avatarHash: '' });
+        const dot = (state: number, inGame = false) => personaDot({ state, inGame });
         expect(dot(1)).toBe('online');
         expect(dot(2)).toBe('online');
         expect(dot(3)).toBe('away');
@@ -164,32 +157,5 @@ describe('your online status dot', () => {
         expect(dot(7)).toBe('off');
         expect(dot(0)).toBe('off');
         expect(personaDot(null)).toBeNull();
-    });
-});
-
-describe('avatarPlacement', () => {
-    // Handheld: Home's box 828x466 css px, canvas scale 828/1440 = 0.575, logical width 1440.
-    const home = { width: 828, height: 466 };
-    const scale = 0.575;
-    it("centres the dot on Steam's top-bar avatar", () => {
-        // Avatar 20x20 at left 790, top 5: centre (800, 15) -> canvas (1391.3, 26.1).
-        const placed = avatarPlacement([{ left: 790, top: 5, width: 20, height: 20 }], home, scale, 1440);
-        expect(placed).toEqual({ right: 42.7, centreY: 26.1 });
-    });
-    it('the rightmost avatar-sized box in the top strip wins', () => {
-        const placed = avatarPlacement([
-            { left: 700, top: 5, width: 20, height: 20 },
-            { left: 790, top: 5, width: 20, height: 20 },
-            { left: 795, top: 300, width: 20, height: 20 }, // lower on the screen: not the top bar
-            { left: 600, top: 0, width: 400, height: 60 }, // too big for an avatar
-        ], home, scale, 1440);
-        expect(placed?.right).toBe(42.7);
-    });
-    it('nothing usable gives null (the CSS default applies)', () => {
-        expect(avatarPlacement([], home, scale, 1440)).toBeNull();
-        expect(avatarPlacement([{ left: 0, top: 0, width: 0, height: 0 }], home, scale, 1440)).toBeNull(); // hidden
-        expect(avatarPlacement([{ left: 20, top: 5, width: 20, height: 20 }], home, scale, 1440)).toBeNull(); // left half
-        expect(avatarPlacement([{ left: 790, top: -40, width: 20, height: 20 }], home, scale, 1440)).toBeNull(); // slid up off screen
-        expect(avatarPlacement([{ left: 790, top: 5, width: 20, height: 20 }], home, 0, 1440)).toBeNull();
     });
 });

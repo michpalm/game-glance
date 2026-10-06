@@ -11,6 +11,8 @@ import { LOG_PREFIX, PLUGIN_NAME } from '../constants';
 export const RELEASES_URL = 'https://api.github.com/repos/michpalm/game-glance/releases/latest';
 /** The release asset Decky installs (scripts/package.sh builds it). */
 export const ASSET_NAME = 'game-glance.zip';
+/** The same zip uploaded under a versioned name ("game-glance-v2.0.0.zip", as v2.0.0 was): taken when there is no ASSET_NAME. */
+const VERSIONED_ASSET = /^game-glance-v?\d+(\.\d+){1,3}\.zip$/i;
 /** Decky's install type for an update of an installed plugin (1 reinstall, 2 update, 3 downgrade). */
 export const INSTALL_TYPE_UPDATE = 2;
 
@@ -43,13 +45,13 @@ export interface Release {
     sha256: string;
 }
 
-/** The installable release in GitHub's latest-release JSON: a published, non-prerelease tag with the zip. Null otherwise. */
+/** The installable release in GitHub's latest-release JSON: a published, non-prerelease tag with the zip (ASSET_NAME, else a versioned name). Null otherwise. */
 export function pickRelease(json: unknown): Release | null {
     try {
         const r = json as { tag_name?: unknown; draft?: unknown; prerelease?: unknown; assets?: unknown } | null;
         if (!r || r.draft === true || r.prerelease === true || !parseVersion(r.tag_name)) return null;
         const assets = Array.isArray(r.assets) ? (r.assets as Array<{ name?: unknown; browser_download_url?: unknown; digest?: unknown }>) : [];
-        const zip = assets.find((a) => a?.name === ASSET_NAME);
+        const zip = assets.find((a) => a?.name === ASSET_NAME) ?? assets.find((a) => typeof a?.name === 'string' && VERSIONED_ASSET.test(a.name));
         const url = zip?.browser_download_url;
         if (typeof url !== 'string' || !/^https:\/\//.test(url)) return null;
         const digest = typeof zip?.digest === 'string' ? zip.digest : '';
