@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -115,6 +115,14 @@ export function SettingsPanel() {
                         description="Replaces Steam's Home screen. Off returns Steam's own Home."
                         checked={spotlightHome}
                         onChange={(value) => settings.setSpotlightHome(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="New to library"
+                        description="Adds games new to your library that you have not played yet to the recent games row, as on Steam's Home."
+                        checked={homeNewGames}
+                        onChange={(value) => settings.setHomeNewGames(value)}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

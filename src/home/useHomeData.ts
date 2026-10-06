@@ -1,5 +1,5 @@
 import { fetchNoCors } from '@decky/api';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, overrides, TTL } from '../data/cache';
@@ -27,7 +27,7 @@ import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
-import { formatLastPlayed, mergeRecentSources, pickRecents, RawApp, RecentGame } from './recents';
+import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
 import { noteDetails } from './detailsMemo';
@@ -51,7 +51,10 @@ export interface HomeData {
     /** Bumps when Steam delivers the focused game's details (hero art may be known only then). */
     detailsVersion: number;
     locale: string;
+    /** When the focused game was last played ("Yesterday"), or, for a game new to the library, when it was added. */
     lastPlayedLabel: string | null;
+    /** The focused game is new to the library (never played; shown with the "New to library" setting). */
+    focusedIsNew: boolean;
     chips: Chip[];
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
     source: string | undefined;
@@ -134,19 +137,22 @@ let recentsSourcesLogged = false;
  * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
  * on the Ally it gave 10 while Steam's Home shows more).
  */
-function readRecentGames(): HomeGame[] {
+function readRecentGames(includeNew: boolean): HomeGame[] {
     return guarded('recents', () => {
         const recent = steam.collectionStore?.recentAppsCollection?.allApps;
         if (!Array.isArray(recent)) return [];
-        const all = guarded('library apps', () => steam.appStore?.allApps, undefined);
+        const listed = guarded('library apps', () => steam.appStore?.allApps, undefined);
+        const all = Array.isArray(listed) ? listed : [];
         const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
-        const apps = mergeRecentSources(recent, Array.isArray(all) ? all : [], isHidden);
+        const picked = pickHomeRecents({ recent, all, isHidden, includeNew });
         if (!recentsSourcesLogged && recent.length > 0) {
             recentsSourcesLogged = true;
-            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${pickRecents(apps).length}`);
+            const merged = pickRecents(mergeRecentSources(recent, all, isHidden)).length;
+            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
         }
-        const byId = new Map(apps.map((a) => [a.appid, a]));
-        return pickRecents(apps).map((g) => {
+        // Steam's recent list wins for its own games (`installed`, `m_gameid` as Steam keeps them there).
+        const byId = new Map([...all, ...recent].map((a) => [a.appid, a]));
+        return picked.map((g) => {
             const app = byId.get(g.appId);
             const gameId = app?.m_gameid;
             return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };
@@ -204,8 +210,15 @@ let dealsMemo: DealCard[] = [];
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
 
-function useRecentGames(): { games: HomeGame[]; settled: boolean } {
-    const [games, setGames] = useState<HomeGame[]>(readRecentGames);
+function useRecentGames(includeNew: boolean): { games: HomeGame[]; settled: boolean } {
+    const [games, setGames] = useState<HomeGame[]>(() => readRecentGames(includeNew));
+    // The "New to library" setting changed while Home is open: read the row again.
+    const shownWith = useRef(includeNew);
+    useEffect(() => {
+        if (shownWith.current === includeNew) return;
+        shownWith.current = includeNew;
+        setGames(readRecentGames(includeNew));
+    }, [includeNew]);
     const [retriesDone, setRetriesDone] = useState(false);
     useEffect(() => {
         if (games.length > 0) return undefined;
@@ -213,7 +226,7 @@ function useRecentGames(): { games: HomeGame[]; settled: boolean } {
         let tries = 0;
         const timer = setInterval(() => {
             tries++;
-            const next = readRecentGames();
+            const next = readRecentGames(shownWith.current);
             if (next.length > 0) setGames(next);
             if (next.length > 0 || tries >= RECENTS_RETRIES) {
                 clearInterval(timer);
@@ -505,8 +518,8 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  */
 export function useHomeData(focusIndex = 0): HomeData {
     // With the bottom section hidden (homeFeed off) nothing for it is read, polled or fetched.
-    const { wishlistDeals, homeFeed: feed } = useSettings();
-    const { games, settled: recentsSettled } = useRecentGames();
+    const { wishlistDeals, homeFeed: feed, homeNewGames } = useSettings();
+    const { games, settled: recentsSettled } = useRecentGames(homeNewGames);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
 
@@ -548,10 +561,14 @@ export function useHomeData(focusIndex = 0): HomeData {
             achievements: info?.achievements ?? null,
             lastPlayed: focused.lastPlayed,
             hltbMainHours: hltb?.status === 'found' ? hltb.times.main : null,
+            addedAt: focused.isNew ? focused.addedAt : undefined,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focused, info, hltb, locale]);
-    const lastPlayedLabel = focused ? guarded('last played', () => formatLastPlayed(focused.lastPlayed, nowSeconds, locale), null) : null;
+    const lastPlayedLabel = focused
+        ? guarded('last played', () => formatLastPlayed(focused.isNew ? focused.addedAt : focused.lastPlayed, nowSeconds, locale), null)
+        : null;
+    const focusedIsNew = focused?.isNew === true;
 
     const library = useMemo(
         () => guarded('library chips', () => libraryChips({ ...readLibraryCounts(), storageBytes: readStorageBytes() }, locale), []),
@@ -576,5 +593,5 @@ export function useHomeData(focusIndex = 0): HomeData {
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
 }

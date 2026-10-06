@@ -59,6 +59,8 @@ const GameCapsule = memo(function GameCapsule({ game, left, width, dim, wide, bl
     return (
         <div className={`gh-cap${wide ? ' gh-cap-wide' : ''}`} style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }}>
             <CapsuleArt cover={cover} art={art} blur={blur} />
+            {/* A game new to the library (the "New to library" setting), as Steam's Home marks it. */}
+            {game.isNew && <div className="gh-cap-new">New</div>}
             <div className="gh-cap-bar" />
         </div>
     );

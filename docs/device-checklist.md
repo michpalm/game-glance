@@ -26,6 +26,7 @@ Still to verify on a device before the `release/2.1.0` pull request goes to `mai
   Game Mode must never crash (one report on Reddit, not reproduced).
 - [ ] **Updater install** (row 77): needs a release newer than the installed version: raise `package.json`'s
   version, tag `vX.Y.Z`, attach `game-glance.zip`; then Update in Quick Access must install it through Decky.
+- [ ] **New to library** (row 78): toggle on and off with a game added but never played.
 - [ ] **Fast L1/R1** (row 43): hold and tap L1/R1 through many games and compare with build 75a3f40.
 
 ## Checklist
@@ -167,6 +168,7 @@ Result per item: PASS, FAIL (with a note), or "not checked yet". Handheld unless
 | 75 | Recents count | The recents row holds the same games as Steam's own Home recent games (up to 20, not 10): step through them with the card row or R1 and compare with Steam's Home (Spotlight Home off) | PASS (Ally, 2026-10-06) |
 | 76 | Hero art past the first games | Right after a reboot (so Steam has loaded few game details), step with R1 or the card row through all recents, without opening any game page: every Steam game shows its real full-screen hero art, never a blurred, zoomed-in capsule (Reddit: wrong after the first 4). Games with no hero art at all (some shortcuts) still get the blurred-capsule fallback | PASS (Ally, 2026-10-06) |
 | 77 | Built-in updater | Quick Access → Game Glance → Updates shows "Version x.y.z · up to date" (or "checking…" briefly). With a newer release published (or package.json's version lowered on a test build): "… is available" and an Update to … button; pressing it shows Decky's own install prompt, Install replaces Game Glance with the new version and reloads it, settings and cached data kept. Offline: "could not check" and Check again; nothing breaks | Version and "up to date" PASS (Ally, 2026-10-06); install not checked yet |
+| 78 | New to library | With a game added to the library but never played (and Steam's own Home showing it as new): Quick Access → New to library off: Home's row is as before, no such game. On: it joins the row at the place of the date it was added (among the played games), with a small NEW badge; selected, the eyebrow reads "New to library · Added …" and the chips show Added (no Played / Last played); Play or Install works as for any game. Turning it off again while Home is open removes it | not checked yet |
 
 ## When HowLongToBeat breaks
 

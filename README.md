@@ -56,7 +56,9 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
   wide card with the game's landscape art (custom art included), highlighted while the row has focus, and the row slides
   to follow. The row ends in a Library card (Right or R1 past the last game, A opens the Library; again goes back to the
   first) with a faded preview of more games. B on the buttons or the tabs comes back to the cards. Tapping a card does
-  nothing. With no recent games, Home shows an Open Library button.
+  nothing. With no recent games, Home shows an Open Library button. With **New to library** on, games Steam lists as new to
+  your library (not played yet) join the row by the date they were added, marked NEW, with "New to library · Added …"
+  above the title.
 - **Feed.** Press down for tabs: **What's new** (news updates, which open the news; under them, as on Steam's Home, the
   games recently updated on this device, with the size and when), **Friends** (your friends, in game first, then online,
   away and offline, kept up to date while Home is open; the number online on the tab turns green when anyone is on,
@@ -80,6 +82,9 @@ Quick Access → Game Glance has two toggles:
 
 Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
 with Steam's own game page.
+
+**New to library** (off by default) adds the games Steam's own Home shows as new to your library, not played yet, to the
+recents row.
 
 **What's new, Friends, Recommended** (on by default) shows the tabs under your games. Turn it off and Home shows only
 the selected game; nothing for the tabs is loaded then.
@@ -117,7 +122,7 @@ If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same t
 Quick Access (…) → Game Glance:
 
 - **Game Glance page:** turn it off to get Steam's own game page back.
-- **Spotlight Home**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
+- **Spotlight Home**, **New to library**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**

@@ -14,11 +14,16 @@ export interface GameChipInput {
     achievements: { achieved: number; total: number } | null;
     lastPlayed: number;
     hltbMainHours: number | null;
+    /** Set for a game new to the library (never played): when it was added. Replaces Played and Last played. */
+    addedAt?: number;
 }
 
 export function gameChips(i: GameChipInput, now: number, locale: string): Chip[] {
     const playedHours = minutesToHours(i.playedMinutes);
-    const chips: Chip[] = [{ key: 'played', label: 'Played', value: formatHours(playedHours, locale) }];
+    const isNew = typeof i.addedAt === 'number' && i.addedAt > 0;
+    const chips: Chip[] = isNew
+        ? [{ key: 'added', label: 'Added', value: formatLastPlayed(i.addedAt as number, now, locale) }]
+        : [{ key: 'played', label: 'Played', value: formatHours(playedHours, locale) }];
     if (i.achievements && i.achievements.total > 0) {
         const { achieved, total } = i.achievements;
         chips.push({
@@ -28,7 +33,7 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
             progress: Math.min(1, Math.max(0, achieved / total)),
         });
     }
-    chips.push({ key: 'lastPlayed', label: 'Last played', value: formatLastPlayed(i.lastPlayed, now, locale) });
+    if (!isNew) chips.push({ key: 'lastPlayed', label: 'Last played', value: formatLastPlayed(i.lastPlayed, now, locale) });
     if (i.hltbMainHours !== null && i.hltbMainHours > 0) {
         chips.push({
             key: 'hltb',

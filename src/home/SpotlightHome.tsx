@@ -339,7 +339,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title="View more in your Library" chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel)} title={game.name} chips={data.chips} />
+                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}
