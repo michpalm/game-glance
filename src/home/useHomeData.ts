@@ -84,7 +84,6 @@ type StoreGlobals = {
 };
 const steam = globalThis as unknown as StoreGlobals;
 
-const RECENTS_LIMIT = 10;
 /** Play next skips the games already in the first recents slots (spec section 5). */
 const PLAY_NEXT_EXCLUDE = 7;
 const RECENTS_RETRY_MS = 1500;
@@ -122,7 +121,7 @@ function readRecentGames(): HomeGame[] {
         const apps = steam.collectionStore?.recentAppsCollection?.allApps;
         if (!Array.isArray(apps)) return [];
         const byId = new Map(apps.map((a) => [a.appid, a]));
-        return pickRecents(apps, RECENTS_LIMIT).map((g) => {
+        return pickRecents(apps).map((g) => {
             const app = byId.get(g.appId);
             const gameId = app?.m_gameid;
             return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };

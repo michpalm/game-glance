@@ -15,8 +15,14 @@ export interface RecentGame {
     playedMinutes: number;
 }
 
+/**
+ * How many recents Home shows: as many as Steam's own recent games list holds (20, probed on the Ally:
+ * `collectionStore.recentAppsCollection.allApps`), so no game Steam's Home offers is missing (Reddit feedback).
+ */
+export const RECENTS_LIMIT = 20;
+
 /** Recently played games and non-Steam shortcuts, newest first. */
-export function pickRecents(apps: RawApp[], limit = 10): RecentGame[] {
+export function pickRecents(apps: RawApp[], limit = RECENTS_LIMIT): RecentGame[] {
     return apps
         .filter((a) => (a.app_type === GAME_APP_TYPE || a.app_type === SHORTCUT_APP_TYPE) && (a.rt_last_time_played ?? 0) > 0)
         .sort((a, b) => (b.rt_last_time_played ?? 0) - (a.rt_last_time_played ?? 0))
