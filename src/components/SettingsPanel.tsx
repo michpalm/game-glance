@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -125,6 +125,14 @@ export function SettingsPanel() {
                         description="Replaces Steam's Home screen. Off returns Steam's own Home."
                         checked={spotlightHome}
                         onChange={(value) => settings.setSpotlightHome(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Status bar"
+                        description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
+                        checked={homeStatusBar}
+                        onChange={(value) => settings.setHomeStatusBar(value)}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

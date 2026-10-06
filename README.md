@@ -72,6 +72,10 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
   Home off it looks exactly as it did in 1.1.1.
 - **Store pill.** The selected game's store (Steam, GOG, Epic...) shows as a pill with its icon and name at the
   right of the Play row, the same pill as on the game page.
+- **Status bar.** The time, battery (with a bolt while charging, red under 20%) and connection (Wi-Fi, wired or
+  offline) sit in a glass pill at the top-right, lined up with the store pill. The clock follows Steam's 12/24-hour
+  setting. Moving up from the Play row to Steam's own top bar (search, notifications, your profile) fades it out, and it
+  comes back when focus returns to Home. Without a battery (a desktop) the battery is left out.
 
 Quick Access → Game Glance has two toggles:
 
@@ -82,6 +86,8 @@ Quick Access → Game Glance has two toggles:
 
 Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
 with Steam's own game page.
+
+**Status bar** (on by default) shows the clock, battery and connection at the top-right of Spotlight Home.
 
 **New to library** (off by default) adds the games Steam's own Home shows as new to your library, not played yet, to the
 recents row.
@@ -127,7 +133,7 @@ Quick Access (…) → Game Glance:
   HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
   description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
   title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **New to library**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
+- **Spotlight Home**, **Status bar**, **New to library**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**
@@ -147,8 +153,8 @@ layout off and you get Steam's normal page with the cards on it, rather than a b
 Game Glance talks to two sites for game data: howlongtobeat.com (times) and store.steampowered.com (descriptions). It sends
 game names and Steam app IDs, nothing about you. The one exception is the optional **Show wishlist deals**
 setting (off by default): it sends your Steam ID to Steam's web API (api.steampowered.com) to read your public
-wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends
-and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
+wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends,
+status bar (battery and connection) and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
 When you open Game Glance in Quick Access (once per session), the updater asks api.github.com for the latest release's details (version and download link); it sends nothing about you, and an update is only downloaded, by Decky, when you press Update.
 Everything Game Glance stores stays on the device, in Decky's settings folder.
 

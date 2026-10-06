@@ -4,6 +4,7 @@ import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePil
 import { CLOUD_COLOURS, CloudTone } from './cloud';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
+import { STATUS_FADE_MS } from './statusBar';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
@@ -222,6 +223,17 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-source', `position: absolute; right: ${SOURCE_PILL.right}px; top: calc(${sourcePillTop()}px - var(--gh-top)); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; pointer-events: none; ${sourcePillLook(px)}`),
         rule('.gh-source-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
+        // Status bar (clock, battery, connection) in Steam's top strip, right-aligned with the store pill: the same glass
+        // pill, above the page (the raised feed slides under it). It fades out while focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
+        rule('.gh-status', `position: absolute; right: ${SOURCE_PILL.right}px; top: 0; height: var(--gh-top); display: flex; align-items: center; margin: 0; padding: 0;
+            pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
+        rule('.gh-status.gh-status-away', 'opacity: 0'),
+        rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border-radius: 999px; border: 1px solid; color: rgba(255,255,255,.9);
+            line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)} font-weight: 600`),
+        rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
+        rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
+        rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
+        rule('.gh-status-offline svg', 'opacity: .6'),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
         rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
         rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: var(--gh-r-pill); display: flex; align-items: center; justify-content: center; gap: 12px;
