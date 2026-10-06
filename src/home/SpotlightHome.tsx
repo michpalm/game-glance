@@ -6,7 +6,7 @@ import { FEED_VIEWPORT_INSET, feedSpace } from './feedLayout';
 import { focusElement, focusElementSettled, gameOpenArt, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
 import { useSettings } from '../data/settings';
-import { recentsButton, selectionForButton, type Zone } from './focusZones';
+import { recentsButton, repeatStep, RepeatState, selectionForButton, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
@@ -175,9 +175,12 @@ export function SpotlightHome() {
     // The game cards (focusZones.recentsButton): Left/Right select the previous / next game and focus stays on the
     // cards; L1/R1 move focus to the Play pill first, then select as on the action row (its held-bumper repeat goes on
     // there); View/Menu open the selected game's menu at its card.
+    // A held Left/Right steps at a held bumper's pace (focusZones.repeatStep), not at Steam's own faster repeat.
+    const heldDirection = useRef<RepeatState | null>(null);
     const onRecentsButtonDown = (evt: GamepadEvent) => {
         try {
-            const what = recentsButton(Number(evt?.detail?.button), focusIndex, data.games.length, Boolean(evt?.detail?.is_repeat));
+            const isRepeat = Boolean(evt?.detail?.is_repeat);
+            const what = recentsButton(Number(evt?.detail?.button), focusIndex, data.games.length, isRepeat);
             if (what === null) return;
             if (what === 'bumper') {
                 focusElement(actionButtons()[0], 'the Play pill');
@@ -190,7 +193,9 @@ export function SpotlightHome() {
                 if (!evt?.detail?.is_repeat && !onLibrary && data.focused) openGameActions(data.focused.appId, selectedCard());
                 return;
             }
-            setRecentIndex(what.select);
+            const paced = repeatStep(Date.now(), heldDirection.current, isRepeat);
+            heldDirection.current = paced.next;
+            if (paced.step) setRecentIndex(what.select);
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: game card navigation failed`, error);
         }

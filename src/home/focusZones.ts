@@ -120,6 +120,24 @@ export function bumperRepeatDelay(repeats: number): number {
     return repeats <= 0 ? BUMPER_REPEAT_FIRST_MS : BUMPER_REPEAT_MS;
 }
 
+/** The last step of a held direction on the game cards: when it happened and how many repeats it has had. */
+export interface RepeatState {
+    at: number;
+    repeats: number;
+}
+
+/**
+ * Paces a held Left/Right on the game cards like a held bumper. Steam repeats a held stick or d-pad itself, much
+ * faster than the cards can slide (Ally test: "it doesn't keep up"), so its repeat events are thinned out: a fresh press
+ * always steps and starts over; a repeat steps only once bumperRepeatDelay(repeats) has passed since the last step
+ * (400 ms for the first, then 170 ms), the rest are swallowed. `last` null: nothing held yet. Pure.
+ */
+export function repeatStep(now: number, last: RepeatState | null, isRepeat: boolean): { step: boolean; next: RepeatState | null } {
+    if (!isRepeat || !last) return { step: true, next: { at: now, repeats: 0 } };
+    if (now - last.at < bumperRepeatDelay(last.repeats)) return { step: false, next: last };
+    return { step: true, next: { at: now, repeats: last.repeats + 1 } };
+}
+
 /**
  * Whether a button opens the selected game's context menu on Home: View/Select (the user's choice) and the Menu
  * button, which Steam's own library capsules and lists use for the same menu ("Options").
