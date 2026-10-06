@@ -99,9 +99,10 @@ describe('homeCss', () => {
     it('the recents row is display only: no pointer events, so a tap or click on a card does nothing', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
         expect(css).toMatch(/\.gh-recents\s*\{[^}]*pointer-events:\s*none\s*!important/);
-        // While the card row has focus, the selected (or Library) card gets the accent glow, its bar and a bright edge.
-        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide, \.gh-recents-focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\)[^}]*--gh-edge:\s*rgba\(255,255,255,\.9\)/);
-        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide \.gh-cap-bar, \.gh-recents-focus \.gh-cap-lib-on \.gh-cap-bar\s*\{\s*opacity:\s*1/);
+        // While the card row has focus, the selected (or Library) card gets a white ring outside it and an even accent
+        // glow (no y offset), and no bar along its bottom edge.
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide, \.gh-recents-focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\), 0 0 [\d.]+px [\d.]+px var\(--glance-accent\)/);
+        expect(css).not.toMatch(/gh-recents-focus[^{]*\.gh-cap-bar/);
         expect(css).not.toMatch(/\.gh-cap\s*\{[^}]*cursor:\s*pointer/);
     });
     it('homeCss gives ghosts no blur base and no recents-on-library variant', () => {
