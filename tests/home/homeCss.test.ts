@@ -99,9 +99,9 @@ describe('homeCss', () => {
     it('the status bar sits in Steam\'s top strip, right-aligned with the store pill, in the same glass pill', () => {
         const css = homeCss();
         const bar = css.match(/\.gh-status\s*\{[^}]*\}/)?.[0] ?? '';
-        // Until the avatar is measured: the dot's right edge on the store pill's, centred in the strip.
-        expect(bar).toMatch(/right:\s*var\(--gh-status-right, 56px\)\s*!important/);
-        expect(bar).toMatch(/top:\s*calc\(var\(--gh-status-cy, calc\(var\(--gh-top\) \/ 2\)\) - 16px\)\s*!important/);
+        // Until the avatar is measured: 32 from the right edge, centred 32 down (a little below the strip's middle).
+        expect(bar).toMatch(/right:\s*var\(--gh-status-right, 32px\)\s*!important/);
+        expect(bar).toMatch(/top:\s*calc\(var\(--gh-status-cy, 32px\) - 16px\)\s*!important/);
         expect(bar).toMatch(/height:\s*32px/);
         expect(bar).toMatch(/pointer-events:\s*none/);
         expect(bar).toMatch(/transition:\s*opacity 150ms/);

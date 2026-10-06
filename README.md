@@ -73,7 +73,7 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
 - **Store pill.** The selected game's store (Steam, GOG, Epic...) shows as a pill with its icon and name at the
   right of the Play row, the same pill as on the game page.
 - **Status bar.** The time, battery (with a bolt while charging, red under 20%) and connection (Wi-Fi, wired or
-  offline) sit in a glass pill at the top-right, lined up with the store pill. The clock follows Steam's 12/24-hour
+  offline) sit in a glass pill at the top-right, near the screen edge. The clock follows Steam's 12/24-hour
   setting. Next to it, a small dot shows your own online status in the Friends tab's colours: green online (or in a
   game), blue away, grey invisible or offline. The dot sits where Steam's top bar shows your profile picture, so moving
   up from the Play row to Steam's own top bar (search, notifications, your profile) fades the bar out and your picture

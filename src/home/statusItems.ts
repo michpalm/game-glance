@@ -202,6 +202,13 @@ export const PERSONA_DOT_COLOURS: Record<PersonaDot, string> = {
 /** The dot's size and its gap to the pill, in canvas px. */
 export const PERSONA_DOT = { size: 12, gap: 10 } as const;
 
+/**
+ * Where the status bar sits until Steam's avatar has been measured, in canvas px: the dot's right edge 32 from the
+ * screen's right edge (closer to it than the store pill's 56), and the bar's centre line 32 down (6 below the 52 px
+ * strip's middle, so it does not hug the top edge). Tuned on the Ally.
+ */
+export const STATUS_BAR_DEFAULT = { right: 32, centreY: 32 } as const;
+
 export interface SelfPersona {
     state: number;
     inGame: boolean;

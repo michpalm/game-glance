@@ -4,7 +4,7 @@ import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePil
 import { CLOUD_COLOURS, CloudTone } from './cloud';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
-import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_FADE_MS } from './statusItems';
+import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR_DEFAULT, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
@@ -225,10 +225,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-source-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
         // Status bar (clock, battery, connection) in Steam's top strip: the store pill's glass pill, then your online status
         // dot, above the page (the raised feed slides under it). The dot is centred where Steam's top bar shows your avatar
-        // (--gh-status-right / --gh-status-cy, measured by StatusBar); until that is known its right edge lines up with
-        // the store pill, on the strip's centre line. It all fades out while focus is in Steam's own top bar
+        // (--gh-status-right / --gh-status-cy, measured by StatusBar); until that is known it sits at STATUS_BAR_DEFAULT
+        // (near the right edge, a little below the strip's middle). It all fades out while focus is in Steam's own top bar
         // (`.gh-status-away`, set by SpotlightHome), so the avatar takes the dot's place.
-        rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${SOURCE_PILL.right}px); top: calc(var(--gh-status-cy, calc(var(--gh-top) / 2)) - ${SOURCE_PILL.height / 2}px);
+        rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${STATUS_BAR_DEFAULT.right}px); top: calc(var(--gh-status-cy, ${STATUS_BAR_DEFAULT.centreY}px) - ${SOURCE_PILL.height / 2}px);
             height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: ${PERSONA_DOT.gap}px; margin: 0; padding: 0;
             pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
         rule('.gh-status-dot', `flex: 0 0 auto; width: ${PERSONA_DOT.size}px; height: ${PERSONA_DOT.size}px; margin: 0; padding: 0; border-radius: 50%;
