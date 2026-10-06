@@ -107,6 +107,9 @@ Game Glance is not in the Decky plugin store. Install it from a release:
 3. Decky → Settings → Developer → **Install plugin from ZIP** (or **Install plugin from URL** with the
    release asset's link).
 
+Later versions install from Game Mode: Quick Access → Game Glance → **Updates** shows when a newer release is out, and
+**Update to …** hands it to Decky, which asks to confirm, installs it and reloads Game Glance.
+
 If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same times on the game page.
 
 ## Settings
@@ -118,6 +121,7 @@ Quick Access (…) → Game Glance:
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**
+- **Updates:** the installed version, and an update button when a newer release is out (see Install).
 
 ## Compatibility
 
@@ -130,11 +134,12 @@ layout off and you get Steam's normal page with the cards on it, rather than a b
 
 ## Privacy
 
-Game Glance talks to two sites: howlongtobeat.com (times) and store.steampowered.com (descriptions). It sends
+Game Glance talks to two sites for game data: howlongtobeat.com (times) and store.steampowered.com (descriptions). It sends
 game names and Steam app IDs, nothing about you. The one exception is the optional **Show wishlist deals**
 setting (off by default): it sends your Steam ID to Steam's web API (api.steampowered.com) to read your public
 wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends
 and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
+When you open Game Glance in Quick Access (once per session), the updater asks api.github.com for the latest release's details (version and download link); it sends nothing about you, and an update is only downloaded, by Decky, when you press Update.
 Everything Game Glance stores stays on the device, in Decky's settings folder.
 
 ## Development
@@ -146,6 +151,9 @@ python3 -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest tests/
 pnpm check:hltb                   # live check against howlongtobeat.com
 scripts/package.sh                # builds out/game-glance.zip
 ```
+
+A release is a GitHub release tagged `vX.Y.Z` (the version in `package.json`) with `out/game-glance.zip` attached as
+`game-glance.zip`; the built-in updater compares that tag with the installed version.
 
 `scripts/serve.sh` serves the zip on your network for **Install plugin from URL**. The `scripts/cef-*.mjs`
 helpers drive Steam's UI through remote CEF debugging; see the device checklist for the setup.

@@ -45,6 +45,10 @@ class Plugin:
             decky.logger.exception("[game-glance] get_heroic_description failed")
             return None
 
+    async def get_version(self):
+        # The installed version, from package.json at install time (Decky's environment); the updater compares it.
+        return decky.DECKY_PLUGIN_VERSION
+
     async def _main(self):
         decky.logger.info("[game-glance] backend started")
 
