@@ -6,7 +6,7 @@ import { FEED_VIEWPORT_INSET, feedSpace } from './feedLayout';
 import { focusElement, focusElementSettled, gameOpenArt, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
 import { useSettings } from '../data/settings';
-import { recentsButton, type Zone } from './focusZones';
+import { recentsButton, selectionForButton, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
@@ -211,6 +211,18 @@ export function SpotlightHome() {
             console.warn(`${LOG_PREFIX} Home: opening the selected game failed`, error);
         }
     };
+    // The action row's buttons: L1/R1 always put focus on the Play pill (from any circle), then select as before.
+    const actionRowButtons = {
+        onButtonDown: (evt: GamepadEvent) => {
+            try {
+                if (selectionForButton(focusIndex, Number(evt?.detail?.button), data.games.length) !== null) focusElement(actionButtons()[0], 'the Play pill');
+            } catch (error) {
+                console.warn(`${LOG_PREFIX} Home: focusing Play for L1/R1 failed`, error);
+            }
+            bumpers.onButtonDown(evt);
+        },
+        onButtonUp: bumpers.onButtonUp,
+    };
     const recentsNav = {
         preferred: !restoring && !focusedOnce,
         setRef: (el: HTMLDivElement | null) => {
@@ -335,7 +347,7 @@ export function SpotlightHome() {
                                         download={data.download}
                                         status={data.pillStatus}
                                         preferred={!restoring && focusedOnce}
-                                        buttons={bumpers}
+                                        buttons={actionRowButtons}
                                         cloud={onLibrary ? null : cloud}
                                         onBack={focusGames}
                                     />
