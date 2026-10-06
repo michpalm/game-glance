@@ -214,17 +214,25 @@ export function avatarHash(url: unknown): string {
     return typeof url === 'string' ? (url.match(/[0-9a-f]{40}/i)?.[0] ?? '').toLowerCase() : '';
 }
 
-/** Your own persona from Steam's friend store (`friendStore.self`), null when Steam has not loaded it; never throws. */
+/**
+ * Your own persona from Steam's friend store, null when Steam has not loaded it; never throws. You live on the friends
+ * UI store (`friendStore.m_FriendsUIFriendStore`): its `m_eUserPersonaState` is the status you chose (and Steam's
+ * auto-away), the fallback is `self.persona.m_ePersonaState`; the avatar and the game come from `self.persona`.
+ */
 export function readSelfPersona(globals: unknown): SelfPersona | null {
     try {
-        const store = (globals as { friendStore?: { self?: unknown; m_self?: unknown } })?.friendStore;
-        const self = (store?.self ?? store?.m_self) as { persona?: Record<string, unknown> } | undefined;
-        const persona = self?.persona;
-        if (!persona || typeof persona.m_ePersonaState !== 'number') return null;
+        type Self = { persona?: Record<string, unknown> } | undefined;
+        type Ui = { m_eUserPersonaState?: unknown; self?: Self; m_self?: Self };
+        const store = (globals as { friendStore?: Ui & { m_FriendsUIFriendStore?: Ui } })?.friendStore;
+        const ui = store?.m_FriendsUIFriendStore;
+        const persona = (ui?.self ?? ui?.m_self ?? store?.self ?? store?.m_self)?.persona;
+        const chosen = ui?.m_eUserPersonaState ?? store?.m_eUserPersonaState;
+        const state = typeof chosen === 'number' ? chosen : persona?.m_ePersonaState;
+        if (typeof state !== 'number' || !Number.isFinite(state)) return null;
         return {
-            state: persona.m_ePersonaState,
-            inGame: Number(persona.m_unGamePlayedAppID) > 0,
-            avatarHash: avatarHash(persona.avatar_url_medium ?? persona.avatar_url ?? persona.avatar_url_full),
+            state,
+            inGame: Number(persona?.m_unGamePlayedAppID) > 0,
+            avatarHash: avatarHash(persona?.avatar_url_medium ?? persona?.avatar_url ?? persona?.avatar_url_full),
         };
     } catch {
         return null;

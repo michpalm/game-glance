@@ -132,10 +132,19 @@ describe('connection', () => {
 describe('your online status dot', () => {
     const HASH = 'fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb';
     const store = (persona: Record<string, unknown>) => ({ friendStore: { self: { persona } } });
-    it('reads your persona from the friend store', () => {
-        expect(readSelfPersona(store({ m_ePersonaState: 1, m_unGamePlayedAppID: 0, avatar_url_medium: `https://avatars.steamstatic.com/${HASH}_medium.jpg` })))
+    it("reads your persona from the friends UI store, where Steam keeps you", () => {
+        const ui = (extra: Record<string, unknown>) => ({ friendStore: { allFriends: [], m_FriendsUIFriendStore: extra } });
+        expect(readSelfPersona(ui({ m_eUserPersonaState: 1, self: { persona: { m_ePersonaState: 1, m_unGamePlayedAppID: 0, avatar_url_medium: `https://avatars.steamstatic.com/${HASH}_medium.jpg` } } })))
             .toEqual({ state: 1, inGame: false, avatarHash: HASH });
-        expect(readSelfPersona({ friendStore: { m_self: { persona: { m_ePersonaState: 3, m_unGamePlayedAppID: 570 } } } })).toEqual({ state: 3, inGame: true, avatarHash: '' });
+        // The status you chose wins over the persona's (invisible shows as offline to others).
+        expect(readSelfPersona(ui({ m_eUserPersonaState: 7, self: { persona: { m_ePersonaState: 0 } } }))?.state).toBe(7);
+        // Only one of the two known.
+        expect(readSelfPersona(ui({ m_eUserPersonaState: 3 }))).toEqual({ state: 3, inGame: false, avatarHash: '' });
+        expect(readSelfPersona(ui({ m_self: { persona: { m_ePersonaState: 3, m_unGamePlayedAppID: 570 } } }))).toEqual({ state: 3, inGame: true, avatarHash: '' });
+    });
+    it('falls back to self on the friend store itself; nothing known gives null', () => {
+        expect(readSelfPersona(store({ m_ePersonaState: 1 }))?.state).toBe(1);
+        expect(readSelfPersona({ friendStore: { allFriends: [] } })).toBeNull();
         expect(readSelfPersona({})).toBeNull();
         expect(readSelfPersona(store({ m_ePersonaState: 'x' }))).toBeNull();
         expect(readSelfPersona(null)).toBeNull();
