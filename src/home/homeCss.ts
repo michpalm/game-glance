@@ -4,7 +4,7 @@ import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePil
 import { CLOUD_COLOURS, CloudTone } from './cloud';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
-import { STATUS_FADE_MS } from './statusItems';
+import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
@@ -223,10 +223,17 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-source', `position: absolute; right: ${SOURCE_PILL.right}px; top: calc(${sourcePillTop()}px - var(--gh-top)); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; pointer-events: none; ${sourcePillLook(px)}`),
         rule('.gh-source-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
-        // Status bar (clock, battery, connection) in Steam's top strip, right-aligned with the store pill: the same glass
-        // pill, above the page (the raised feed slides under it). It fades out while focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
-        rule('.gh-status', `position: absolute; right: ${SOURCE_PILL.right}px; top: 0; height: var(--gh-top); display: flex; align-items: center; margin: 0; padding: 0;
+        // Status bar (clock, battery, connection) in Steam's top strip: the store pill's glass pill, then your online status
+        // dot, above the page (the raised feed slides under it). The dot is centred where Steam's top bar shows your avatar
+        // (--gh-status-right / --gh-status-cy, measured by StatusBar); until that is known its right edge lines up with
+        // the store pill, on the strip's centre line. It all fades out while focus is in Steam's own top bar
+        // (`.gh-status-away`, set by SpotlightHome), so the avatar takes the dot's place.
+        rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${SOURCE_PILL.right}px); top: calc(var(--gh-status-cy, calc(var(--gh-top) / 2)) - ${SOURCE_PILL.height / 2}px);
+            height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: ${PERSONA_DOT.gap}px; margin: 0; padding: 0;
             pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
+        rule('.gh-status-dot', `flex: 0 0 auto; width: ${PERSONA_DOT.size}px; height: ${PERSONA_DOT.size}px; margin: 0; padding: 0; border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(12,16,22,.55), 0 1px 4px rgba(0,0,0,.4); transition: background ${ACCENT_MS}ms`),
+        ...(Object.keys(PERSONA_DOT_COLOURS) as PersonaDot[]).map((dot) => rule(`.gh-status-dot-${dot}`, `background: ${PERSONA_DOT_COLOURS[dot]}`)),
         rule('.gh-status.gh-status-away', 'opacity: 0'),
         rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border-radius: 999px; border: 1px solid; color: rgba(255,255,255,.9);
             line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)} font-weight: 600`),

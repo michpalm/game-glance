@@ -1,6 +1,8 @@
+import { FRIEND_COLOURS, isAwayState, isOnlineState } from './friends';
+
 /**
  * Spotlight Home's status bar (top-right, in Steam's top strip): the clock, the battery and the connection, read from
- * Steam's own client callbacks (statusStore). Everything here is pure: formatting and turning Steam's raw payloads into
+ * Steam's own client callbacks (statusStore), and a dot for your own online status from Steam's friend store. Everything here is pure: formatting and turning Steam's raw payloads into
  * what the bar shows. Anything unknown comes back as null and the bar leaves that item out.
  */
 
@@ -183,4 +185,89 @@ export function connectionKind(online: boolean | null, devices: NetworkDevices |
     if (!up) return 'offline';
     if (devices?.wired) return 'wired';
     return 'wifi';
+}
+
+// --- Your own online status: a dot right of the pill, centred where Steam's top bar shows your avatar.
+
+/** The dot's states: online (or in a game), away (away or snooze), off (invisible or offline). */
+export type PersonaDot = 'online' | 'away' | 'off';
+
+/** The dot's colours: the Friends tab's (friends.FRIEND_COLOURS), so your status reads like your friends'. */
+export const PERSONA_DOT_COLOURS: Record<PersonaDot, string> = {
+    online: FRIEND_COLOURS.online,
+    away: FRIEND_COLOURS.away,
+    off: 'rgba(196,201,209,.85)',
+};
+
+/** The dot's size and its gap to the pill, in canvas px. */
+export const PERSONA_DOT = { size: 12, gap: 10 } as const;
+
+export interface SelfPersona {
+    state: number;
+    inGame: boolean;
+    /** The 40-hex avatar hash from Steam's avatar url, '' when unknown. */
+    avatarHash: string;
+}
+
+/** The 40-hex hash in a Steam avatar url ("…/<hash>_medium.jpg"), '' when there is none. */
+export function avatarHash(url: unknown): string {
+    return typeof url === 'string' ? (url.match(/[0-9a-f]{40}/i)?.[0] ?? '').toLowerCase() : '';
+}
+
+/** Your own persona from Steam's friend store (`friendStore.self`), null when Steam has not loaded it; never throws. */
+export function readSelfPersona(globals: unknown): SelfPersona | null {
+    try {
+        const store = (globals as { friendStore?: { self?: unknown; m_self?: unknown } })?.friendStore;
+        const self = (store?.self ?? store?.m_self) as { persona?: Record<string, unknown> } | undefined;
+        const persona = self?.persona;
+        if (!persona || typeof persona.m_ePersonaState !== 'number') return null;
+        return {
+            state: persona.m_ePersonaState,
+            inGame: Number(persona.m_unGamePlayedAppID) > 0,
+            avatarHash: avatarHash(persona.avatar_url_medium ?? persona.avatar_url ?? persona.avatar_url_full),
+        };
+    } catch {
+        return null;
+    }
+}
+
+/** The dot for a persona, null when unknown (the dot is then left out). In a game counts as online, as on the Friends tab. */
+export function personaDot(self: SelfPersona | null): PersonaDot | null {
+    if (!self) return null;
+    if (self.inGame) return 'online';
+    if (!isOnlineState(self.state)) return 'off';
+    return isAwayState(self.state) ? 'away' : 'online';
+}
+
+export interface Box {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+
+/** Where the status bar sits, in canvas px: `right` from the canvas's right edge to the dot's right edge, `centreY` the bar's centre line. */
+export interface StatusPlacement {
+    right: number;
+    centreY: number;
+}
+
+/**
+ * The placement that centres the dot on Steam's top-bar avatar, from the candidate avatar boxes (real px, relative to
+ * Home's box): only avatar-sized boxes whose centre is in the top strip of the screen's right half count, and the
+ * rightmost wins. Null when none fits (the CSS default then applies). Pure.
+ */
+export function avatarPlacement(boxes: Box[], home: { width: number; height: number }, scale: number, logicalWidth: number): StatusPlacement | null {
+    if (!(scale > 0) || !(home.width > 0) || !(home.height > 0)) return null;
+    let best: { x: number; y: number } | null = null;
+    for (const b of boxes) {
+        if (!(b.width > 4 && b.height > 4 && b.width < 160 && b.height < 160)) continue;
+        const x = b.left + b.width / 2;
+        const y = b.top + b.height / 2;
+        if (y < 0 || y > home.height * 0.15 || x < home.width / 2 || x > home.width) continue;
+        if (!best || x > best.x) best = { x, y };
+    }
+    if (!best) return null;
+    const right = logicalWidth - best.x / scale - PERSONA_DOT.size / 2;
+    return right >= 0 ? { right: Math.round(right * 10) / 10, centreY: Math.round((best.y / scale) * 10) / 10 } : null;
 }

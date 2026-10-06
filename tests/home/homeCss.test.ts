@@ -99,15 +99,21 @@ describe('homeCss', () => {
     it('the status bar sits in Steam\'s top strip, right-aligned with the store pill, in the same glass pill', () => {
         const css = homeCss();
         const bar = css.match(/\.gh-status\s*\{[^}]*\}/)?.[0] ?? '';
-        expect(bar).toMatch(/right:\s*56px\s*!important/);
-        expect(bar).toMatch(/top:\s*0\s*!important/);
-        expect(bar).toMatch(/height:\s*var\(--gh-top\)/);
+        // Until the avatar is measured: the dot's right edge on the store pill's, centred in the strip.
+        expect(bar).toMatch(/right:\s*var\(--gh-status-right, 56px\)\s*!important/);
+        expect(bar).toMatch(/top:\s*calc\(var\(--gh-status-cy, calc\(var\(--gh-top\) \/ 2\)\) - 16px\)\s*!important/);
+        expect(bar).toMatch(/height:\s*32px/);
         expect(bar).toMatch(/pointer-events:\s*none/);
         expect(bar).toMatch(/transition:\s*opacity 150ms/);
         expect(css).toMatch(/\.gh-status\.gh-status-away\s*\{[^}]*opacity:\s*0/);
         const pill = css.match(/\.gh-status-pill\s*\{[^}]*\}/)?.[0] ?? '';
         for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
         expect(css).toMatch(/\.gh-status-low\s*\{[^}]*color:\s*#ff8585/);
+        // The status dot: the Friends tab's green and blue, grey when invisible or offline.
+        expect(css).toMatch(/\.gh-status-dot\s*\{[^}]*width:\s*12px[^}]*border-radius:\s*50%/);
+        expect(css).toMatch(/\.gh-status-dot-online\s*\{[^}]*background:\s*#8cd61d/);
+        expect(css).toMatch(/\.gh-status-dot-away\s*\{[^}]*background:\s*#4cb4ff/);
+        expect(css).toMatch(/\.gh-status-dot-off\s*\{[^}]*background:\s*rgba\(196,201,209,\.85\)/);
     });
     it('the recents row is display only: no pointer events, so a tap or click on a card does nothing', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);

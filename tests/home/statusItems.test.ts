@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectionKind, formatClock, msToNextMinute, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, toBytes } from '../../src/home/statusItems';
+import { avatarHash, avatarPlacement, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, toBytes } from '../../src/home/statusItems';
 
 // Minimal protobuf encoder for the fixtures (varint and length-delimited fields).
 const varint = (n: number): number[] => {
@@ -126,5 +126,61 @@ describe('connection', () => {
     it('an active device counts as online before the test answers', () => {
         expect(connectionKind(null, { wifi: true, wired: false })).toBe('wifi');
         expect(connectionKind(null, { wifi: false, wired: true })).toBe('wired');
+    });
+});
+
+describe('your online status dot', () => {
+    const HASH = 'fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb';
+    const store = (persona: Record<string, unknown>) => ({ friendStore: { self: { persona } } });
+    it('reads your persona from the friend store', () => {
+        expect(readSelfPersona(store({ m_ePersonaState: 1, m_unGamePlayedAppID: 0, avatar_url_medium: `https://avatars.steamstatic.com/${HASH}_medium.jpg` })))
+            .toEqual({ state: 1, inGame: false, avatarHash: HASH });
+        expect(readSelfPersona({ friendStore: { m_self: { persona: { m_ePersonaState: 3, m_unGamePlayedAppID: 570 } } } })).toEqual({ state: 3, inGame: true, avatarHash: '' });
+        expect(readSelfPersona({})).toBeNull();
+        expect(readSelfPersona(store({ m_ePersonaState: 'x' }))).toBeNull();
+        expect(readSelfPersona(null)).toBeNull();
+    });
+    it('the avatar hash comes from any Steam avatar url', () => {
+        expect(avatarHash(`https://avatars.akamai.steamstatic.com/${HASH.toUpperCase()}_full.jpg`)).toBe(HASH);
+        expect(avatarHash('/images/default.png')).toBe('');
+        expect(avatarHash(undefined)).toBe('');
+    });
+    it('online and busy are green, in a game too; away and snooze blue; invisible and offline grey', () => {
+        const dot = (state: number, inGame = false) => personaDot({ state, inGame, avatarHash: '' });
+        expect(dot(1)).toBe('online');
+        expect(dot(2)).toBe('online');
+        expect(dot(3)).toBe('away');
+        expect(dot(4)).toBe('away');
+        expect(dot(3, true)).toBe('online');
+        expect(dot(7)).toBe('off');
+        expect(dot(0)).toBe('off');
+        expect(personaDot(null)).toBeNull();
+    });
+});
+
+describe('avatarPlacement', () => {
+    // Handheld: Home's box 828x466 css px, canvas scale 828/1440 = 0.575, logical width 1440.
+    const home = { width: 828, height: 466 };
+    const scale = 0.575;
+    it("centres the dot on Steam's top-bar avatar", () => {
+        // Avatar 20x20 at left 790, top 5: centre (800, 15) -> canvas (1391.3, 26.1).
+        const placed = avatarPlacement([{ left: 790, top: 5, width: 20, height: 20 }], home, scale, 1440);
+        expect(placed).toEqual({ right: 42.7, centreY: 26.1 });
+    });
+    it('the rightmost avatar-sized box in the top strip wins', () => {
+        const placed = avatarPlacement([
+            { left: 700, top: 5, width: 20, height: 20 },
+            { left: 790, top: 5, width: 20, height: 20 },
+            { left: 795, top: 300, width: 20, height: 20 }, // lower on the screen: not the top bar
+            { left: 600, top: 0, width: 400, height: 60 }, // too big for an avatar
+        ], home, scale, 1440);
+        expect(placed?.right).toBe(42.7);
+    });
+    it('nothing usable gives null (the CSS default applies)', () => {
+        expect(avatarPlacement([], home, scale, 1440)).toBeNull();
+        expect(avatarPlacement([{ left: 0, top: 0, width: 0, height: 0 }], home, scale, 1440)).toBeNull(); // hidden
+        expect(avatarPlacement([{ left: 20, top: 5, width: 20, height: 20 }], home, scale, 1440)).toBeNull(); // left half
+        expect(avatarPlacement([{ left: 790, top: -40, width: 20, height: 20 }], home, scale, 1440)).toBeNull(); // slid up off screen
+        expect(avatarPlacement([{ left: 790, top: 5, width: 20, height: 20 }], home, 0, 1440)).toBeNull();
     });
 });

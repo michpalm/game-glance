@@ -348,8 +348,8 @@ export function SpotlightHome() {
                     visibility: size ? 'visible' : 'hidden',
                 }}
             >
-                {/* In Steam's top strip, above the safe area: clock, battery, connection. */}
-                {homeStatusBar && contentUp && <StatusBar away={focusAway} />}
+                {/* In Steam's top strip, above the safe area: clock, battery, connection, and your online status under Steam's avatar. */}
+                {homeStatusBar && contentUp && <StatusBar away={focusAway} rootRef={rootRef} scale={canvas.scale} logicalWidth={canvas.logicalWidth} />}
                 {/* Between Steam's top bar (52) and button legend (46); Home draws neither. */}
                 <div className="gh-safe">
                     {/* The page container: moved down by the stack shift (homeCss.stackShift); raised while focus is in the tabs or feed. */}
