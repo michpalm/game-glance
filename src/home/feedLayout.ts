@@ -18,9 +18,14 @@ export const FEED_VIEWPORT_INSET = 88;
 export const FEED_CARD_H = 260;
 
 const WIDTH: Record<FeedTab, number> = { news: 320, friends: 230, recommended: Math.round(FEED_CARD_H * 0.72) };
-const FEATURED_W = 600;
+/**
+ * Steam's event capsule art, the featured news card's image: 800 x 450 (16:9). The featured card is exactly as wide as
+ * that image at the card's height, so the image fills it whole (any other shape still fits, over its blurred copy).
+ */
+export const NEWS_ART_ASPECT = 16 / 9;
+const FEATURED_W = Math.round(FEED_CARD_H * NEWS_ART_ASPECT);
 
-/** Width of one card: featured news 600, news 320, friend 230, recommended 187. */
+/** Width of one card: featured news 462 (16:9 at 260), news 320, friend 230, recommended 187. */
 export function feedCardWidth(tab: FeedTab, featured: boolean): number {
     return tab === 'news' && featured ? FEATURED_W : WIDTH[tab];
 }
@@ -78,8 +83,12 @@ export function feedRows(tab: FeedTab, space: number, secondRow: boolean): FeedR
     return { row1, row2, row2Top, total: row2Top + row2 };
 }
 
-/** A row-1 card's width at height `h`: the handoff widths (at 260) scaled with the height; friends stay 230. */
+/**
+ * A row-1 card's width at height `h`: the handoff widths (at 260) scaled with the height; friends stay 230; the
+ * featured news card is 16:9 at `h` (its image's shape), so it always fits the image exactly.
+ */
 export function feedCardWidthAt(tab: FeedTab, featured: boolean, h: number): number {
+    if (tab === 'news' && featured) return Math.round(h * NEWS_ART_ASPECT);
     const base = feedCardWidth(tab, featured);
     if (tab === 'friends') return base;
     return Math.round((base * h) / FEED_CARD_H);
