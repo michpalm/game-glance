@@ -270,10 +270,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-cap-cover', `position: absolute; right: 0; top: 0; width: ${geo.capsuleW}px; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 1`),
         rule('.gh-cap-bar', `position: absolute; left: 0; right: 0; bottom: 0; height: ${k(3)}px; background: var(--glance-accent); opacity: 0; transition: opacity 250ms, background ${ACCENT_MS}ms`),
         rule('.gh-cap.gh-cap-focus .gh-cap-bar', 'opacity: 1'),
-        // While the card row has focus the selected card (or the Library card) is the focused one: the accent glow and
-        // bar, and a bright edge so it reads as selected even on light art. Unfocused it keeps its resting look.
-        rule('.gh-recents-focus .gh-cap-wide, .gh-recents-focus .gh-cap-lib-on', `box-shadow: ${capGlow}; --gh-edge: rgba(255,255,255,.9)`),
-        rule('.gh-recents-focus .gh-cap-wide .gh-cap-bar, .gh-recents-focus .gh-cap-lib-on .gh-cap-bar', 'opacity: 1'),
+        // While the card row has focus the selected card (or the Library card) is the focused one: a 2px white ring just
+        // outside it and an accent glow even on every side (no downward offset, no bar along its bottom edge: on the Ally
+        // those read as the card being cut at the bottom). Unfocused it keeps its resting look.
+        rule('.gh-recents-focus .gh-cap-wide, .gh-recents-focus .gh-cap-lib-on', `box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 ${k(28)}px ${k(2)}px var(--glance-accent); --gh-edge: rgba(255,255,255,.35)`),
         // "View more in your Library" card.
         rule('.gh-cap-lib', '--gh-edge: rgba(255,255,255,.14)'),
         rule('.gh-cap-lib.gh-cap-lib-on', '--gh-edge: rgba(255,255,255,.35)'),
