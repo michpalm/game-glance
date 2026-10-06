@@ -10,6 +10,8 @@ import { getSourceLabel } from '../data/source';
 import { getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
+import { useSettled } from '../hooks/useSettled';
+import { BUMPER_REPEAT_MS } from './focusZones';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { accentFor, DEFAULT_ACCENT } from './accent';
@@ -92,6 +94,12 @@ const PLAY_NEXT_EXCLUDE = 7;
 const RECENTS_RETRY_MS = 1500;
 const RECENTS_RETRIES = 10;
 const HLTB_READ_BATCH = 8;
+/**
+ * How long the selection rests before the per-game work that only matters where the user stops starts (HLTB lookup,
+ * accent sampling, Steam details for the neighbours). Longer than a held L1/R1's repeat (BUMPER_REPEAT_MS), so holding
+ * a bumper through ten games does that work once, for the game it stops on.
+ */
+export const SELECTION_SETTLE_MS = Math.max(250, BUMPER_REPEAT_MS + 50);
 /** Feed pills: accents sampled a few games at a time, repainting after each batch. */
 const CARD_ACCENT_BATCH = 4;
 
@@ -459,20 +467,27 @@ export function useHomeData(focusIndex = 0): HomeData {
 
     const detailsVersion = useAppDetailsVersion(appId);
     const gameIds = useMemo(() => games.map((g) => g.appId), [games]);
-    useNeighbourDetails(useMemo(() => neighbourIds(gameIds, Math.max(0, focusIndex), HERO_PRELOAD_RADIUS), [gameIds, focusIndex]));
+    // The selection once it has rested (SELECTION_SETTLE_MS); `resting` is the focused game when it has, null while
+    // L1/R1 or Left/Right are still moving through games.
+    const settledIndex = useSettled(focusIndex, SELECTION_SETTLE_MS);
+    const settledId = games.length > 0 ? games[Math.min(Math.max(0, settledIndex), games.length - 1)].appId : null;
+    const resting = settledId !== null && settledId === appId ? appId : null;
+    useNeighbourDetails(useMemo(() => neighbourIds(gameIds, Math.max(0, settledIndex), HERO_PRELOAD_RADIUS), [gameIds, settledIndex]));
     const overrideVersion = useOverrideVersion();
     const info = useMemo(
         () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [appId, detailsVersion],
     );
-    const hltb = useAsync(focused && info ? `hltb:${focused.appId}:${overrideVersion}` : null, () =>
+    const hltb = useAsync(focused && info && resting !== null ? `hltb:${focused.appId}:${overrideVersion}` : null, () =>
         lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false }),
     );
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
-    const accent = useAccent(appId);
+    // The accent animates over 500 ms anyway, so starting it once the selection rests is not visible; it keeps the
+    // previous game's colour until then.
+    const accent = useAccent(resting);
 
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
