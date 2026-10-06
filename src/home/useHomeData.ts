@@ -225,15 +225,27 @@ function useRecentGames(): { games: HomeGame[]; settled: boolean } {
     return { games, settled: games.length > 0 || retriesDone };
 }
 
-function useAccent(appId: number | null): string {
+/**
+ * What the accent does for the focused game `appId`: a colour already known this session shows at once, on the very
+ * step (a Map lookup, free while L1/R1 move through games); looking one up (a cache read over the backend, an image
+ * sample on a miss) waits until the selection rests on that game (`resting`). Pure.
+ */
+export function accentNow(appId: number | null, resting: number | null, memo: Map<number, string>): { show?: string; fetch: boolean } {
+    if (appId === null) return { fetch: false };
+    const known = memo.get(appId);
+    if (known) return { show: known, fetch: false };
+    return { fetch: resting === appId };
+}
+
+function useAccent(appId: number | null, resting: number | null): string {
     const [accent, setAccent] = useState(() => (appId !== null ? accentMemo.get(appId) : undefined) ?? DEFAULT_ACCENT);
     useEffect(() => {
-        if (appId === null) return undefined;
-        const memo = accentMemo.get(appId);
-        if (memo) {
-            setAccent(memo);
+        const now = accentNow(appId, resting, accentMemo);
+        if (now.show) {
+            setAccent(now.show);
             return undefined;
         }
+        if (!now.fetch || appId === null) return undefined;
         let active = true;
         // accentFor never rejects, but a guard costs nothing and Home must not see an unhandled rejection.
         accentFor(appId, { cache, sample: sampleAccent })
@@ -245,8 +257,45 @@ function useAccent(appId: number | null): string {
         return () => {
             active = false;
         };
-    }, [appId]);
+    }, [appId, resting]);
     return accent;
+}
+
+/** How long after the selection first rests the remaining recents' accents are looked up, in the background. */
+const ACCENT_WARMUP_DELAY_MS = 1500;
+
+/**
+ * Looks up accents ahead of time, so a stop is almost always a known colour (accentNow): the games around the
+ * selection as soon as it rests (`neighbours`), and, ACCENT_WARMUP_DELAY_MS after that, every recent game (`ids`), a few
+ * at a time, so even a long L1/R1 hold shows each game's colour as it passes. Mostly persisted-cache reads; an image is
+ * sampled only for a game never seen. Stops on unmount; waits while the page is hidden.
+ */
+function useAccentWarmup(ids: number[], neighbours: number[]) {
+    const lookup = (id: number) => accentFor(id, { cache, sample: sampleAccent });
+    const neighbourKey = neighbours.join(',');
+    useEffect(() => {
+        if (neighbours.length === 0) return;
+        fillMissing(neighbours, accentMemo, lookup, CARD_ACCENT_BATCH, DEFAULT_ACCENT).catch((error) => console.warn(`${LOG_PREFIX} Home: accent warm-up failed`, error));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [neighbourKey]);
+    const idsKey = ids.join(',');
+    useEffect(() => {
+        if (ids.length === 0) return undefined;
+        let active = true;
+        const timer = setTimeout(() => {
+            (async () => {
+                for (let i = 0; i < ids.length && active; i += CARD_ACCENT_BATCH) {
+                    if (pageHidden()) return;
+                    await fillMissing(ids.slice(i, i + CARD_ACCENT_BATCH), accentMemo, lookup, CARD_ACCENT_BATCH, DEFAULT_ACCENT);
+                }
+            })().catch((error) => console.warn(`${LOG_PREFIX} Home: accent warm-up failed`, error));
+        }, ACCENT_WARMUP_DELAY_MS);
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [idsKey]);
 }
 
 /** Makes Steam load the focused game's details (achievements) if it has not yet; bumps a version when they arrive. */
@@ -472,7 +521,9 @@ export function useHomeData(focusIndex = 0): HomeData {
     const settledIndex = useSettled(focusIndex, SELECTION_SETTLE_MS);
     const settledId = games.length > 0 ? games[Math.min(Math.max(0, settledIndex), games.length - 1)].appId : null;
     const resting = settledId !== null && settledId === appId ? appId : null;
-    useNeighbourDetails(useMemo(() => neighbourIds(gameIds, Math.max(0, settledIndex), HERO_PRELOAD_RADIUS), [gameIds, settledIndex]));
+    const restNeighbours = useMemo(() => neighbourIds(gameIds, Math.max(0, settledIndex), HERO_PRELOAD_RADIUS), [gameIds, settledIndex]);
+    useNeighbourDetails(restNeighbours);
+    useAccentWarmup(gameIds, restNeighbours);
     const overrideVersion = useOverrideVersion();
     const info = useMemo(
         () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),
@@ -485,9 +536,9 @@ export function useHomeData(focusIndex = 0): HomeData {
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
-    // The accent animates over 500 ms anyway, so starting it once the selection rests is not visible; it keeps the
-    // previous game's colour until then.
-    const accent = useAccent(resting);
+    // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and
+    // useAccentWarmup makes most of them known beforehand.
+    const accent = useAccent(appId, resting);
 
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
