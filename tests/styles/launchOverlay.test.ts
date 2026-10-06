@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { launchOverlayShown } from '../../src/styles/launchOverlay';
+import { launchHidden, launchOverlayShown } from '../../src/styles/launchOverlay';
 
 /** A fake element: `boxes` client rects, contains what is listed in `children`. */
 function el(boxes: number, children: unknown[] = []) {
@@ -33,5 +33,20 @@ describe('launchOverlayShown', () => {
         expect(launchOverlayShown(doc({ '.ov': [overlay] }), null, [])).toBe(false);
         const broken = { querySelector: () => { throw new Error('gone'); }, querySelectorAll: () => [] };
         expect(launchOverlayShown(broken, '.ov', [])).toBe(false);
+    });
+});
+
+describe('launchHidden', () => {
+    it('hides while Steam\'s launch screen is shown, launch from Home or not', () => {
+        expect(launchHidden({ pending: false, overlayShown: true, overlaySeen: true })).toBe(true);
+        expect(launchHidden({ pending: true, overlayShown: true, overlaySeen: true })).toBe(true);
+    });
+    it('after Play on Home: hidden from the first frame until the launch screen has come and gone', () => {
+        expect(launchHidden({ pending: true, overlayShown: false, overlaySeen: false })).toBe(true);
+        expect(launchHidden({ pending: true, overlayShown: false, overlaySeen: true })).toBe(false);
+    });
+    it('shown otherwise: a page opened normally, or a launch screen that never came', () => {
+        expect(launchHidden({ pending: false, overlayShown: false, overlaySeen: false })).toBe(false);
+        expect(launchHidden({ pending: false, overlayShown: false, overlaySeen: true })).toBe(false);
     });
 });
