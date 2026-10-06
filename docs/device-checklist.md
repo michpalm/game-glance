@@ -29,6 +29,13 @@ Still to verify on a device before the `release/2.1.0` pull request goes to `mai
 - [ ] **Clean look** (row 79): the new game page look, handheld and docked.
 - [ ] **New to library** (row 78): toggle on and off with a game added but never played.
 - [ ] **Status bar** (row 80): Spotlight Home's clock, battery, connection and online status dot; fades out in Steam's top bar, the dot under your profile picture.
+- [ ] **Status bar position (to fix, needs live debugging on the Ally):** the bar moves after Home opens. At first it
+  sits at its default place (`STATUS_BAR_DEFAULT` in `src/home/statusItems.ts`: 32 from the right edge, centred 32
+  down), then jumps when `useAvatarPlacement` (`src/home/StatusBar.tsx`) finds an image with your avatar's hash and
+  re-centres the dot on it. The default looks right; the measured place does not. Debug over CEF: which elements match
+  `img[src*="<avatar hash>"]` outside `.gh-root`, their boxes at rest and with focus in Steam's top bar, and Home's own
+  box and canvas scale at that moment. Then either fix the measurement (wrong element, a transform, the header sliding
+  in) or drop it and keep a fixed position. Until then the dot is not under the profile picture.
 - [ ] **Fast L1/R1** (row 43): hold and tap L1/R1 through many games and compare with build 75a3f40.
 
 ## Checklist
