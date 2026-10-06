@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectionKind, formatClock, msToNextMinute, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, toBytes } from '../../src/home/statusBar';
+import { connectionKind, formatClock, msToNextMinute, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, toBytes } from '../../src/home/statusItems';
 
 // Minimal protobuf encoder for the fixtures (varint and length-delimited fields).
 const varint = (n: number): number[] => {

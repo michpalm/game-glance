@@ -4,7 +4,7 @@ import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePil
 import { CLOUD_COLOURS, CloudTone } from './cloud';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
-import { STATUS_FADE_MS } from './statusBar';
+import { STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';

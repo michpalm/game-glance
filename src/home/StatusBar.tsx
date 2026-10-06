@@ -1,5 +1,5 @@
 import { ReactElement, useEffect, useState, useSyncExternalStore } from 'react';
-import { BatteryView, ConnectionKind, formatClock, msToNextMinute, prefers24Hour } from './statusBar';
+import { BatteryView, ConnectionKind, formatClock, msToNextMinute, prefers24Hour } from './statusItems';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
 
 /** Steam's clock setting, else the locale's. */

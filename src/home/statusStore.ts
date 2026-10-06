@@ -1,5 +1,5 @@
 import { LOG_PREFIX } from '../constants';
-import { BatteryView, connectionKind, ConnectionKind, NetworkDevices, readBattery, readConnectivity, readNetworkDevices } from './statusBar';
+import { BatteryView, connectionKind, ConnectionKind, NetworkDevices, readBattery, readConnectivity, readNetworkDevices } from './statusItems';
 
 /**
  * The battery and connection for Spotlight Home's status bar, from three Steam callbacks
