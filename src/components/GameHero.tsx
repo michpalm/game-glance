@@ -75,10 +75,11 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
-    // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone.
+    // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone; after
+    // Play on Home (data/launchIntent) the page starts that way, so it never shows before the launch screen.
     const heroRef = useRef<HTMLDivElement>(null);
     const { overlay, hide } = launchSelectors();
-    const launching = useLaunchOverlay(heroRef, overlay, hide);
+    const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
 
     useEffect(() => {
         setCurrentGame(game, hltb);

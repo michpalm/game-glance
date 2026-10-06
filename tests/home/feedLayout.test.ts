@@ -67,7 +67,7 @@ describe('feedScroll', () => {
 
 describe('feedCardWidth', () => {
     it('uses the handoff widths per card type', () => {
-        expect(feedCardWidth('news', true)).toBe(600);
+        expect(feedCardWidth('news', true)).toBe(462);
         expect(feedCardWidth('news', false)).toBe(320);
         expect(feedCardWidth('friends', false)).toBe(230);
         expect(feedCardWidth('recommended', false)).toBe(187);
@@ -90,9 +90,9 @@ describe('feedItems', () => {
         recommended: [{ appId: 30, name: 'Game 30', pill: 'Not started', pillKey: 'notStarted' as const, sub: '' }],
     };
 
-    it('maps news: featured 623 then 332 (the handoff 600/320 at row 1\'s 270), event art fitted over the hero, opens the news update', () => {
+    it('maps news: featured 480 (16:9 at row 1\'s 270, the event art\'s shape) then 332 (the handoff 320 at 270), event art fitted over the hero, opens the news update', () => {
         const items = feedItems('news', data, art);
-        expect(items.map((i) => i.width)).toEqual([623, 332]);
+        expect(items.map((i) => i.width)).toEqual([480, 332]);
         expect(items.map((i) => i.featured)).toEqual([true, false]);
         expect(items[0].art).toEqual(['hero-10']);
         expect(items[0].fit).toBe('https://event/1.png');
@@ -215,7 +215,8 @@ describe('feed rows (raised sheet geometry)', () => {
             expect(feedRows('recommended', space, true).row1).toBe(270);
         }
         expect(feedRows('friends', 436, false)).toEqual({ row1: 260, row2: 0, row2Top: 0, total: 260 });
-        expect(feedCardWidthAt('news', true, 270)).toBe(623);
+        expect(feedCardWidthAt('news', true, 270)).toBe(480);
+        expect(feedCardWidthAt('news', true, 230)).toBe(409);
         expect(feedCardWidthAt('news', false, 270)).toBe(332);
         expect(feedCardWidthAt('recommended', false, 270)).toBe(194);
         expect(feedCardWidthAt('friends', false, 360)).toBe(230);
@@ -237,7 +238,7 @@ describe('What\'s new second row', () => {
         const data = { ...base, updated: [{ appId: 50, name: 'Updated Game', rtLastUpdated: 1, label: 'Updated today' }] };
         expect(hasSecondRow('news', data)).toBe(true);
         const items = feedItems('news', data, art, 426);
-        expect(items.map((i) => [i.key, i.row, i.height, i.width])).toEqual([['news-1', 0, 270, 623], ['updated-50', 1, 118, 252]]);
+        expect(items.map((i) => [i.key, i.row, i.height, i.width])).toEqual([['news-1', 0, 270, 480], ['updated-50', 1, 118, 252]]);
         expect(items[1]).toMatchObject({ art: ['hero-50'], title: 'Updated Game', sub: 'Updated today', pill: '', opens: { kind: 'page', appId: 50 }, accentAppId: 50 });
     });
     it('Steam\'s recently completed cards show the update line and the size, as stock', () => {
@@ -247,7 +248,7 @@ describe('What\'s new second row', () => {
     it('without updated games there is no second row; the news cards keep their 270 size', () => {
         expect(hasSecondRow('news', base)).toBe(false);
         const items = feedItems('news', { ...base, updated: [] }, art, 426);
-        expect(items.map((i) => [i.row, i.height, i.width])).toEqual([[0, 270, 623]]);
+        expect(items.map((i) => [i.row, i.height, i.width])).toEqual([[0, 270, 480]]);
     });
 });
 

@@ -3,6 +3,7 @@ import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ReactNode, useRef } from 'react';
 import { IoCloudDoneOutline, IoCloudOfflineOutline, IoCloudOutline, IoCloudUploadOutline, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { LOG_PREFIX } from '../constants';
+import { markLaunch } from '../data/launchIntent';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
@@ -237,6 +238,8 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                 onPress={(el) => {
                     if (steamPill) {
                         try {
+                            // Steam's Play opens the game's page for its launch screen; the page then shows only the art.
+                            if (steamPill.action === 'Play') markLaunch(appId);
                             steamPill.run(el?.ownerDocument?.defaultView ?? window);
                             return;
                         } catch (error) {
@@ -247,6 +250,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                     if (!play.launch) return openPage(appId);
                     steamOr('launch', appId, (api) => {
                         if (!api.RunGame) return false;
+                        markLaunch(appId);
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
                     });
