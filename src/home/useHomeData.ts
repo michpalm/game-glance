@@ -28,6 +28,9 @@ import { fillMissing } from './homeView';
 import { formatLastPlayed, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
+import { noteDetails } from './detailsMemo';
+import { neighbourIds } from './heroLayers';
+import { HERO_PRELOAD_RADIUS } from './motion';
 
 export interface HomeGame extends RecentGame {
     installed: boolean;
@@ -229,10 +232,31 @@ function useAppDetailsVersion(appId: number | null): number {
     const [version, setVersion] = useState(0);
     useEffect(() => {
         if (appId === null) return undefined;
-        const registration = guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(appId, () => setVersion((v) => v + 1)), undefined);
+        // The details are kept (detailsMemo): Steam's store may not hold them, and the hero art needs their file name.
+        const registration = guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(appId, (details) => {
+            noteDetails(appId, details);
+            setVersion((v) => v + 1);
+        }), undefined);
         return () => guarded('details unregister', () => registration?.unregister(), undefined);
     }, [appId]);
     return version;
+}
+
+/**
+ * Asks Steam for the details of the games either side of the selection (the ones whose hero art is pre-loaded) and
+ * keeps their library assets (detailsMemo), so their full-screen art is the real hero once selected, not the blurred
+ * capsule. One registration per game, dropped when it leaves the set or Home unmounts.
+ */
+function useNeighbourDetails(ids: number[]) {
+    const key = ids.join(',');
+    useEffect(() => {
+        if (ids.length === 0) return undefined;
+        const registrations = ids.map((id) =>
+            guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(id, (details) => noteDetails(id, details)), undefined),
+        );
+        return () => registrations.forEach((r) => guarded('details unregister', () => r?.unregister(), undefined));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
 }
 
 function useRecommended(games: HomeGame[], wishlistDeals: boolean, enabled: boolean): { cards: RecommendedCard[]; deals: DealCard[] } {
@@ -420,6 +444,8 @@ export function useHomeData(focusIndex = 0): HomeData {
     const locale = steamLanguageToLocale(knownLang ?? loadedLang ?? 'english');
 
     const detailsVersion = useAppDetailsVersion(appId);
+    const gameIds = useMemo(() => games.map((g) => g.appId), [games]);
+    useNeighbourDetails(useMemo(() => neighbourIds(gameIds, Math.max(0, focusIndex), HERO_PRELOAD_RADIUS), [gameIds, focusIndex]));
     const overrideVersion = useOverrideVersion();
     const info = useMemo(
         () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),

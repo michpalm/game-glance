@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { browserStores, capsuleUrls, heroUrls, landscapeUrls, SteamStores } from '../../src/home/artwork';
+import { afterEach, describe, expect, it } from 'vitest';
+import { browserStores, capsuleUrls, guessedHeroUrls, heroUrls, landscapeUrls, SteamStores } from '../../src/home/artwork';
+import { noteDetails, resetDetailsMemo } from '../../src/home/detailsMemo';
 
 const stores: SteamStores = {
     details: () => ({ libraryAssets: { strHeroImage: 'hero.jpg' } }),
@@ -131,7 +132,40 @@ describe('landscapeUrls', () => {
     });
 });
 
+describe('a Steam game whose hero file name is not known yet (Reddit: zoomed capsule after the first 4 games)', () => {
+    const noDetails: SteamStores = { details: () => undefined, overview: () => ({ header_filename: 'header.jpg', library_capsule_filename: 'capsule.jpg', app_type: 1 }) };
+
+    it('tries the unhashed local hero, then Steam\'s image server, before the header and capsule', () => {
+        expect(guessedHeroUrls(42)).toEqual([`${base}/library_hero.jpg`, 'https://shared.steamstatic.com/store_item_assets/steam/apps/42/library_hero.jpg']);
+        expect(heroUrls(42, noDetails)).toEqual([...guessedHeroUrls(42), `${base}/header.jpg`, `${base}/capsule.jpg`]);
+    });
+    it('the known file name wins (no guesses), and shortcuts or non-games never get them', () => {
+        expect(heroUrls(42, stores)).not.toContain(`${base}/library_hero.jpg`);
+        const shortcut: SteamStores = { ...noDetails, overview: () => ({ header_filename: 'header.jpg', app_type: 1073741824 }) };
+        expect(heroUrls(42, shortcut)).toEqual([`${base}/header.jpg`]);
+        const unknown: SteamStores = { ...noDetails, overview: () => ({ header_filename: 'header.jpg' }) };
+        expect(heroUrls(42, unknown)).toEqual([`${base}/header.jpg`]);
+    });
+});
+
 describe('browserStores', () => {
+    const g = globalThis as unknown as { appDetailsStore?: unknown };
+    afterEach(() => {
+        delete g.appDetailsStore;
+        resetDetailsMemo();
+    });
+
+    it('uses the assets Steam\'s details callback sent when its store has none', () => {
+        noteDetails(42, { libraryAssets: { strHeroImage: 'abc/library_hero.jpg' } });
+        expect(browserStores.details(42)).toEqual({ libraryAssets: { strHeroImage: 'abc/library_hero.jpg' } });
+        g.appDetailsStore = { GetAppDetails: () => ({ strDisplayName: 'G' }) };
+        expect(browserStores.details(42)).toEqual({ strDisplayName: 'G', libraryAssets: { strHeroImage: 'abc/library_hero.jpg' } });
+    });
+    it('Steam\'s store wins when it has the assets', () => {
+        noteDetails(42, { libraryAssets: { strHeroImage: 'old.jpg' } });
+        g.appDetailsStore = { GetAppDetails: () => ({ libraryAssets: { strHeroImage: 'store.jpg' } }) };
+        expect(browserStores.details(42)?.libraryAssets?.strHeroImage).toBe('store.jpg');
+    });
     it('does not throw when Steam globals are absent', () => {
         expect(browserStores.details(42)).toBeUndefined();
         expect(browserStores.overview(42)).toBeUndefined();

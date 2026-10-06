@@ -132,7 +132,7 @@ Game Glance talks to two sites: howlongtobeat.com (times) and store.steampowered
 game names and Steam app IDs, nothing about you. The one exception is the optional **Show wishlist deals**
 setting (off by default): it sends your Steam ID to Steam's web API (api.steampowered.com) to read your public
 wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends
-and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
+and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
 Everything Game Glance stores stays on the device, in Decky's settings folder.
 
 ## Development
