@@ -1,6 +1,8 @@
+import { memoDetails } from './detailsMemo';
+
 export interface SteamStores {
     details(appId: number): { libraryAssets?: { strHeroImage?: string; strHeaderImage?: string } } | undefined;
-    overview(appId: number): { header_filename?: string; library_capsule_filename?: string } | undefined;
+    overview(appId: number): { header_filename?: string; library_capsule_filename?: string; app_type?: number } | undefined;
     /** Steam's own landscape (header) art list for the app, custom art first; root-relative or absolute urls. */
     landscape?(appId: number): string[] | undefined;
     /** Custom (SteamGridDB) hero art, jpg then png; root-relative urls; [] without custom art. */
@@ -37,16 +39,30 @@ function listed(read: () => unknown): string[] {
     return (Array.isArray(raw) ? raw : []).filter((u): u is string => typeof u === 'string' && u.length > 0).map(absolute);
 }
 
+/** Steam's app type for a game (not a shortcut, tool or mod). */
+const GAME_APP_TYPE = 1;
+
+/**
+ * Where a Steam game's library hero is when its hashed file name is unknown (no details from Steam yet): the old,
+ * unhashed local path, then Steam's image server (the CDN pattern storeHeaderUrl uses). Only for Steam games: a
+ * shortcut has no such art. Tried after everything known and before the blurred-capsule fallback.
+ */
+export function guessedHeroUrls(appId: number): string[] {
+    return [`${ASSETS}/${appId}/library_hero.jpg`, `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`];
+}
+
 /**
  * Hero first: it is the widest. Custom (SteamGridDB) hero art first (`appStore.GetCustomHeroImageURLs`, probed on
  * the Ally: `/customimages/<id>_hero.jpg|.png`, listed whenever the game has any custom art, so a listed file may
- * not exist), then the library assets in their hashed folders.
+ * not exist), then the library assets in their hashed folders. A Steam game whose hero file name is not known yet
+ * gets guessedHeroUrls in its place.
  */
 export function heroUrls(appId: number, stores: SteamStores): string[] {
     const custom = listed(() => stores.customHero?.(appId));
     const hero = guarded(() => stores.details(appId))?.libraryAssets?.strHeroImage;
     const overview = guarded(() => stores.overview(appId));
-    return [...new Set([...custom, ...toUrls(appId, [hero, overview?.header_filename, overview?.library_capsule_filename])])];
+    const guessed = !hero && overview?.app_type === GAME_APP_TYPE ? guessedHeroUrls(appId) : [];
+    return [...new Set([...custom, ...toUrls(appId, [hero]), ...guessed, ...toUrls(appId, [overview?.header_filename, overview?.library_capsule_filename])])];
 }
 
 /** Custom portrait art first (`appStore.GetCustomVerticalCapsuleURLs`: `/customimages/<id>p.jpg|.png`), then the assets. */
@@ -89,7 +105,13 @@ interface StoreGlobals {
 const globals = (): StoreGlobals => ((globalThis as unknown as StoreGlobals | undefined) ?? {});
 
 export const browserStores: SteamStores = {
-    details: (id) => globals().appDetailsStore?.GetAppDetails?.(id),
+    // Steam's store when it has the game's assets; else what its details callback sent (detailsMemo).
+    details: (id) => {
+        const details = globals().appDetailsStore?.GetAppDetails?.(id);
+        if (details?.libraryAssets) return details;
+        const remembered = memoDetails(id);
+        return remembered ? { ...details, libraryAssets: remembered } : details;
+    },
     overview: (id) => globals().appStore?.GetAppOverviewByAppID?.(id),
     landscape: (id) => {
         const g = globals();
