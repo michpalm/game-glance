@@ -75,7 +75,7 @@ describe('session memory', () => {
         expect(takeRestore(4000)).toBeNull();
     });
     it('the default restores focus on the action row (the recents row is display only), game 1 selected', () => {
-        expect(DEFAULT_MEMORY.zone).toBe('actions');
+        expect(DEFAULT_MEMORY.zone).toBe('recents');
         expect(DEFAULT_MEMORY.action).toBe(0);
     });
     it('restores the selected Library card with the zone and tab (bumper navigation)', () => {

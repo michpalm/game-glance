@@ -1,12 +1,13 @@
 /**
- * Home's focus zones, top to bottom. Up/down moves between zones (Steam's own spatial navigation does the
- * moving; these rules say where it should land), left/right moves within one. The recents card row is display
- * only (bumper navigation): it is not a zone, L1/R1 on the action row changes the selected game, and so do Left
- * past the row's first button and Right past its last (edgeStep). Pure.
+ * Home's focus zones, top to bottom: the action row, the recents card row (where Home's focus starts, as on Steam's
+ * own Home), the feed tabs and the feed cards. Up/down moves between zones (Steam's own spatial navigation does the
+ * moving; these rules say where it should land), left/right moves within one: on the card row they select the
+ * previous / next game (recentsButton). L1/R1 select games too, from the cards or the action row, with focus on Play.
+ * Pure.
  */
-export type Zone = 'actions' | 'tabs' | 'feed';
+export type Zone = 'actions' | 'recents' | 'tabs' | 'feed';
 
-const ORDER: Zone[] = ['actions', 'tabs', 'feed'];
+const ORDER: Zone[] = ['actions', 'recents', 'tabs', 'feed'];
 
 /**
  * The zone above or below. Stops at the ends. `feedUp`: the feed row can take focus (the selected tab has
@@ -21,15 +22,16 @@ export function nextZone(zone: Zone, direction: 'up' | 'down', feedUp: boolean):
 }
 
 /**
- * Where B goes: feed -> tabs -> actions. From the actions Home does not handle B at all ('stock'), so Steam's
- * own handling applies and the user is never trapped.
+ * Where B goes: feed -> tabs -> the game cards, and the action row -> the game cards. On the cards (where Home starts)
+ * Home does not handle B at all ('stock'), so Steam's own handling applies and the user is never trapped.
  */
 export function onBack(zone: Zone): Zone | 'stock' {
     switch (zone) {
         case 'feed':
             return 'tabs';
         case 'tabs':
-            return 'actions';
+        case 'actions':
+            return 'recents';
         default:
             return 'stock';
     }
@@ -88,15 +90,19 @@ const DIR_LEFT = 11;
 const DIR_RIGHT = 12;
 
 /**
- * Edge navigation on the action row: Left on its first button (the Play pill) steps to the previous game, Right on
- * its last button to the next one; anywhere else Left/Right just move between the buttons (Steam's own navigation, so
- * null). `at`: the focused button's index among the row's `buttons` (-1: unknown, nothing happens). A held direction
- * (`isRepeat`) never crosses, so holding Right walks to the last button and stops there instead of running through games.
+ * What a button does on the game card row: Left/Right select the previous / next game (`{ select }`, the same step as
+ * L1/R1: through the Library card, wrapping on a press, stopping at the ends while held, as Steam repeats a held
+ * d-pad); L1/R1 are 'bumper' (focus goes to Play and the action row's bumper selection takes over); View/Menu are
+ * 'menu' (the selected game's menu). null: anything else, left to Steam (A, B, up and down). No games: null.
  */
-export function edgeStep(button: number, at: number, buttons: number, isRepeat = false): -1 | 1 | null {
-    if (isRepeat || !Number.isInteger(at) || at < 0 || !Number.isFinite(buttons) || at >= buttons) return null;
-    if (button === DIR_LEFT && at === 0) return -1;
-    if (button === DIR_RIGHT && at === buttons - 1) return 1;
+export function recentsButton(button: number, index: number, count: number, isRepeat = false): { select: number } | 'bumper' | 'menu' | null {
+    if (!Number.isFinite(count) || count < 1) return null;
+    if (button === DIR_LEFT || button === DIR_RIGHT) {
+        const next = stepSelection(index, button === DIR_LEFT ? -1 : 1, count, isRepeat);
+        return next === null ? null : { select: next };
+    }
+    if (button === BUMPER_LEFT || button === BUMPER_RIGHT) return 'bumper';
+    if (opensGameMenu(button)) return 'menu';
     return null;
 }
 

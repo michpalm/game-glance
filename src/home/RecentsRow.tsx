@@ -1,3 +1,6 @@
+import { Focusable } from '@decky/ui';
+import type { GamepadEvent } from '@decky/ui';
+import { Ref } from 'react';
 import { browserStores, capsuleUrls, heroUrls, landscapeUrls } from './artwork';
 import { wideArt } from './homeView';
 import { clampFocus, isLibraryFocus, RecentsGeometry, recentsLayout } from './recentsLayout';
@@ -45,21 +48,46 @@ function GameCapsule({ game, left, width, dim, wide }: { game: HomeGame; left: n
     );
 }
 
+/** The row's gamepad handling, given by SpotlightHome (it owns the selection, the bumpers and the pages to open). */
+export interface RecentsRowNav {
+    /** Takes focus when Home first gets focus (a cold start: the first game card, as on Steam's own Home). */
+    preferred: boolean;
+    setRef(el: HTMLDivElement | null): void;
+    onFocus(): void;
+    /** Left/Right, L1/R1, View/Menu (focusZones.recentsButton). */
+    onButtonDown(evt: GamepadEvent): void;
+    /** A: the selected game's page, or the Library on the Library card. */
+    onActivate(): void;
+}
+
 /**
- * The recents row: games, then "View more in your Library", then the loop preview of the first games. Display only
- * (bumper navigation): nothing here is focusable or takes a press, tap or click (pointer events are off in homeCss);
- * L1/R1 on the action row changes `selected`, which lives in SpotlightHome (it drives hero, title and actions), and
- * the row slides to follow. Rendered only with games. `geometry` is the card scale's sizes (handheld or docked),
- * the same SpotlightHome gives homeCss.
+ * The recents row: games, then "View more in your Library", then the loop preview of the first games. One focusable for
+ * the whole row (the cards slide by transform, so Steam's spatial navigation never moves between them): while it has
+ * focus the selected card is highlighted, Left/Right select games and A opens the selected one (`nav`, from
+ * SpotlightHome, which owns `selected`: it drives hero, title and actions; the row slides to follow). Taps and clicks
+ * still do nothing (pointer events are off in homeCss). Rendered only with games. `geometry` is the card scale's sizes
+ * (handheld or docked), the same SpotlightHome gives homeCss.
  */
-export function RecentsRow({ games, selected, geometry }: { games: HomeGame[]; selected: number; geometry: RecentsGeometry }) {
+export function RecentsRow({ games, selected, geometry, nav }: { games: HomeGame[]; selected: number; geometry: RecentsGeometry; nav: RecentsRowNav }) {
     const count = games.length;
     const at = clampFocus(count, selected);
     const layout = recentsLayout(count, at, geometry);
     const onLibrary = isLibraryFocus(count, at);
     const library = layout.items[count];
     return (
-        <div className="gh-recents" aria-hidden="true">
+        <Focusable
+            ref={nav.setRef as Ref<HTMLDivElement>}
+            className="gh-recents"
+            focusClassName="gh-recents-focus"
+            noFocusRing
+            preferredFocus={nav.preferred}
+            onFocus={nav.onFocus}
+            onGamepadFocus={nav.onFocus}
+            onButtonDown={nav.onButtonDown}
+            onActivate={nav.onActivate}
+            role="listbox"
+            aria-label="Recent games"
+        >
             <div className="gh-recents-track" style={{ transform: `translateX(${layout.scrollX}px)` }}>
                 {games.map((game, i) => (
                     <GameCapsule
@@ -101,6 +129,6 @@ export function RecentsRow({ games, selected, geometry }: { games: HomeGame[]; s
                     </div>
                 ))}
             </div>
-        </div>
+        </Focusable>
     );
 }

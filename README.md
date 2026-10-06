@@ -45,16 +45,18 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
 
 - **Selected game.** The selected game fills the screen with its art (your custom SteamGridDB art when you have
   set some), with chips (play time, achievements, last played, HowLongToBeat main story), a Play button and
-  actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on Play; **L1 and R1 pick the previous or next
-  game** (hold to keep going). The d-pad or stick does too: **Left on Play** goes to the previous game and **Right on
-  the last button** to the next, with focus back on Play. For Steam games with cloud saves, a cloud button after the info button shows the
+  actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on the first game card, as on Steam's Home:
+  **Left and Right** pick the previous or next game and **A** opens its page; **up** reaches Play and the other
+  buttons. **L1 and R1** pick the previous or next game from anywhere above the tabs and put focus on Play (hold to keep
+  going), for starting a game in two presses. For Steam games with cloud saves, a cloud button after the info button shows the
   sync state (green, yellow, red, grey) and opens Steam's sync dialog when there is a problem. The gear button, or
   the View/Select button, opens Steam's own menu for the game (favourites, collections, Manage, Properties...), the
   same one as on the game's page.
 - **Recents row.** Your recent games as capsules, as many as Steam's own Home lists (up to 20; custom portrait art included); the selected one opens into a
-  wide card with the game's landscape art (custom art included) and the row slides to follow L1/R1. The row ends in
-  a Library card (R1 past the last game; R1 again goes back to the first) with a faded preview of more games. The
-  row is for show only: tapping a card does nothing. With no recent games, Home shows an Open Library button.
+  wide card with the game's landscape art (custom art included), highlighted while the row has focus, and the row slides
+  to follow. The row ends in a Library card (Right or R1 past the last game, A opens the Library; again goes back to the
+  first) with a faded preview of more games. B on the buttons or the tabs comes back to the cards. Tapping a card does
+  nothing. With no recent games, Home shows an Open Library button.
 - **Feed.** Press down for tabs: **What's new** (news updates, which open the news; under them, as on Steam's Home, the
   games recently updated on this device, with the size and when), **Friends** (your friends, in game first, then online,
   away and offline, kept up to date while Home is open; the number online on the tab turns green when anyone is on,
