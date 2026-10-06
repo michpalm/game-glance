@@ -1,25 +1,69 @@
 import { describe, expect, it } from 'vitest';
 import {
-    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, selectionForButton, tabForButton,
+    BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, recentsButton, selectionForButton, stepSelection, tabForButton,
 } from '../../src/home/focusZones';
 
 describe('focusZones', () => {
-    it('nextZone walks actions-tabs-feed (the recents row is display only) and stops at the ends', () => {
-        expect(nextZone('actions', 'down', true)).toBe('tabs');
+    it('nextZone walks actions-cards-tabs-feed and stops at the ends', () => {
+        expect(nextZone('actions', 'down', true)).toBe('recents');
+        expect(nextZone('recents', 'down', true)).toBe('tabs');
         expect(nextZone('tabs', 'down', true)).toBe('feed');
         expect(nextZone('feed', 'down', true)).toBe('feed');
         expect(nextZone('feed', 'up', true)).toBe('tabs');
-        expect(nextZone('tabs', 'up', true)).toBe('actions');
+        expect(nextZone('tabs', 'up', true)).toBe('recents');
+        expect(nextZone('recents', 'up', true)).toBe('actions');
         expect(nextZone('actions', 'up', true)).toBe('actions');
         // No feed cards to go to: down from tabs stays on the tabs.
         expect(nextZone('tabs', 'down', false)).toBe('tabs');
-        expect(nextZone('actions', 'down', false)).toBe('tabs');
+        expect(nextZone('recents', 'down', false)).toBe('tabs');
     });
 
-    it('onBack: feed -> tabs -> actions, and from the actions B is Steam\'s own (stock)', () => {
+    it('onBack: feed -> tabs -> the game cards, the action row -> the game cards; on the cards B is Steam\'s own (stock)', () => {
         expect(onBack('feed')).toBe('tabs');
-        expect(onBack('tabs')).toBe('actions');
-        expect(onBack('actions')).toBe('stock');
+        expect(onBack('tabs')).toBe('recents');
+        expect(onBack('actions')).toBe('recents');
+        expect(onBack('recents')).toBe('stock');
+    });
+
+    describe('recentsButton (the game card row)', () => {
+        const LEFT = 11;
+        const RIGHT = 12;
+        it('Left/Right select the previous / next game, through the Library card like L1/R1', () => {
+            expect(recentsButton(RIGHT, 0, 3)).toEqual({ select: 1 });
+            expect(recentsButton(RIGHT, 2, 3)).toEqual({ select: 3 });
+            expect(recentsButton(RIGHT, 3, 3)).toEqual({ select: 0 });
+            expect(recentsButton(LEFT, 0, 3)).toEqual({ select: 3 });
+            expect(recentsButton(LEFT, 2, 3)).toEqual({ select: 1 });
+        });
+        it('a held direction stops at the ends instead of looping', () => {
+            expect(recentsButton(RIGHT, 3, 3, true)).toEqual({ select: 3 });
+            expect(recentsButton(LEFT, 0, 3, true)).toEqual({ select: 0 });
+            expect(recentsButton(RIGHT, 1, 3, true)).toEqual({ select: 2 });
+        });
+        it('L1/R1 hand over to the bumpers (focus to Play), View/Menu open the game menu', () => {
+            expect(recentsButton(5, 1, 3)).toBe('bumper');
+            expect(recentsButton(6, 1, 3)).toBe('bumper');
+            expect(recentsButton(13, 1, 3)).toBe('menu');
+            expect(recentsButton(14, 1, 3)).toBe('menu');
+        });
+        it('A, B, up and down are Steam\'s; no games: nothing', () => {
+            for (const b of [1, 2, 9, 10]) expect(recentsButton(b, 1, 3)).toBeNull();
+            expect(recentsButton(RIGHT, 0, 0)).toBeNull();
+            expect(recentsButton(5, 0, Number.NaN)).toBeNull();
+        });
+    });
+
+    describe('stepSelection (the step L1/R1 and the card row share)', () => {
+        it('wraps through the Library card like L1/R1', () => {
+            expect(stepSelection(2, 1, 3)).toBe(3);
+            expect(stepSelection(3, 1, 3)).toBe(0);
+            expect(stepSelection(0, -1, 3)).toBe(3);
+            expect(stepSelection(3, -1, 3)).toBe(2);
+            expect(stepSelection(1, 1, 3)).toBe(selectionForButton(1, 6, 3));
+        });
+        it('no games: null', () => {
+            expect(stepSelection(0, 1, 0)).toBeNull();
+        });
     });
 
     describe('selectionForButton (L1/R1 on the action row)', () => {

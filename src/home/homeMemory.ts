@@ -22,7 +22,7 @@ export interface HomeMemory {
     feedKey: string | null;
 }
 
-export const DEFAULT_MEMORY: HomeMemory = { zone: 'actions', recent: { kind: 'game', appId: 0 }, action: 0, tab: 0, feedKey: null };
+export const DEFAULT_MEMORY: HomeMemory = { zone: 'recents', recent: { kind: 'game', appId: 0 }, action: 0, tab: 0, feedKey: null };
 
 /** How long after leaving Home a return still restores it (a longer absence is a fresh visit). */
 export const RESTORE_MAX_AGE_MS = 30 * 60_000;

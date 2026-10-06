@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/recents.json';
-import { formatLastPlayed, pickRecents } from '../../src/home/recents';
+import { formatLastPlayed, pickRecents, RECENTS_LIMIT } from '../../src/home/recents';
 
 const DAY = 86400;
 
@@ -20,6 +20,14 @@ describe('pickRecents', () => {
 
     it('maps fields', () => {
         expect(pickRecents(fixture)[0]).toEqual({ appId: 3001, name: 'Game A', lastPlayed: 1791000000, playedMinutes: 50 });
+    });
+
+    it('shows as many as Steam\'s own recents list (20) by default', () => {
+        expect(RECENTS_LIMIT).toBe(20);
+        const many = Array.from({ length: 25 }, (_, i) => ({ appid: 5000 + i, display_name: `G${i}`, app_type: 1, rt_last_time_played: 1790000000 + i }));
+        const ids = pickRecents(many).map((g) => g.appId);
+        expect(ids).toHaveLength(20);
+        expect(ids[0]).toBe(5024);
     });
 
     it('respects the limit', () => {

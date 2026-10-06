@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
@@ -16,7 +16,8 @@ import { useOverrideVersion } from '../hooks/useOverrideVersion';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { useDownload } from '../home/useDownload';
-import { accentCss, downloadCss, themeCss } from '../styles/theme';
+import { useLaunchOverlay } from '../styles/launchOverlay';
+import { accentCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
@@ -74,6 +75,10 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
+    // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone.
+    const heroRef = useRef<HTMLDivElement>(null);
+    const { overlay, hide } = launchSelectors();
+    const launching = useLaunchOverlay(heroRef, overlay, hide);
 
     useEffect(() => {
         setCurrentGame(game, hltb);
@@ -91,8 +96,10 @@ function Hero({ overview, details, restyle }: Props & { restyle: boolean }) {
                     <div className="gg-title">{game.name}</div>
                 </div>
             )}
-            <div className="gg-hero">
+            <div className="gg-hero" ref={heroRef}>
                 <style>{themeCss({ restyle })}</style>
+                <style>{unifideckCss({ restyle })}</style>
+                {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
                 {source && <SourcePill label={source} />}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FEED_ROW1_MIN_H, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_ROW2_HEADER, FEED_TOP_RAISED, feedRows, feedSpace } from '../../src/home/feedLayout';
-import { FEED_SHEET, MAX_STACK_SHIFT, MIN_STACK_SHIFT, stackShift } from '../../src/home/homeCss';
+import { FEED_SHEET, FEEDLESS_DROP, MAX_STACK_SHIFT, MIN_STACK_SHIFT, stackShift } from '../../src/home/homeCss';
+import { RECENTS_BOTTOM } from '../../src/home/recentsLayout';
 import { LEGEND_FALLBACK, legendReserve } from '../../src/home/legend';
 
 const LEGENDS = [40, 46, 71, 90];
@@ -42,6 +43,21 @@ describe('stackShift with a measured legend', () => {
         expect(stackShift(800, 40)).toBe(8);
         expect(stackShift(700, 40)).toBe(0);
         expect(stackShift(100, 200)).toBe(MIN_STACK_SHIFT);
+    });
+});
+
+describe('stackShift with the bottom section hidden', () => {
+    it('drops the stack so the recents row ends where the tab strip ended, on every screen and legend', () => {
+        expect(FEEDLESS_DROP).toBe(45);
+        for (const L of LEGENDS) for (const h of HEIGHTS) {
+            const withFeed = stackShift(h, L);
+            const without = stackShift(h, L, false);
+            expect(without - withFeed).toBe(FEEDLESS_DROP);
+            // The row's bottom lands within a pixel of where the tab strip's bottom was.
+            expect(Math.abs(RECENTS_BOTTOM + without - (tabsBottom + withFeed))).toBeLessThan(1);
+        }
+        expect(stackShift(810.75, 46, false)).toBe(13 + 45);
+        expect(stackShift(Number.NaN, 46, false)).toBe(45);
     });
 });
 

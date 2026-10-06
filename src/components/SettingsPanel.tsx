@@ -61,7 +61,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -118,12 +118,23 @@ export function SettingsPanel() {
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <ToggleField
-                        label="Show wishlist deals"
-                        description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
-                        checked={wishlistDeals}
-                        onChange={(value) => settings.setWishlistDeals(value)}
+                        label="What's new, Friends, Recommended"
+                        description="The tabs under your games. Off hides them; Home shows only the selected game."
+                        checked={homeFeed}
+                        onChange={(value) => settings.setHomeFeed(value)}
                     />
                 </PanelSectionRow>
+                {/* The deals show on the Recommended tab, so the switch goes with it. */}
+                {homeFeed && (
+                    <PanelSectionRow>
+                        <ToggleField
+                            label="Show wishlist deals"
+                            description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
+                            checked={wishlistDeals}
+                            onChange={(value) => settings.setWishlistDeals(value)}
+                        />
+                    </PanelSectionRow>
+                )}
             </PanelSection>
             <PanelSection title="HowLongToBeat match">
                 {game ? (

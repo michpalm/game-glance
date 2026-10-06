@@ -31,7 +31,8 @@ what it is about, and where it came from.
 - **Store pill.** Where the game comes from, with the store's icon: Steam, GOG, Epic, Amazon, Battle.net,
   Ubisoft, Xbox Cloud or Heroic.
 - **Non-Steam games.** Games added by [Heroic](https://heroicgameslauncher.com) or
-  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too.
+  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too. On a
+  Unifideck game's page, Unifideck's own Play row (Install, Play) sits on the art in the same style.
 - **Works offline.** Times and descriptions are kept on the device. A Quick Access button pre-loads them for
   every installed game, and new installs are picked up automatically.
 - **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.
@@ -44,15 +45,18 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
 
 - **Selected game.** The selected game fills the screen with its art (your custom SteamGridDB art when you have
   set some), with chips (play time, achievements, last played, HowLongToBeat main story), a Play button and
-  actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on Play; **L1 and R1 pick the previous or next
-  game** (hold to keep going). For Steam games with cloud saves, a cloud button after the info button shows the
+  actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on the first game card, as on Steam's Home:
+  **Left and Right** pick the previous or next game and **A** opens its page; **up** reaches Play and the other
+  buttons. **L1 and R1** pick the previous or next game from anywhere above the tabs and put focus on Play (hold to keep
+  going), for starting a game in two presses. For Steam games with cloud saves, a cloud button after the info button shows the
   sync state (green, yellow, red, grey) and opens Steam's sync dialog when there is a problem. The gear button, or
   the View/Select button, opens Steam's own menu for the game (favourites, collections, Manage, Properties...), the
   same one as on the game's page.
-- **Recents row.** Your recent games as capsules (custom portrait art included); the selected one opens into a
-  wide card with the game's landscape art (custom art included) and the row slides to follow L1/R1. The row ends in
-  a Library card (R1 past the last game; R1 again goes back to the first) with a faded preview of more games. The
-  row is for show only: tapping a card does nothing. With no recent games, Home shows an Open Library button.
+- **Recents row.** Your recent games as capsules, as many as Steam's own Home lists (up to 20; custom portrait art included); the selected one opens into a
+  wide card with the game's landscape art (custom art included), highlighted while the row has focus, and the row slides
+  to follow. The row ends in a Library card (Right or R1 past the last game, A opens the Library; again goes back to the
+  first) with a faded preview of more games. B on the buttons or the tabs comes back to the cards. Tapping a card does
+  nothing. With no recent games, Home shows an Open Library button.
 - **Feed.** Press down for tabs: **What's new** (news updates, which open the news; under them, as on Steam's Home, the
   games recently updated on this device, with the size and when), **Friends** (your friends, in game first, then online,
   away and offline, kept up to date while Home is open; the number online on the tab turns green when anyone is on,
@@ -77,7 +81,10 @@ Quick Access → Game Glance has two toggles:
 Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
 with Steam's own game page.
 
-**Show wishlist deals** (off by default) adds up to six wishlist games that are on sale (the biggest discounts)
+**What's new, Friends, Recommended** (on by default) shows the tabs under your games. Turn it off and Home shows only
+the selected game; nothing for the tabs is loaded then.
+
+**Show wishlist deals** (off by default, shown while the tabs are on) adds up to six wishlist games that are on sale (the biggest discounts)
 to the Recommended tab, as a second row. To find them it sends your Steam ID to Steam's web API to read your wishlist, which must
 be public, then checks the prices of the whole wishlist on Steam's store (app IDs only) and looks up the name and
 Steam Deck rating of the deals shown; their header art loads from Steam's image servers. Nothing else leaves the
@@ -110,7 +117,7 @@ If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same t
 Quick Access (…) → Game Glance:
 
 - **Game Glance page:** turn it off to get Steam's own game page back.
-- **Spotlight Home** and **Show wishlist deals:** see above.
+- **Spotlight Home**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**
@@ -132,10 +139,7 @@ Game Glance talks to two sites: howlongtobeat.com (times) and store.steampowered
 game names and Steam app IDs, nothing about you. The one exception is the optional **Show wishlist deals**
 setting (off by default): it sends your Steam ID to Steam's web API (api.steampowered.com) to read your public
 wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends
-and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
-Once a day (when Game Glance loads, reusing an answer under a day old, then every 24 hours while it runs) and when you
-press Check for updates, the updater asks api.github.com for the latest release's details (version and download link);
-it sends nothing about you, and an update is only downloaded, by Decky, when you press Update.
+and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
 Everything Game Glance stores stays on the device, in Decky's settings folder.
 
 ## Development

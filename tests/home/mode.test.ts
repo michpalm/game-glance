@@ -7,6 +7,7 @@ const make = (enabled: boolean, spotlightHome: boolean): Settings => ({
     autoPreload: true,
     spotlightHome,
     wishlistDeals: false,
+    homeFeed: true,
 });
 
 describe('homeMode', () => {

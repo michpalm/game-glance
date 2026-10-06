@@ -6,7 +6,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, SHEET, SHEET_MS, SLIDE } from './motion';
 import { TIMINGS } from './openTransition';
-import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, recentsGeometry } from './recentsLayout';
+import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -116,13 +116,24 @@ export const MAX_STACK_SHIFT = 120;
 export const MIN_STACK_SHIFT = -60;
 
 /**
+ * With the bottom section hidden (no tab strip), how much further the stack moves down so the recents row ends where
+ * the tab strip ended (`tabClearance` above the legend) instead of leaving its room empty: 733.6 - 688 -> 45.
+ */
+export const FEEDLESS_DROP = Math.floor(FEED_SHEET.tabsTop + FEED_SHEET.tabHeight - RECENTS_BOTTOM);
+
+/**
  * How far the whole Home stack (title block, actions, recents, tabs, feed) moves down on a canvas `logicalHeight`
  * tall, so the tab strip ends `tabClearance` above the legend reserve instead of leaving slack under it. Every gap
  * between elements stays; the raised sheet keeps its old place (the page rises by `raise` plus the shift). Whole px,
  * never upwards, at most MAX_STACK_SHIFT. 1440 x 810.75 (1080p TV, Ally) -> 13, 1280 x 800 (Deck) -> 2.
+ * `feed` false (the bottom section hidden): FEEDLESS_DROP more, so the recents row takes the tab strip's place.
  */
-export function stackShift(logicalHeight: number, legendReserve: number = FEED_SHEET.legendReserve): number {
-    if (!Number.isFinite(logicalHeight)) return 0;
+export function stackShift(logicalHeight: number, legendReserve: number = FEED_SHEET.legendReserve, feed = true): number {
+    if (!Number.isFinite(logicalHeight)) return feed ? 0 : FEEDLESS_DROP;
+    return clampedShift(logicalHeight, legendReserve) + (feed ? 0 : FEEDLESS_DROP);
+}
+
+function clampedShift(logicalHeight: number, legendReserve: number): number {
     const f = FEED_SHEET;
     const legend = Number.isFinite(legendReserve) ? legendReserve : f.legendReserve;
     const slack = logicalHeight - legend - f.tabClearance - (f.tabsTop + f.tabHeight);
@@ -239,8 +250,8 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
 
         // Recents row (handoff: left 44, 140 tall; times the card scale, its bottom stays at 688 and it grows upwards
         // from geo.top). Overflow stays visible: earlier capsules scroll off to the left edge.
-        // Every size here derives from recentsGeometry; left, width, dim and ghost opacity are inline. Display only
-        // (bumper navigation): no pointer events, so a tap or click on a card does nothing.
+        // Every size here derives from recentsGeometry; left, width, dim and ghost opacity are inline. The row is one
+        // gamepad focusable (RecentsRow); no pointer events, so a tap or click on a card does nothing.
         rule('.gh-recents', `position: absolute; left: 44px; right: 0; top: calc(${geo.top}px - var(--gh-top)); height: ${geo.capsuleH}px; margin: 0; padding: 0; pointer-events: none`),
         rule('.gh-recents-track', `position: absolute; inset: 0; transition: transform ${SLIDE}`),
         rule('.gh-cap', `position: absolute; top: 0; height: ${geo.capsuleH}px; margin: 0; padding: 0; border-radius: ${k(8)}px; overflow: hidden; background: #111;
@@ -259,6 +270,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-cap-cover', `position: absolute; right: 0; top: 0; width: ${geo.capsuleW}px; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 1`),
         rule('.gh-cap-bar', `position: absolute; left: 0; right: 0; bottom: 0; height: ${k(3)}px; background: var(--glance-accent); opacity: 0; transition: opacity 250ms, background ${ACCENT_MS}ms`),
         rule('.gh-cap.gh-cap-focus .gh-cap-bar', 'opacity: 1'),
+        // While the card row has focus the selected card (or the Library card) is the focused one: the accent glow and
+        // bar, and a bright edge so it reads as selected even on light art. Unfocused it keeps its resting look.
+        rule('.gh-recents-focus .gh-cap-wide, .gh-recents-focus .gh-cap-lib-on', `box-shadow: ${capGlow}; --gh-edge: rgba(255,255,255,.9)`),
+        rule('.gh-recents-focus .gh-cap-wide .gh-cap-bar, .gh-recents-focus .gh-cap-lib-on .gh-cap-bar', 'opacity: 1'),
         // "View more in your Library" card.
         rule('.gh-cap-lib', '--gh-edge: rgba(255,255,255,.14)'),
         rule('.gh-cap-lib.gh-cap-lib-on', '--gh-edge: rgba(255,255,255,.35)'),
@@ -323,6 +338,16 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-tint-online', `background: ${hexAlpha(FRIEND_COLOURS.online, 0.12)}`),
         rule('.gh-card-tint-away', `background: ${hexAlpha(FRIEND_COLOURS.away, 0.12)}`),
         rule('.gh-card-art', `position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat; animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        // News art shown whole (feedLayout `fit`): any aspect fits inside the card, at the top of a news card so the text
+        // sits under it on the blurred fill, centred on the wide featured card. The fill is the same image scaled to cover
+        // and blurred once (one filter per card, as the friend backdrop), so the bands around the art carry its colours.
+        rule('.gh-card-fit-blur', `position: absolute; inset: -28px; margin: 0; padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat;
+            filter: blur(24px) saturate(.8) brightness(.55); animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        rule('.gh-card-fit', `position: absolute; inset: 0; margin: 0; padding: 0; background-size: contain; background-position: center top; background-repeat: no-repeat;
+            animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        rule('.gh-card-featured .gh-card-fit', 'background-position: center'),
+        // Under fitted art the text has the fill below the image: two title lines keep it there.
+        rule('.gh-card-fitted .gh-card-title', '-webkit-line-clamp: 2'),
         // 1px past the art at the top and bottom, so no un-shaded sliver can show at a fractional edge.
         rule('.gh-card-shade', `position: absolute; inset: -1px 0; background: linear-gradient(180deg, rgba(${SCRIM},0) 30%, rgba(${SCRIM},.88) 100%)`),
         rule('.gh-card-text', 'position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 7px'),

@@ -99,6 +99,9 @@ describe('homeCss', () => {
     it('the recents row is display only: no pointer events, so a tap or click on a card does nothing', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
         expect(css).toMatch(/\.gh-recents\s*\{[^}]*pointer-events:\s*none\s*!important/);
+        // While the card row has focus, the selected (or Library) card gets the accent glow, its bar and a bright edge.
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide, \.gh-recents-focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\)[^}]*--gh-edge:\s*rgba\(255,255,255,\.9\)/);
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide \.gh-cap-bar, \.gh-recents-focus \.gh-cap-lib-on \.gh-cap-bar\s*\{\s*opacity:\s*1/);
         expect(css).not.toMatch(/\.gh-cap\s*\{[^}]*cursor:\s*pointer/);
     });
     it('homeCss gives ghosts no blur base and no recents-on-library variant', () => {
@@ -275,6 +278,13 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card-friends \{[^}]*position: absolute !important[^}]*right: 10px[^}]*top: 10px/);
         expect(css).toMatch(/\.gh-card-friend \{[^}]*width: 24px[^}]*border-radius: 3px/);
         expect(css).toMatch(/\.gh-card-friend-more \{[^}]*width: auto/);
+    });
+    it('news art is fitted whole: contained at the top (centred on the featured card) over a blurred cover copy', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-card-fit-blur \{[^}]*inset: -28px[^}]*background-size: cover[^}]*filter: blur\(24px\)/);
+        expect(css).toMatch(/\.gh-card-fit \{[^}]*inset: 0[^}]*background-size: contain[^}]*background-position: center top/);
+        expect(css).toMatch(/\.gh-card-featured \.gh-card-fit \{\s*background-position: center/);
+        expect(css).toMatch(/\.gh-card-fitted \.gh-card-title \{\s*-webkit-line-clamp: 2/);
     });
     it('friend card placeholder: blurred, darkened avatar backdrop, faint presence tint, accent gradient without an avatar', () => {
         const css = homeCss();

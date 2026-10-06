@@ -1,6 +1,6 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
-import { buildAccentCss, buildDownloadCss, buildThemeCss, ThemeClasses } from '../../src/styles/themeCss';
+import { buildAccentCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -187,6 +187,57 @@ describe('buildThemeCss launch overlay', () => {
         expect(buildThemeCss({ ...full, launch: {} })).toBe(buildThemeCss(full));
         const stripped = buildThemeCss(withLaunch).replace(/\n?\.ln_Container \{[^}]*\}/, '');
         expect(stripped).toBe(buildThemeCss(full));
+    });
+});
+
+describe('buildLaunchCss (while a game launches)', () => {
+    const withLaunch: ThemeClasses = {
+        ...full,
+        header: { ...full.header, TitleImageContainer: 'hd_Title', SVGTitle: 'hd_Svg' },
+        launch: { Container: 'ln_Container' },
+    };
+
+    it('hides everything with text on it: our title and cards, Steam\u2019s logo, title, Play row and tabs, never the art', () => {
+        const { overlay, hide } = launchTargets(withLaunch);
+        expect(overlay).toBe('.ln_Container');
+        expect(hide).toEqual(['.gg-titleblock', '.gg-hero', '.hd_Box', '.hd_Title', '.hd_Svg', '.ad_Overview', '.rt_Tabs']);
+        expect(hide).not.toContain('.hd_Top');
+        const css = buildLaunchCss(withLaunch);
+        expect(css).toContain(`${hide.join(', ')} { opacity: 0 !important; transition: opacity 200ms ease !important; }`);
+    });
+    it('lets more of the art through the overlay than its resting dim', () => {
+        const css = buildLaunchCss(withLaunch);
+        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; }');
+    });
+    it('hides nothing when the overlay class is unknown; Steam classes that are missing are just left out', () => {
+        expect(buildLaunchCss(full)).toBe('');
+        expect(launchTargets({ ...full, launch: {} })).toEqual({ overlay: null, hide: [] });
+        const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined, launch: { Container: 'ln_Container' } };
+        expect(launchTargets(none).hide).toEqual(['.gg-titleblock', '.gg-hero']);
+    });
+});
+
+describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
+    it('moves Unifideck\u2019s Play row onto the art where Steam\u2019s Play row sits, scoped to Unifideck\u2019s page class', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.ad_Inner\.unifideck-hide-native-play > div:has\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) \{[^}]*position: absolute !important;[^}]*top: var\(--gg-play-top\) !important;[^}]*background: transparent !important;/);
+        // Every rule is under Unifideck's marker, so no other page is touched.
+        for (const line of css.split('\n').filter((l) => l.includes('{'))) expect(line).toContain('.unifideck-hide-native-play');
+    });
+    it('makes its primary buttons our accent pill, focus included (over Unifideck\u2019s own focus colours)', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.unifideck-hide-native-play \.unifideck-install-btn[^{]*\{[^}]*width: var\(--gg-play-w\) !important;[^}]*border-radius: 999px !important;[^}]*background: var\(--gg-accent\) !important;/);
+        expect(css).toContain('.unifideck-hide-native-play .unifideck-play-btn.gpfocus');
+        expect(css).not.toContain('.unifideck-cancel-btn');
+        expect(css).not.toContain('.unifideck-stop-btn');
+    });
+    it('Spotlight Home\u2019s look adds the handoff type with dark text; without it, white text', () => {
+        expect(buildUnifideckCss(full)).not.toContain('#0b0d10');
+        expect(buildUnifideckCss(full, { restyle: true })).toMatch(/\.unifideck-hide-native-play \.unifideck-play-btn[^{]*\{[^}]*color: #0b0d10 !important;/);
+    });
+    it('nothing without the full-screen layout (the page is stacked then, Unifideck\u2019s row already in place)', () => {
+        expect(buildUnifideckCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
+        expect(buildUnifideckCss({ ...full, details: undefined })).toBe('');
     });
 });
 
