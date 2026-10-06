@@ -240,6 +240,43 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
     ].filter((r) => r.length > 0).join('\n');
 }
 
+/** The Clean look's bottom margin under the Play row (room for Steam's button legend), and the gaps around the row. */
+const CLEAN_BOTTOM = 36;
+const CLEAN_GAP = 28;
+
+/**
+ * The Game Glance page's Clean look (homeMode().cleanDetails, on top of the restyled page): the art takes the screen;
+ * the eyebrow and title sit just above one row at the bottom, which holds Steam's Play row (Play, controller, settings,
+ * cloud) at the left and our info card (.gg-clean-info: played, achievements, HLTB main) at the right; the store pill
+ * sits above the row at the right edge. The description and HowLongToBeat cards are not shown; Steam's tabs still
+ * start on the next screen. Its own stylesheet, only with the full-screen layout (the classes buildThemeCss needs for
+ * it); '' otherwise, and the page keeps its usual look.
+ */
+export function buildCleanCss({ header, details, root }: ThemeClasses): string {
+    const inner = cls(details, 'InnerContainer');
+    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
+    return [
+        // The Play row moves down to the bottom: the row (pill 60 + 36 gap, --gg-row-h) ends CLEAN_BOTTOM above the screen's
+        // bottom. Steam's tabs still start at 100vh (their margin follows --gg-play-top), so nothing else moves.
+        `:root { --gg-play-top: calc(100vh - ${d(96 + CLEAN_BOTTOM)}); }`,
+        // Our block sits on the Play row itself (not under it), clicks go through to Steam's buttons.
+        rule(`${inner} > .gg-hero`, ` top: var(--gg-play-top) !important; height: var(--gg-icon) !important; pointer-events: none; `),
+        // No description or HowLongToBeat cards in this look.
+        `.gg-cards { display: none !important; }`,
+        // The info card at the right end of the row, vertically centred on the Play pill; the glass of the other cards.
+        `.gg-clean-info { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${d(28)};
+            padding: ${d(14)} ${d(24)}; border-radius: ${d(16)}; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 16, 22, 0.38);
+            backdrop-filter: blur(${d(16)}); color: #fff; }`,
+        `.gg-clean-info > div { display: flex; flex-direction: column; gap: ${d(4)}; }`,
+        `.gg-clean-info .gg-value { font-size: ${d(22)}; line-height: 1.2; }`,
+        `.gg-clean-info .gg-bar { width: ${d(96)}; height: ${d(4)}; margin-top: ${d(2)}; }`,
+        // The store pill above the row, at its right edge.
+        `.gg-pill { top: auto; bottom: calc(100% + ${d(CLEAN_GAP - 8)}); }`,
+        // The eyebrow and title just above the row, at the left (their bottom CLEAN_GAP above the Play pill).
+        rule(`${inner} > .gg-titleblock`, ` top: calc(var(--gg-play-top) - ${d(CLEAN_GAP)}) !important; transform: translateY(-100%); `),
+    ].filter((r) => r.length > 0).join('\n');
+}
+
 /** How long the page takes to fade away under Steam's launch overlay (and back if the launch is cancelled). */
 const LAUNCH_FADE_MS = 200;
 

@@ -122,6 +122,11 @@ If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same t
 Quick Access (…) → Game Glance:
 
 - **Game Glance page:** turn it off to get Steam's own game page back.
+- **Clean look** (off by default, with the Game Glance page on): the game's art fills the screen with one row at the
+  bottom: Play, the controller, settings and cloud buttons, and a small card with your play time, achievements and
+  HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
+  description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
+  title), whether Spotlight Home is on or not.
 - **Spotlight Home**, **New to library**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**

@@ -61,7 +61,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -106,6 +106,16 @@ export function SettingsPanel() {
                 <PanelSectionRow>
                     <ToggleField label="Game Glance page" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
                 </PanelSectionRow>
+                {enabled && (
+                    <PanelSectionRow>
+                        <ToggleField
+                            label="Clean look"
+                            description="One row at the bottom: Play, your stats and the store, over the full art. No description or HowLongToBeat cards."
+                            checked={cleanPage}
+                            onChange={(value) => settings.setCleanPage(value)}
+                        />
+                    </PanelSectionRow>
+                )}
             </PanelSection>
             <PanelSection title="Spotlight Home">
                 <PanelSectionRow>
