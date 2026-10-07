@@ -14,6 +14,7 @@ import { homeMode } from '../home/mode';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
+import { useUnifideckGamepadFocus } from '../hooks/useUnifideckGamepadFocus';
 import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
 import { useUnifideckSizeLabel } from '../hooks/useUnifideckSizeLabel';
 import { useUnifideckSize } from '../hooks/useUnifideckSize';
@@ -97,6 +98,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const heroRef = useRef<HTMLDivElement>(null);
     const [pageDoc, setPageDoc] = useState<Document | null>(null);
     useEffect(() => setPageDoc(heroRef.current?.ownerDocument ?? null), [game.appId]);
+    // B and the D-pad go to Steam's gamepad focus, which can land on a hidden tab of Steam's own page on a Unifideck page (logic/gamepadFocus).
+    useUnifideckGamepadFocus(pageDoc, game.isShortcut);
     const nativeSizeLabel = useUnifideckSizeLabel(pageDoc, game.appId, uniInstalled, restyle && game.isShortcut);
     const size = restyle && typeof uniInstalled === 'boolean' ? sizeStat(unifideckSize, uniInstalled, locale, nativeSizeLabel) : null;
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
