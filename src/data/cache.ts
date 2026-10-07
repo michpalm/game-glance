@@ -5,6 +5,7 @@ export const TTL = {
     hltbFound: 3650 * DAY_MS, // kept: shown even when old, refreshed in the background after hltbRefresh
     hltbRefresh: 30 * DAY_MS,
     hltbNotFound: DAY_MS,
+    achievements: 7 * DAY_MS, // a game's achievement counts for Home's chip: shown at once after a restart, replaced when Steam answers
     description: 365 * DAY_MS, // descriptions rarely change; kept so pre-loaded ones last
     steamMatch: 365 * DAY_MS,
     steamMatchMiss: DAY_MS,

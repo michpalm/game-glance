@@ -34,6 +34,8 @@ import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
 import { memoAchievements, noteDetails } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
+import { useWarmup, useWarmVersion } from './useWarmup';
+import { forgetHltb, peekHltb, rememberHltb } from './warmup';
 import { HERO_PRELOAD_RADIUS } from './motion';
 
 export interface HomeGame extends RecentGame {
@@ -529,6 +531,8 @@ export function useHomeData(focusIndex = 0): HomeData {
     const locale = steamLanguageToLocale(knownLang ?? loadedLang ?? 'english');
 
     const detailsVersion = useAppDetailsVersion(appId);
+    // What the background warm-up has learned (HowLongToBeat, achievement counts) for the games in the row: refreshes the chips.
+    const [warmVersion, bumpWarm] = useWarmVersion();
     const gameIds = useMemo(() => games.map((g) => g.appId), [games]);
     // The selection once it has rested (SELECTION_SETTLE_MS); `resting` is the focused game when it has, null while
     // L1/R1 or Left/Right are still moving through games.
@@ -539,6 +543,16 @@ export function useHomeData(focusIndex = 0): HomeData {
     useNeighbourDetails(restNeighbours);
     useAccentWarmup(gameIds, restNeighbours);
     const overrideVersion = useOverrideVersion();
+    useWarmup(games, focusIndex, recentsSettled && games.length > 0, (id) => readGameInfo(overview(id), undefined).isShortcut, bumpWarm);
+    // A new HowLongToBeat match for a game: what was remembered for the old one is dropped.
+    const seenOverrides = useRef(overrideVersion);
+    useEffect(() => {
+        if (seenOverrides.current === overrideVersion) return;
+        seenOverrides.current = overrideVersion;
+        forgetHltb();
+        bumpWarm();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [overrideVersion]);
     const info = useMemo(
         () => (appId === null ? null : guarded('game info', () => {
             const read = readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId));
@@ -546,11 +560,16 @@ export function useHomeData(focusIndex = 0): HomeData {
             return read.achievements || read.isShortcut ? read : { ...read, achievements: memoAchievements(appId) ?? null };
         }, null)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [appId, detailsVersion],
+        [appId, detailsVersion, warmVersion],
     );
-    const hltb = useAsync(focused && info && resting !== null ? `hltb:${focused.appId}:${overrideVersion}` : null, () =>
-        lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false }),
-    );
+    // Known already (the warm-up, or an earlier visit this session): shown at once, without waiting for the selection to rest.
+    const warmedHltb = focused ? peekHltb(focused.appId) : undefined;
+    const liveHltb = useAsync(focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
+        const result = await lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false });
+        if (focused) rememberHltb(focused.appId, result);
+        return result;
+    });
+    const hltb = warmedHltb ?? liveHltb;
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );

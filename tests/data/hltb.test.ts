@@ -204,3 +204,24 @@ describe('createHltbLookup prefetch', () => {
         expect(await lookup(W3)).toMatchObject({ times: { main: 50 } });
     });
 });
+
+describe("cachedOnly (Home's background warm-up reads only what is on disk)", () => {
+    it('returns a cached result without going online, and null when nothing is cached', async () => {
+        const fetchStats = vi.fn(async () => STATS);
+        const { lookup, isReachable } = setup(fetchStats);
+        expect(await lookup.cachedOnly(W3)).toBeNull();
+        expect(fetchStats).not.toHaveBeenCalled();
+        await lookup(W3); // now cached
+        fetchStats.mockClear();
+        expect(await lookup.cachedOnly(W3)).toMatchObject({ status: 'found', gameId: 10270 });
+        expect(fetchStats).not.toHaveBeenCalled();
+        expect(isReachable).not.toHaveBeenCalled();
+    });
+    it('follows the game’s override (its own cache key)', async () => {
+        const fetchStats = vi.fn(async () => STATS);
+        const { lookup, overrides } = setup(fetchStats);
+        await lookup(W3);
+        await overrides.set(292030, 999);
+        expect(await lookup.cachedOnly(W3)).toBeNull(); // the old match is not the new one's
+    });
+});

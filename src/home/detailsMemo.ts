@@ -16,6 +16,21 @@ export const DETAILS_MEMO_MAX = 64;
 
 const memo = new Map<number, LibraryAssets>();
 const achievementMemo = new Map<number, { achieved: number; total: number }>();
+type AchievementSink = (appId: number, counts: { achieved: number; total: number }) => void;
+let sink: AchievementSink | null = null;
+
+/** Where new or changed achievement counts go to be kept across restarts (Home wires it to the plugin cache); null stops it. */
+export function setAchievementSink(next: AchievementSink | null) {
+    sink = next;
+}
+
+/** Puts counts read from the persisted cache into the memo (no write back). A fresher value already known is kept. */
+export function seedAchievements(appId: number, counts: unknown) {
+    const c = counts as { achieved?: unknown; total?: unknown } | null | undefined;
+    const total = Number(c?.total);
+    if (!Number.isInteger(appId) || appId <= 0 || achievementMemo.has(appId) || !Number.isFinite(total) || total <= 0) return;
+    achievementMemo.set(appId, { achieved: Number(c?.achieved) || 0, total });
+}
 
 /** Remembers `details.libraryAssets` for `appId`; anything without them is ignored. Never throws. */
 export function noteDetails(appId: number, details: unknown) {
@@ -41,8 +56,17 @@ function noteAchievements(appId: number, details: unknown) {
     const a = (details as { achievements?: { nTotal?: unknown; nAchieved?: unknown } } | null | undefined)?.achievements;
     const total = Number(a?.nTotal);
     if (!Number.isFinite(total) || total <= 0) return;
+    const next = { achieved: Number(a?.nAchieved) || 0, total };
+    const before = achievementMemo.get(appId);
     achievementMemo.delete(appId);
-    achievementMemo.set(appId, { achieved: Number(a?.nAchieved) || 0, total });
+    achievementMemo.set(appId, next);
+    if (!before || before.achieved !== next.achieved || before.total !== next.total) {
+        try {
+            sink?.(appId, next);
+        } catch {
+            // persisting is best effort
+        }
+    }
     while (achievementMemo.size > DETAILS_MEMO_MAX) achievementMemo.delete(achievementMemo.keys().next().value as number);
 }
 
@@ -58,6 +82,7 @@ export function memoDetails(appId: number): LibraryAssets | undefined {
 
 /** Forgets everything (tests). */
 export function resetDetailsMemo() {
+    sink = null;
     memo.clear();
     achievementMemo.clear();
 }

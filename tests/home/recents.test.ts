@@ -64,11 +64,18 @@ describe('mergeRecentSources', () => {
         expect(ids).not.toContain(300);
         expect(ids).not.toContain(301);
     });
+    it('drops the hidden games from Steam\'s own list too (a hidden game that is new to the library, or played before it was hidden)', () => {
+        const recent = [app(1, 300), app(2, 200), app(3, 100)];
+        const out = mergeRecentSources(recent, [], (id) => id === 2);
+        expect(out.map((a) => a.appid)).toEqual([1, 3]);
+        const full = Array.from({ length: 20 }, (_, i) => app(100 + i, 2000 + i));
+        expect(pickRecents(mergeRecentSources(full, [], (id) => id === 105))).toHaveLength(19); // a complete list is no excuse
+    });
     it('leaves a complete Steam list as it is', () => {
         const recent = Array.from({ length: 20 }, (_, i) => app(100 + i, 2000 + i));
         expect(mergeRecentSources(recent, [app(500, 9999)], () => false)).toBe(recent);
     });
-    it('a throwing hidden check drops that app; no library adds nothing', () => {
+    it('a throwing hidden check keeps Steam\'s own games and drops the library\'s fill-ins; no library adds nothing', () => {
         const recent = [app(1, 10)];
         expect(mergeRecentSources(recent, [app(2, 20)], () => { throw new Error('x'); })).toEqual(recent);
         expect(mergeRecentSources(recent, [], () => false)).toEqual(recent);
@@ -108,5 +115,14 @@ describe('pickHomeRecents (New to library)', () => {
         expect(addedTime({ appid: 1, display_name: '', app_type: 1, rt_purchased_time: 10, rt_recent_activity_time: 20 })).toBe(10);
         expect(addedTime({ appid: 1, display_name: '', app_type: 1, rt_recent_activity_time: 20 })).toBe(20);
         expect(addedTime({ appid: 1, display_name: '', app_type: 1 })).toBe(0);
+    });
+});
+
+describe('pickHomeRecents never shows a hidden game, new to the library or not', () => {
+    const app = (appid: number, played: number, added = 0) => ({ appid, display_name: `G${appid}`, app_type: 1, rt_last_time_played: played, rt_original_release_date: 0, rt_purchased_time: added, rt_recent_activity_time: added });
+    it('skips a hidden never-played game in Steam\'s list (it was shown as "new to library")', () => {
+        const recent = [app(1, 500), app(261570, 0, 1700000000)];
+        const games = pickHomeRecents({ recent, all: recent, isHidden: (id) => id === 261570, includeNew: true });
+        expect(games.map((g) => g.appId)).toEqual([1]);
     });
 });

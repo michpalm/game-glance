@@ -131,7 +131,13 @@ export function createHltbLookup(deps: HltbDeps) {
         return { status: result.status, fetched: true };
     }
 
-    return Object.assign(lookup, { prefetch });
+    /** The cached result only (fresh or stale), never online: null when nothing usable is cached. */
+    async function cachedOnly(game: HltbGame): Promise<HltbResult | null> {
+        const { cached } = await read(game);
+        return cached ? strip(cached) : null;
+    }
+
+    return Object.assign(lookup, { prefetch, cachedOnly });
 }
 
 async function isHltbReachable(): Promise<boolean> {

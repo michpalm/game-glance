@@ -59,22 +59,32 @@ export function pickRecents(apps: RawApp[], limit = RECENTS_LIMIT): RecentGame[]
 const DAY_SECONDS = 86400;
 const AGO_DAYS_MAX = 14;
 
+/** True for a game the user hid in Steam. `onError` is the answer when the check itself fails. */
+function hiddenApp(a: RawApp | undefined, isHidden: (appId: number) => boolean, onError: boolean): boolean {
+    if (!a) return true;
+    try {
+        return isHidden(a.appid);
+    } catch {
+        return onError;
+    }
+}
+
 /**
  * The apps to pick recents from. Steam's recent apps list comes first; when it gives fewer than `limit` played games
  * (on the Ally it gave 10, while Steam's Home shows more), the rest of the library (`all`, every app overview) fills
- * up, without hidden apps (`isHidden`) or duplicates. pickRecents then sorts by last played and keeps `limit`.
+ * up, without hidden apps (`isHidden`) or duplicates. Hidden apps are also dropped from Steam's own list. pickRecents then sorts by last played and keeps `limit`.
  */
-export function mergeRecentSources<T extends RawApp>(recent: T[], all: T[], isHidden: (appId: number) => boolean, limit = RECENTS_LIMIT): T[] {
+export function mergeRecentSources<T extends RawApp>(recentAll: T[], all: T[], isHidden: (appId: number) => boolean, limit = RECENTS_LIMIT): T[] {
+    // Steam's own recent list holds hidden games too (a hidden game that is new to the library, or one played before it was hidden).
+    // A failing check keeps Steam's own games (a broken check must not empty Home); it still refuses the library's fill-ins.
+    const visible = recentAll.filter((a) => !hiddenApp(a, isHidden, false));
+    const recent = visible.length === recentAll.length ? recentAll : visible;
     if (pickRecents(recent, limit).length >= limit) return recent;
-    const seen = new Set(recent.map((a) => a.appid));
+    const seen = new Set(recentAll.map((a) => a.appid));
     const extra = all.filter((a) => {
         if (!a || seen.has(a.appid)) return false;
         seen.add(a.appid);
-        try {
-            return !isHidden(a.appid);
-        } catch {
-            return false;
-        }
+        return !hiddenApp(a, isHidden, true);
     });
     return [...recent, ...extra];
 }
@@ -97,7 +107,7 @@ export function pickHomeRecents<T extends RawApp>({ recent, all, isHidden, inclu
     const seen = new Set(played.map((g) => g.appId));
     const fresh: RecentGame[] = [];
     for (const a of recent) {
-        if (!a || seen.has(a.appid) || !isGameOrShortcut(a) || (a.rt_last_time_played ?? 0) > 0) continue;
+        if (!a || seen.has(a.appid) || !isGameOrShortcut(a) || (a.rt_last_time_played ?? 0) > 0 || hiddenApp(a, isHidden, false)) continue;
         const addedAt = addedTime(a);
         if (addedAt <= 0) continue;
         seen.add(a.appid);
