@@ -227,6 +227,9 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // element moves as one unit and keeps its gaps.
         rule('.gh-page', `position: absolute; left: 0; right: 0; top: var(--gh-shift); height: 100%; transform: none; transition: transform ${SHEET}, opacity 300ms`),
         // Focus in the tabs or feed: the page rises 440 plus the shift, so the raised sheet keeps its place (tabs at 260, cards at 316).
+        // Clean Home: the tab strip (reachable with Down as ever) is out of sight until the sheet is raised; it fades in with the rise.
+        rule('.gh-page .gh-tabs', 'transition: opacity 300ms'),
+        rule('.gh-page.gh-page-clean:not(.gh-page-up) .gh-tabs', 'opacity: 0'),
         rule('.gh-page.gh-page-up', `transform: translateY(calc(-1 * var(--gh-raise, ${FEED_SHEET.raise}px) - var(--gh-shift)))`),
 
         // Title block (handoff: left 56, top 118 from the screen top, width 620, gap 18): title slot, eyebrow, chips, actions.

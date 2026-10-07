@@ -15,12 +15,15 @@ export interface LibraryAssets {
 export const DETAILS_MEMO_MAX = 64;
 
 const memo = new Map<number, LibraryAssets>();
+const achievementMemo = new Map<number, { achieved: number; total: number }>();
 
 /** Remembers `details.libraryAssets` for `appId`; anything without them is ignored. Never throws. */
 export function noteDetails(appId: number, details: unknown) {
     try {
+        if (!Number.isInteger(appId) || appId <= 0) return;
+        noteAchievements(appId, details);
         const assets = (details as { libraryAssets?: unknown } | null | undefined)?.libraryAssets;
-        if (!Number.isInteger(appId) || appId <= 0 || !assets || typeof assets !== 'object') return;
+        if (!assets || typeof assets !== 'object') return;
         const { strHeroImage, strHeaderImage } = assets as Record<string, unknown>;
         const kept: LibraryAssets = {};
         if (typeof strHeroImage === 'string') kept.strHeroImage = strHeroImage;
@@ -33,6 +36,21 @@ export function noteDetails(appId: number, details: unknown) {
     }
 }
 
+/** Remembers the achievement counts the callback carries (nTotal / nAchieved); Steam's store holds none for games it did not load itself. */
+function noteAchievements(appId: number, details: unknown) {
+    const a = (details as { achievements?: { nTotal?: unknown; nAchieved?: unknown } } | null | undefined)?.achievements;
+    const total = Number(a?.nTotal);
+    if (!Number.isFinite(total) || total <= 0) return;
+    achievementMemo.delete(appId);
+    achievementMemo.set(appId, { achieved: Number(a?.nAchieved) || 0, total });
+    while (achievementMemo.size > DETAILS_MEMO_MAX) achievementMemo.delete(achievementMemo.keys().next().value as number);
+}
+
+/** The remembered achievement counts for `appId` (Home's Achievements chip when Steam's store has none), or undefined. */
+export function memoAchievements(appId: number): { achieved: number; total: number } | undefined {
+    return achievementMemo.get(appId);
+}
+
 /** The remembered assets for `appId`, or undefined. */
 export function memoDetails(appId: number): LibraryAssets | undefined {
     return memo.get(appId);
@@ -41,4 +59,5 @@ export function memoDetails(appId: number): LibraryAssets | undefined {
 /** Forgets everything (tests). */
 export function resetDetailsMemo() {
     memo.clear();
+    achievementMemo.clear();
 }

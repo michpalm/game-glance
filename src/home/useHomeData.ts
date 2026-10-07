@@ -32,7 +32,7 @@ import { fillMissing } from './homeView';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
-import { noteDetails } from './detailsMemo';
+import { memoAchievements, noteDetails } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
 
@@ -519,8 +519,7 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    // With the bottom section hidden (homeFeed off) nothing for it is read, polled or fetched.
-    const { wishlistDeals, homeFeed: feed, homeNewGames } = useSettings();
+    const { wishlistDeals, homeNewGames } = useSettings();
     const { games, settled: recentsSettled } = useRecentGames(homeNewGames);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -541,7 +540,11 @@ export function useHomeData(focusIndex = 0): HomeData {
     useAccentWarmup(gameIds, restNeighbours);
     const overrideVersion = useOverrideVersion();
     const info = useMemo(
-        () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),
+        () => (appId === null ? null : guarded('game info', () => {
+            const read = readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId));
+            // Steam's store has no achievement counts for a game it did not load itself; the details callback did carry them.
+            return read.achievements || read.isShortcut ? read : { ...read, achievements: memoAchievements(appId) ?? null };
+        }, null)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [appId, detailsVersion],
     );
@@ -583,18 +586,18 @@ export function useHomeData(focusIndex = 0): HomeData {
     );
     // Read once per mount (and again if the bottom section is turned back on while Home is open).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const news = useMemo(() => (feed ? guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []) : []), [feed]);
-    const updated = useRecentlyUpdated(feed);
-    const rawFriends = useLiveFriends(feed);
+    const news = useMemo(() => guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []), []);
+    const updated = useRecentlyUpdated(true);
+    const rawFriends = useLiveFriends(true);
     const lastGames = useFriendLastGames(rawFriends);
     const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
-    const steamTrending = useSteamTrending(feed);
+    const steamTrending = useSteamTrending(true);
     const derivedTrending = useMemo(() => guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []), [rawFriends, lastGames]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
-    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, feed);
+    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, true);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);

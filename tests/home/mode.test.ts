@@ -7,7 +7,7 @@ const make = (enabled: boolean, spotlightHome: boolean, cleanPage = false): Sett
     autoPreload: true,
     spotlightHome,
     wishlistDeals: false,
-    homeFeed: true,
+    cleanHome: false,
     homeNewGames: false,
     cleanPage,
 });
