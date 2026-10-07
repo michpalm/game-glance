@@ -7,7 +7,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -22,7 +22,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
     });
 });
 
@@ -34,16 +34,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
     });
 });
 
@@ -73,23 +73,13 @@ describe('settings: wishlist deals', () => {
     });
 });
 
-describe('settings: Clean Home', () => {
-    it('Clean Home is off by default and remembers being turned on', async () => {
+describe('settings: the removed Home switches', () => {
+    it('settings saved with the old What\'s new / Clean Home switches load without them', async () => {
         const kv = memoryKv();
+        await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get().cleanHome).toBe(false);
-        await store.setCleanHome(true);
-        const reloaded = createSettingsStore(kv);
-        await reloaded.load();
-        expect(reloaded.get().cleanHome).toBe(true);
-    });
-    it('settings saved before the toggle existed (and the old feed switch) leave Clean Home off', async () => {
-        const kv = memoryKv();
-        await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true });
-        const store = createSettingsStore(kv);
-        await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeNewGames: false, cleanPage: false, homeStatusBar: true });
     });
 });
 

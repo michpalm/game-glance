@@ -6,14 +6,13 @@ export interface Settings {
     autoPreload: boolean; // pre-load game data for installed games in the background
     spotlightHome: boolean; // replace Steam's Home screen with Spotlight Home
     wishlistDeals: boolean; // look up wishlist sales on Steam's public store
-    cleanHome: boolean; // Spotlight Home's Clean Home: the What's new, Friends and Recommended tabs stay out of sight until you go down to them
     homeNewGames: boolean; // Spotlight Home's recents also show the games Steam lists as new to the library (unplayed)
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanHome: false, homeNewGames: false, cleanPage: false, homeStatusBar: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -29,7 +28,6 @@ export function createSettingsStore(kv: KvBackend) {
                 autoPreload: pick('autoPreload'),
                 spotlightHome: pick('spotlightHome'),
                 wishlistDeals: pick('wishlistDeals'),
-                cleanHome: pick('cleanHome'),
                 homeNewGames: pick('homeNewGames'),
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
@@ -54,11 +52,6 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setWishlistDeals(wishlistDeals: boolean): Promise<void> {
             current = { ...current, wishlistDeals };
-            emit();
-            await kv.set(KEY, current);
-        },
-        async setCleanHome(cleanHome: boolean): Promise<void> {
-            current = { ...current, cleanHome };
             emit();
             await kv.set(KEY, current);
         },

@@ -118,8 +118,8 @@ export function SpotlightHome() {
     // a cold start. It is applied as soon as the recents are known and before the content mounts, so Home never shows
     // the first game and then jumps. `restoring` also keeps the Play pill from claiming focus while it runs.
     const [restore] = useState(takeRestore);
-    // Clean Home: the What's new, Friends and Recommended tabs are always there (Down reaches them) but stay out of sight until focus is in them.
-    const { cleanHome, homeStatusBar } = useSettings();
+    // Home is clean: the What's new, Friends and Recommended tabs are always there (Down reaches them) but stay out of sight until focus is in them.
+    const { homeStatusBar } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -312,7 +312,7 @@ export function SpotlightHome() {
     }, [contentUp, restoring]);
 
     return (
-        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, !cleanHome)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
+        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, false)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
             <style>{css}</style>
             <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
             <div className="gh-scrim gh-scrim-dim" />
@@ -334,7 +334,7 @@ export function SpotlightHome() {
                 {/* Between Steam's top bar (52) and button legend (46); Home draws neither. */}
                 <div className="gh-safe">
                     {/* The page container: moved down by the stack shift (homeCss.stackShift); raised while focus is in the tabs or feed. */}
-                    <div className={`gh-page${sheetUp ? ' gh-page-up' : ''}${cleanHome ? ' gh-page-clean' : ''}`}>
+                    <div className={`gh-page${sheetUp ? ' gh-page-up' : ''}`}>
                         {!contentUp ? null : game ? (
                             <>
                                 <section className="gh-title-block" ref={actionsRef} onFocus={onActionsFocus} onBlur={onActionsBlur}>

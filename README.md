@@ -98,9 +98,9 @@ recents row.
 example "Última sesión" and "Tiempo de juego" in Spanish). A few have no Steam equivalent and stay in English (see
 `docs/localization.md`).
 
-**Clean Home** (off by default) takes the What's new, Friends and Recommended tabs off Home, so it shows only the selected
-game, its buttons and the recents row, with the stack sitting lower to fill the space. The tabs are still there: press down
-from the games and the sheet rises with the tabs, which fade in; going back up puts it away again.
+**Home is clean.** It shows only the selected game, its buttons and the recents row, with the stack sitting lower to fill the
+space. What's new, Friends and Recommended are not on the screen, but they are there: press down from the games and the sheet
+rises with the tabs, which fade in; going back up puts it away again.
 
 **Show wishlist deals** (off by default) adds up to six wishlist games that are on sale (the biggest discounts)
 to the Recommended tab, as a second row. To find them it sends your Steam ID to Steam's web API to read your wishlist, which must
@@ -140,7 +140,7 @@ Quick Access (…) → Game Glance:
   HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
   description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
   title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **Status bar**, **New to library**, **Clean Home** and **Show wishlist deals:** see above.
+- **Spotlight Home**, **Status bar**, **New to library**, **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**
