@@ -263,6 +263,11 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
 
 /** The Clean look's bottom margin under the Play row (room for Steam's button legend), and the gaps around the row. */
 const CLEAN_BOTTOM = 36;
+/**
+ * The least space, in CSS px, from the Play pill's bottom to the screen's bottom: Steam's button legend is a fixed ~41 px strip (measured
+ * on the Ally at 828x466 and 1500x844), so on the small handheld screen the scaled 2 x 36 would put the pill under it. Docked it is exceeded (75).
+ */
+const CLEAN_MIN_BELOW_ROW = 61;
 const CLEAN_GAP = 28;
 
 /**
@@ -279,7 +284,7 @@ export function buildCleanCss({ header, details, root }: ThemeClasses): string {
     return [
         // The Play row moves down to the bottom: the row (pill 60 + 36 gap, --gg-row-h) ends CLEAN_BOTTOM above the screen's
         // bottom. Steam's tabs still start at 100vh (their margin follows --gg-play-top), so nothing else moves.
-        `:root { --gg-play-top: calc(100vh - ${d(96 + CLEAN_BOTTOM)}); }`,
+        `:root { --gg-play-top: calc(100vh - ${d(96)} - max(${d(CLEAN_BOTTOM)}, calc(${CLEAN_MIN_BELOW_ROW}px - ${d(36)}))); }`,
         // Our block sits on the Play row itself (not under it), clicks go through to Steam's buttons.
         rule(`${inner} > .gg-hero`, ` top: var(--gg-play-top) !important; height: var(--gg-icon) !important; pointer-events: none; `),
         // No description or HowLongToBeat cards in this look.

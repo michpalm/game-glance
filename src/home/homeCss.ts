@@ -153,8 +153,9 @@ export function statusRules(): string[] {
         // dot over Steam's top-bar avatar (StatusBar sets --gh-status-right / --gh-status-cy from statusPlacement; STATUS_BAR is the fallback), above the page (the raised feed slides under it). It all fades out while
         // focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
         rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${STATUS_BAR.right}px); top: calc(var(--gh-status-cy, ${STATUS_BAR.centreY}px) - ${SOURCE_PILL.height / 2}px);
-            height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: ${PERSONA_DOT.gap}px; margin: 0; padding: 0;
-            pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
+            height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: var(--gh-status-gap, ${STATUS_BAR.gap}px); margin: 0; padding: 0;
+            pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease;
+            transform: scale(var(--gh-status-k, 1)); transform-origin: 100% 50%`),
         rule('.gh-status-dot', `flex: 0 0 auto; width: ${PERSONA_DOT.size}px; height: ${PERSONA_DOT.size}px; margin: 0; padding: 0; border-radius: 50%;
             box-shadow: 0 0 0 2px rgba(12,16,22,.55), 0 1px 4px rgba(0,0,0,.4); transition: background ${ACCENT_MS}ms`),
         ...(Object.keys(PERSONA_DOT_COLOURS) as PersonaDot[]).map((dot) => rule(`.gh-status-dot-${dot}`, `background: ${PERSONA_DOT_COLOURS[dot]}`)),

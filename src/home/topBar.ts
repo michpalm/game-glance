@@ -19,3 +19,4 @@ export function findTopBar(doc: Document, viewportWidth: number): Element | null
     }
     return null;
 }
+

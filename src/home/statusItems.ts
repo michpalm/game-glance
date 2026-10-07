@@ -203,33 +203,38 @@ export const PERSONA_DOT_COLOURS: Record<PersonaDot, string> = {
 export const PERSONA_DOT = { size: 12, gap: 10 } as const;
 
 /**
- * The fallback place of the status bar, in canvas px: the dot's right edge 32 from the screen's right edge and the bar's
- * centre line 32 down. Used only when the canvas scale is unusable (see `statusPlacement`).
+ * The fallback place of the status bar, in canvas px: the dot's right edge 32 from the screen's right edge, the bar's
+ * centre line 32 down, the usual gap to the pill. Used only when the canvas scale is unusable (see `statusPlacement`).
  */
-export const STATUS_BAR = { right: 32, centreY: 32 } as const;
+export const STATUS_BAR = { right: 32, centreY: 32, gap: 10 } as const;
 
-/** A place for the status bar, in canvas px: the dot's right edge from the screen's right edge, and the bar's centre line from its top. */
+/** A place for the status bar, in canvas px: the dot's right edge from the screen's right edge, the bar's centre line from its top, the pill-to-dot gap. */
 export interface StatusPlacement {
     right: number;
     centreY: number;
+    gap: number;
 }
 
 /**
- * Steam's top bar is 40 css px tall and draws your avatar as a 32 px square, 4 px from the top and 20 px in from the right
- * edge: its centre is 36 css px from the screen's right edge and 20 down, whatever the screen size (probed on the Ally at
- * 828x466, 1280x800, 1500x844 and 1920x1080, with the bar hidden and with focus in it). The status dot goes exactly there,
- * so the avatar takes the dot's place when focus moves up into Steam's bar. Nothing is measured: measuring the avatar's
- * image moved the bar to a wrong place on the Ally.
+ * The status bar's pill ends 52 css px from the screen's right edge and the dot is centred in that span (26 px from the
+ * edge, so as far from the pill as from the screen's edge). The bar's vertical centre is Steam's top bar's (20 css px down,
+ * whatever the screen size, probed on the Ally at 828x466, 1280x800, 1500x844 and 1920x1080).
  */
-export const STEAM_AVATAR_CENTRE = { fromRight: 36, fromTop: 20 } as const;
+export const STATUS_LAYOUT = { pillFromRight: 52, centreFromTop: 20 } as const;
 
-/** Where the status bar goes for a canvas that is drawn `canvasScale` css px per canvas px (Home's own scale). Pure. */
+/**
+ * Where the status bar goes for a canvas that is drawn `canvasScale` css px per canvas px (Home's own scale); the bar is
+ * itself enlarged by `statusScale` from its right edge, so the dot and gap are worked out at that effective scale. Pure.
+ */
 export function statusPlacement(canvasScale: number): StatusPlacement {
     if (!(canvasScale > 0) || !Number.isFinite(canvasScale)) return STATUS_BAR;
     const tenth = (n: number) => Math.round(n * 10) / 10;
+    const e = canvasScale * statusScale(canvasScale); // css px per bar px
+    const centre = STATUS_LAYOUT.pillFromRight / 2;
     return {
-        right: tenth(STEAM_AVATAR_CENTRE.fromRight / canvasScale - PERSONA_DOT.size / 2),
-        centreY: tenth(STEAM_AVATAR_CENTRE.fromTop / canvasScale),
+        right: tenth((centre - (PERSONA_DOT.size / 2) * e) / canvasScale),
+        centreY: tenth(STATUS_LAYOUT.centreFromTop / canvasScale),
+        gap: tenth(centre / e - PERSONA_DOT.size / 2),
     };
 }
 
@@ -265,4 +270,12 @@ export function personaDot(self: SelfPersona | null): PersonaDot | null {
     if (self.inGame) return 'online';
     if (!isOnlineState(self.state)) return 'off';
     return isAwayState(self.state) ? 'away' : 'online';
+}
+
+/**
+ * How much the status bar is enlarged beyond its canvas scale so it is never smaller than at the docked 1500 px layout (canvas
+ * scale about 1): on the 828 px handheld the canvas scale is .575 and the bar would be tiny next to Steam's own top bar. 1 from scale 1 up.
+ */
+export function statusScale(canvasScale: number): number {
+    return Number.isFinite(canvasScale) && canvasScale > 0 && canvasScale < 1 ? Math.round((1 / canvasScale) * 1000) / 1000 : 1;
 }

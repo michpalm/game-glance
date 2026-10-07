@@ -264,7 +264,7 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
 describe('buildCleanCss (the Clean look)', () => {
     it('moves the Play row to the bottom and puts our block on it, letting clicks through', () => {
         const css = buildCleanCss(full);
-        expect(css).toMatch(/:root \{ --gg-play-top: calc\(100vh - calc\(132 \* var\(--gg-d\)\)\); \}/);
+        expect(css).toContain(':root { --gg-play-top: calc(100vh - calc(96 * var(--gg-d)) - max(calc(36 * var(--gg-d)), calc(61px - calc(36 * var(--gg-d))))); }');
         expect(css).toMatch(/\.ad_Inner > \.gg-hero \{[^}]*top: var\(--gg-play-top\) !important;[^}]*pointer-events: none;/);
     });
     it('hides the description and HowLongToBeat cards; the info card goes right, the store pill above the row, the title just above it', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STATUS_BAR, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, statusPlacement, toBytes } from '../../src/home/statusItems';
+import { STATUS_BAR, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, statusPlacement, statusScale, toBytes } from '../../src/home/statusItems';
 
 // Minimal protobuf encoder for the fixtures (varint and length-delimited fields).
 const varint = (n: number): number[] => {
@@ -161,21 +161,35 @@ describe('your online status dot', () => {
 });
 
 describe('statusPlacement', () => {
-    // Steam's top bar draws your 32 px avatar 20 px in from the right and 4 px down: its centre is (36, 20) css px from the
-    // top-right corner at every screen size (probed on the Ally at 828x466, 1280x800, 1500x844 and 1920x1080).
-    const centreFromRightCss = (right: number, scale: number) => (right + 6) * scale; // the 12 px dot's centre, in css px
-    it('puts the dot\'s centre on the avatar\'s centre at every screen size', () => {
+    // The pill ends 52 css px from the screen's right edge; the dot is centred between it and the edge. Everything in css px
+    // below is: bar px x the effective scale (canvas scale x statusScale).
+    const effective = (scale: number) => scale * statusScale(scale);
+    it('centres the dot between the pill and the screen edge at every screen size', () => {
         for (const width of [828, 1280, 1500, 1920]) {
             const scale = width / 1440;
+            const e = effective(scale);
             const place = statusPlacement(scale);
-            expect(centreFromRightCss(place.right, scale)).toBeCloseTo(36, 1);
+            const dotRightCss = place.right * scale;
+            const dotLeftCss = dotRightCss + 12 * e;
+            const pillRightCss = dotLeftCss + place.gap * e;
+            expect(pillRightCss).toBeCloseTo(52, 0);
+            expect(dotRightCss).toBeCloseTo(pillRightCss - dotLeftCss, 0); // space right of the dot = space left of it
             expect(place.centreY * scale).toBeCloseTo(20, 1);
         }
     });
     it('gives canvas px for the handheld', () => {
-        expect(statusPlacement(0.575)).toEqual({ right: 56.6, centreY: 34.8 });
+        expect(statusPlacement(0.575)).toEqual({ right: 34.8, centreY: 34.8, gap: 20 });
     });
     it('falls back to the fixed place when the scale is unusable', () => {
         for (const bad of [0, -1, NaN, Infinity]) expect(statusPlacement(bad)).toEqual(STATUS_BAR);
+    });
+});
+
+describe('statusScale', () => {
+    it('enlarges the bar on a small screen so it is never smaller than at scale 1', () => {
+        expect(statusScale(0.575)).toBeCloseTo(1.739, 3);
+        expect(statusScale(1)).toBe(1);
+        expect(statusScale(1.0417)).toBe(1);
+        for (const bad of [0, -1, NaN, Infinity]) expect(statusScale(bad)).toBe(1);
     });
 });

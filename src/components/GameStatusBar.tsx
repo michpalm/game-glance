@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from '../home/StatusBar';
 import { statusCss } from '../home/homeCss';
 import { homeCanvas } from '../home/scale';
@@ -41,9 +41,11 @@ function useFocusInTopBar(doc: Document | null): boolean {
  * the page; the plugin's own `document` is a different window), so the page's transforms and scrolling never move it.
  */
 export function GameStatusBar() {
-    const marker = useRef<HTMLSpanElement>(null);
     const [doc, setDoc] = useState<Document | null>(null);
-    useEffect(() => setDoc(marker.current?.ownerDocument ?? null), []);
+    // A callback ref: the window is known the moment the marker is in the page, with no extra effect pass.
+    const marker = useCallback((el: HTMLSpanElement | null) => {
+        if (el) setDoc(el.ownerDocument);
+    }, []);
     const win = doc?.defaultView ?? null;
     const { width, height } = useViewport(win);
     const away = useFocusInTopBar(doc);

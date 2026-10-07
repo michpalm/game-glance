@@ -1,5 +1,6 @@
-import { CSSProperties, ReactElement, useEffect, useState, useSyncExternalStore } from 'react';
-import { BatteryView, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement } from './statusItems';
+import { CSSProperties, ReactElement, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { BatteryView, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement, statusScale } from './statusItems';
+import { COVER_CSS, useHideSteamBar } from './useHideSteamBar';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
 
 /** Steam's clock setting, else the locale's. */
@@ -110,9 +111,18 @@ export function StatusBar({ away, scale }: { away: boolean; scale: number }) {
     const self = useSelfPersona();
     const dot = personaDot(self);
     const conn = connection ? CONNECTION[connection] : null;
+    // Steam's own top bar is held hidden under ours (Steam hides it on Home itself, but forgets after sleep); the document is the one this bar is drawn in.
+    const [doc, setDoc] = useState<Document | null>(null);
+    const marker = useCallback((el: HTMLSpanElement | null) => {
+        if (el) setDoc(el.ownerDocument);
+    }, []);
+    useHideSteamBar(doc, away);
     const place = statusPlacement(scale);
-    const style = { '--gh-status-right': `${place.right}px`, '--gh-status-cy': `${place.centreY}px` } as CSSProperties;
+    const style = { '--gh-status-right': `${place.right}px`, '--gh-status-cy': `${place.centreY}px`, '--gh-status-gap': `${place.gap}px`, '--gh-status-k': String(statusScale(scale)) } as CSSProperties;
     return (
+        <>
+        <span ref={marker} style={{ display: 'none' }} />
+        <style>{COVER_CSS}</style>
         <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away} style={style}>
             <div className="gh-status-pill">
                 {conn && (
@@ -130,5 +140,6 @@ export function StatusBar({ away, scale }: { away: boolean; scale: number }) {
             </div>
             {dot && <span className={`gh-status-dot gh-status-dot-${dot}`} role="img" aria-label={DOT_LABEL[dot]} />}
         </div>
+        </>
     );
 }
