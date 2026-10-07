@@ -2,7 +2,9 @@ import type { GamepadEvent } from '@decky/ui';
 import { CSSProperties, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
-import { FEED_VIEWPORT_INSET, feedSpace } from './feedLayout';
+import { feedSpace, feedViewportInset } from './feedLayout';
+import { pillInset, rowInset, sideInset } from './insets';
+import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, gameOpenArt, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
 import { useSettings } from '../data/settings';
@@ -281,6 +283,9 @@ export function SpotlightHome() {
     // the canvas content mounts only then, so the recents row never renders at the handheld size first and then
     // slides to the docked one. The measure runs in a layout effect, so the content still mounts before the first paint.
     const measuredScale = cardScaleFor(size);
+    // The side margin: the handheld's 56, a TV's tighter 40 (insets.ts).
+    const tv = size ? isTvScreen(size.width, size.height) : false;
+    const side = sideInset(tv);
     const scale = measuredScale ?? CARD_SCALE_HANDHELD;
     const legend = legendReserve(useLegendHeight(rootRef, size), canvas.scale);
     // How much further the raised view rises so its top margin equals its bottom margin (raised.solveRaiseDelta).
@@ -312,7 +317,7 @@ export function SpotlightHome() {
     }, [contentUp, restoring]);
 
     return (
-        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, false)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
+        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, false)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
             <style>{css}</style>
             <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
             <div className="gh-scrim gh-scrim-dim" />
@@ -330,7 +335,7 @@ export function SpotlightHome() {
             >
                 {/* In Steam's top strip, above the safe area: clock, battery, connection and your online status. */}
                 {/* The status bar is drawn above Steam's menu layers, outside this root (components/GameStatusBar): the menus blur everything under them. */}
-                {homeStatusBar && contentUp && <GameStatusBar />}
+                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} />}
                 {/* Between Steam's top bar (52) and button legend (46); Home draws neither. */}
                 <div className="gh-safe">
                     {/* The page container: moved down by the stack shift (homeCss.stackShift); raised while focus is in the tabs or feed. */}
@@ -360,7 +365,7 @@ export function SpotlightHome() {
                                 <FeedSheet
                                         data={data}
                                         raised={sheetUp}
-                                        viewport={canvas.logicalWidth - FEED_VIEWPORT_INSET}
+                                        viewport={canvas.logicalWidth - feedViewportInset(side, tv)}
                                         space={feedSpace(logicalHeight, legend, raiseDelta)}
                                         onZone={setZone}
                                         onBackToGames={focusGames}

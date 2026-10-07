@@ -373,6 +373,9 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
         // so the cloud icon's position (counted from --gg-side) stays right.
         playSection ? `:root { --gg-side: ${d(56)}; }` : '',
+        // A TV (screenScale.isTvScreen: 1.7x the handheld's 828x466 or more: 1408 x 793) takes the status dot's centre line (1.7vw, 24 canvas px) instead of 3.9vw:
+        // 56 read too far from the edge on a big screen. The handheld and the Deck keep 56. (Home does the same: home/insets.)
+        playSection ? `@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-side: ${d(24)}; } }` : '',
         rule(playSection, ` padding-left: var(--gg-side) !important; padding-right: var(--gg-side) !important; `),
 
         // Handoff sizes (Play pill 340x60, 60px circles, gap 14), scaled like Home's. They feed the 1.1.1 rules

@@ -7,14 +7,20 @@ import type { RecommendedCard } from './playNext';
 import type { DealCard } from './recommended';
 import type { UpdatedCard } from './recentlyUpdated';
 import type { TrendingCard } from './trending';
+import { rowInset } from './insets';
 import { tr } from '../i18n/steamText';
 
 export type FeedTab = 'news' | 'friends' | 'recommended';
 
 /** Gap between cards. */
 export const FEED_GAP = 14;
-/** The row's visible width is the canvas width minus 44 px on each side. */
+/** The row's visible width is the canvas width minus 44 px on each side (the handheld's; `feedViewportInset` for the real side inset). */
 export const FEED_VIEWPORT_INSET = 88;
+
+/** The canvas width the feed row does not use, for a side inset (insets.rowInset on each side): 88 on the handheld's 56. */
+export function feedViewportInset(side: number, tv = false): number {
+    return 2 * rowInset(side, tv);
+}
 /** Card height; the recommended card is portrait at 0.72 of it. */
 export const FEED_CARD_H = 260;
 

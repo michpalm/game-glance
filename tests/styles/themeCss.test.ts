@@ -531,8 +531,18 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.gg-pill-icon')).toContain(sourcePillIcon((n) => `calc(${n} * var(--gg-d))`));
     });
     it('uses no fixed pixel sizes except hairline borders', () => {
-        const fixed = [...restyled.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999'].includes(n));
+        // (A media query's viewport thresholds are conditions, not sizes.)
+        const sizes = restyled.replace(/@media[^{]*\{/g, '{');
+        const fixed = [...sizes.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999'].includes(n));
         expect(fixed).toEqual([]);
+    });
+    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck keep 56', () => {
+        expect(restyled).toMatch(/:root \{ --gg-side: calc\(56 \* var\(--gg-d\)\); \}/);
+        expect(restyled).toMatch(/@media \(min-width: 1408px\) and \(min-height: 793px\) \{ :root \{ --gg-side: calc\(24 \* var\(--gg-d\)\); \} \}/);
+        // the media query comes after the default, so on a TV it wins; the thresholds are screenScale's 1.7x the handheld's 828x466
+        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(56 * var(--gg-d))'));
+        expect(Math.ceil(828 * 1.7)).toBe(1408);
+        expect(Math.ceil(466 * 1.7)).toBe(793);
     });
     it('restyle rules do nothing when their Steam classes are missing and never touch layout', () => {
         const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length);

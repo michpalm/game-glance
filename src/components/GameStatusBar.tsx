@@ -66,8 +66,9 @@ const STATUS_Z = 5000;
  * The Spotlight Home status bar on Home and on the game page: the same component, CSS and canvas scale, drawn in a fixed layer over
  * Steam's top strip. It is a portal on the body of the window the page is shown in (found from a marker element placed in
  * the page; the plugin's own `document` is a different window), so the page's transforms and scrolling never move it.
+ * `hidden` fades only our bar (Steam's stays covered), for when the page itself runs up under the bar (Home's feed sheet).
  */
-export function GameStatusBar() {
+export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
     const [doc, setDoc] = useState<Document | null>(null);
     // A callback ref: the window is known the moment the marker is in the page, with no extra effect pass.
     const marker = useCallback((el: HTMLSpanElement | null) => {
@@ -87,7 +88,7 @@ export function GameStatusBar() {
                 createPortal(
                     <div
                         className="gg-status-host"
-                        style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none' }}
+                        style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none', opacity: hidden ? 0 : 1, transition: 'opacity 200ms' }}
                     >
                         <style>{statusCss()}</style>
                         <StatusBar away={away} scale={canvas.scale} />

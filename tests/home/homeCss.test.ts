@@ -86,7 +86,7 @@ describe('homeCss', () => {
         // Action row 379.4..433.4 -> centre 406.4; pill 32 tall -> top 390.4.
         expect(sourcePillTop()).toBeCloseTo(390.4, 5);
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
-        expect(pill).toMatch(/right:\s*56px\s*!important/);
+        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
         expect(pill).toMatch(/border-radius:\s*999px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
