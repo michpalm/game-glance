@@ -36,7 +36,34 @@ function useFocusInTopBar(doc: Document | null): boolean {
 }
 
 /**
- * The Spotlight Home status bar on the game page: the same component, CSS and canvas scale, drawn in a fixed layer over
+ * True while the page's window does not have focus: Steam's menus (main menu, Quick Access) are separate windows, so one being
+ * open takes the focus from the page. Steam's own top bar then shows (sharp over the menu's blur) and ours steps aside. Window
+ * focus events are followed by a slow check, since focus can move between windows without one.
+ */
+function useWindowUnfocused(doc: Document | null): boolean {
+    const [unfocused, setUnfocused] = useState(false);
+    useEffect(() => {
+        if (!doc) return undefined;
+        const win = doc.defaultView;
+        const update = () => setUnfocused(!doc.hasFocus());
+        update();
+        win?.addEventListener('focus', update);
+        win?.addEventListener('blur', update);
+        const timer = setInterval(update, 500);
+        return () => {
+            win?.removeEventListener('focus', update);
+            win?.removeEventListener('blur', update);
+            clearInterval(timer);
+        };
+    }, [doc]);
+    return unfocused;
+}
+
+/** Above Steam's menu layers (full-screen blurs at 3900), so an open menu does not blur the bar, and below Steam's own top bar (6000). */
+const STATUS_Z = 5000;
+
+/**
+ * The Spotlight Home status bar on Home and on the game page: the same component, CSS and canvas scale, drawn in a fixed layer over
  * Steam's top strip. It is a portal on the body of the window the page is shown in (found from a marker element placed in
  * the page; the plugin's own `document` is a different window), so the page's transforms and scrolling never move it.
  */
@@ -48,7 +75,10 @@ export function GameStatusBar() {
     }, []);
     const win = doc?.defaultView ?? null;
     const { width, height } = useViewport(win);
-    const away = useFocusInTopBar(doc);
+    // Away (ours fades, Steam's top bar shows): focus is in Steam's top bar, or a menu is open over the page.
+    const focusInBar = useFocusInTopBar(doc);
+    const menuOpen = useWindowUnfocused(doc);
+    const away = focusInBar || menuOpen;
     const canvas = homeCanvas(width, height);
     return (
         <>
@@ -57,7 +87,7 @@ export function GameStatusBar() {
                 createPortal(
                     <div
                         className="gg-status-host"
-                        style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: 5, pointerEvents: 'none' }}
+                        style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none' }}
                     >
                         <style>{statusCss()}</style>
                         <StatusBar away={away} scale={canvas.scale} />

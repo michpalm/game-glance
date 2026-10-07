@@ -17,7 +17,7 @@ import { FEED_SHEET, homeCss, stackShift } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { SourcePill } from '../components/SourcePill';
-import { StatusBar } from './StatusBar';
+import { GameStatusBar } from '../components/GameStatusBar';
 import { RecentsRow } from './RecentsRow';
 import { CARD_SCALE_HANDHELD, cardScaleFor, clampFocus, isLibraryFocus, recentsGeometry } from './recentsLayout';
 import { homeCanvas } from './scale';
@@ -270,19 +270,6 @@ export function SpotlightHome() {
         const recent = recentRefFor(focusIndex, gameIds);
         noteHome(recent ? { zone, recent } : { zone });
     }, [resolved, zone, focusIndex, gameIds]);
-    // Focus in Steam's own top bar (Up from the action row): the status bar fades out so the two never overlap, and fades
-    // back in when focus returns to Home. Only a focus move to a known element outside Home counts as leaving: a blur
-    // with no new target (Quick Access, another window) keeps it.
-    const [focusAway, setFocusAway] = useState(false);
-    const onRootFocus = () => setFocusAway(false);
-    const onRootBlur = (event: { relatedTarget: EventTarget | null }) => {
-        try {
-            const next = event.relatedTarget as Node | null;
-            if (next && !rootRef.current?.contains(next)) setFocusAway(true);
-        } catch {
-            // keep it as it is
-        }
-    };
     const size = useBoxSize(rootRef);
     const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0);
     // Width is the authored one; height follows the real screen so the reserved bars sit on Steam's bars, and the
@@ -325,7 +312,7 @@ export function SpotlightHome() {
     }, [contentUp, restoring]);
 
     return (
-        <div ref={rootRef} className="gh-root" onFocus={onRootFocus} onBlur={onRootBlur} style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, !cleanHome)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
+        <div ref={rootRef} className="gh-root" style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, !cleanHome)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
             <style>{css}</style>
             <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
             <div className="gh-scrim gh-scrim-dim" />
@@ -342,7 +329,8 @@ export function SpotlightHome() {
                 }}
             >
                 {/* In Steam's top strip, above the safe area: clock, battery, connection and your online status. */}
-                {homeStatusBar && contentUp && <StatusBar away={focusAway} scale={canvas.scale} />}
+                {/* The status bar is drawn above Steam's menu layers, outside this root (components/GameStatusBar): the menus blur everything under them. */}
+                {homeStatusBar && contentUp && <GameStatusBar />}
                 {/* Between Steam's top bar (52) and button legend (46); Home draws neither. */}
                 <div className="gh-safe">
                     {/* The page container: moved down by the stack shift (homeCss.stackShift); raised while focus is in the tabs or feed. */}
