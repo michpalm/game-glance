@@ -1,4 +1,5 @@
 import { stopDownloads } from './home/downloadStore';
+import { stopStatus } from './home/statusStore';
 import { definePlugin } from '@decky/api';
 import { staticClasses } from '@decky/ui';
 import { FaGamepad } from 'react-icons/fa';
@@ -32,6 +33,7 @@ export default definePlugin(() => {
                 ['auto preload stop', stopAutoPreload],
                 ['update checks stop', stopUpdateChecks],
                 ['downloads stop', stopDownloads],
+                ['status bar stop', stopStatus],
             ];
             for (const [what, step] of steps) {
                 try {

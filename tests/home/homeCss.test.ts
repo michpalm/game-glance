@@ -96,6 +96,25 @@ describe('homeCss', () => {
         // The old icon-only chip badge is gone; the chip row keeps its fixed height.
         expect(css).not.toMatch(/\.gh-source\s*\{[^}]*var\(--gh-r-card\)/);
     });
+    it('the status bar sits in Steam\'s top strip, right-aligned with the store pill, in the same glass pill', () => {
+        const css = homeCss();
+        const bar = css.match(/\.gh-status\s*\{[^}]*\}/)?.[0] ?? '';
+        // Placed by StatusBar from the canvas scale (the dot over Steam's avatar), with the fixed place as the fallback.
+        expect(bar).toMatch(/right:\s*var\(--gh-status-right,\s*32px\)\s*!important/);
+        expect(bar).toMatch(/top:\s*calc\(var\(--gh-status-cy,\s*32px\) - 16px\)\s*!important/);
+        expect(bar).toMatch(/height:\s*32px/);
+        expect(bar).toMatch(/pointer-events:\s*none/);
+        expect(bar).toMatch(/transition:\s*opacity 150ms/);
+        expect(css).toMatch(/\.gh-status\.gh-status-away\s*\{[^}]*opacity:\s*0/);
+        const pill = css.match(/\.gh-status-pill\s*\{[^}]*\}/)?.[0] ?? '';
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(css).toMatch(/\.gh-status-low\s*\{[^}]*color:\s*#ff8585/);
+        // The status dot: the Friends tab's green and blue, grey when invisible or offline.
+        expect(css).toMatch(/\.gh-status-dot\s*\{[^}]*width:\s*12px[^}]*border-radius:\s*50%/);
+        expect(css).toMatch(/\.gh-status-dot-online\s*\{[^}]*background:\s*#8cd61d/);
+        expect(css).toMatch(/\.gh-status-dot-away\s*\{[^}]*background:\s*#4cb4ff/);
+        expect(css).toMatch(/\.gh-status-dot-off\s*\{[^}]*background:\s*rgba\(196,201,209,\.85\)/);
+    });
     it('the recents row is display only: no pointer events, so a tap or click on a card does nothing', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
         expect(css).toMatch(/\.gh-recents\s*\{[^}]*pointer-events:\s*none\s*!important/);
