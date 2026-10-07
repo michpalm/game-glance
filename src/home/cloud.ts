@@ -5,6 +5,7 @@
  * `eCloudStatus`; A acts only on a problem: a file conflict opens Steam's conflict dialog, "out of sync"/"unable to
  * sync" open its retry dialog, "pending elsewhere" does nothing. Pure.
  */
+import { PhraseKey, tr } from '../i18n/steamText';
 
 /** Steam's cloud status values (appDetails.eCloudStatus), with the game page's words. */
 export const CLOUD_STATUS = {
@@ -46,15 +47,15 @@ const S = CLOUD_STATUS;
 const PROBLEM: number[] = [S.outOfSync, S.syncFailed, S.conflict, S.pendingElsewhere];
 const BUSY: number[] = [S.checking, S.uploading, S.downloading];
 
-const WORDS: Record<number, string> = {
-    [S.synchronized]: 'synced',
-    [S.checking]: 'checking',
-    [S.uploading]: 'uploading',
-    [S.downloading]: 'downloading',
-    [S.outOfSync]: 'out of sync',
-    [S.syncFailed]: 'unable to sync',
-    [S.conflict]: 'file conflict',
-    [S.pendingElsewhere]: 'out of sync on another device',
+const WORDS: Record<number, PhraseKey> = {
+    [S.synchronized]: 'cloudSynced',
+    [S.checking]: 'cloudChecking',
+    [S.uploading]: 'cloudUploading',
+    [S.downloading]: 'cloudDownloading',
+    [S.outOfSync]: 'cloudOutOfSync',
+    [S.syncFailed]: 'cloudSyncFailed',
+    [S.conflict]: 'cloudConflict',
+    [S.pendingElsewhere]: 'cloudPendingElsewhere',
 };
 
 /**
@@ -70,8 +71,13 @@ export function cloudState(details: CloudDetails | null | undefined, app: 'game'
     const action: CloudAction = status === S.conflict ? 'conflict' : status === S.pendingElsewhere || !PROBLEM.includes(status) ? 'none' : 'retry';
     const tone: CloudTone = offline ? 'off' : status === S.synchronized ? 'ok' : BUSY.includes(status) ? 'busy' : PROBLEM.includes(status) ? 'bad' : 'off';
     const pct = typeof details.nCloudProgressPercent === 'number' && Number.isFinite(details.nCloudProgressPercent) ? Math.round(details.nCloudProgressPercent) : null;
-    const words = offline ? 'offline' : WORDS[status] ?? 'unknown';
-    const label = `Steam Cloud: ${words}${(status === S.uploading || status === S.downloading) && pct !== null && pct > 0 ? ` ${pct}%` : ''}`;
+    const transferring = (status === S.uploading || status === S.downloading) && pct !== null && pct > 0;
+    const words = offline
+        ? tr('cloudOffline')
+        : transferring
+          ? tr(status === S.uploading ? 'cloudUploadingPct' : 'cloudDownloadingPct', [pct as number])
+          : tr(WORDS[status] ?? 'cloudUnknown');
+    const label = `${tr('steamCloud')}: ${words}`;
     return { status, tone, icon, action, label };
 }
 

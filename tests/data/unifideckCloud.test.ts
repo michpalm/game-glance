@@ -6,12 +6,12 @@ const base = { supported: true, in_progress: false, cloud_supported: null, save_
 
 describe('unifideckCloudState (Unifideck’s own button logic)', () => {
     it('local and cloud within 2 s: in sync, green', () => {
-        expect(unifideckCloudState(base)).toMatchObject({ tone: 'ok', icon: { uploaded: true }, action: 'none', label: 'Cloud saves: in sync' });
+        expect(unifideckCloudState(base)).toMatchObject({ tone: 'ok', icon: { uploaded: true }, action: 'none', label: 'Cloud saves: synced' });
     });
     it('a save that differs by more than 2 s, a cloud-only save, or a local-only save: busy tone with the save icon', () => {
         expect(unifideckCloudState({ ...base, remote_snapshot: { timestamp: 1010 } })).toMatchObject({ tone: 'busy', icon: { save: true } });
-        expect(unifideckCloudState({ ...base, has_local_saves: false })?.label).toBe('Cloud saves: a newer save is available');
-        expect(unifideckCloudState({ ...base, has_cloud_saves: false, remote_snapshot: null })?.label).toBe('Cloud saves: not uploaded yet');
+        expect(unifideckCloudState({ ...base, has_local_saves: false })?.label).toBe('Cloud saves: out of sync');
+        expect(unifideckCloudState({ ...base, has_cloud_saves: false, remote_snapshot: null })?.label).toBe('Cloud saves: out of sync');
     });
     it('syncing wins; an unresolved save folder is flagged; nothing saved yet is neutral', () => {
         expect(unifideckCloudState({ ...base, in_progress: true })?.label).toBe('Cloud saves: syncing');

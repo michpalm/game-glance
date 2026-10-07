@@ -1,4 +1,5 @@
 import { LOG_PREFIX } from '../constants';
+import { tr } from '../i18n/steamText';
 
 /**
  * "Recently updated" games for the What's new tab's second row. Primary source (C18): Steam's own list behind stock
@@ -74,9 +75,10 @@ export function completedLabel(rt: number, now: number, locale = 'en-US', timeZo
     const day = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
     const today = day(new Date(now));
     const yesterday = day(new Date(now - DAY * 1000));
-    if (day(when) === today) return `Updated Today at ${new Intl.DateTimeFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(when)}`;
-    if (day(when) === yesterday) return 'Updated Yesterday';
-    return `Updated ${new Intl.DateTimeFormat(locale, { timeZone, weekday: 'short', month: 'short', day: 'numeric' }).format(when)}`;
+    const time = new Intl.DateTimeFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(when);
+    if (day(when) === today) return tr('updated', [tr('todayAt', [time])]);
+    if (day(when) === yesterday) return tr('updated', [tr('yesterday')]);
+    return tr('updated', [new Intl.DateTimeFormat(locale, { timeZone, weekday: 'short', month: 'short', day: 'numeric' }).format(when)]);
 }
 
 /**

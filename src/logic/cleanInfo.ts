@@ -1,6 +1,7 @@
 import type { HltbResult } from '../data/hltb';
 import { formatHours, minutesToHours } from './format';
 import type { SizeStat } from './sizeStat';
+import { tr } from '../i18n/steamText';
 
 /** One item of the Clean look's info card: a label, its value and, for a goal, how far along (0..1). */
 export interface CleanStat {
@@ -24,10 +25,10 @@ export function cleanStats(
     const played = minutesToHours(game.playedMinutes);
     const stats: CleanStat[] = [];
     if (size) stats.push(size); // a Unifideck game's install or download size, ahead of Played
-    stats.push({ key: 'played', label: 'Played', value: formatHours(played, locale) });
+    stats.push({ key: 'played', label: tr('played'), value: formatHours(played, locale) });
     const a = game.achievements;
     if (a && a.total > 0) {
-        stats.push({ key: 'achievements', label: 'Achievements', value: `${a.achieved} / ${a.total}`, progress: Math.min(1, Math.max(0, a.achieved / a.total)) });
+        stats.push({ key: 'achievements', label: tr('achievements'), value: `${a.achieved} / ${a.total}`, progress: Math.min(1, Math.max(0, a.achieved / a.total)) });
     }
     if (hltb === undefined) {
         stats.push({ key: 'hltb', label: 'HLTB main', value: '…' });

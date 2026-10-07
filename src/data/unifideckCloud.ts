@@ -1,4 +1,5 @@
 import { LOG_PREFIX } from '../constants';
+import { PhraseKey, tr } from '../i18n/steamText';
 import type { CloudState } from '../home/cloud';
 import { PlaytimeDeps, unifideckKeyFor, UnifideckKey } from './unifideckPlaytime';
 
@@ -20,6 +21,9 @@ export interface UnifideckCloudStatus {
     remote_snapshot?: { timestamp?: unknown } | null;
 }
 
+/** "Cloud saves: {status}" in Steam's words (the states map onto Steam's own cloud status words). */
+const cloudLabel = (status: PhraseKey): string => `${tr('cloudSaves')}: ${tr(status)}`;
+
 /** Unifideck treats local and cloud as in sync within this many seconds (the store keeps whole seconds). */
 export const TS_SYNC_TOLERANCE_S = 2;
 
@@ -32,15 +36,15 @@ const ts = (s: { timestamp?: unknown } | null | undefined): number => (typeof s?
 export function unifideckCloudState(status: UnifideckCloudStatus | null | undefined): CloudState | null {
     if (!status || status.supported !== true || status.cloud_supported === false) return null;
     const base = { status: 0, action: 'none' as const };
-    if (status.in_progress === true) return { ...base, tone: 'busy', icon: { save: true }, label: 'Cloud saves: syncing' };
-    if (status.save_path_resolved !== true) return { ...base, tone: 'bad', icon: { error: true }, label: 'Cloud saves: save folder not found' };
+    if (status.in_progress === true) return { ...base, tone: 'busy', icon: { save: true }, label: tr('cloudSyncing') };
+    if (status.save_path_resolved !== true) return { ...base, tone: 'bad', icon: { error: true }, label: cloudLabel('cloudSyncFailed') };
     const hasLocal = status.has_local_saves === true;
     const hasCloud = status.has_cloud_saves === true || !!status.remote_snapshot;
     const apart = hasCloud && hasLocal && ts(status.local_snapshot) > 0 && ts(status.remote_snapshot) > 0 && Math.abs(ts(status.local_snapshot) - ts(status.remote_snapshot)) > TS_SYNC_TOLERANCE_S;
-    if ((hasCloud && !hasLocal) || apart) return { ...base, tone: 'busy', icon: { save: true }, label: 'Cloud saves: a newer save is available' };
-    if (!hasCloud && hasLocal) return { ...base, tone: 'busy', icon: { save: true }, label: 'Cloud saves: not uploaded yet' };
-    if (hasCloud && hasLocal) return { ...base, tone: 'ok', icon: { uploaded: true }, label: 'Cloud saves: in sync' };
-    return { ...base, tone: 'off', icon: {}, label: 'Cloud saves: nothing saved yet' };
+    if ((hasCloud && !hasLocal) || apart) return { ...base, tone: 'busy', icon: { save: true }, label: cloudLabel('cloudOutOfSync') };
+    if (!hasCloud && hasLocal) return { ...base, tone: 'busy', icon: { save: true }, label: cloudLabel('cloudOutOfSync') };
+    if (hasCloud && hasLocal) return { ...base, tone: 'ok', icon: { uploaded: true }, label: cloudLabel('cloudSynced') };
+    return { ...base, tone: 'off', icon: {}, label: cloudLabel('cloudUnknown') };
 }
 
 /** The usable status of Unifideck's reply; null for a failure or garbage. */

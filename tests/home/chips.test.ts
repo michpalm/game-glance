@@ -11,9 +11,9 @@ describe('gameChips', () => {
         expect(chips[0].value).toBe('10 h');
         expect(chips[2].value).toBe('Today');
     });
-    it('a game new to the library: Added (when) instead of Played and Last played', () => {
+    it('a game new to the library: Added to library (when) instead of Played and Last played', () => {
         const chips = gameChips({ ...base, playedMinutes: 0, lastPlayed: 0, addedAt: NOW }, NOW, 'en-US');
-        expect(chips.map((c) => c.label)).toEqual(['Added', 'Achievements', 'HLTB main']);
+        expect(chips.map((c) => c.label)).toEqual(['Added to library', 'Achievements', 'HLTB main']);
         expect(chips[0].value).toBe('Today');
     });
     it('achievements chip has progress achieved/total', () => {

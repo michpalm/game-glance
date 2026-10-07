@@ -34,8 +34,7 @@ export function joinUrl(f: Pick<RawFriend, 'steamId' | 'gameAppId' | 'stateFlags
     return `steam://rungame/${app}/${f.steamId}${connect ? `/${encodeURIComponent(connect)}` : ''}`;
 }
 
-/** The confirm question: "Join Alex in Halo?" ("Join Alex's game?" without a game name). */
+/** The confirm text under Steam's own "Join game" title and Join / Cancel buttons: just who and what, "Alex · Halo" (no sentence to translate). */
 export function joinQuestion(name: string, game: string): string {
-    const who = name.trim() || 'your friend';
-    return game.trim() ? `Join ${who} in ${game.trim()}?` : `Join ${who}'s game?`;
+    return [name.trim(), game.trim()].filter(Boolean).join(' · ');
 }

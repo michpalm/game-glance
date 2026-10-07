@@ -6,7 +6,7 @@ import { writeFileSync } from 'node:fs';
 const base = process.env.CEF_URL ?? 'http://127.0.0.1:18080';
 const out = process.argv[2] ?? 'shot.png';
 const targets = await (await fetch(`${base}/json`)).json();
-const target = targets.find((t) => /Big Picture/i.test(String(t.title)));
+const target = targets.find((t) => /Big.Picture/i.test(String(t.title)));
 if (!target) {
     console.error('Targets:', targets.map((t) => t.title));
     process.exit(1);

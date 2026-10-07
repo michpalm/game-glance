@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
@@ -15,6 +15,7 @@ import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
 import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
+import { useUnifideckSizeLabel } from '../hooks/useUnifideckSizeLabel';
 import { useUnifideckSize } from '../hooks/useUnifideckSize';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
 import { steamLanguageToLocale } from '../logic/format';
@@ -30,6 +31,7 @@ import { UnifideckRowNav } from './UnifideckRowNav';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
 import { SourcePill } from './SourcePill';
+import { tr } from '../i18n/steamText';
 
 interface Props {
     overview: unknown;
@@ -55,7 +57,7 @@ function lastPlayedEyebrow(overview: unknown, locale: string, unifideckLastPlaye
         const steamSeconds = Number((overview as { rt_last_time_played?: unknown } | null)?.rt_last_time_played ?? 0);
         const seconds = mergePlaytime({ minutes: 0, lastPlayed: Number.isFinite(steamSeconds) ? steamSeconds : 0 }, { playedSeconds: null, lastPlayed: unifideckLastPlayed }).lastPlayed;
         if (!Number.isFinite(seconds) || seconds <= 0) return null;
-        return `Last played · ${formatLastPlayed(seconds, Math.floor(Date.now() / 1000), locale)}`;
+        return `${tr('lastPlayed')} · ${formatLastPlayed(seconds, Math.floor(Date.now() / 1000), locale)}`;
     } catch (error) {
         console.warn(`${LOG_PREFIX} could not read last played`, error);
         return null;
@@ -91,11 +93,15 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Unifideck's own record says whether it is installed (Steam reads a shortcut as installed whatever Unifideck says); no size until it answers.
     const uniInstalled = useUnifideckInstalled(game.appId, restyle && game.isShortcut);
     const unifideckSize = useUnifideckSize(game.appId, game.isShortcut && typeof uniInstalled === 'boolean', uniInstalled === true, restyle);
-    const size = restyle && typeof uniInstalled === 'boolean' ? sizeStat(unifideckSize, uniInstalled, locale) : null;
+    // Unifideck's own word for the size item, read from its hidden row in this page (its plugin does the translating).
+    const heroRef = useRef<HTMLDivElement>(null);
+    const [pageDoc, setPageDoc] = useState<Document | null>(null);
+    useEffect(() => setPageDoc(heroRef.current?.ownerDocument ?? null), [game.appId]);
+    const nativeSizeLabel = useUnifideckSizeLabel(pageDoc, game.appId, uniInstalled, restyle && game.isShortcut);
+    const size = restyle && typeof uniInstalled === 'boolean' ? sizeStat(unifideckSize, uniInstalled, locale, nativeSizeLabel) : null;
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
     // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone; after
     // Play on Home (data/launchIntent) the page starts that way, so it never shows before the launch screen.
-    const heroRef = useRef<HTMLDivElement>(null);
     const { overlay, hide } = launchSelectors();
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
 

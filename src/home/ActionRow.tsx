@@ -13,6 +13,7 @@ import { gameOpenArt, openGame, openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
 import type { HomeGame } from './useHomeData';
+import { pillWord, tr } from '../i18n/steamText';
 
 type AppsApi = {
     RunGame?(gameId: string, launchOptions: string, param: number, launchSource: number): void;
@@ -155,9 +156,9 @@ function backHandler(onBack: (() => void) | undefined) {
 export function LibraryActionRow({ preferred }: { preferred?: boolean }) {
     return (
         <Focusable className="gh-actions" flow-children="row">
-            <ActionButton className="gh-btn-library" label="Open Library" onPress={openLibrary} preferredFocus={preferred}>
+            <ActionButton className="gh-btn-library" label={tr('library')} onPress={openLibrary} preferredFocus={preferred}>
                 <span className="gh-btn-icon"><IoGrid /></span>
-                <span>Open Library</span>
+                <span>{tr('library')}</span>
             </ActionButton>
         </Focusable>
     );
@@ -196,9 +197,9 @@ export function ActionRow({ game, running = false, download = null, preferred, b
     if (!game) {
         return (
             <Focusable {...row}>
-                <ActionButton key="primary" className="gh-btn-library" label="Open Library" onPress={openLibrary} preferredFocus={preferred}>
+                <ActionButton key="primary" className="gh-btn-library" label={tr('library')} onPress={openLibrary} preferredFocus={preferred}>
                     <span className="gh-btn-icon"><IoGrid /></span>
-                    <span>Open Library</span>
+                    <span>{tr('library')}</span>
                 </ActionButton>
             </Focusable>
         );
@@ -232,7 +233,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             <ActionButton
                 key="primary"
                 className={`gh-btn-play${fill === null ? '' : ' gh-btn-dl'}`}
-                label={steamPill?.label ?? play.label}
+                label={pillWord(steamPill?.label ?? play.label)}
                 fill={fill}
                 preferredFocus={preferred}
                 onPress={(el) => {
@@ -257,11 +258,11 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                 }}
             >
                 <span className="gh-btn-icon">{steamPill ? steamPill.icon : play.label === 'Pause' ? <IoPause /> : play.label === 'Download' || play.label === 'Update' ? <IoDownload /> : <IoPlay />}</span>
-                <span className="gh-btn-label">{steamPill?.label ?? play.label}</span>
+                <span className="gh-btn-label">{pillWord(steamPill?.label ?? play.label)}</span>
             </ActionButton>
             <ActionButton
                 className="gh-btn-circle"
-                label="Controller settings"
+                label={tr('controllerSettings')}
                 onPress={() => steamOr('controller settings', appId, (api) => {
                     if (!api.ShowControllerConfigurator) return false;
                     api.ShowControllerConfigurator(appId);
@@ -270,12 +271,12 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             >
                 <span className="gh-btn-icon"><IoGameControllerOutline /></span>
             </ActionButton>
-            <ActionButton className="gh-btn-circle" label="Manage" setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
+            <ActionButton className="gh-btn-circle" label={tr('manage')} setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
                 <span className="gh-btn-icon"><IoSettingsOutline /></span>
             </ActionButton>
             <ActionButton
                 className="gh-btn-circle"
-                label="Game details"
+                label={tr('gameDetails')}
                 onPress={(el) => openGame(appId, focusedCapsule(el) ?? el, gameOpenArt(appId))}
             >
                 <span className="gh-btn-icon"><IoInformationCircleOutline /></span>

@@ -1,4 +1,5 @@
 import type { LastGames, RawFriend } from './friends';
+import { tr } from '../i18n/steamText';
 
 /**
  * "Trending among friends" for the Friends tab's second row. Primary source: Steam's own list, the one stock Home's
@@ -113,7 +114,7 @@ export function trendingGames(
         });
         cards.push({
             appId, name, playing, played, label: trendingLabel(playing, played), inLibrary: owned,
-            avatars, moreFriends: Math.max(0, ids.length - avatars.length), tag: owned ? 'In library' : '', storeArt: null, last: t.last,
+            avatars, moreFriends: Math.max(0, ids.length - avatars.length), tag: owned ? tr('inLibrary') : '', storeArt: null, last: t.last,
         });
     }
     cards.sort((a, b) => b.playing + b.played - (a.playing + a.played) || b.playing - a.playing || b.last - a.last || a.appId - b.appId);
@@ -181,8 +182,8 @@ export function mapSteamTrending(apps: unknown, lookup: TrendingLookup, showStor
         });
         let tag = '';
         let line = playsLabel(total);
-        if (owned) tag = 'In library';
-        else if (store?.free) tag = 'Free to play';
+        if (owned) tag = tr('inLibrary');
+        else if (store?.free) tag = tr('freeToPlay');
         else if (store && store.discountPct > 0) {
             tag = `-${store.discountPct}%`;
             if (store.finalPrice) line += ` - ${store.finalPrice}${store.originalPrice ? ` (was ${store.originalPrice})` : ''}`;

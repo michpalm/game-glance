@@ -1,4 +1,5 @@
 import { joinUrl } from './join';
+import { tr } from '../i18n/steamText';
 
 declare const friendStore: any;
 
@@ -170,7 +171,7 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
         const lastId = inGame ? 0 : Number(f.lastPlayedAppId) > 0 ? Number(f.lastPlayedAppId) : cached?.appId ?? 0;
         const lastName = lastId > 0 ? appName(lastId) || (cached?.appId === lastId ? cached.name : '') : '';
         const state = inGame ? 'ingame' : !isOnlineState(f.personaState) ? 'offline' : isAwayState(f.personaState) ? 'away' : 'online';
-        const status = f.onlineStatus || (state === 'online' ? 'Online' : state === 'away' ? 'Away' : '');
+        const status = f.onlineStatus || (state === 'online' ? tr('online') : state === 'away' ? tr('away') : '');
         return {
             steamId: f.steamId,
             name: f.name,
@@ -178,7 +179,7 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
             state,
             appId: inGame ? f.gameAppId : null,
             lastAppId: lastName ? lastId : null,
-            sub: inGame ? (game ? `Playing ${game}` : 'In game') : (state === 'offline' || state === 'away') && lastName ? `Last played ${lastName}` : status,
+            sub: inGame ? (game ? tr('playingGame', [game]) : tr('inGame')) : (state === 'offline' || state === 'away') && lastName ? tr('lastPlayedGame', [lastName]) : status,
             game,
             gameInLibrary: inGame && appName(f.gameAppId) !== '',
             joinUrl: inGame ? joinUrl(f) : null,

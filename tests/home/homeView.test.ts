@@ -3,19 +3,19 @@ import { cssLayers, eyebrowText, fillMissing, openArtLayers, heroSources, playAc
 
 describe('eyebrowText', () => {
     it('says continue playing with the last-played label', () => {
-        expect(eyebrowText('Today')).toBe('Continue playing · Today');
+        expect(eyebrowText('Today')).toBe('Last played · Today');
     });
     it('a game new to the library says so, with when it was added', () => {
-        expect(eyebrowText('Yesterday', false, true)).toBe('New to library · Added Yesterday');
+        expect(eyebrowText('Yesterday', false, true)).toBe('New to library · Yesterday');
         expect(eyebrowText(null, false, true)).toBe('New to library');
-        expect(eyebrowText('Yesterday', true, true)).toBe('Your library');
+        expect(eyebrowText('Yesterday', true, true)).toBe('My games');
     });
     it('drops the separator when there is no label', () => {
-        expect(eyebrowText(null)).toBe('Continue playing');
-        expect(eyebrowText('')).toBe('Continue playing');
+        expect(eyebrowText(null)).toBe('Recent games');
+        expect(eyebrowText('')).toBe('Recent games');
     });
     it('says your library when the Library card is focused', () => {
-        expect(eyebrowText('Today', true)).toBe('Your library');
+        expect(eyebrowText('Today', true)).toBe('My games');
     });
 });
 

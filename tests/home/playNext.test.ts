@@ -14,10 +14,10 @@ describe('scorePlayNext', () => {
         const cards = scorePlayNext([c(1, 0), c(2, 0), c(0, 0), c(4, 0, null, '')], new Set([2]));
         expect(cards.map((x) => x.appId)).toEqual([1]);
     });
-    it('pills: Not started, Short game (main under 10 h), Play next', () => {
+    it('pills: Not started, else Play next (a short game is Play next too)', () => {
         const [a, b, d] = scorePlayNext([c(1, 0), c(2, 900, 9.5), c(3, 900, 10)], new Set());
         expect([a.pill, a.pillKey]).toEqual(['Not started', 'notStarted']);
-        expect([b.pill, b.pillKey]).toEqual(['Short game', 'short']);
+        expect([b.pill, b.pillKey]).toEqual(['Play next', 'playNext']);
         expect([d.pill, d.pillKey]).toEqual(['Play next', 'playNext']);
     });
     it('respects the limit and an empty list', () => {

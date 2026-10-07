@@ -7,6 +7,7 @@ import type { RecommendedCard } from './playNext';
 import type { DealCard } from './recommended';
 import type { UpdatedCard } from './recentlyUpdated';
 import type { TrendingCard } from './trending';
+import { tr } from '../i18n/steamText';
 
 export type FeedTab = 'news' | 'friends' | 'recommended';
 
@@ -227,7 +228,7 @@ export function hasSecondRow(tab: FeedTab, data: FeedData): boolean {
 
 /** The second row's small header for a tab. */
 export function secondRowTitle(tab: FeedTab): string {
-    return tab === 'news' ? 'Recently updated' : tab === 'recommended' ? 'On sale from your wishlist' : 'Trending among friends';
+    return tab === 'news' ? tr('recentlyUpdated') : tab === 'recommended' ? tr('wishlistSale') : tr('trending');
 }
 
 /**
@@ -290,7 +291,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
                 featured: false,
                 art: artId !== null && artId > 0 ? art(artId).capsule : [],
                 backdrop: { url: c.avatarUrl, tone: friendRing(c.state) },
-                pill: inGame ? (c.joinUrl ? 'Join' : 'In game') : '',
+                pill: inGame ? (c.joinUrl ? tr('join') : tr('inGame')) : '',
                 title: c.name,
                 sub: c.sub,
                 accentAppId: inGame ? c.appId : null,

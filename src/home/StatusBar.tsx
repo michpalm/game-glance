@@ -2,6 +2,7 @@ import { CSSProperties, ReactElement, useCallback, useEffect, useState, useSyncE
 import { BatteryView, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement, statusScale } from './statusItems';
 import { COVER_CSS, useHideSteamBar } from './useHideSteamBar';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
+import { tr } from '../i18n/steamText';
 
 /** Steam's clock setting, else the locale's. */
 function hours24(): boolean {
@@ -62,10 +63,10 @@ function WiredIcon() {
     );
 }
 
-const CONNECTION: Record<ConnectionKind, { icon: () => ReactElement; label: string }> = {
-    wifi: { icon: WifiIcon, label: 'Connected' },
-    wired: { icon: WiredIcon, label: 'Wired connection' },
-    offline: { icon: OfflineIcon, label: 'Offline' },
+const CONNECTION: Record<ConnectionKind, { icon: () => ReactElement; label: () => string }> = {
+    wifi: { icon: WifiIcon, label: () => tr('connected') },
+    wired: { icon: WiredIcon, label: () => tr('wired') },
+    offline: { icon: OfflineIcon, label: () => tr('offline') },
 };
 
 /** The battery outline with its fill at the level; a bolt while charging. */
@@ -97,7 +98,7 @@ function useSelfPersona(): SelfPersona | null {
     return self;
 }
 
-const DOT_LABEL: Record<PersonaDot, string> = { online: 'Online', away: 'Away', off: 'Invisible or offline' };
+const DOT_LABEL: Record<PersonaDot, () => string> = { online: () => tr('online'), away: () => tr('away'), off: () => `${tr('invisible')} / ${tr('offline')}` };
 
 /**
  * Spotlight Home's status bar: connection, battery and clock in one glass pill at the top-right (homeCss `.gh-status`),
@@ -126,19 +127,19 @@ export function StatusBar({ away, scale }: { away: boolean; scale: number }) {
         <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away} style={style}>
             <div className="gh-status-pill">
                 {conn && (
-                    <span className={`gh-status-item gh-status-${connection}`} aria-label={conn.label}>
+                    <span className={`gh-status-item gh-status-${connection}`} aria-label={conn.label()}>
                         <conn.icon />
                     </span>
                 )}
                 {battery && (
-                    <span className={`gh-status-item${battery.low ? ' gh-status-low' : ''}`} aria-label={`Battery ${battery.percent}%${battery.charging ? ', charging' : ''}`}>
+                    <span className={`gh-status-item${battery.low ? ' gh-status-low' : ''}`} aria-label={`${tr('battery', [battery.percent])}${battery.charging ? `, ${tr('charging').toLowerCase()}` : ''}`}>
                         <BatteryIcon battery={battery} />
                         {battery.percent}%
                     </span>
                 )}
                 <span className="gh-status-item">{clock}</span>
             </div>
-            {dot && <span className={`gh-status-dot gh-status-dot-${dot}`} role="img" aria-label={DOT_LABEL[dot]} />}
+            {dot && <span className={`gh-status-dot gh-status-dot-${dot}`} role="img" aria-label={DOT_LABEL[dot]()} />}
         </div>
         </>
     );

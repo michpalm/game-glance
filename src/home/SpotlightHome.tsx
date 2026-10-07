@@ -25,6 +25,7 @@ import { TitleBlock } from './TitleBlock';
 import { useBumperSelect } from './useBumperSelect';
 import { useCloud } from './useCloud';
 import { useHomeData } from './useHomeData';
+import { tr } from '../i18n/steamText';
 
 /** Hero dim (handoff heroDim): .15 at rest, +.30 while the feed sheet is up. */
 const DIM_REST = 0.15;
@@ -350,7 +351,7 @@ export function SpotlightHome() {
                             <>
                                 <section className="gh-title-block" ref={actionsRef} onFocus={onActionsFocus} onBlur={onActionsBlur}>
                                     {onLibrary ? (
-                                        <TitleBlock eyebrow={eyebrowText(null, true)} title="View more in your Library" chips={data.libraryChips} />
+                                        <TitleBlock eyebrow={eyebrowText(null, true)} title={tr('viewLibrary')} chips={data.libraryChips} />
                                     ) : (
                                         <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} />
                                     )}
@@ -383,7 +384,6 @@ export function SpotlightHome() {
                             // No recents once the boot-time retries are over: the Library action, so Home is never
                             // a dead end. During the retries only the plain hero shows.
                             <div className="gh-empty">
-                                <div className="gh-empty-text">Play a game and it will show up here</div>
                                 <LibraryActionRow preferred />
                             </div>
                         ) : null}

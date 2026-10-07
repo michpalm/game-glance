@@ -7,7 +7,7 @@ const want = process.argv[3];
 const targets = await (await fetch(`${base}/json`)).json();
 const target = want
     ? targets.find((t) => String(t.title).includes(want))
-    : targets.find((t) => /Big Picture/i.test(String(t.title))) ?? targets.find((t) => t.title === 'Steam');
+    : targets.find((t) => /Big.Picture/i.test(String(t.title))) ?? targets.find((t) => t.title === 'Steam');
 if (!target) {
     console.error('Targets:', targets.map((t) => t.title));
     process.exit(1);

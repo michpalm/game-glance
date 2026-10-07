@@ -38,8 +38,9 @@ describe('joinUrl (the url Steam\'s Join Game opens)', () => {
 
 describe('joinQuestion', () => {
     it('names the friend and the game', () => {
-        expect(joinQuestion('Alex', 'Halo')).toBe('Join Alex in Halo?');
-        expect(joinQuestion('Alex', '')).toBe("Join Alex's game?");
-        expect(joinQuestion('', 'Halo')).toBe('Join your friend in Halo?');
+        expect(joinQuestion('Alex', 'Halo')).toBe('Alex · Halo');
+        expect(joinQuestion('Alex', '')).toBe('Alex');
+        expect(joinQuestion('', 'Halo')).toBe('Halo');
+        expect(joinQuestion(' ', ' ')).toBe('');
     });
 });

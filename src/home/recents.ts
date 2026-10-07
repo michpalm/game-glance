@@ -1,4 +1,5 @@
 import { GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
+import { tr } from '../i18n/steamText';
 
 export interface RawApp {
     appid: number;
@@ -109,8 +110,8 @@ export function pickHomeRecents<T extends RawApp>({ recent, all, isHidden, inclu
 /** "Today", "Yesterday", "N days ago", then a date. Timestamps are Unix seconds. */
 export function formatLastPlayed(lastPlayed: number, now: number, locale: string): string {
     const days = Math.floor((now - lastPlayed) / DAY_SECONDS);
-    if (days < 1) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days <= AGO_DAYS_MAX) return `${days} days ago`;
+    if (days < 1) return tr('today');
+    if (days === 1) return tr('yesterday');
+    if (days <= AGO_DAYS_MAX) return tr('daysAgo', [days]);
     return new Date(lastPlayed * 1000).toLocaleDateString(locale);
 }

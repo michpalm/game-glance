@@ -1,3 +1,4 @@
+import { tr } from '../i18n/steamText';
 declare const libraryEventStore: any;
 
 /** Plain subset of a Steam event model, as read from libraryEventStore. */
@@ -27,14 +28,15 @@ const DAY_SECONDS = 86400;
 
 // Verified on device via GetEventTypeAsString(): 13 Regular Update, 14 Major Update, 28 News.
 // Steam event / Patch notes codes are not verified, so those pills are unreachable for now.
-const PILLS: Record<number, { label: string; key: NewsCard['pillKey'] }> = {
-    13: { label: 'Regular update', key: 'regular' },
-    14: { label: 'Major update', key: 'major' },
-    28: { label: 'News', key: 'news' },
+const PILLS: Record<number, { label: () => string; key: NewsCard['pillKey'] }> = {
+    13: { label: () => tr('regularUpdate'), key: 'regular' },
+    14: { label: () => tr('majorUpdate'), key: 'major' },
+    28: { label: () => tr('news'), key: 'news' },
 };
 
 export function pillFor(eventType: number): { label: string; key: NewsCard['pillKey'] } {
-    return PILLS[eventType] ?? { label: 'News', key: 'news' };
+    const pill = PILLS[eventType] ?? PILLS[28];
+    return { label: pill.label(), key: pill.key };
 }
 
 /** Only an https url is used as a background image. */
@@ -45,8 +47,8 @@ function artUrl(url: unknown): string | null {
 function agoLabel(startTime: number, now: number): string {
     if (!(startTime > 0)) return '';
     const days = Math.max(0, Math.floor((now - startTime) / DAY_SECONDS));
-    if (days === 0) return 'TODAY';
-    return days === 1 ? '1 DAY AGO' : `${days} DAYS AGO`;
+    if (days === 0) return tr('today').toUpperCase();
+    return (days === 1 ? tr('dayAgo') : tr('daysAgo', [days])).toUpperCase();
 }
 
 export function mapWhatsNew(

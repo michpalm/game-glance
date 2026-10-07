@@ -1,4 +1,5 @@
 import { type Deal } from './wishlist';
+import { tr } from '../i18n/steamText';
 
 /** One wishlist sale as the Recommended tab's wide second row shows it: the discount badge, the name, the price. */
 export interface DealCard {
@@ -12,7 +13,7 @@ export interface DealCard {
 
 export function dealCard(deal: Deal): DealCard {
     const price = deal.price ? (deal.fullPrice ? `${deal.price} - was ${deal.fullPrice}` : deal.price) : '';
-    const parts = [price || 'On your wishlist', ...(deal.deckVerified ? ['Deck verified'] : [])];
+    const parts = [price || tr('onWishlist'), ...(deal.deckVerified ? [tr('deckVerified')] : [])];
     return { appId: deal.appId, name: deal.name, pill: `-${deal.discountPercent}%`, sub: parts.join(' - ') };
 }
 

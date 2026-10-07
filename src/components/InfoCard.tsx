@@ -2,6 +2,7 @@ import { GameInfo } from '../data/steam';
 import { formatHours, minutesToHours } from '../logic/format';
 import { descriptionState } from '../logic/infoCard';
 import type { SizeStat } from '../logic/sizeStat';
+import { tr } from '../i18n/steamText';
 
 interface Props {
     game: GameInfo;
@@ -23,12 +24,12 @@ export function InfoCard({ game, locale, description, size = null }: Props) {
                     </div>
                 )}
                 <div>
-                    <div className="gg-label">Played</div>
+                    <div className="gg-label">{tr('played')}</div>
                     <div className="gg-value">{formatHours(minutesToHours(game.playedMinutes), locale)}</div>
                 </div>
                 {game.achievements && (
                     <div>
-                        <div className="gg-label">Achievements</div>
+                        <div className="gg-label">{tr('achievements')}</div>
                         <div className="gg-value">{game.achievements.achieved}/{game.achievements.total}</div>
                     </div>
                 )}

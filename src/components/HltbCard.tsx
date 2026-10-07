@@ -1,6 +1,7 @@
 import { HltbResult } from '../data/hltb';
 import { formatHours, minutesToHours } from '../logic/format';
 import { beyondCaption, computeProgress, mainStoryProgress, Tier, towardCaption } from '../logic/progress';
+import { tr } from '../i18n/steamText';
 
 interface Props {
     result: HltbResult | undefined;
@@ -17,7 +18,7 @@ const COLUMNS: Array<{ tier: Tier; label: string }> = [
 ];
 
 export function HltbCard({ result, playedMinutes, locale, restyle = false }: Props) {
-    const header = <div className="gg-label">How long to beat</div>;
+    const header = <div className="gg-label">HowLongToBeat</div>;
 
     if (result === undefined) {
         return (
@@ -39,7 +40,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false }: Pro
             <div className="gg-card gg-hltb">
                 {header}
                 <div className="gg-muted">
-                    {result.overrideId !== undefined ? `HowLongToBeat #${result.overrideId} not found` : 'No match found'}
+                    {result.overrideId !== undefined ? `#${result.overrideId} · ${tr('noMatches')}` : tr('noMatches')}
                 </div>
                 <div className="gg-caption">
                     {result.overrideId !== undefined
@@ -53,7 +54,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false }: Pro
         return (
             <div className="gg-card gg-hltb">
                 {header}
-                <div className="gg-muted">HowLongToBeat unavailable</div>
+                <div className="gg-muted">{tr('unavailable')}</div>
             </div>
         );
     }

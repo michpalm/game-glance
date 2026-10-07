@@ -5,6 +5,7 @@ import { browserStores, capsuleUrls, heroUrls, landscapeUrls } from './artwork';
 import { wideArt } from './homeView';
 import { clampFocus, isLibraryFocus, MAX_GHOSTS, RecentsGeometry, recentsLayout } from './recentsLayout';
 import type { HomeGame } from './useHomeData';
+import { tr } from '../i18n/steamText';
 
 function urls(read: () => string[]): string[] {
     try {
@@ -60,7 +61,7 @@ const GameCapsule = memo(function GameCapsule({ game, left, width, dim, wide, bl
         <div className={`gh-cap${wide ? ' gh-cap-wide' : ''}`} style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }}>
             <CapsuleArt cover={cover} art={art} blur={blur} />
             {/* A game new to the library (the "New to library" setting), as Steam's Home marks it. */}
-            {game.isNew && <div className="gh-cap-new">New</div>}
+            {game.isNew && <div className="gh-cap-new">{tr('newMark')}</div>}
             <div className="gh-cap-bar" />
         </div>
     );
@@ -106,7 +107,7 @@ export function RecentsRow({ games, selected, geometry, nav }: { games: HomeGame
             onButtonDown={nav.onButtonDown}
             onActivate={nav.onActivate}
             role="listbox"
-            aria-label="Recent games"
+            aria-label={tr('recentGames')}
         >
             <div className="gh-recents-track" style={{ transform: `translateX(${layout.scrollX}px)` }}>
                 {games.map((game, i) => (
@@ -128,7 +129,7 @@ export function RecentsRow({ games, selected, geometry, nav }: { games: HomeGame
                             <div className="gh-lib-cell" />
                             <div className="gh-lib-cell" />
                         </div>
-                        <div className="gh-lib-label">View more in your Library</div>
+                        <div className="gh-lib-label">{tr('viewLibrary')}</div>
                     </div>
                     <div className="gh-cap-bar" />
                 </div>

@@ -212,7 +212,10 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
  */
 export const UNIFIDECK_PAGE = '.unifideck-hide-native-play';
 /** Unifideck's primary buttons (Play, Install, Resume, Update), each as one pill like ours. Cancel and Stop keep its look. */
-const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn'];
+export const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn'];
+
+/** Unifideck's meta row on its page: the class-less div right after its primary button (hidden by our page; read for its words, data/unifideckLabel). */
+export const UNIFIDECK_META = `${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) + div:not([class])`;
 
 /**
  * The Game Glance layout on a Unifideck game's page, as its own stylesheet next to buildThemeCss's (with the layout only;
@@ -226,7 +229,7 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
     // card shows them. They are the children of one class-less div right after the primary button (Install or Play; the
     // Downloading row has none, nor its Cancel / Stop). Structural, since its labels are translated; whatever the layout.
     const hideMeta = options.restyle
-        ? rule(`${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) + div:not([class])`, ` display: none !important; `)
+        ? rule(UNIFIDECK_META, ` display: none !important; `)
         : '';
     // The rest only with the full-screen layout (the same classes buildThemeCss needs for it); otherwise the page is stacked and
     // Unifideck's row is already where it belongs.

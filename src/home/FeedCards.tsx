@@ -3,6 +3,7 @@ import { CSSProperties, useRef } from 'react';
 import { LOG_PREFIX } from '../constants';
 import type { FeedItem } from './feedLayout';
 import { openGame, openNews, openSteamUrl, openStorePage } from './homeNav';
+import { tr } from '../i18n/steamText';
 
 /** A and a touch can both arrive for one press; one action per press. */
 const REPEAT_GUARD_MS = 1000;
@@ -29,10 +30,10 @@ function Avatar({ avatar }: { avatar: NonNullable<FeedItem['avatar']> }) {
 function confirmJoin(url: string, question: string, from: HTMLElement | null) {
     try {
         const props = {
-            strTitle: 'Join game',
+            strTitle: tr('joinGame'),
             strDescription: question,
-            strOKButtonText: 'Join',
-            strCancelButtonText: 'Cancel',
+            strOKButtonText: tr('join'),
+            strCancelButtonText: tr('cancel'),
             onOK: () => openSteamUrl(url),
             focusButton: 'secondary',
         };

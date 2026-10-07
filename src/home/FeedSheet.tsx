@@ -10,14 +10,16 @@ import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from '.
 import { focusElement } from './homeNav';
 import { clampTab, HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
 import { useCardAccents } from './useHomeData';
+import { tr } from '../i18n/steamText';
 
 const PREFERRED_CHILD = PREFERRED as NavEntryPositionPreferences;
 const FIRST = NAV_FIRST as NavEntryPositionPreferences;
 
-const TABS: Array<{ id: FeedTab; label: string; empty: string }> = [
-    { id: 'news', label: 'What\'s new', empty: 'Nothing new' },
-    { id: 'friends', label: 'Friends', empty: 'No friends online' },
-    { id: 'recommended', label: 'Recommended', empty: 'Nothing to suggest yet' },
+// Labels and empty lines are Steam's words, read when drawn (Steam's table may not be loaded when this module is).
+const TABS: Array<{ id: FeedTab; label: () => string; empty: () => string }> = [
+    { id: 'news', label: () => tr('tabWhatsNew'), empty: () => tr('noUpdates') },
+    { id: 'friends', label: () => tr('tabFriends'), empty: () => tr('noResults') },
+    { id: 'recommended', label: () => tr('tabRecommended'), empty: () => tr('noResults') },
 ];
 
 function urls(read: () => string[]): string[] {
@@ -219,7 +221,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
                         role="tab"
                         aria-selected={i === tab}
                     >
-                        <span>{t.label}</span>
+                        <span>{t.label()}</span>
                         {t.id === 'friends' && (
                             <span className={`gh-tab-count${onlineFriends > 0 ? ' gh-tab-count-on' : ''}`} aria-label={`${onlineFriends} online`}>
                                 <FaUserFriends aria-hidden="true" />
@@ -268,7 +270,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
                         </div>
                     ))
                 ) : (
-                    <div className="gh-feed-empty">{TABS[tab].empty}</div>
+                    <div className="gh-feed-empty">{TABS[tab].empty()}</div>
                 )}
             </div>
         </>

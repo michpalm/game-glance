@@ -148,7 +148,7 @@ describe('feedItems', () => {
     it('a joinable friend: Join tag, A asks to join with Steam\'s url; a game not owned opens its store page', () => {
         const join = { ...data.friends[0], joinUrl: 'steam://rungame/20/7656' };
         const [card] = feedItems('friends', { ...data, friends: [join] }, art);
-        expect(card).toMatchObject({ pill: 'Join', opens: { kind: 'join', appId: 20, url: 'steam://rungame/20/7656', question: 'Join friend one in Game 20?' } });
+        expect(card).toMatchObject({ pill: 'Join', opens: { kind: 'join', appId: 20, url: 'steam://rungame/20/7656', question: 'friend one · Game 20' } });
         const store = { ...data.friends[0], gameInLibrary: false };
         expect(feedItems('friends', { ...data, friends: [store] }, art)[0].opens).toEqual({ kind: 'store', appId: 20 });
     });
