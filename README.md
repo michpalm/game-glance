@@ -44,7 +44,7 @@ what it is about, and where it came from.
 Spotlight Home is an optional new Home screen. It is off by default; turn it on in Quick Access.
 
 - **Selected game.** The selected game fills the screen with its art (your custom SteamGridDB art when you have
-  set some), with chips (play time, achievements, last played, HowLongToBeat main story), a Play button and
+  set some), with chips (play time, achievements, HowLongToBeat main story; when you last played is in the line above the title), a Play button and
   actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on the first game card, as on Steam's Home:
   **Left and Right** pick the previous or next game and **A** opens its page; **up** reaches Play and the other
   buttons. **L1 and R1** pick the previous or next game from anywhere above the tabs and put focus on Play (hold to keep

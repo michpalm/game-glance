@@ -28,9 +28,10 @@ const SCRIM = '5,7,10';
 const GLOW = '0 0 0 1px var(--glance-accent), 0 16px 40px -12px var(--glance-accent)';
 
 /**
- * Title block metrics (handoff), in logical px from the screen top; the CSS below uses them. The title is clamped to
- * `titleLines` lines, so the block never grows past titleBlockBottom() (a long name would otherwise wrap to three
- * lines and push the actions into the recents row docked).
+ * Title block metrics (handoff), in logical px from the screen top; the CSS below uses them. The title's slot is
+ * `titleLines` lines tall with the text aligned to its bottom, so a longer name grows upward into the free space above
+ * (at most `maxTitleLines` lines, never above the 52 px safe area) and nothing below it moves: the block never grows
+ * past titleBlockBottom().
  */
 export const TITLE_BLOCK = {
     top: 118,
@@ -39,6 +40,8 @@ export const TITLE_BLOCK = {
     eyebrow: 12 * 1.2,
     titleSize: 58,
     titleLines: 2,
+    /** Longest title shown whole; a third line rises above the slot (its top stays below the 52 px safe area). */
+    maxTitleLines: 3,
     /** One row of chips: border 2 + padding 20 + label 12 + gap 4 + value 24 + gap 4 + bar 3. */
     chipRow: 69,
     actionsMargin: 8,
@@ -59,13 +62,13 @@ export interface TitleBlockLayout {
 }
 
 /**
- * Where each part of the title block sits for a title of `lines` lines (clamped to 1..titleLines), in logical px
+ * Where each part of the title block sits for a title of `lines` lines (clamped to 1..maxTitleLines), in logical px
  * from the screen top, before the stack shift. Order: title slot (two lines tall, the title aligned to its bottom),
  * eyebrow, chips, actions. Only the title moves with its line count; eyebrow, chips and actions never do.
  */
 export function titleBlockLayout(lines: number): TitleBlockLayout {
     const t = TITLE_BLOCK;
-    const n = Number.isFinite(lines) ? Math.min(t.titleLines, Math.max(1, Math.round(lines))) : 1;
+    const n = Number.isFinite(lines) ? Math.min(t.maxTitleLines, Math.max(1, Math.round(lines))) : 1;
     const slotBottom = t.top + t.titleLines * t.titleSize;
     const eyebrowTop = slotBottom + t.gap;
     const chipsTop = eyebrowTop + t.eyebrow + t.gap;
@@ -244,7 +247,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // shadow; equal negative margins keep the layout box at exactly two 58px lines.
         rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: ${t.titleSize}px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
             text-shadow: 0 4px 30px rgba(0,0,0,.4); color: #fff; overflow-wrap: anywhere;
-            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: ${t.titleLines}; overflow: hidden`),
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: ${t.maxTitleLines}; overflow: hidden; flex: 0 0 auto`),
         // One row of fixed height, present even with no chips yet, so the actions never move.
         rule('.gh-chips', `height: ${t.chipRow}px; display: flex; gap: 10px; flex-wrap: nowrap; align-items: stretch; margin: 0; padding: 0`),
         rule('.gh-chip', `display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),

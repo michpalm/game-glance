@@ -13,6 +13,7 @@ export interface Chip {
 export interface GameChipInput {
     playedMinutes: number;
     achievements: { achieved: number; total: number } | null;
+    /** Unix seconds; shown in the eyebrow under the title ("Last played · Today"), no longer as a chip. */
     lastPlayed: number;
     hltbMainHours: number | null;
     /** Set for a game new to the library (never played): when it was added. Replaces Played and Last played. */
@@ -34,7 +35,6 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
             progress: Math.min(1, Math.max(0, achieved / total)),
         });
     }
-    if (!isNew) chips.push({ key: 'lastPlayed', label: tr('lastPlayed'), value: formatLastPlayed(i.lastPlayed, now, locale) });
     if (i.hltbMainHours !== null && i.hltbMainHours > 0) {
         chips.push({
             key: 'hltb',

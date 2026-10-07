@@ -413,7 +413,7 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
         `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; font-size: ${d(64)}; line-height: 1; font-weight: 800; letter-spacing: -0.02em;
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;
-            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }`,
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }`,
 
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass; its type sizes.
         `.gg-cards { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: ${d(18)}; }`,

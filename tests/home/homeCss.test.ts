@@ -149,13 +149,15 @@ describe('homeCss', () => {
         // Default (before Home has measured its box): handheld.
         expect(homeCss()).toBe(homeCss(CARD_SCALE_HANDHELD));
     });
-    it('homeCss clamps the title to 2 lines with an ellipsis, keeping balance and the shadow, at the 2-line height', () => {
+    it('homeCss clamps the title to 3 lines with an ellipsis, keeping balance and the shadow, in a 2-line slot', () => {
         const css = homeCss();
         const title = css.match(/\.gh-title\s*\{[^}]*\}/)?.[0] ?? '';
         expect(title).toMatch(/display:\s*-webkit-box\s*!important/);
-        expect(title).toMatch(/-webkit-line-clamp:\s*2\s*!important/);
+        expect(title).toMatch(/-webkit-line-clamp:\s*3\s*!important/);
         expect(title).toMatch(/-webkit-box-orient:\s*vertical\s*!important/);
         expect(title).toMatch(/overflow:\s*hidden\s*!important/);
+        // Not shrunk to the 2-line slot: a third line keeps its height and rises above it.
+        expect(title).toMatch(/flex:\s*0 0 auto\s*!important/);
         expect(title).toMatch(/text-wrap:\s*balance/);
         expect(title).toMatch(/text-shadow:\s*0 4px 30px rgba\(0,0,0,\.4\)/);
         expect(title).toMatch(/font-size:\s*58px/);
@@ -163,6 +165,7 @@ describe('homeCss', () => {
         expect(title).toMatch(/padding:\s*16px\s*!important/);
         expect(title).toMatch(/margin:\s*-16px\s*!important/);
         expect(TITLE_BLOCK.titleLines).toBe(2);
+        expect(TITLE_BLOCK.maxTitleLines).toBe(3);
     });
     describe('title block: fixed from the eyebrow down, the title grows upward', () => {
         it('order is title slot, eyebrow, chips, actions, each 18 apart (actions add their 8 margin)', () => {
@@ -183,10 +186,20 @@ describe('homeCss', () => {
             expect(one.actionsTop).toBe(two.actionsTop);
             expect(one.bottom).toBe(two.bottom);
         });
-        it('clamps to 1..2 lines (no 3-line title)', () => {
-            expect(titleBlockLayout(3)).toEqual(titleBlockLayout(2));
+        it('a three-line title rises one line above the slot, leaving the rest where it is; clamps to 1..3 lines', () => {
+            const two = titleBlockLayout(2);
+            const three = titleBlockLayout(3);
+            expect(three.titleTop).toBe(two.titleTop - 58);
+            expect(three.eyebrowTop).toBe(two.eyebrowTop);
+            expect(three.bottom).toBe(two.bottom);
+            expect(titleBlockLayout(9)).toEqual(three);
             expect(titleBlockLayout(0)).toEqual(titleBlockLayout(1));
             expect(titleBlockLayout(NaN)).toEqual(titleBlockLayout(1));
+        });
+        it('a three-line title still starts below the 52 px safe area on every screen, with the stack shift', () => {
+            for (const h of [800, 466 / (828 / 1440), 810.75]) {
+                expect(titleBlockLayout(3).titleTop + stackShift(h)).toBeGreaterThanOrEqual(52);
+            }
         });
         it('worst case (2-line title) clears Steam\'s 52 px top bar on every screen, with the stack shift', () => {
             for (const h of [800, 466 / (828 / 1440), 810.75]) {

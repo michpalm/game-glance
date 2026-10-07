@@ -5,13 +5,13 @@ const NOW = 1_700_000_000;
 const base = { playedMinutes: 600, achievements: { achieved: 5, total: 20 }, lastPlayed: NOW, hltbMainHours: 20 };
 
 describe('gameChips', () => {
-    it('returns Played, Achievements, Last played, HLTB main in that order', () => {
+    it('returns Played, Achievements, HLTB main in that order (Last played is the eyebrow\'s)', () => {
         const chips = gameChips(base, NOW, 'en-US');
-        expect(chips.map((c) => c.label)).toEqual(['Played', 'Achievements', 'Last played', 'HLTB main']);
+        expect(chips.map((c) => c.label)).toEqual(['Played', 'Achievements', 'HLTB main']);
         expect(chips[0].value).toBe('10 h');
-        expect(chips[2].value).toBe('Today');
+        expect(chips[2].value).toBe('20 h');
     });
-    it('a game new to the library: Added to library (when) instead of Played and Last played', () => {
+    it('a game new to the library: Added to library (when) instead of Played', () => {
         const chips = gameChips({ ...base, playedMinutes: 0, lastPlayed: 0, addedAt: NOW }, NOW, 'en-US');
         expect(chips.map((c) => c.label)).toEqual(['Added to library', 'Achievements', 'HLTB main']);
         expect(chips[0].value).toBe('Today');
@@ -22,17 +22,17 @@ describe('gameChips', () => {
         expect(chip.progress).toBe(0.25);
     });
     it('HLTB chip progress is played hours over main, capped at 1', () => {
-        expect(gameChips(base, NOW, 'en-US')[3].progress).toBe(0.5);
-        expect(gameChips({ ...base, playedMinutes: 6000 }, NOW, 'en-US')[3].progress).toBe(1);
+        expect(gameChips(base, NOW, 'en-US')[2].progress).toBe(0.5);
+        expect(gameChips({ ...base, playedMinutes: 6000 }, NOW, 'en-US')[2].progress).toBe(1);
     });
     it('achievements chip is omitted when the game has none', () => {
         const labels = gameChips({ ...base, achievements: null }, NOW, 'en-US').map((c) => c.label);
-        expect(labels).toEqual(['Played', 'Last played', 'HLTB main']);
+        expect(labels).toEqual(['Played', 'HLTB main']);
         const zero = gameChips({ ...base, achievements: { achieved: 0, total: 0 } }, NOW, 'en-US');
         expect(zero.map((c) => c.label)).not.toContain('Achievements');
     });
     it('HLTB chip shows a dash and no progress when there is no HLTB time', () => {
-        const chip = gameChips({ ...base, hltbMainHours: null }, NOW, 'en-US')[3];
+        const chip = gameChips({ ...base, hltbMainHours: null }, NOW, 'en-US')[2];
         expect(chip.value).toBe('—');
         expect(chip.progress).toBeUndefined();
     });
