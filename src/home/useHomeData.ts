@@ -7,6 +7,8 @@ import { hltbCacheKey, lookupHltb } from '../data/hltb';
 import { GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
 import { getSourceLabel } from '../data/source';
+import { mergePlaytime } from '../data/unifideckPlaytime';
+import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
 import { getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
@@ -549,6 +551,8 @@ export function useHomeData(focusIndex = 0): HomeData {
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
+    // Unifideck's own play time for the selected game once it rests (one request, cached), for Unifideck games only.
+    const unifideck = useUnifideckPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, resting !== null);
     // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and
     // useAccentWarmup makes most of them known beforehand.
     const accent = useAccent(appId, resting);
@@ -556,19 +560,22 @@ export function useHomeData(focusIndex = 0): HomeData {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
         if (!focused) return [];
+        const merged = mergePlaytime({ minutes: focused.playedMinutes, lastPlayed: focused.lastPlayed }, unifideck);
+        const isNew = focused.isNew && !(unifideck?.lastPlayed);
         return guarded('game chips', () => gameChips({
-            playedMinutes: focused.playedMinutes,
+            playedMinutes: merged.minutes,
             achievements: info?.achievements ?? null,
-            lastPlayed: focused.lastPlayed,
+            lastPlayed: merged.lastPlayed,
             hltbMainHours: hltb?.status === 'found' ? hltb.times.main : null,
-            addedAt: focused.isNew ? focused.addedAt : undefined,
+            addedAt: isNew ? focused.addedAt : undefined,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, locale]);
+    }, [focused, info, hltb, locale, unifideck]);
+    // Unifideck knows a last played Steam does not: such a game is no longer "new to library".
+    const focusedIsNew = focused?.isNew === true && !unifideck?.lastPlayed;
     const lastPlayedLabel = focused
-        ? guarded('last played', () => formatLastPlayed(focused.isNew ? focused.addedAt : focused.lastPlayed, nowSeconds, locale), null)
+        ? guarded('last played', () => formatLastPlayed(focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, unifideck).lastPlayed, nowSeconds, locale), null)
         : null;
-    const focusedIsNew = focused?.isNew === true;
 
     const library = useMemo(
         () => guarded('library chips', () => libraryChips({ ...readLibraryCounts(), storageBytes: readStorageBytes() }, locale), []),

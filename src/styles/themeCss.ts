@@ -222,12 +222,30 @@ const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.un
  */
 export function buildUnifideckCss({ header, details, root }: ThemeClasses, options: ThemeOptions = {}): string {
     const inner = cls(details, 'InnerContainer');
-    // Only with the full-screen layout (the same classes buildThemeCss needs for it); otherwise the page is stacked and
+    // Our page is on: Unifideck's own meta items (Installed size or Space required, Played, Last played) are hidden, as our
+    // card shows them. They are the children of one class-less div right after the primary button (Install or Play; the
+    // Downloading row has none, nor its Cancel / Stop). Structural, since its labels are translated; whatever the layout.
+    const hideMeta = options.restyle
+        ? rule(`${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) + div:not([class])`, ` display: none !important; `)
+        : '';
+    // The rest only with the full-screen layout (the same classes buildThemeCss needs for it); otherwise the page is stacked and
     // Unifideck's row is already where it belongs.
-    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
+    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return hideMeta;
     const primary = UNIFIDECK_PRIMARY.map((c) => `${UNIFIDECK_PAGE} ${c}`);
     const focused = UNIFIDECK_PRIMARY.flatMap((c) => ['.gpfocus', ':focus', ':focus-within', ':hover'].map((f) => `${UNIFIDECK_PAGE} ${c}${f}`));
+    // Steam's circles run controller, settings, cloud, then extras. Unifideck's installed row has its cloud-save button first, then
+    // controller, settings and Uninstall (the only row with four buttons; the others have two), so the cloud moves after settings
+    // and anything beyond the usual four goes after it.
+    const buttons = cls(root, 'AppButtons');
+    const circleOrder = buttons
+        ? [
+            rule(`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :first-child`, ` order: 3 !important; `),
+            rule(`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :nth-child(n+4)`, ` order: 4 !important; `),
+        ]
+        : [];
     return [
+        hideMeta,
+        ...circleOrder,
         rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` position: absolute !important; top: var(--gg-play-top) !important;
             left: 0 !important; right: 0 !important; width: auto !important; z-index: 2 !important; box-sizing: border-box !important;
             padding: ${u(16)} var(--gg-side) !important; gap: var(--gg-gap) !important; background: transparent !important; `),
@@ -235,7 +253,10 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
             justify-content: center !important; border-radius: 999px !important; background: var(--gg-accent) !important; box-shadow: none !important;
             color: #ffffff !important; font-size: ${u(16)} !important; `),
         rule(focused, ` background: var(--gg-accent) !important; box-shadow: 0 0 0 ${u(2)} rgba(255, 255, 255, 0.9) !important; `),
-        // Spotlight Home's look: the handoff's pill type, dark text on the accent, as on our own Play pill.
+        // Spotlight Home's look: Steam's Play row has no top padding and a 36 one below (see the playSection rule above), so the buttons start
+        // at --gg-play-top; the same here, or Unifideck's pill sits lower than Steam's.
+        options.restyle ? rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` padding-top: 0 !important; padding-bottom: ${d(36)} !important; `) : '',
+        // And the handoff's pill type, dark text on the accent, as on our own Play pill.
         options.restyle ? rule(primary, ` font-size: ${d(22)} !important; font-weight: 700 !important; color: #0b0d10 !important; `) : '',
     ].filter((r) => r.length > 0).join('\n');
 }

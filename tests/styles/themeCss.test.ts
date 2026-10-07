@@ -235,6 +235,26 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
         expect(buildUnifideckCss(full)).not.toContain('#0b0d10');
         expect(buildUnifideckCss(full, { restyle: true })).toMatch(/\.unifideck-hide-native-play \.unifideck-play-btn[^{]*\{[^}]*color: #0b0d10 !important;/);
     });
+    it('with Spotlight Home\u2019s look its row has Steam\u2019s padding (none above, 36 below), so the pill is level with Steam\u2019s', () => {
+        const rowRule = /:has\([^)]*\) \{[^}]*padding-top: 0 !important; padding-bottom: [^;]+ !important;/;
+        expect(buildUnifideckCss(full, { restyle: true })).toMatch(rowRule);
+        expect(buildUnifideckCss(full)).not.toMatch(/padding-top: 0 !important/);
+    });
+    it('puts the cloud-save button after controller and settings (the row with four buttons only), extras last', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.unifideck-hide-native-play [^{]*:has\(> :nth-child\(4\)\) > :first-child \{ order: 3 !important; \}/);
+        expect(css).toMatch(/:has\(> :nth-child\(4\)\) > :nth-child\(n\+4\) \{ order: 4 !important; \}/);
+    });
+    it('hides Unifideck\u2019s own meta items (the class-less div after its primary button) only with our page on', () => {
+        expect(buildUnifideckCss(full)).not.toContain('display: none');
+        for (const css of [buildUnifideckCss(full, { restyle: true }), buildUnifideckCss({ ...full, details: undefined }, { restyle: true })]) {
+            const line = css.split('\n').find((l) => l.includes('display: none'));
+            expect(line).toMatch(/^\.unifideck-hide-native-play :is\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) \+ div:not\(\[class\]\) \{ display: none !important; \}$/);
+            // Not the buttons, the round buttons or the download UI.
+            expect(line).not.toMatch(/cancel|stop|button/i);
+            expect(css.split('\n').filter((l) => l.includes('display: none'))).toHaveLength(1);
+        }
+    });
     it('nothing without the full-screen layout (the page is stacked then, Unifideck\u2019s row already in place)', () => {
         expect(buildUnifideckCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
         expect(buildUnifideckCss({ ...full, details: undefined })).toBe('');

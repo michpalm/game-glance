@@ -32,7 +32,7 @@ what it is about, and where it came from.
   Ubisoft, Xbox Cloud or Heroic.
 - **Non-Steam games.** Games added by [Heroic](https://heroicgameslauncher.com) or
   [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too. On a
-  Unifideck game's page, Unifideck's own Play row (Install, Play) sits on the art in the same style.
+  Unifideck game's page, Unifideck's own Play row (Install, Play) sits on the art in the same style. Played and Last played for those games are Unifideck's own numbers (Steam has none for them), and its install or download size sits in our info card instead of in Unifideck's row.
 - **Works offline.** Times and descriptions are kept on the device. A Quick Access button pre-loads them for
   every installed game, and new installs are picked up automatically.
 - **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.

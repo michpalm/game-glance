@@ -144,6 +144,36 @@ function clampedShift(logicalHeight: number, legendReserve: number): number {
 }
 
 /**
+ * The status bar's rules (clock, battery, connection and your online dot): Spotlight Home's, and the game page's own copy of the
+ * bar (components/GameStatusBar), drawn on the same scaled canvas so both look and sit alike.
+ */
+export function statusRules(): string[] {
+    return [
+        // Status bar (clock, battery, connection) in Steam's top strip: the store pill's glass pill, then your online status
+        // dot over Steam's top-bar avatar (StatusBar sets --gh-status-right / --gh-status-cy from statusPlacement; STATUS_BAR is the fallback), above the page (the raised feed slides under it). It all fades out while
+        // focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
+        rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${STATUS_BAR.right}px); top: calc(var(--gh-status-cy, ${STATUS_BAR.centreY}px) - ${SOURCE_PILL.height / 2}px);
+            height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: ${PERSONA_DOT.gap}px; margin: 0; padding: 0;
+            pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
+        rule('.gh-status-dot', `flex: 0 0 auto; width: ${PERSONA_DOT.size}px; height: ${PERSONA_DOT.size}px; margin: 0; padding: 0; border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(12,16,22,.55), 0 1px 4px rgba(0,0,0,.4); transition: background ${ACCENT_MS}ms`),
+        ...(Object.keys(PERSONA_DOT_COLOURS) as PersonaDot[]).map((dot) => rule(`.gh-status-dot-${dot}`, `background: ${PERSONA_DOT_COLOURS[dot]}`)),
+        rule('.gh-status.gh-status-away', 'opacity: 0'),
+        rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border-radius: 999px; border: 1px solid; color: rgba(255,255,255,.9);
+            line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)} font-weight: 600`),
+        rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
+        rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
+        rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
+        rule('.gh-status-offline svg', 'opacity: .6'),
+    ];
+}
+
+/** The status bar's CSS on its own, for the game page. */
+export function statusCss(): string {
+    return statusRules().join('\n');
+}
+
+/**
  * Spotlight Home's stylesheet. Pure, so it can be tested. Every class starts with `gh-`.
  * Positions are logical px on the authored canvas (1440x810 or 1280x800); `.gh-canvas` is scaled to the
  * screen. Steam's own top bar (52) and button legend (46) stay: `.gh-safe` is the area between them. Every top
@@ -223,22 +253,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-source', `position: absolute; right: ${SOURCE_PILL.right}px; top: calc(${sourcePillTop()}px - var(--gh-top)); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; pointer-events: none; ${sourcePillLook(px)}`),
         rule('.gh-source-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
-        // Status bar (clock, battery, connection) in Steam's top strip: the store pill's glass pill, then your online status
-        // dot over Steam's top-bar avatar (StatusBar sets --gh-status-right / --gh-status-cy from statusPlacement; STATUS_BAR is the fallback), above the page (the raised feed slides under it). It all fades out while
-        // focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
-        rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${STATUS_BAR.right}px); top: calc(var(--gh-status-cy, ${STATUS_BAR.centreY}px) - ${SOURCE_PILL.height / 2}px);
-            height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: ${PERSONA_DOT.gap}px; margin: 0; padding: 0;
-            pointer-events: none; z-index: 1; opacity: 1; transition: opacity ${STATUS_FADE_MS}ms ease`),
-        rule('.gh-status-dot', `flex: 0 0 auto; width: ${PERSONA_DOT.size}px; height: ${PERSONA_DOT.size}px; margin: 0; padding: 0; border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(12,16,22,.55), 0 1px 4px rgba(0,0,0,.4); transition: background ${ACCENT_MS}ms`),
-        ...(Object.keys(PERSONA_DOT_COLOURS) as PersonaDot[]).map((dot) => rule(`.gh-status-dot-${dot}`, `background: ${PERSONA_DOT_COLOURS[dot]}`)),
-        rule('.gh-status.gh-status-away', 'opacity: 0'),
-        rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border-radius: 999px; border: 1px solid; color: rgba(255,255,255,.9);
-            line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)} font-weight: 600`),
-        rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
-        rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
-        rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
-        rule('.gh-status-offline svg', 'opacity: .6'),
+        ...statusRules(),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
         rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
         rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: var(--gh-r-pill); display: flex; align-items: center; justify-content: center; gap: 12px;

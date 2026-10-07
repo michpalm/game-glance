@@ -6,20 +6,27 @@ import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel } from '../data/source';
+import { mergePlaytime } from '../data/unifideckPlaytime';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { accentFor } from '../home/accent';
 import { sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
+import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
+import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
+import { useUnifideckSize } from '../hooks/useUnifideckSize';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
+import { sizeStat } from '../logic/sizeStat';
 import { useDownload } from '../home/useDownload';
 import { useLaunchOverlay } from '../styles/launchOverlay';
 import { accentCss, cleanCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
 import { CleanInfo } from './CleanInfo';
 import { ErrorBoundary } from './ErrorBoundary';
+import { GameStatusBar } from './GameStatusBar';
+import { UnifideckRowNav } from './UnifideckRowNav';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
 import { SourcePill } from './SourcePill';
@@ -43,9 +50,10 @@ function useGameAccent(appId: number, active: boolean): string | undefined {
 }
 
 /** "Last played · Today" from Steam's overview (Unix seconds); null if never played or unreadable. */
-function lastPlayedEyebrow(overview: unknown, locale: string): string | null {
+function lastPlayedEyebrow(overview: unknown, locale: string, unifideckLastPlayed: number | null = null): string | null {
     try {
-        const seconds = Number((overview as { rt_last_time_played?: unknown } | null)?.rt_last_time_played ?? 0);
+        const steamSeconds = Number((overview as { rt_last_time_played?: unknown } | null)?.rt_last_time_played ?? 0);
+        const seconds = mergePlaytime({ minutes: 0, lastPlayed: Number.isFinite(steamSeconds) ? steamSeconds : 0 }, { playedSeconds: null, lastPlayed: unifideckLastPlayed }).lastPlayed;
         if (!Number.isFinite(seconds) || seconds <= 0) return null;
         return `Last played · ${formatLastPlayed(seconds, Math.floor(Date.now() / 1000), locale)}`;
     } catch (error) {
@@ -55,7 +63,10 @@ function lastPlayedEyebrow(overview: unknown, locale: string): string | null {
 }
 
 function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean; clean: boolean }) {
-    const game = readGameInfo(overview, details);
+    const steamGame = readGameInfo(overview, details);
+    // A Unifideck game: its own play time and last played, as on Unifideck's Play row (Steam has none for these).
+    const unifideck = useUnifideckPlaytime(steamGame.appId, steamGame.isShortcut);
+    const game = unifideck ? { ...steamGame, playedMinutes: mergePlaytime({ minutes: steamGame.playedMinutes, lastPlayed: 0 }, unifideck).minutes } : steamGame;
     const overrideVersion = useOverrideVersion();
     const knownLang = peekSteamLanguage();
     const loadedLang = useAsync(knownLang ? null : 'lang', getSteamLanguage);
@@ -72,9 +83,15 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
 
+    const statusBar = useSettings().homeStatusBar;
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
+    // Restyled only (where Unifideck's own size item is hidden): a Unifideck game's install / download size in our card.
+    // Unifideck's own record says whether it is installed (Steam reads a shortcut as installed whatever Unifideck says); no size until it answers.
+    const uniInstalled = useUnifideckInstalled(game.appId, restyle && game.isShortcut);
+    const unifideckSize = useUnifideckSize(game.appId, game.isShortcut && typeof uniInstalled === 'boolean', uniInstalled === true, restyle);
+    const size = restyle && typeof uniInstalled === 'boolean' ? sizeStat(unifideckSize, uniInstalled, locale) : null;
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
     // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone; after
     // Play on Home (data/launchIntent) the page starts that way, so it never shows before the launch screen.
@@ -90,9 +107,13 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     if (game.appId === 0) return null;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
-    const eyebrow = restyle ? lastPlayedEyebrow(overview, locale) : null;
+    const eyebrow = restyle ? lastPlayedEyebrow(overview, locale, unifideck?.lastPlayed ?? null) : null;
     return (
         <>
+            {/* Spotlight Home's status bar, over Steam's top strip, with the restyled page (not while Steam's launch screen is up). */}
+            {restyle && statusBar && !launching && <GameStatusBar />}
+            {/* A Unifideck game's circle buttons are reordered by CSS; the D-pad then steps by position. */}
+            {game.isShortcut && <UnifideckRowNav />}
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
                 <div className="gg-titleblock">
@@ -108,9 +129,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
                 {source && <SourcePill label={source} />}
-                {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} />}
+                {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
                 <div className="gg-cards">
-                    <InfoCard game={game} locale={locale} description={description} />
+                    <InfoCard game={game} locale={locale} description={description} size={size} />
                     <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} />
                 </div>
                 <div className="gg-more" aria-hidden="true">⌄</div>
