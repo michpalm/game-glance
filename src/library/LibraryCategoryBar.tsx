@@ -55,7 +55,11 @@ export function LibraryCategoryBar({
                     <button className="sgl-btn-back-col" onClick={onBackToCollections}>
                         <span>‹ COLLECTIONS</span>
                     </button>
-                    <span className="sgl-breadcrumb-title">› {activeSubCollectionName.toUpperCase()}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="sgl-bumper-badge">L1</span>
+                        <span className="sgl-breadcrumb-title">{activeSubCollectionName.toUpperCase()}</span>
+                        <span className="sgl-bumper-badge">R1</span>
+                    </div>
                 </div>
             ) : (
                 <div className="sgl-tabs-container">

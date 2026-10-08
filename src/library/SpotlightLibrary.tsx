@@ -99,13 +99,35 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         playNavSound();
     }, []);
 
-    // Tab bumper cycling
+    // Tab / Collection bumper cycling
     const cycleCategory = useCallback((direction: -1 | 1) => {
+        // When inside a sub-collection, bumpers cycle between available collections
+        if (isInsideSubCollection && activeCategory?.collections && activeCategory.collections.length > 0) {
+            const cols = activeCategory.collections;
+            const curIdx = cols.findIndex((c) => c.id === selectedCollectionId);
+            const nextIdx = (curIdx + direction + cols.length) % cols.length;
+            setSelectedCollectionId(cols[nextIdx].id);
+            setSelectedGameIdx(0);
+            playNavSound();
+            return;
+        }
+
         const curIdx = categories.findIndex((c) => c.id === activeCategoryId);
         if (curIdx < 0) return;
         const nextIdx = (curIdx + direction + categories.length) % categories.length;
         selectCategory(categories[nextIdx].id);
-    }, [categories, activeCategoryId, selectCategory]);
+    }, [isInsideSubCollection, activeCategory, selectedCollectionId, categories, activeCategoryId, selectCategory]);
+
+    const navigateHome = useCallback(() => {
+        markLeavingLibrary();
+        try {
+            Navigation.Navigate('/library/home');
+        } catch {
+            try {
+                Navigation.Navigate('/');
+            } catch {}
+        }
+    }, []);
 
     // Open a collection to view its games
     const handleOpenCollection = useCallback((col: LibraryCollectionItem | null = selectedCollectionItem) => {
@@ -276,8 +298,11 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         if (focusZone === 'grid') {
             setFocusZone('tabs');
             playNavSound();
+            return;
         }
-    }, [focusZone, handleBackToCollections, isInsideSubCollection]);
+        // At root tabs level: nowhere else to go back inside Library -> take user to Home
+        navigateHome();
+    }, [focusZone, handleBackToCollections, isInsideSubCollection, navigateHome]);
 
     // Gamepad controller event handler for Decky's Focusable tree
     const onGamepadButtonDown = useCallback((evt: GamepadEvent) => {
@@ -306,13 +331,20 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 return;
             }
 
-            // START Button (Menu): Open Steam Game Options Menu (START = 14)
-            if (btn === GamepadButton.START || btn === 14) {
+            // START / Options / View Menu: Open Steam Game Options Menu (START = 14, SELECT = 13)
+            if (btn === GamepadButton.START || btn === 14 || btn === GamepadButton.SELECT || btn === 13) {
                 if (selectedGame) {
                     evt.preventDefault?.();
                     evt.stopPropagation?.();
-                    const anchor = document.querySelector('.sgl-card.focused, .sgl-card-collection.focused') as HTMLElement | null;
-                    openGameActions(selectedGame.appId, anchor);
+                    const cardEl = (
+                        document.querySelector(`.sgl-card[data-app-id="${selectedGame.appId}"]`) ??
+                        document.querySelectorAll('.sgl-card')[selectedGameIdx] ??
+                        document.querySelector('.sgl-card.focused') ??
+                        document.querySelector('.sgl-inspector') ??
+                        document.querySelector('.sgl-root') ??
+                        document.body
+                    ) as HTMLElement;
+                    openGameActions(selectedGame.appId, cardEl);
                     return;
                 }
             }
@@ -334,22 +366,11 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 return;
             }
 
-            // B Button: Cancel (CANCEL = 2)
+            // B Button: Cancel (CANCEL = 2) - returns to collections list, to tabs, or to Home screen
             if (btn === GamepadButton.CANCEL || btn === 2) {
-                if (isInsideSubCollection) {
-                    evt.preventDefault?.();
-                    evt.stopPropagation?.();
-                    handleBackToCollections();
-                    return;
-                }
-                if (focusZone === 'grid') {
-                    evt.preventDefault?.();
-                    evt.stopPropagation?.();
-                    setFocusZone('tabs');
-                    playNavSound();
-                    return;
-                }
-                // When on tabs, let Steam handle B so user exits the library cleanly
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                onCancel();
                 return;
             }
 
@@ -492,8 +513,13 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 e.preventDefault();
             } else if (e.key === 'm' || e.key === 'M' || e.key === 'ContextMenu') {
                 if (selectedGame) {
-                    const anchor = document.querySelector('.sgl-card.focused, .sgl-card-collection.focused') as HTMLElement | null;
-                    openGameActions(selectedGame.appId, anchor);
+                    const cardEl = (
+                        document.querySelector(`.sgl-card[data-app-id="${selectedGame.appId}"]`) ??
+                        document.querySelectorAll('.sgl-card')[selectedGameIdx] ??
+                        document.querySelector('.sgl-inspector') ??
+                        document.body
+                    ) as HTMLElement;
+                    openGameActions(selectedGame.appId, cardEl);
                     e.preventDefault();
                 }
             } else if (e.key === 'Escape') {

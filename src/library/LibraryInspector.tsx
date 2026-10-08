@@ -81,11 +81,28 @@ export function LibraryInspector({
         const game0 = games[0];
         const game1 = games[1];
         const game2 = games[2];
+        const game3 = games[3];
+        const game4 = games[4];
 
         return (
             <aside className="sgl-inspector" style={{ '--accent': accent } as React.CSSProperties}>
                 <div className="sgl-inspector-col-fan">
-                    {games.length >= 3 ? (
+                    {games.length >= 5 ? (
+                        <>
+                            <InspectorFanCover game={game3} className="sgl-insp-col-card-far-left" />
+                            <InspectorFanCover game={game1} className="sgl-insp-col-card-left" />
+                            <InspectorFanCover game={game4} className="sgl-insp-col-card-far-right" />
+                            <InspectorFanCover game={game2} className="sgl-insp-col-card-right" />
+                            <InspectorFanCover game={game0} className="sgl-insp-col-card-center" />
+                        </>
+                    ) : games.length === 4 ? (
+                        <>
+                            <InspectorFanCover game={game3} className="sgl-insp-col-card-far-left" />
+                            <InspectorFanCover game={game1} className="sgl-insp-col-card-left" />
+                            <InspectorFanCover game={game2} className="sgl-insp-col-card-right" />
+                            <InspectorFanCover game={game0} className="sgl-insp-col-card-center" />
+                        </>
+                    ) : games.length === 3 ? (
                         <>
                             <InspectorFanCover game={game1} className="sgl-insp-col-card-left" />
                             <InspectorFanCover game={game2} className="sgl-insp-col-card-right" />
@@ -101,17 +118,17 @@ export function LibraryInspector({
                     ) : (
                         <div
                             style={{
-                                width: 96,
-                                height: 144,
+                                width: 78,
+                                height: 117,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 background: '#161b24',
-                                borderRadius: 8,
+                                borderRadius: 7,
                                 border: '1px solid rgba(255,255,255,0.15)',
                             }}
                         >
-                            <FaFolderOpen size={36} color="var(--accent, #58a6ff)" />
+                            <FaFolderOpen size={32} color="var(--accent, #58a6ff)" />
                         </div>
                     )}
                 </div>

@@ -73,6 +73,7 @@ function BannerCard({ game, isFocused, accent, onClick, onDoubleClick }: BannerC
             ref={cardRef}
             role="button"
             tabIndex={0}
+            data-app-id={game.appId}
             className={`sgl-card${isFocused ? ' focused' : ''}`}
             style={{
                 '--accent': accent,
@@ -180,12 +181,15 @@ function CollectionCard({ collection, isFocused, accent, onClick, onDoubleClick 
     const game0 = games[0];
     const game1 = games[1];
     const game2 = games[2];
+    const game3 = games[3];
+    const game4 = games[4];
 
     return (
         <div
             ref={cardRef}
             role="button"
             tabIndex={0}
+            data-collection-id={collection.id}
             className={`sgl-card-collection${isFocused ? ' focused' : ''}`}
             style={{
                 '--accent': accent,
@@ -195,7 +199,22 @@ function CollectionCard({ collection, isFocused, accent, onClick, onDoubleClick 
             onDoubleClick={onDoubleClick}
         >
             <div className="sgl-col-fan-area">
-                {games.length >= 3 ? (
+                {games.length >= 5 ? (
+                    <>
+                        <MiniCover game={game3} className="sgl-col-card-far-left" />
+                        <MiniCover game={game1} className="sgl-col-card-left" />
+                        <MiniCover game={game4} className="sgl-col-card-far-right" />
+                        <MiniCover game={game2} className="sgl-col-card-right" />
+                        <MiniCover game={game0} className="sgl-col-card-center" />
+                    </>
+                ) : games.length === 4 ? (
+                    <>
+                        <MiniCover game={game3} className="sgl-col-card-far-left" />
+                        <MiniCover game={game1} className="sgl-col-card-left" />
+                        <MiniCover game={game2} className="sgl-col-card-right" />
+                        <MiniCover game={game0} className="sgl-col-card-center" />
+                    </>
+                ) : games.length === 3 ? (
                     <>
                         <MiniCover game={game1} className="sgl-col-card-left" />
                         <MiniCover game={game2} className="sgl-col-card-right" />

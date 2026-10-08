@@ -36,7 +36,7 @@ export const LIBRARY_CSS = `
     inset: 0;
     background-size: cover;
     background-position: center 30%;
-    filter: brightness(0.24) saturate(1.15);
+    filter: brightness(0.36) saturate(1.18);
     transform: none;
     transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: opacity;
@@ -45,7 +45,7 @@ export const LIBRARY_CSS = `
 .sgl-bg-vignette {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 65% 50%, rgba(6, 9, 14, 0.35) 0%, rgba(6, 9, 14, 0.88) 75%, #06090e 100%);
+    background: radial-gradient(circle at 65% 50%, rgba(6, 9, 14, 0.20) 0%, rgba(6, 9, 14, 0.68) 75%, #06090e 100%);
 }
 
 /* Top Header / Categories Ribbon */
@@ -233,8 +233,8 @@ export const LIBRARY_CSS = `
     overflow-y: auto;
     scrollbar-width: none;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(90deg, rgba(7, 10, 16, 0.72) 0%, rgba(7, 10, 16, 0.45) 100%);
-    backdrop-filter: blur(24px);
+    background: linear-gradient(90deg, rgba(7, 10, 16, 0.54) 0%, rgba(7, 10, 16, 0.32) 100%);
+    backdrop-filter: blur(20px);
     box-sizing: border-box;
 }
 
@@ -596,14 +596,14 @@ export const LIBRARY_CSS = `
 
 .sgl-col-fan-card {
     position: absolute;
-    width: 62px;
-    height: 93px;
-    border-radius: 6px;
+    width: 52px;
+    height: 78px;
+    border-radius: 5px;
     overflow: hidden;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.16);
     background: #161b22;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sgl-col-fan-card img {
@@ -613,25 +613,35 @@ export const LIBRARY_CSS = `
     display: block;
 }
 
-.sgl-col-card-left {
-    transform: translateX(-32px) translateY(5px) rotate(-8deg) scale(0.9);
+.sgl-col-card-far-left {
+    transform: translateX(-52px) translateY(8px) rotate(-14deg) scale(0.82);
     z-index: 1;
 }
 
-.sgl-col-card-right {
-    transform: translateX(32px) translateY(5px) rotate(8deg) scale(0.9);
+.sgl-col-card-left {
+    transform: translateX(-26px) translateY(3px) rotate(-7deg) scale(0.91);
     z-index: 2;
+}
+
+.sgl-col-card-right {
+    transform: translateX(26px) translateY(3px) rotate(7deg) scale(0.91);
+    z-index: 2;
+}
+
+.sgl-col-card-far-right {
+    transform: translateX(52px) translateY(8px) rotate(14deg) scale(0.82);
+    z-index: 1;
 }
 
 .sgl-col-card-center {
     transform: translateX(0) translateY(-2px) rotate(0deg) scale(1);
     z-index: 3;
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.85);
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .sgl-card-collection.focused .sgl-col-card-center {
-    transform: translateX(0) translateY(-7px) rotate(0deg) scale(1.04);
+    transform: translateX(0) translateY(-8px) rotate(0deg) scale(1.06);
 }
 
 .sgl-col-footer {
@@ -667,10 +677,10 @@ export const LIBRARY_CSS = `
     letter-spacing: 0.5px;
 }
 
-/* Inspector 3-Card Fan for Collections */
+/* Inspector 5-Card Fan for Collections */
 .sgl-inspector-col-fan {
     width: 100%;
-    max-width: 290px;
+    max-width: 310px;
     height: 180px;
     position: relative;
     display: flex;
@@ -682,9 +692,9 @@ export const LIBRARY_CSS = `
 
 .sgl-insp-col-card {
     position: absolute;
-    width: 96px;
-    height: 144px;
-    border-radius: 8px;
+    width: 78px;
+    height: 117px;
+    border-radius: 7px;
     overflow: hidden;
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.16);
@@ -699,14 +709,24 @@ export const LIBRARY_CSS = `
     display: block;
 }
 
-.sgl-insp-col-card-left {
-    transform: translateX(-48px) translateY(8px) rotate(-10deg) scale(0.9);
+.sgl-insp-col-card-far-left {
+    transform: translateX(-76px) translateY(12px) rotate(-16deg) scale(0.82);
     z-index: 1;
 }
 
-.sgl-insp-col-card-right {
-    transform: translateX(48px) translateY(8px) rotate(10deg) scale(0.9);
+.sgl-insp-col-card-left {
+    transform: translateX(-38px) translateY(5px) rotate(-8deg) scale(0.91);
     z-index: 2;
+}
+
+.sgl-insp-col-card-right {
+    transform: translateX(38px) translateY(5px) rotate(8deg) scale(0.91);
+    z-index: 2;
+}
+
+.sgl-insp-col-card-far-right {
+    transform: translateX(76px) translateY(12px) rotate(16deg) scale(0.82);
+    z-index: 1;
 }
 
 .sgl-insp-col-card-center {
