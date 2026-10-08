@@ -11,6 +11,19 @@ export interface MockGame {
     accent: string;
 }
 
+export const MOCK_COLLECTIONS: Record<number, string[]> = {
+    292030: ['Favorites', 'RPG Classics', 'Action & Adventure'],
+    1091500: ['RPG Classics', 'Action & Adventure'],
+    1229240: ['Favorites', 'RPG Classics', 'Indie Favorites'],
+    367520: ['Favorites', 'Metroidvania'],
+    1145360: ['Action & Adventure', 'Roguelike'],
+    504230: ['Platformers', 'Indie Favorites'],
+};
+
+if (typeof window !== 'undefined') {
+    (window as unknown as { __mockCollections?: Record<number, string[]> }).__mockCollections = MOCK_COLLECTIONS;
+}
+
 export const MOCK_GAMES: MockGame[] = [
     {
         info: {

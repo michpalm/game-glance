@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { FaCloud, FaCog, FaGamepad, FaPlay, FaSlidersH, FaTv, FaMobileAlt, FaHome, FaThLarge, FaLayerGroup } from 'react-icons/fa';
+import { FaCloud, FaCog, FaGamepad, FaPlay, FaSlidersH, FaTv, FaMobileAlt, FaHome, FaThLarge, FaLayerGroup, FaFolder, FaStar } from 'react-icons/fa';
 import { CleanInfo } from '../src/components/CleanInfo';
 import { HltbCard } from '../src/components/HltbCard';
 import { InfoCard } from '../src/components/InfoCard';
 import { SettingsPanel } from '../src/components/SettingsPanel';
 import { SourcePill } from '../src/components/SourcePill';
+import { getGameCollections } from '../src/data/gameCollections';
 import { useSettings } from '../src/data/settings';
 import { MOCK_GAMES } from './mockData';
 import { SpotlightHomePreview } from './SpotlightHomePreview';
@@ -479,6 +480,43 @@ export function App() {
                             {cleanLook && (
                                 <div style={{ marginBottom: 16 }}>
                                     <CleanInfo game={game.info} hltb={game.hltb} locale="en" />
+                                </div>
+                            )}
+
+                            {/* Collection Pills (if any) */}
+                            {getGameCollections(game.info.appId).length > 0 && (
+                                <div className="gg-collections" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                    {getGameCollections(game.info.appId).map((col) => {
+                                        const isFav = col.toLowerCase().includes('favorit');
+                                        return (
+                                            <div
+                                                key={col}
+                                                className="gg-collection-pill"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    padding: '4px 10px',
+                                                    borderRadius: 999,
+                                                    background: 'rgba(12, 16, 22, 0.55)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                                                    backdropFilter: 'blur(10px)',
+                                                    fontSize: 11,
+                                                    fontWeight: 700,
+                                                    letterSpacing: '0.06em',
+                                                    textTransform: 'uppercase',
+                                                    color: 'rgba(255, 255, 255, 0.85)',
+                                                }}
+                                            >
+                                                {isFav ? (
+                                                    <FaStar size={10} color={accentColor} />
+                                                ) : (
+                                                    <FaFolder size={10} color={accentColor} />
+                                                )}
+                                                <span>{col}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
 

@@ -19,6 +19,8 @@ import { heroicStoreLabel } from '../logic/heroic';
 import { useDownload } from '../home/useDownload';
 import { useLaunchOverlay } from '../styles/launchOverlay';
 import { accentCss, cleanCss, downloadCss, launchCss, launchSelectors, themeCss, unifideckCss } from '../styles/theme';
+import { FaFolder, FaStar } from 'react-icons/fa';
+import { getGameCollections } from '../data/gameCollections';
 import { CleanInfo } from './CleanInfo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HltbCard } from './HltbCard';
@@ -168,6 +170,8 @@ function Hero({ overview, details, restyle, clean, preferLogos }: Props & { rest
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
     const eyebrow = restyle ? lastPlayedEyebrow(overview, locale) : null;
+    const collections = useMemo(() => getGameCollections(game.appId), [game.appId]);
+
     return (
         <>
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
@@ -188,6 +192,23 @@ function Hero({ overview, details, restyle, clean, preferLogos }: Props & { rest
                 {fillCss && <style>{fillCss}</style>}
                 {source && <SourcePill label={source} />}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} />}
+                {collections.length > 0 && (
+                    <div className="gg-collections">
+                        {collections.map((col) => {
+                            const isFav = col.toLowerCase().includes('favorit');
+                            return (
+                                <div key={col} className="gg-collection-pill">
+                                    {isFav ? (
+                                        <FaStar className="gg-collection-icon" size={10} />
+                                    ) : (
+                                        <FaFolder className="gg-collection-icon" size={10} />
+                                    )}
+                                    <span>{col}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 <div className="gg-cards">
                     <InfoCard game={game} locale={locale} description={description} />
                     <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} />
