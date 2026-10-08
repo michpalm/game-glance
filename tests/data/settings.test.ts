@@ -7,7 +7,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -22,7 +22,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
     });
 });
 
@@ -34,16 +34,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
     });
 });
 
@@ -89,7 +89,7 @@ describe('settings: Home feed', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true });
     });
 });
 
@@ -142,18 +142,5 @@ describe('settings: Prefer game logos', () => {
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
         expect(reloaded.get().preferLogos).toBe(false);
-    });
-});
-
-describe('settings: Enable trailer background', () => {
-    it('is on by default and remembers being turned off', async () => {
-        const kv = memoryKv();
-        const store = createSettingsStore(kv);
-        await store.load();
-        expect(store.get().trailerBackground).toBe(true);
-        await store.setTrailerBackground(false);
-        const reloaded = createSettingsStore(kv);
-        await reloaded.load();
-        expect(reloaded.get().trailerBackground).toBe(false);
     });
 });

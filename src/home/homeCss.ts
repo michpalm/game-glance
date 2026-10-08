@@ -189,12 +189,6 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             background-repeat: no-repeat; opacity: .92; animation: gh-hero-ambient 24s ease-in-out infinite alternate; will-change: transform;
             -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%)`),
 
-        // Trailer background: Phase 1 fades hero art to black in 600ms; Phase 2 fades video in from black in another 600ms.
-        rule('.gh-trailer', 'position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 150ms ease; z-index: 1; overflow: hidden'),
-        rule('.gh-trailer.gh-trailer-active', 'opacity: 1; transition: opacity 600ms ease'),
-        rule('.gh-trailer-video', 'position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.9); background: #000; opacity: 0; transition: opacity 150ms ease'),
-        rule('.gh-trailer.gh-trailer-active .gh-trailer-video', 'opacity: 1; transition: opacity 600ms ease 600ms'),
-
         // Scrims: flat dim, vertical, left.
         rule('.gh-scrim', 'position: absolute; inset: 0; pointer-events: none'),
         rule('.gh-scrim-dim', `background: rgba(${SCRIM},var(--gh-dim)); transition: background ${SHEET_MS}ms`),
