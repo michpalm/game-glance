@@ -25,6 +25,7 @@ what it is about, and where it came from.
   Community and Game info tabs move to the next screen (press down).
 - **Restyled Play row.** A pill-shaped Play button (including the "Play from" arrow some games have), round
   controller and settings buttons, and Steam Cloud as a small icon coloured by sync state.
+- **Collection Pills.** Frosted-glass pill badges on the game page showing all collections and Favorites the game belongs to.
 - **HowLongToBeat.** Main story, Main + Extras and 100% times, a progress bar toward the next one you have
   not reached, and how many hours are left.
 - **Info card.** Your play time, achievements and the game's description, in your Steam language.
@@ -37,9 +38,26 @@ what it is about, and where it came from.
   every installed game, and new installs are picked up automatically.
 - **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.
 
-## Spotlight Home (new in 2.0)
+## Visual Tour
 
-![Spotlight Home](docs/images/home-demo.gif)
+> **Note on Screenshots:** The screenshots below (`homeview.png`, `gameview.png`, `gamelist.png`, `collections.png`, and `browser preview.png`) were captured directly from the **Browser Development Preview** environment. They illustrate the UI layout, components, and interaction patterns; minor differences (such as system fonts, margins, and native Steam overlays) may appear when running inside SteamOS Game Mode.
+
+### Spotlight Home
+![Spotlight Home](docs/images/homeview.png)
+
+### Game Details View
+![Game Details View](docs/images/gameview.png)
+
+### Spotlight Library (Game List View)
+![Spotlight Library Game List](docs/images/gamelist.png)
+
+### Collections View (5-Poster Fan Collage)
+![Collections View](docs/images/collections.png)
+
+### Browser Development Preview
+![Browser Development Preview](docs/images/browser%20preview.png)
+
+## Spotlight Home (new in 2.0)
 
 Spotlight Home is an optional new Home screen. It is off by default; turn it on in Quick Access.
 
@@ -79,37 +97,33 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
   notifications, your profile) fades the bar out; it comes back when focus returns to Home. Without a battery (a
   desktop) the battery is left out.
 
-Quick Access → Game Glance has two toggles:
+## Spotlight Library (new in 2.1)
 
-| Toggle | Default | Does |
-|---|---|---|
-| Game Glance page | On | The immersive game page. Off gives Steam's own game page. |
-| Spotlight Home | Off | The new Home, and the details restyle above. Off returns Steam's Home at once. |
+Spotlight Library brings the same immersive visual treatment to Steam's Library page:
 
-Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
-with Steam's own game page.
+- **Game List View & Inspector.** Browse games in a grid of portrait posters. Highlighting any game reveals the side-by-side inspector panel with its hero poster, game logo/title, playtime, achievements, last played date, and HowLongToBeat times.
+- **Configurable Grid Density.** Adjust the number of games per row between **3 and 7 columns** to fit your preference.
+- **Collection Improvements & 5-Poster Fan Collage.** Collections appear with an elegant 5-poster fan collage preview. Entering a collection opens a dedicated game list with LB/RB bumper navigation to cycle quickly between collections. Soundtracks are organized into their own collection with a streamlined single action button (**A Open Soundtrack**).
+- **Collection Pills on Game Details.** The Game Details view displays subtle frosted-glass pill badges between the action row and the metadata cards, showing every collection and Favorites category the game belongs to.
+- **Navigation & Gamepad Polish.**
+  - **Debounced navigation:** Smooth, precise analog stick and D-pad input without accidental double-skips.
+  - **Steam Search Bar Integration:** Moving up from the category tabs navigates seamlessly into Steam's native top bar and search input.
+  - **START / Menu Button:** Pressing the Menu (START) button on any game opens Steam's native context options dialog (Properties, Controller Settings, Manage, etc.).
+  - **B Button to Home:** Pressing Back (B) when at the root of the library returns smoothly to Steam Deck Home.
+  - **State Memory:** Retains your exact tab, collection, focused game, and scroll position when returning from Steam sub-screens (Properties, Controller settings, etc.).
+- **Styling Tweaks & Visuals.**
+  - **25% lighter backgrounds:** Enhanced contrast and ambient backdrop lighting.
+  - **Home-styled tabs:** Category navigation tabs feature glowing accent underlines that sample the active game's color palette.
+  - **Single solid accent color action buttons:** Clean, uniform accent styling for Play and Details action buttons.
+  - **Recommended-card highlight:** Highlighted game cards feature a luminous border and a bottom accent bar matching Spotlight Home's card design.
 
-**Status bar** (on by default) shows the clock, battery, connection and your online status at the top-right of Spotlight Home.
+## Browser Development Preview
 
-**New to library** (off by default) adds the games Steam's own Home shows as new to your library, not played yet, to the
-recents row.
+For rapid local development, Game Glance includes a full **Vite-based browser playground**:
 
-**What's new, Friends, Recommended** (on by default) shows the tabs under your games. Turn it off and Home shows only
-the selected game; nothing for the tabs is loaded then.
-
-**Show wishlist deals** (off by default, shown while the tabs are on) adds up to six wishlist games that are on sale (the biggest discounts)
-to the Recommended tab, as a second row. To find them it sends your Steam ID to Steam's web API to read your wishlist, which must
-be public, then checks the prices of the whole wishlist on Steam's store (app IDs only) and looks up the name and
-Steam Deck rating of the deals shown; their header art loads from Steam's image servers. Nothing else leaves the
-device for this; Play next is worked out locally. A private or empty wishlist just hides the shelf.
-
-If anything in Spotlight Home fails, you get Steam's own Home instead of a broken screen.
-
-Known limits: Steam keeps no persistent "last played" game for friends, so Game Glance remembers the last game
-it saw each friend play (while Home is open or Steam reports it) and shows it, with that game's card, once they are away or offline;
-a friend it never saw playing shows their status. Spotlight Home is new and has had less
-testing than the game page; [docs/device-checklist.md](docs/device-checklist.md) lists what is still to be
-checked.
+- Run `pnpm dev` or `npx vite` to launch the dev server in any web browser.
+- Simulates the Decky UI, Steam client stores, navigation focus managers, and HowLongToBeat APIs.
+- Preview and interactively test Spotlight Home, Game Details, Spotlight Library, Collections, and Quick Access settings with live hot-reloading and gamepad or keyboard controls.
 
 ## Install
 
@@ -129,17 +143,22 @@ If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same t
 
 Quick Access (…) → Game Glance:
 
-- **Game Glance page:** turn it off to get Steam's own game page back.
-- **Clean look** (off by default, with the Game Glance page on): the game's art fills the screen with one row at the
-  bottom: Play, the controller, settings and cloud buttons, and a small card with your play time, achievements and
-  HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
-  description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
-  title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **Status bar**, **New to library**, **What's new, Friends, Recommended** and **Show wishlist deals:** see above.
-- **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
-- **Pre-load game info for installed games** and **Pre-load new games automatically.**
-- **Clear cached data.**
-- **Updates:** the installed version, and an update button when a newer release is out (see Install).
+| Setting | Default | Description |
+|---|---|---|
+| **Game Glance page** | On | Immersive full-screen game page with HLTB stats and cards. Off restores Steam's default page. |
+| **Spotlight Home** | Off | Replaces Steam's Home screen with the Spotlight Home experience. |
+| **Spotlight Library** | Off | Replaces Steam's Library screen with the Spotlight Library experience. |
+| **Library Grid Columns** | 3 | Slider from 3 to 7 columns to configure poster density in Spotlight Library. |
+| **Prefer game logos** | On | Uses official or custom game logos instead of text titles across Home, Library, and Game Details. |
+| **Clean look** | Off | Minimalist game page with a single bottom row of actions and playtime/HLTB summary. |
+| **Status bar** | On | Shows clock, battery, connection, and online status pill in Steam's top bar on Spotlight Home. |
+| **New to library** | Off | Includes newly added, unplayed games in Spotlight Home's recent games row. |
+| **What's new, Friends, Recommended** | On | Displays the bottom feed tabs on Spotlight Home. |
+| **Show wishlist deals** | Off | Shows discounted games from your public Steam wishlist on the Recommended tab. |
+| **Pre-load game info for installed games** | On | Automatically caches descriptions and HLTB stats for installed games. |
+| **Pre-load new games automatically** | On | Automatically fetches data when new games are installed. |
+| **Clear cached data** | — | Clears local cache of descriptions and HLTB times. |
+| **Updates** | — | Checks for newer releases and initiates Decky updates. |
 
 ## Compatibility
 
@@ -164,6 +183,7 @@ Everything Game Glance stores stays on the device, in Decky's settings folder.
 
 ```bash
 pnpm install
+pnpm dev                          # browser development preview (Vite playground)
 pnpm test                         # frontend tests
 python3 -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest tests/py
 pnpm check:hltb                   # live check against howlongtobeat.com
