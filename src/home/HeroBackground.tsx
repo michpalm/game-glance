@@ -5,6 +5,8 @@ import { loadWithTimeout } from './accentSample';
 import { HeroLayer, nextHeroLayers } from './heroLayers';
 import { heroSources, shouldMemoArt } from './homeView';
 import { HERO_FADE_MS, HERO_PRELOAD_DELAY_MS } from './motion';
+import { TrailerPlayer } from './TrailerPlayer';
+import type { GameTrailer } from './trailers';
 
 type Art = { mode: 'full'; url: string } | { mode: 'fallback'; url: string } | { mode: 'none' };
 
@@ -125,11 +127,15 @@ export function HeroBackground({
     detailsVersion,
     neighbours = [],
     direction = 'none',
+    trailer = null,
+    showTrailer = false,
 }: {
     appId: number | null;
     detailsVersion: number;
     neighbours?: number[];
     direction?: 'left' | 'right' | 'none';
+    trailer?: GameTrailer | null;
+    showTrailer?: boolean;
 }) {
     const [layers, setLayers] = useState<Array<HeroLayer<Art>>>([]);
     const nextId = useRef(0);
@@ -174,6 +180,7 @@ export function HeroBackground({
             {layers.map((layer) => (
                 <Layer key={layer.id} art={layer.art} settled={layer.settled} direction={layer.direction} />
             ))}
+            {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} />}
         </div>
     );
 }

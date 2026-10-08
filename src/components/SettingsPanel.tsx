@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos, trailerBackground } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -170,6 +170,14 @@ export function SettingsPanel() {
                         description="Shows game logos instead of text titles in Spotlight Home and Game Glance pages when available. Off always displays text."
                         checked={preferLogos}
                         onChange={(value) => settings.setPreferLogos(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Trailer background"
+                        description="Plays game trailers as background on Spotlight Home after staying on a game for a few seconds. Off by default."
+                        checked={trailerBackground}
+                        onChange={(value) => settings.setTrailerBackground(value)}
                     />
                 </PanelSectionRow>
             </PanelSection>

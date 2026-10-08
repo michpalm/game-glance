@@ -183,11 +183,16 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-hero-layer.gh-hero-settled', 'animation: none; opacity: 1; transform: none'),
         rule('.gh-hero-none', 'background: var(--gh-ink)'),
         rule('.gh-hero-full', `position: absolute; inset: -30px; background-size: cover; background-position: center 30%; background-repeat: no-repeat;
-            animation: gh-hero-ambient 24s ease-in-out infinite alternate; will-change: transform`),
+            animation: gh-hero-ambient 18s ease-in-out infinite alternate; will-change: transform`),
         rule('.gh-hero-blur', 'position: absolute; inset: -60px; background-size: cover; background-position: center; filter: blur(42px) saturate(1.25) brightness(.8)'),
         rule('.gh-hero-sharp', `position: absolute; right: 0; top: -30px; bottom: -30px; width: 62%; background-size: cover; background-position: center 30%;
-            background-repeat: no-repeat; opacity: .92; animation: gh-hero-ambient 24s ease-in-out infinite alternate; will-change: transform;
+            background-repeat: no-repeat; opacity: .92; animation: gh-hero-ambient 18s ease-in-out infinite alternate; will-change: transform;
             -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%)`),
+
+        // Trailer background video: crossfades from solid black over hero art after 5s idle lock
+        rule('.gh-trailer', 'position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 600ms ease; z-index: 1; overflow: hidden'),
+        rule('.gh-trailer.gh-trailer-active', 'opacity: 1'),
+        rule('.gh-trailer-video', 'position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.9)'),
 
         // Scrims: flat dim, vertical, left.
         rule('.gh-scrim', 'position: absolute; inset: 0; pointer-events: none'),

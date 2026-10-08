@@ -18,17 +18,48 @@ const FIRST_SHORTCUT_APP_ID = 0x80000000;
 
 type AnyRecord = Record<string, unknown> | undefined | null;
 
+function extractAchievements(o: AnyRecord, d: AnyRecord, isShortcut: boolean): { achieved: number; total: number } | null {
+    if (isShortcut) return null;
+
+    const parseObj = (obj: unknown): { achieved: number; total: number } | null => {
+        if (!obj || typeof obj !== 'object') return null;
+        const rec = obj as Record<string, unknown>;
+        const total = Number(rec.nTotal ?? rec.total ?? rec.nAchievementsTotal ?? 0);
+        if (Number.isFinite(total) && total > 0) {
+            const achieved = Number(rec.nAchieved ?? rec.achieved ?? rec.nAchievementsAchieved ?? rec.nAchievements ?? 0) || 0;
+            return { achieved: Math.max(0, Math.min(achieved, total)), total };
+        }
+        return null;
+    };
+
+    const fromDetailsObj = parseObj(d?.achievements);
+    if (fromDetailsObj) return fromDetailsObj;
+
+    const dTotal = Number(d?.nAchievementsTotal ?? d?.nTotalAchievements ?? 0);
+    if (Number.isFinite(dTotal) && dTotal > 0) {
+        const dAchieved = Number(d?.nAchievementsAchieved ?? d?.nAchieved ?? d?.nAchievements ?? 0) || 0;
+        return { achieved: Math.max(0, Math.min(dAchieved, dTotal)), total: dTotal };
+    }
+
+    const fromOverviewObj = parseObj(o?.achievements);
+    if (fromOverviewObj) return fromOverviewObj;
+
+    const oTotal = Number(o?.nAchievementsTotal ?? o?.nTotalAchievements ?? o?.achievements_total ?? 0);
+    if (Number.isFinite(oTotal) && oTotal > 0) {
+        const oAchieved = Number(o?.nAchievementsAchieved ?? o?.nAchieved ?? o?.nAchievements ?? o?.achievements_unlocked ?? 0) || 0;
+        return { achieved: Math.max(0, Math.min(oAchieved, oTotal)), total: oTotal };
+    }
+
+    return null;
+}
+
 export function readGameInfo(overview: unknown, details: unknown): GameInfo {
     const o = overview as AnyRecord;
     const d = details as AnyRecord;
     const appId = Number(o?.appid ?? 0) || 0;
     const isShortcut = o?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
     const minutes = Number(o?.minutes_playtime_forever ?? 0);
-    const a = d?.achievements as AnyRecord;
-    const total = Number(a?.nTotal ?? 0);
-    const achievements = !isShortcut && Number.isFinite(total) && total > 0
-        ? { achieved: Number(a?.nAchieved ?? 0) || 0, total }
-        : null;
+    const achievements = extractAchievements(o, d, isShortcut);
     return {
         appId,
         name: typeof o?.display_name === 'string' ? o.display_name : '',

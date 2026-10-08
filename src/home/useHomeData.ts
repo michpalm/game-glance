@@ -30,7 +30,7 @@ import { fillMissing } from './homeView';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
-import { noteDetails } from './detailsMemo';
+import { memoRawDetails, noteDetails } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
 import { browserStores, logoUrls as getLogoUrls } from './artwork';
@@ -542,7 +542,10 @@ export function useHomeData(focusIndex = 0): HomeData {
     useAccentWarmup(gameIds, restNeighbours);
     const overrideVersion = useOverrideVersion();
     const info = useMemo(
-        () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),
+        () => (appId === null ? null : guarded('game info', () => {
+            const rawDetails = steam.appDetailsStore?.GetAppDetails?.(appId) ?? memoRawDetails(appId);
+            return readGameInfo(overview(appId), rawDetails);
+        }, null)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [appId, detailsVersion],
     );

@@ -11,10 +11,11 @@ export interface Settings {
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
     preferLogos: boolean; // prefer game logos over text titles on Spotlight Home and Game page when available
+    trailerBackground: boolean; // play game trailer in background after 5s lock on Spotlight Home
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, trailerBackground: false };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -35,6 +36,7 @@ export function createSettingsStore(kv: KvBackend) {
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
                 preferLogos: pick('preferLogos'),
+                trailerBackground: pick('trailerBackground'),
             };
             emit();
         },
@@ -81,6 +83,11 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setPreferLogos(preferLogos: boolean): Promise<void> {
             current = { ...current, preferLogos };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setTrailerBackground(trailerBackground: boolean): Promise<void> {
+            current = { ...current, trailerBackground };
             emit();
             await kv.set(KEY, current);
         },

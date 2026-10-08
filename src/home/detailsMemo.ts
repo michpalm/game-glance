@@ -16,12 +16,18 @@ export interface LibraryAssets {
 export const DETAILS_MEMO_MAX = 64;
 
 const memo = new Map<number, LibraryAssets>();
+const rawMemo = new Map<number, unknown>();
 
-/** Remembers `details.libraryAssets` for `appId`; anything without them is ignored. Never throws. */
+/** Remembers `details` and `details.libraryAssets` for `appId`. Never throws. */
 export function noteDetails(appId: number, details: unknown) {
     try {
-        const assets = (details as { libraryAssets?: unknown } | null | undefined)?.libraryAssets;
-        if (!Number.isInteger(appId) || appId <= 0 || !assets || typeof assets !== 'object') return;
+        if (!Number.isInteger(appId) || appId <= 0 || !details || typeof details !== 'object') return;
+        rawMemo.delete(appId);
+        rawMemo.set(appId, details);
+        while (rawMemo.size > DETAILS_MEMO_MAX) rawMemo.delete(rawMemo.keys().next().value as number);
+
+        const assets = (details as { libraryAssets?: unknown })?.libraryAssets;
+        if (!assets || typeof assets !== 'object') return;
         const { strHeroImage, strHeaderImage, strLogoImage } = assets as Record<string, unknown>;
         const kept: LibraryAssets = {};
         if (typeof strHeroImage === 'string') kept.strHeroImage = strHeroImage;
@@ -40,7 +46,14 @@ export function memoDetails(appId: number): LibraryAssets | undefined {
     return memo.get(appId);
 }
 
+/** The remembered raw details object for `appId`, or undefined. */
+export function memoRawDetails(appId: number): unknown | undefined {
+    return rawMemo.get(appId);
+}
+
 /** Forgets everything (tests). */
 export function resetDetailsMemo() {
     memo.clear();
+    rawMemo.clear();
 }
+

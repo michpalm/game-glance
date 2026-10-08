@@ -30,6 +30,27 @@ describe('readGameInfo', () => {
         const info = readGameInfo({ appid: 5, app_type: 1 }, { strShortcutLaunchOptions: 'heroic://launch/gog/1' });
         expect(info.heroic).toBeNull();
     });
+    it('reads achievements from overview when details is undefined', () => {
+        const info = readGameInfo(
+            { appid: 1091500, display_name: 'Cyberpunk 2077', minutes_playtime_forever: 1200, app_type: 1, nAchievementsTotal: 44, nAchievementsAchieved: 38 },
+            undefined,
+        );
+        expect(info.achievements).toEqual({ achieved: 38, total: 44 });
+    });
+    it('reads achievements with alternate property names (achieved/total)', () => {
+        const info = readGameInfo(
+            { appid: 292030, display_name: 'The Witcher 3', app_type: 1 },
+            { achievements: { achieved: 10, total: 50 } },
+        );
+        expect(info.achievements).toEqual({ achieved: 10, total: 50 });
+    });
+    it('reads achievements from top-level details fields', () => {
+        const info = readGameInfo(
+            { appid: 292030, display_name: 'The Witcher 3', app_type: 1 },
+            { nAchievementsTotal: 60, nAchievementsAchieved: 25 },
+        );
+        expect(info.achievements).toEqual({ achieved: 25, total: 60 });
+    });
     it('tolerates missing data', () => {
         expect(readGameInfo(undefined, undefined)).toEqual({ appId: 0, name: '', isShortcut: false, playedMinutes: 0, achievements: null, heroic: null });
         expect(readGameInfo({ appid: 1, minutes_playtime_forever: 'x' }, { achievements: { nAchieved: 0, nTotal: 0 } }).achievements).toBeNull();

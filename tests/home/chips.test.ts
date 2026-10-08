@@ -5,13 +5,13 @@ const NOW = 1_700_000_000;
 const base = { playedMinutes: 600, achievements: { achieved: 5, total: 20 }, lastPlayed: NOW, hltbMainHours: 20 };
 
 describe('gameChips', () => {
-    it('returns Played, Achievements, Last played, HLTB main in that order', () => {
+    it('returns Hrs Played, Achievements, Last played, HLTB main in that order', () => {
         const chips = gameChips(base, NOW, 'en-US');
-        expect(chips.map((c) => c.label)).toEqual(['Played', 'Achievements', 'Last played', 'HLTB main']);
+        expect(chips.map((c) => c.label)).toEqual(['Hrs Played', 'Achievements', 'Last played', 'HLTB main']);
         expect(chips[0].value).toBe('10 h');
         expect(chips[2].value).toBe('Today');
     });
-    it('a game new to the library: Added (when) instead of Played and Last played', () => {
+    it('a game new to the library: Added (when) instead of Hrs Played and Last played', () => {
         const chips = gameChips({ ...base, playedMinutes: 0, lastPlayed: 0, addedAt: NOW }, NOW, 'en-US');
         expect(chips.map((c) => c.label)).toEqual(['Added', 'Achievements', 'HLTB main']);
         expect(chips[0].value).toBe('Today');
@@ -27,7 +27,7 @@ describe('gameChips', () => {
     });
     it('achievements chip is omitted when the game has none', () => {
         const labels = gameChips({ ...base, achievements: null }, NOW, 'en-US').map((c) => c.label);
-        expect(labels).toEqual(['Played', 'Last played', 'HLTB main']);
+        expect(labels).toEqual(['Hrs Played', 'Last played', 'HLTB main']);
         const zero = gameChips({ ...base, achievements: { achieved: 0, total: 0 } }, NOW, 'en-US');
         expect(zero.map((c) => c.label)).not.toContain('Achievements');
     });

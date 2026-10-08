@@ -199,7 +199,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
                     background-size: cover;
                     background-position: center 30%;
                     background-repeat: no-repeat;
-                    animation: gh-hero-ambient 24s ease-in-out infinite alternate;
+                    animation: gh-hero-ambient 18s ease-in-out infinite alternate;
                     will-change: transform;
                 }
                 .gh-scrim-layer {

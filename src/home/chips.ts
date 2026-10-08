@@ -23,7 +23,7 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
     const isNew = typeof i.addedAt === 'number' && i.addedAt > 0;
     const chips: Chip[] = isNew
         ? [{ key: 'added', label: 'Added', value: formatLastPlayed(i.addedAt as number, now, locale) }]
-        : [{ key: 'played', label: 'Played', value: formatHours(playedHours, locale) }];
+        : [{ key: 'played', label: 'Hrs Played', value: formatHours(playedHours, locale) }];
     if (i.achievements && i.achievements.total > 0) {
         const { achieved, total } = i.achievements;
         chips.push({

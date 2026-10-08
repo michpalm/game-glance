@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { DETAILS_MEMO_MAX, memoDetails, noteDetails, resetDetailsMemo } from '../../src/home/detailsMemo';
+import { DETAILS_MEMO_MAX, memoDetails, memoRawDetails, noteDetails, resetDetailsMemo } from '../../src/home/detailsMemo';
 
 describe('detailsMemo', () => {
     afterEach(resetDetailsMemo);
@@ -9,6 +9,13 @@ describe('detailsMemo', () => {
         expect(memoDetails(7)).toEqual({ strHeroImage: 'h1.jpg', strHeaderImage: 'x.jpg' });
         noteDetails(7, { libraryAssets: { strHeroImage: 'h2.jpg', strLogoImage: 'logo.png' } });
         expect(memoDetails(7)).toEqual({ strHeroImage: 'h2.jpg', strLogoImage: 'logo.png' });
+    });
+    it('remembers full raw details and clears them on reset', () => {
+        const raw = { achievements: { nAchieved: 12, nTotal: 50 }, strDisplayName: 'Portal 2' };
+        noteDetails(400, raw);
+        expect(memoRawDetails(400)).toEqual(raw);
+        resetDetailsMemo();
+        expect(memoRawDetails(400)).toBeUndefined();
     });
     it('ignores details without assets, broken ids and junk', () => {
         for (const junk of [undefined, null, 5, 'x', {}, { libraryAssets: null }, { libraryAssets: 'x' }]) noteDetails(8, junk);
@@ -25,3 +32,4 @@ describe('detailsMemo', () => {
         expect(memoDetails(DETAILS_MEMO_MAX + 2)).toEqual({ strHeroImage: `${DETAILS_MEMO_MAX + 2}.jpg` });
     });
 });
+

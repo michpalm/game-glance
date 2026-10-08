@@ -8,6 +8,7 @@ import { LOG_PREFIX } from '../constants';
 import { useSettings } from '../data/settings';
 import { recentsButton, repeatStep, RepeatState, selectionForButton, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
+import { getGameTrailer, type GameTrailer } from './trailers';
 import { playNavSound } from './navSound';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
@@ -126,7 +127,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // The bottom section (What's new, Friends, Recommended tabs); off: Home is the selected game only, and a remembered
     // tab or feed zone restores to the game cards instead.
-    const { homeFeed: feed, homeStatusBar, preferLogos } = useSettings();
+    const { homeFeed: feed, homeStatusBar, preferLogos, trailerBackground } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -134,6 +135,9 @@ export function SpotlightHome() {
     const onLibrary = isLibraryFocus(data.games.length, focusIndex);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.
     const [zone, setZone] = useState<Zone>('recents');
+    const [trailer, setTrailer] = useState<GameTrailer | null>(null);
+    const [showTrailer, setShowTrailer] = useState(false);
+    const dismissTrailer = () => setShowTrailer(false);
     // Set once Home has had focus in this mount: until then the game cards claim Steam's preferred focus (Home opens on
     // them), afterwards the Play pill does, so Up from the cards lands on Play (the action row enters at its preferred child).
     const [focusedOnce, setFocusedOnce] = useState(false);
@@ -173,6 +177,7 @@ export function SpotlightHome() {
     // L1/R1: a new selection. Moving onto the Library card drops the circles, so a focused circle hands focus to the
     // pill first (the pill element itself stays, it only turns into the Library pill).
     const select = (next: number) => {
+        dismissTrailer();
         if (isLibraryFocus(data.games.length, next)) {
             const [pill] = actionButtons();
             if (pill && !pill.contains(pill.ownerDocument.activeElement)) focusElement(pill, 'the Play pill');
@@ -187,6 +192,7 @@ export function SpotlightHome() {
     // A held Left/Right steps at a held bumper's pace (focusZones.repeatStep), not at Steam's own faster repeat.
     const heldDirection = useRef<RepeatState | null>(null);
     const onRecentsButtonDown = (evt: GamepadEvent) => {
+        dismissTrailer();
         try {
             const isRepeat = Boolean(evt?.detail?.is_repeat);
             const what = recentsButton(Number(evt?.detail?.button), focusIndex, data.games.length, isRepeat);
@@ -231,6 +237,7 @@ export function SpotlightHome() {
     // The action row's buttons: L1/R1 always put focus on the Play pill (from any circle), then select as before.
     const actionRowButtons = {
         onButtonDown: (evt: GamepadEvent) => {
+            dismissTrailer();
             try {
                 if (selectionForButton(focusIndex, Number(evt?.detail?.button), data.games.length) !== null) focusElement(actionButtons()[0], 'the Play pill');
             } catch (error) {
@@ -288,6 +295,30 @@ export function SpotlightHome() {
         const recent = recentRefFor(focusIndex, gameIds);
         noteHome(recent ? { zone, recent } : { zone });
     }, [resolved, zone, focusIndex, gameIds]);
+
+    // 5-second idle lock on a game: plays the game trailer in the background in place of the hero art (disabled by default)
+    useEffect(() => {
+        setShowTrailer(false);
+        if (!trailerBackground || onLibrary || !data.focused) {
+            setTrailer(null);
+            return undefined;
+        }
+
+        let active = true;
+        const focusedGame = data.focused;
+        getGameTrailer(focusedGame.appId, focusedGame.name).then((res) => {
+            if (active) setTrailer(res);
+        });
+
+        const timer = setTimeout(() => {
+            if (active) setShowTrailer(true);
+        }, 5000);
+
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [focusIndex, onLibrary, data.focused?.appId, trailerBackground]);
 
     // Focus in Steam's own top bar (Up from the action row): the status bar fades out so the two never overlap, and fades
     // back in when focus returns to Home. Only a focus move to a known element outside Home counts as leaving: a blur
@@ -351,6 +382,8 @@ export function SpotlightHome() {
                 detailsVersion={data.detailsVersion}
                 neighbours={heroNeighbours}
                 direction={navDirectionRef.current}
+                trailer={trailer}
+                showTrailer={showTrailer}
             />
             <div className="gh-scrim gh-scrim-dim" />
             <div className="gh-scrim gh-scrim-v" />
