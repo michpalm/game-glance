@@ -121,7 +121,7 @@ export function LibraryGrid({
             <div className="sgl-grid" style={{ '--sgl-columns': columns } as React.CSSProperties}>
                 {games.map((game, idx) => (
                     <BannerCard
-                        key={game.appId}
+                        key={`${game.appId}-${game.isSoundtrack ? 'ost' : 'game'}-${idx}`}
                         game={game}
                         isFocused={isGridFocused && idx === selectedIndex}
                         accent={accent}

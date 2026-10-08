@@ -211,22 +211,23 @@ export function rawAppToItem(app: RawApp, isRunning: boolean): LibraryGameItem {
 
 export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[] {
     if (mockGames && mockGames.length > 0) {
-        // Playground mock categories
-        const baseCategories: LibraryCategory[] = [
-            { id: 'installed', name: 'INSTALLED', count: mockGames.length, games: mockGames },
-            { id: 'all', name: 'ALL GAMES', count: mockGames.length, games: mockGames },
-            { id: 'favorites', name: 'FAVORITES', count: mockGames.filter((g) => g.playedMinutes > 3000).length, games: mockGames.filter((g) => g.playedMinutes > 3000) },
-            { id: 'non-steam', name: 'NON-STEAM', count: mockGames.filter((g) => g.isShortcut).length, games: mockGames.filter((g) => g.isShortcut) },
-        ];
+        // Playground mock categories: regular games in game tabs, soundtracks in SOUNDTRACKS
+        const regularGames = mockGames.filter((g) => !g.isSoundtrack);
         const soundtracks = mockGames.filter((g) => g.isSoundtrack);
+        const baseCategories: LibraryCategory[] = [
+            { id: 'installed', name: 'INSTALLED', count: regularGames.length, games: regularGames },
+            { id: 'all', name: 'ALL GAMES', count: regularGames.length, games: regularGames },
+            { id: 'favorites', name: 'FAVORITES', count: regularGames.filter((g) => g.playedMinutes > 3000).length, games: regularGames.filter((g) => g.playedMinutes > 3000) },
+            { id: 'non-steam', name: 'NON-STEAM', count: regularGames.filter((g) => g.isShortcut).length, games: regularGames.filter((g) => g.isShortcut) },
+        ];
         if (soundtracks.length > 0) {
             baseCategories.push({ id: 'soundtracks', name: 'SOUNDTRACKS', count: soundtracks.length, games: soundtracks });
         }
         baseCategories.push({
             id: 'rpg',
             name: 'RPG',
-            count: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length,
-            games: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')),
+            count: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length,
+            games: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')),
         });
         return baseCategories;
     }
@@ -246,11 +247,17 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
         return list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     };
 
+    const isOst = (app: RawApp) => app.app_type === 8 || Boolean(app.app_type && (app.app_type & 8) !== 0);
+    const regularInstalled = installed.filter((a) => !isOst(a));
+    const regularAll = all.filter((a) => !isOst(a));
+    const regularFavorites = favorites.filter((a) => !isOst(a));
+    const regularShortcuts = shortcuts.filter((a) => !isOst(a));
+
     const categories: LibraryCategory[] = [
-        { id: 'installed', name: 'INSTALLED', count: installed.length, games: toItems(installed) },
-        { id: 'all', name: 'ALL GAMES', count: all.length, games: toItems(all) },
-        { id: 'favorites', name: 'FAVORITES', count: favorites.length, games: toItems(favorites) },
-        { id: 'non-steam', name: 'NON-STEAM', count: shortcuts.length, games: toItems(shortcuts) },
+        { id: 'installed', name: 'INSTALLED', count: regularInstalled.length, games: toItems(regularInstalled) },
+        { id: 'all', name: 'ALL GAMES', count: regularAll.length, games: toItems(regularAll) },
+        { id: 'favorites', name: 'FAVORITES', count: regularFavorites.length, games: toItems(regularFavorites) },
+        { id: 'non-steam', name: 'NON-STEAM', count: regularShortcuts.length, games: toItems(regularShortcuts) },
     ];
 
     if (soundtracks.length > 0) {

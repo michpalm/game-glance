@@ -68,7 +68,7 @@ describe('libraryData: buildCategories', () => {
         expect(item.achievements).toBeNull();
     });
 
-    it('creates SOUNDTRACKS category when soundtrack games exist in mock list', () => {
+    it('creates SOUNDTRACKS category when soundtrack games exist in mock list and separates them from regular games', () => {
         const mock = [
             {
                 appId: 100,
@@ -96,6 +96,10 @@ describe('libraryData: buildCategories', () => {
             },
         ];
         const categories = buildCategories(mock);
+        const installedCat = categories.find((c) => c.id === 'installed');
+        expect(installedCat?.count).toBe(1);
+        expect(installedCat?.games[0].name).toBe('Game 1');
+
         const soundtrackCat = categories.find((c) => c.id === 'soundtracks');
         expect(soundtrackCat).toBeDefined();
         expect(soundtrackCat?.count).toBe(1);
