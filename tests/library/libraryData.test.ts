@@ -30,7 +30,7 @@ describe('libraryData: buildCategories', () => {
         const categories = buildCategories(mock);
         expect(categories.length).toBeGreaterThanOrEqual(5);
         expect(categories.map((c) => c.name)).toEqual(
-            expect.arrayContaining(['INSTALLED', 'GREAT ON DECK', 'ALL GAMES', 'FAVORITES', 'NON-STEAM'])
+            expect.arrayContaining(['INSTALLED', 'GREAT ON DECK', 'ALL GAMES', 'FAVORITES', 'COLLECTIONS', 'NON-STEAM'])
         );
         const nonSteam = categories.find((c) => c.id === 'non-steam');
         expect(nonSteam?.count).toBe(1);

@@ -25,11 +25,19 @@ export interface LibraryGameItem {
     description?: string;
 }
 
+export interface LibraryCollectionItem {
+    id: string;
+    name: string;
+    count: number;
+    games: LibraryGameItem[];
+}
+
 export interface LibraryCategory {
     id: string;
     name: string;
     count: number;
     games: LibraryGameItem[];
+    collections?: LibraryCollectionItem[];
 }
 
 type RawApp = {
@@ -77,6 +85,55 @@ type StoreGlobals = {
 };
 
 const steam = () => globalThis as unknown as StoreGlobals;
+
+function isSystemCollection(col: Record<string, unknown>, id: string, name: string): boolean {
+    const rawId = String(col.id ?? col.m_strId ?? id ?? '').toLowerCase();
+    if (
+        rawId === 'local_games' ||
+        rawId === 'local-games' ||
+        rawId === 'all_games' ||
+        rawId === 'all-games' ||
+        rawId === 'favorite_games' ||
+        rawId === 'favorites' ||
+        rawId === 'favorite' ||
+        rawId === 'soundtracks' ||
+        rawId === 'soundtrack' ||
+        rawId === 'music' ||
+        rawId === 'deck_games' ||
+        rawId === 'deck-games' ||
+        rawId === 'deck_desktop_apps' ||
+        rawId === 'recent_games' ||
+        rawId === 'hidden'
+    ) {
+        return true;
+    }
+
+    if (col.bIsSystem === true || col.bIsLocal === true || col.bIsSoundtracks === true || col.bIsFavorites === true) {
+        return true;
+    }
+
+    const lower = name.toLowerCase();
+    if (
+        lower.includes('installed') ||
+        lower.includes('instalad') || // Spanish: "Juegos instalados localmente"
+        lower.includes('all games') ||
+        lower.includes('todos los juegos') || // Spanish: "Todos los juegos"
+        lower.includes('favorite') ||
+        lower.includes('favorit') || // Spanish: "Favoritos"
+        lower.includes('soundtrack') ||
+        lower.includes('banda sonora') || // Spanish: "Bandas sonoras"
+        lower.includes('great on deck') ||
+        lower.includes('compatible') ||
+        lower.includes('non-steam') ||
+        lower.includes('no son de steam') ||
+        lower.includes('uncategorized') ||
+        lower.includes('sin categoría')
+    ) {
+        return true;
+    }
+
+    return false;
+}
 
 export function readRawApps(): {
     installed: RawApp[];
@@ -141,7 +198,6 @@ export function readRawApps(): {
     }
 
     // Helper to safely extract RawApp array from any collection representation
-    // Steam collections can store: RawApp[], appid numbers, Sets of numbers, or methods
     const extractCollectionApps = (col: unknown): RawApp[] => {
         if (!col) return [];
         const c = col as Record<string, unknown>;
@@ -198,7 +254,6 @@ export function readRawApps(): {
     // Installed apps
     const installed = extractCollectionApps(cStore?.localGamesCollection);
     if (installed.length === 0) {
-        // Fallback: check installed flag on allAppsMap
         for (const a of allAppsMap.values()) {
             if (a.installed) installed.push(a);
         }
@@ -316,9 +371,8 @@ export function readRawApps(): {
         const id = String(col.id ?? col.m_strId ?? name ?? '');
         if (!name || seenColIds.has(id)) continue;
 
-        // Skip internal/system collections if they match installed/all/favorites/etc.
-        const lower = name.toLowerCase();
-        if (lower === 'installed' || lower === 'all games' || lower === 'favorites' || lower === 'soundtracks' || lower === 'music') {
+        // Skip internal/system collections (localized or not)
+        if (isSystemCollection(col, id, name)) {
             continue;
         }
 
@@ -376,25 +430,36 @@ export function rawAppToItem(app: RawApp, isRunning: boolean): LibraryGameItem {
 
 export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[] {
     if (mockGames && mockGames.length > 0) {
-        // Playground mock categories: regular games in game tabs, soundtracks in SOUNDTRACKS
+        // Playground mock categories
         const regularGames = mockGames.filter((g) => !g.isSoundtrack);
         const soundtracks = mockGames.filter((g) => g.isSoundtrack);
+
+        const mockCollections: LibraryCollectionItem[] = [
+            {
+                id: 'col-rpg',
+                name: 'RPG Classics',
+                count: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length,
+                games: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')),
+            },
+            {
+                id: 'col-action',
+                name: 'Action & Adventure',
+                count: regularGames.slice(0, 3).length,
+                games: regularGames.slice(0, 3),
+            },
+        ];
+
         const baseCategories: LibraryCategory[] = [
             { id: 'installed', name: 'INSTALLED', count: regularGames.length, games: regularGames },
             { id: 'great-on-deck', name: 'GREAT ON DECK', count: regularGames.slice(0, 3).length, games: regularGames.slice(0, 3) },
             { id: 'all', name: 'ALL GAMES', count: regularGames.length, games: regularGames },
             { id: 'favorites', name: 'FAVORITES', count: regularGames.filter((g) => g.playedMinutes > 3000).length, games: regularGames.filter((g) => g.playedMinutes > 3000) },
+            { id: 'collections', name: 'COLLECTIONS', count: mockCollections.length, games: [], collections: mockCollections },
             { id: 'non-steam', name: 'NON-STEAM', count: regularGames.filter((g) => g.isShortcut).length, games: regularGames.filter((g) => g.isShortcut) },
         ];
         if (soundtracks.length > 0) {
             baseCategories.push({ id: 'soundtracks', name: 'SOUNDTRACKS', count: soundtracks.length, games: soundtracks });
         }
-        baseCategories.push({
-            id: 'rpg',
-            name: 'RPG',
-            count: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length,
-            games: regularGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')),
-        });
         return baseCategories;
     }
 
@@ -434,6 +499,31 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
         categories.push({ id: 'favorites', name: 'FAVORITES', count: regularFavorites.length, games: toItems(regularFavorites) });
     }
 
+    // Convert user collections to LibraryCollectionItem[] under dedicated COLLECTIONS category
+    const collectionItems: LibraryCollectionItem[] = [];
+    for (const uc of userCollections) {
+        const regularUcApps = uc.apps.filter((a) => !isOst(a));
+        const games = toItems(regularUcApps);
+        if (games.length > 0) {
+            collectionItems.push({
+                id: uc.id,
+                name: uc.name,
+                count: games.length,
+                games,
+            });
+        }
+    }
+
+    if (collectionItems.length > 0) {
+        categories.push({
+            id: 'collections',
+            name: 'COLLECTIONS',
+            count: collectionItems.length,
+            games: [],
+            collections: collectionItems,
+        });
+    }
+
     if (regularShortcuts.length > 0) {
         categories.push({ id: 'non-steam', name: 'NON-STEAM', count: regularShortcuts.length, games: toItems(regularShortcuts) });
     }
@@ -447,18 +537,5 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
         });
     }
 
-    for (const uc of userCollections) {
-        const regularUcApps = uc.apps.filter((a) => !isOst(a));
-        const games = toItems(regularUcApps);
-        if (games.length > 0) {
-            categories.push({
-                id: `col-${uc.id}`,
-                name: uc.name.toUpperCase(),
-                count: games.length,
-                games,
-            });
-        }
-    }
-
-    return categories.filter((c) => c.games.length > 0 || c.id === 'installed' || c.id === 'all');
+    return categories.filter((c) => c.count > 0 || c.id === 'installed' || c.id === 'all');
 }

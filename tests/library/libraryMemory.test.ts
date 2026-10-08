@@ -17,13 +17,14 @@ describe('libraryMemory', () => {
     });
 
     it('saves and restores library position', () => {
-        noteLibrary({ categoryId: 'rpg', appId: 1091500, focusZone: 'grid' });
+        noteLibrary({ categoryId: 'collections', subCollectionId: 'col-rpg', appId: 1091500, focusZone: 'grid' });
         const now = 100000;
         markLeavingLibrary(now);
 
         const restored = takeLibraryRestore(now + 1000);
         expect(restored).toEqual({
-            categoryId: 'rpg',
+            categoryId: 'collections',
+            subCollectionId: 'col-rpg',
             appId: 1091500,
             focusZone: 'grid',
         });
@@ -33,7 +34,7 @@ describe('libraryMemory', () => {
     });
 
     it('returns null if memory is expired past max age', () => {
-        noteLibrary({ categoryId: 'soundtracks', appId: 1433140 });
+        noteLibrary({ categoryId: 'soundtracks', subCollectionId: null, appId: 1433140 });
         const now = 100000;
         markLeavingLibrary(now);
 

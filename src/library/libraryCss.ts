@@ -75,6 +75,10 @@ export const LIBRARY_CSS = `
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+    max-width: 820px;
 }
 
 .sgl-bumper-badge {
@@ -86,29 +90,42 @@ export const LIBRARY_CSS = `
     color: rgba(255, 255, 255, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.15);
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
 
 .sgl-tabs {
     display: flex;
     align-items: center;
     gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    padding: 2px 4px;
+    max-width: 100%;
+}
+
+.sgl-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .sgl-tab {
-    padding: 6px 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 5px 12px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 11.5px;
     font-weight: 700;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     border: 1px solid transparent;
     background: transparent;
     color: rgba(255, 255, 255, 0.6);
     transition: all 0.15s ease;
     outline: none;
+    text-transform: uppercase;
 }
 
 .sgl-tab:hover {
@@ -130,9 +147,9 @@ export const LIBRARY_CSS = `
 }
 
 .sgl-tab-count {
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 600;
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.65);
@@ -142,6 +159,44 @@ export const LIBRARY_CSS = `
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
 }
+
+/* Sub-collection Breadcrumb in Header */
+.sgl-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sgl-btn-back-col {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.sgl-btn-back-col:hover,
+.sgl-btn-back-col.focused {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: var(--accent, #58a6ff);
+    box-shadow: 0 0 10px var(--accent-glow, rgba(88, 166, 255, 0.35));
+}
+
+.sgl-breadcrumb-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: var(--accent, #58a6ff);
+}
+
 
 .sgl-header-info {
     font-size: 12px;
@@ -492,6 +547,55 @@ export const LIBRARY_CSS = `
     50% { opacity: 0.4; }
 }
 
+/* Collection Folder Card */
+.sgl-card-col-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--accent, #58a6ff);
+    z-index: 2;
+}
+
+.sgl-card-col-info {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px 16px;
+    background: linear-gradient(0deg, rgba(6, 9, 14, 0.95) 0%, rgba(6, 9, 14, 0.5) 60%, transparent 100%);
+    z-index: 1;
+}
+
+.sgl-card-col-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sgl-card-col-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
+}
+
 /* Empty state */
 .sgl-empty {
     grid-column: 1 / -1;
@@ -506,3 +610,4 @@ export const LIBRARY_CSS = `
     gap: 8px;
 }
 `;
+

@@ -1,18 +1,20 @@
 /**
- * Remembers the user's category, game, and focus position in the Library view.
+ * Remembers the user's category, collection, game, and focus position in the Library view.
  * When navigating to a game page or store page, Steam's B button returns and remounts
- * SpotlightLibrary; this module-level memory restores the exact category, game selection,
- * and focus zone so the user never loses their place.
+ * SpotlightLibrary; this module-level memory restores the exact category, sub-collection,
+ * game selection, and focus zone so the user never loses their place.
  */
 
 export interface LibraryMemory {
     categoryId: string;
+    subCollectionId: string | null;
     appId: number;
     focusZone: 'grid' | 'tabs';
 }
 
 export const DEFAULT_LIBRARY_MEMORY: LibraryMemory = {
     categoryId: 'installed',
+    subCollectionId: null,
     appId: 0,
     focusZone: 'grid',
 };

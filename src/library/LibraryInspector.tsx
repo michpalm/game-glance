@@ -1,30 +1,101 @@
 import React, { useEffect, useState } from 'react';
-import { FaPlay, FaInfoCircle } from 'react-icons/fa';
+import { FaPlay, FaInfoCircle, FaMusic, FaFolderOpen } from 'react-icons/fa';
 import { browserStores, capsuleUrls as getCapsuleUrls } from '../home/artwork';
 import { Chip, gameChips } from '../home/chips';
 import { formatHours, minutesToHours, steamLanguageToLocale } from '../logic/format';
 import { formatLastPlayed } from '../home/recents';
 import { peekSteamLanguage } from '../data/steam';
-import { LibraryGameItem } from './libraryData';
+import { LibraryCollectionItem, LibraryGameItem } from './libraryData';
 
 interface LibraryInspectorProps {
     game: LibraryGameItem | null;
+    collection?: LibraryCollectionItem | null;
+    isCollectionView?: boolean;
     accent: string;
     description: string | null;
     hltbMainHours: number | null;
     preferLogos?: boolean;
     onPlay: () => void;
     onDetails: () => void;
+    onOpenCollection?: () => void;
 }
 
 export function LibraryInspector({
     game,
+    collection,
+    isCollectionView = false,
     accent,
     description,
     hltbMainHours,
     onPlay,
     onDetails,
+    onOpenCollection,
 }: LibraryInspectorProps) {
+    // Collection overview mode
+    if (isCollectionView && collection) {
+        const firstGame = collection.games[0];
+        const posterUrl = firstGame?.capsuleUrl ?? (firstGame ? getCapsuleUrls(firstGame.appId, browserStores)[0] : '');
+
+        return (
+            <aside className="sgl-inspector" style={{ '--accent': accent } as React.CSSProperties}>
+                <div className="sgl-poster-wrapper">
+                    {posterUrl ? (
+                        <img
+                            src={posterUrl}
+                            alt={collection.name}
+                            className="sgl-poster-img"
+                        />
+                    ) : (
+                        <div
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#161b24',
+                                color: '#8b949e',
+                                fontSize: 13,
+                                padding: 12,
+                                textAlign: 'center',
+                            }}
+                        >
+                            <FaFolderOpen size={36} color="var(--accent, #58a6ff)" />
+                        </div>
+                    )}
+                </div>
+
+                <div className="sgl-title-box">
+                    <div className="sgl-title-text">{collection.name}</div>
+                </div>
+
+                <div className="sgl-meta-row">
+                    <span className="sgl-source-pill">Collection</span>
+                    <span className="sgl-status-pill">{collection.count} Games</span>
+                </div>
+
+                <div className="sgl-stats-grid">
+                    <div className="sgl-stat-card">
+                        <span className="sgl-stat-label">Total Games</span>
+                        <span className="sgl-stat-value">{collection.count}</span>
+                    </div>
+                </div>
+
+                <div className="sgl-description">
+                    Custom collection with {collection.count} {collection.count === 1 ? 'game' : 'games'}.
+                </div>
+
+                <div className="sgl-actions">
+                    <button className="sgl-btn-details" onClick={onOpenCollection} style={{ width: '100%' }}>
+                        <FaFolderOpen size={13} />
+                        <span>Open Collection</span>
+                        <span className="sgl-btn-badge">A</span>
+                    </button>
+                </div>
+            </aside>
+        );
+    }
+
     if (!game) {
         return (
             <aside className="sgl-inspector">
@@ -166,20 +237,29 @@ export function LibraryInspector({
             {/* Short Description */}
             {description && <div className="sgl-description">{description}</div>}
 
-            {/* Action Buttons: Details with A, Play with Y */}
-            <div className="sgl-actions">
-                <button className="sgl-btn-details" onClick={onDetails}>
-                    <FaInfoCircle size={13} />
-                    <span>Details</span>
-                    <span className="sgl-btn-badge">A</span>
-                </button>
-                <button className="sgl-btn-play" onClick={onPlay}>
-                    <FaPlay size={11} />
-                    <span>{playLabel}</span>
-                    <span className="sgl-btn-badge">Y</span>
-                </button>
-            </div>
-
+            {/* Action Buttons: Single button for soundtracks, Details (A) and Play (Y) for games */}
+            {game.isSoundtrack ? (
+                <div className="sgl-actions">
+                    <button className="sgl-btn-details" onClick={onDetails} style={{ width: '100%' }}>
+                        <FaMusic size={12} />
+                        <span>Open Soundtrack</span>
+                        <span className="sgl-btn-badge">A</span>
+                    </button>
+                </div>
+            ) : (
+                <div className="sgl-actions">
+                    <button className="sgl-btn-details" onClick={onDetails}>
+                        <FaInfoCircle size={13} />
+                        <span>Details</span>
+                        <span className="sgl-btn-badge">A</span>
+                    </button>
+                    <button className="sgl-btn-play" onClick={onPlay}>
+                        <FaPlay size={11} />
+                        <span>{playLabel}</span>
+                        <span className="sgl-btn-badge">Y</span>
+                    </button>
+                </div>
+            )}
         </aside>
     );
 }
