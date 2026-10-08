@@ -51,5 +51,54 @@ describe('libraryData: buildCategories', () => {
         expect(item.running).toBe(true);
         expect(item.playedMinutes).toBe(120);
         expect(item.source).toBe('Steam');
+        expect(item.isSoundtrack).toBe(false);
+    });
+
+    it('correctly identifies soundtrack apps (app_type === 8)', () => {
+        const ostRaw = {
+            appid: 1091500,
+            display_name: 'Super Soundtrack',
+            app_type: 8,
+            installed: true,
+            minutes_playtime_forever: 60,
+        };
+        const item = rawAppToItem(ostRaw, false);
+        expect(item.isSoundtrack).toBe(true);
+        expect(item.source).toBe('Soundtrack');
+        expect(item.achievements).toBeNull();
+    });
+
+    it('creates SOUNDTRACKS category when soundtrack games exist in mock list', () => {
+        const mock = [
+            {
+                appId: 100,
+                name: 'Game 1',
+                isShortcut: false,
+                isSoundtrack: false,
+                installed: true,
+                running: false,
+                playedMinutes: 100,
+                achievements: null,
+                heroic: null,
+                source: 'Steam',
+            },
+            {
+                appId: 200,
+                name: 'Soundtrack 1',
+                isShortcut: false,
+                isSoundtrack: true,
+                installed: true,
+                running: false,
+                playedMinutes: 50,
+                achievements: null,
+                heroic: null,
+                source: 'Soundtrack',
+            },
+        ];
+        const categories = buildCategories(mock);
+        const soundtrackCat = categories.find((c) => c.id === 'soundtracks');
+        expect(soundtrackCat).toBeDefined();
+        expect(soundtrackCat?.count).toBe(1);
+        expect(soundtrackCat?.games[0].name).toBe('Soundtrack 1');
     });
 });

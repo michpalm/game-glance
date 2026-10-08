@@ -6,6 +6,7 @@ interface LibraryGridProps {
     games: LibraryGameItem[];
     selectedIndex: number;
     accent: string;
+    columns?: number;
     onSelectGame: (index: number) => void;
     onLaunchGame: (game: LibraryGameItem) => void;
     isGridFocused?: boolean;
@@ -100,6 +101,7 @@ export function LibraryGrid({
     games,
     selectedIndex,
     accent,
+    columns = 3,
     onSelectGame,
     onLaunchGame,
     isGridFocused = true,
@@ -116,7 +118,7 @@ export function LibraryGrid({
 
     return (
         <main className="sgl-grid-panel">
-            <div className="sgl-grid">
+            <div className="sgl-grid" style={{ '--sgl-columns': columns } as React.CSSProperties}>
                 {games.map((game, idx) => (
                     <BannerCard
                         key={game.appId}

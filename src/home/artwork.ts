@@ -66,9 +66,12 @@ function extractLogoPath(d: unknown): string | undefined {
 function getDomLogoUrl(): string | undefined {
     try {
         if (typeof document === 'undefined') return undefined;
-        const img = document.querySelector('div[class*="TitleImageContainer"] img, div[class*="titleImageContainer"] img') as HTMLImageElement | null;
-        if (img && typeof img.src === 'string' && img.src.length > 0) {
-            return img.src;
+        const img = document.querySelector(
+            'div[class*="TitleImageContainer"] img, div[class*="titleImageContainer"] img, div[class*="TitleImage"] img, div[class*="BoxSizer"] img, img[class*="TitleImage"]'
+        ) as HTMLImageElement | null;
+        const src = img ? (img.currentSrc || img.src) : undefined;
+        if (typeof src === 'string' && src.length > 0) {
+            return src;
         }
     } catch {
         // ignore in non-browser or test environments
@@ -245,7 +248,17 @@ export function getGameLogoUrls(appId: number, overview?: unknown, details?: unk
     const list = logoUrls(appId, stores);
     const isShortcut = (overview as { app_type?: number } | undefined)?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
     if (appId > 0 && !isShortcut) {
-        return [...new Set([...list, ...guessedLogoUrls(appId)])];
+        const cdnFallbacks: string[] = [];
+        for (const u of list) {
+            if (u.startsWith(`${ASSETS}/${appId}/`)) {
+                const filename = u.slice(`${ASSETS}/${appId}/`.length);
+                if (filename.length > 0) {
+                    cdnFallbacks.push(`https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/${filename}`);
+                    cdnFallbacks.push(`https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/${filename}`);
+                }
+            }
+        }
+        return [...new Set([...list, ...cdnFallbacks, ...guessedLogoUrls(appId)])];
     }
     return list;
 }

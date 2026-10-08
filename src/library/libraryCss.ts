@@ -28,8 +28,8 @@ export const LIBRARY_CSS = `
     inset: 0;
     background-size: cover;
     background-position: center 30%;
-    filter: blur(48px) brightness(0.28) saturate(1.4);
-    transform: scale(1.1);
+    filter: brightness(0.24) saturate(1.15);
+    transform: none;
     transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: opacity;
 }
@@ -178,16 +178,22 @@ export const LIBRARY_CSS = `
 }
 
 .sgl-poster-wrapper {
-    width: 170px;
-    height: 255px;
+    width: 100%;
+    max-width: 290px;
     aspect-ratio: 2 / 3;
-    border-radius: 10px;
+    align-self: center;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.14);
     position: relative;
     flex-shrink: 0;
     background: #11141c;
+}
+
+.sgl-poster-wrapper.sgl-poster-square {
+    aspect-ratio: 1 / 1;
+    max-width: 260px;
 }
 
 .sgl-poster-img {
@@ -202,13 +208,6 @@ export const LIBRARY_CSS = `
     min-height: 44px;
     display: flex;
     align-items: center;
-}
-
-.sgl-title-logo {
-    max-height: 48px;
-    max-width: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
 }
 
 .sgl-title-text {
@@ -394,16 +393,10 @@ export const LIBRARY_CSS = `
 
 .sgl-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--sgl-columns, 3), 1fr);
     gap: 14px;
     align-content: start;
     padding-bottom: 24px;
-}
-
-@media (min-width: 1700px) {
-    .sgl-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
 }
 
 /* Horizontal Banner Card */

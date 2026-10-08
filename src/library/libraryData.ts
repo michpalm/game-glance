@@ -6,6 +6,7 @@ export interface LibraryGameItem {
     appId: number;
     name: string;
     isShortcut: boolean;
+    isSoundtrack?: boolean;
     gameId?: string; // 64-bit shortcut ID
     installed: boolean;
     running: boolean;
@@ -47,6 +48,8 @@ type StoreGlobals = {
         localGamesCollection?: { allApps?: RawApp[] };
         allGamesCollection?: { allApps?: RawApp[] };
         favoriteGamesCollection?: { allApps?: RawApp[] };
+        soundtracksCollection?: { allApps?: RawApp[] };
+        musicCollection?: { allApps?: RawApp[] };
         userCollections?: Array<{ id?: string; name?: string; strName?: string; allApps?: RawApp[]; apps?: RawApp[] }>;
         m_mapCollections?: Map<string, { id?: string; name?: string; strName?: string; allApps?: RawApp[]; apps?: RawApp[] }>;
         BIsFavorite?(app: unknown): boolean;
@@ -72,6 +75,7 @@ export function readRawApps(): {
     all: RawApp[];
     favorites: RawApp[];
     shortcuts: RawApp[];
+    soundtracks: RawApp[];
     userCollections: Array<{ id: string; name: string; apps: RawApp[] }>;
     runningAppIds: Set<number>;
 } {
@@ -129,6 +133,20 @@ export function readRawApps(): {
         return isShortcut;
     });
 
+    // Soundtracks (app_type === 8 or musicCollection)
+    const musicCollectionApps = cleanList(
+        cStore?.musicCollection?.allApps ?? cStore?.soundtracksCollection?.allApps
+    );
+    const ostApps = all.filter((a) => a.app_type === 8 || Boolean(a.app_type && (a.app_type & 8) !== 0));
+    const soundtrackSeen = new Set<number>();
+    const soundtracks: RawApp[] = [];
+    for (const item of [...ostApps, ...musicCollectionApps]) {
+        if (!soundtrackSeen.has(item.appid)) {
+            soundtrackSeen.add(item.appid);
+            soundtracks.push(item);
+        }
+    }
+
     // User collections
     const userCols: Array<{ id: string; name: string; apps: RawApp[] }> = [];
     try {
@@ -152,6 +170,7 @@ export function readRawApps(): {
         all,
         favorites,
         shortcuts,
+        soundtracks,
         userCollections: userCols,
         runningAppIds: running,
     };
@@ -162,18 +181,27 @@ export function rawAppToItem(app: RawApp, isRunning: boolean): LibraryGameItem {
     const overview = s.appStore?.GetAppOverviewByAppID?.(app.appid) ?? app;
     const details = s.appDetailsStore?.GetAppDetails?.(app.appid);
     const info = readGameInfo(overview, details);
-    const source = !info.isShortcut ? 'Steam' : heroicStoreLabel(info.heroic) ?? 'Non-Steam';
+    const isSoundtrack =
+        app.app_type === 8 ||
+        Boolean(app.app_type && (app.app_type & 8) !== 0) ||
+        (overview as { app_type?: number } | undefined)?.app_type === 8;
+    const source = isSoundtrack
+        ? 'Soundtrack'
+        : !info.isShortcut
+            ? 'Steam'
+            : heroicStoreLabel(info.heroic) ?? 'Non-Steam';
     const size = typeof app.size_on_disk === 'number' ? app.size_on_disk : Number(app.size_on_disk) || undefined;
 
     return {
         appId: app.appid,
         name: info.name || app.display_name || `App ${app.appid}`,
         isShortcut: info.isShortcut,
+        isSoundtrack,
         gameId: app.m_gameid,
         installed: app.installed ?? true,
         running: isRunning,
         playedMinutes: info.playedMinutes,
-        achievements: info.achievements,
+        achievements: isSoundtrack ? null : info.achievements,
         heroic: info.heroic,
         source,
         lastPlayed: app.rt_last_time_played,
@@ -184,16 +212,26 @@ export function rawAppToItem(app: RawApp, isRunning: boolean): LibraryGameItem {
 export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[] {
     if (mockGames && mockGames.length > 0) {
         // Playground mock categories
-        return [
+        const baseCategories: LibraryCategory[] = [
             { id: 'installed', name: 'INSTALLED', count: mockGames.length, games: mockGames },
             { id: 'all', name: 'ALL GAMES', count: mockGames.length, games: mockGames },
             { id: 'favorites', name: 'FAVORITES', count: mockGames.filter((g) => g.playedMinutes > 3000).length, games: mockGames.filter((g) => g.playedMinutes > 3000) },
             { id: 'non-steam', name: 'NON-STEAM', count: mockGames.filter((g) => g.isShortcut).length, games: mockGames.filter((g) => g.isShortcut) },
-            { id: 'rpg', name: 'RPG', count: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length, games: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')) },
         ];
+        const soundtracks = mockGames.filter((g) => g.isSoundtrack);
+        if (soundtracks.length > 0) {
+            baseCategories.push({ id: 'soundtracks', name: 'SOUNDTRACKS', count: soundtracks.length, games: soundtracks });
+        }
+        baseCategories.push({
+            id: 'rpg',
+            name: 'RPG',
+            count: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')).length,
+            games: mockGames.filter((g) => g.name.includes('Witcher') || g.name.includes('Cyberpunk') || g.name.includes('Echoes')),
+        });
+        return baseCategories;
     }
 
-    const { installed, all, favorites, shortcuts, userCollections, runningAppIds } = readRawApps();
+    const { installed, all, favorites, shortcuts, soundtracks, userCollections, runningAppIds } = readRawApps();
 
     const toItems = (apps: RawApp[]): LibraryGameItem[] => {
         // Deduplicate by appid and sort alphabetically by name
@@ -214,6 +252,15 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
         { id: 'favorites', name: 'FAVORITES', count: favorites.length, games: toItems(favorites) },
         { id: 'non-steam', name: 'NON-STEAM', count: shortcuts.length, games: toItems(shortcuts) },
     ];
+
+    if (soundtracks.length > 0) {
+        categories.push({
+            id: 'soundtracks',
+            name: 'SOUNDTRACKS',
+            count: soundtracks.length,
+            games: toItems(soundtracks),
+        });
+    }
 
     for (const uc of userCollections) {
         const games = toItems(uc.apps);

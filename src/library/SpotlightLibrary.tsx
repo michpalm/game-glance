@@ -20,8 +20,6 @@ interface SpotlightLibraryProps {
     mockGames?: LibraryGameItem[];
 }
 
-const COLUMNS = 3;
-
 /** Launch source 100 is Steam's Big Picture library launch source */
 const LAUNCH_SOURCE = 100;
 
@@ -31,6 +29,7 @@ function runGameId(appId: number, shortcutGameId: string | undefined): string {
 
 export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
     const currentSettings = useSettings();
+    const columns = Math.min(7, Math.max(3, currentSettings.libraryGridColumns ?? 3));
     const categories: LibraryCategory[] = useMemo(() => buildCategories(mockGames), [mockGames]);
 
     const [activeCategoryId, setActiveCategoryId] = useState<string>(() => categories[0]?.id ?? 'installed');
@@ -202,8 +201,8 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 }
                 e.preventDefault();
             } else if (e.key === 'ArrowUp') {
-                if (selectedGameIdx >= COLUMNS) {
-                    handleSelectGame(selectedGameIdx - COLUMNS);
+                if (selectedGameIdx >= columns) {
+                    handleSelectGame(selectedGameIdx - columns);
                 } else {
                     // Moving up from top row moves to Category Tabs
                     setFocusZone('tabs');
@@ -211,8 +210,14 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 }
                 e.preventDefault();
             } else if (e.key === 'ArrowDown') {
-                if (selectedGameIdx + COLUMNS < games.length) {
-                    handleSelectGame(selectedGameIdx + COLUMNS);
+                if (selectedGameIdx + columns < games.length) {
+                    handleSelectGame(selectedGameIdx + columns);
+                } else {
+                    const currentRow = Math.floor(selectedGameIdx / columns);
+                    const lastRow = Math.floor((games.length - 1) / columns);
+                    if (currentRow < lastRow) {
+                        handleSelectGame(games.length - 1);
+                    }
                 }
                 e.preventDefault();
             } else if (e.key === 'Enter' || e.key === ' ') {
@@ -226,7 +231,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [focusZone, selectedGameIdx, games.length, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
+    }, [focusZone, selectedGameIdx, games.length, columns, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
 
     // Gamepad controller polling (Standard Gamepad API loop)
     useEffect(() => {
@@ -279,15 +284,23 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                             handleSelectGame(selectedGameIdx + 1);
                             lastDpadTime = now;
                         } else if (dpadUp) {
-                            if (selectedGameIdx >= COLUMNS) {
-                                handleSelectGame(selectedGameIdx - COLUMNS);
+                            if (selectedGameIdx >= columns) {
+                                handleSelectGame(selectedGameIdx - columns);
                             } else {
                                 setFocusZone('tabs');
                                 playNavSound();
                             }
                             lastDpadTime = now;
-                        } else if (dpadDown && selectedGameIdx + COLUMNS < games.length) {
-                            handleSelectGame(selectedGameIdx + COLUMNS);
+                        } else if (dpadDown) {
+                            if (selectedGameIdx + columns < games.length) {
+                                handleSelectGame(selectedGameIdx + columns);
+                            } else {
+                                const currentRow = Math.floor(selectedGameIdx / columns);
+                                const lastRow = Math.floor((games.length - 1) / columns);
+                                if (currentRow < lastRow) {
+                                    handleSelectGame(games.length - 1);
+                                }
+                            }
                             lastDpadTime = now;
                         }
                     }
@@ -321,7 +334,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
 
         rafId = requestAnimationFrame(pollGamepad);
         return () => cancelAnimationFrame(rafId);
-    }, [focusZone, selectedGameIdx, games.length, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
+    }, [focusZone, selectedGameIdx, games.length, columns, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
 
     const hltbHours = gameHltb?.status === 'found' ? gameHltb.times.main : null;
 
@@ -357,6 +370,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                     games={games}
                     selectedIndex={selectedGameIdx}
                     accent={gameAccent}
+                    columns={columns}
                     isGridFocused={focusZone === 'grid'}
                     onSelectGame={handleSelectGame}
                     onLaunchGame={handlePlayGame}

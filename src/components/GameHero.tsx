@@ -83,7 +83,7 @@ function GameTitleBlock({
         setShowFallbackText(false);
         const timer = setTimeout(() => {
             setShowFallbackText(true);
-        }, 350);
+        }, 2000);
         return () => clearTimeout(timer);
     }, [title, urls]);
 

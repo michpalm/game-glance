@@ -1,5 +1,5 @@
 import { toaster } from '@decky/api';
-import { ButtonItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
+import { ButtonItem, Navigation, PanelSection, PanelSectionRow, SliderField, TextField, ToggleField } from '@decky/ui';
 import { useEffect, useState } from 'react';
 import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, spotlightLibrary, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
+    const { enabled, autoPreload, spotlightHome, spotlightLibrary, libraryGridColumns, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -172,6 +172,21 @@ export function SettingsPanel() {
                         onChange={(value) => settings.setSpotlightLibrary(value)}
                     />
                 </PanelSectionRow>
+                {spotlightLibrary && (
+                    <PanelSectionRow>
+                        <SliderField
+                            label="Games per row"
+                            description="Number of games displayed per row in the library grid (3 to 7)."
+                            value={libraryGridColumns}
+                            min={3}
+                            max={7}
+                            step={1}
+                            notchCount={5}
+                            showValue={true}
+                            onChange={(value) => settings.setLibraryGridColumns(Math.round(value))}
+                        />
+                    </PanelSectionRow>
+                )}
             </PanelSection>
             <PanelSection title="Appearance">
                 <PanelSectionRow>

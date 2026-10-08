@@ -12,10 +12,11 @@ export interface Settings {
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
     preferLogos: boolean; // prefer game logos over text titles on Spotlight Home and Game page when available
+    libraryGridColumns: number; // grid columns in Spotlight Library (3 to 7)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, spotlightLibrary: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, spotlightLibrary: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true, libraryGridColumns: 3 };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -26,6 +27,13 @@ export function createSettingsStore(kv: KvBackend) {
             const raw = (await kv.get(KEY)) as Partial<Settings> | null;
             const pick = <K extends keyof Settings>(key: K): Settings[K] =>
                 typeof raw?.[key] === 'boolean' ? (raw[key] as Settings[K]) : DEFAULTS[key];
+            const pickColumns = (): number => {
+                const cols = raw?.libraryGridColumns;
+                if (typeof cols === 'number' && Number.isFinite(cols)) {
+                    return Math.min(7, Math.max(3, Math.round(cols)));
+                }
+                return DEFAULTS.libraryGridColumns;
+            };
             current = {
                 enabled: pick('enabled'),
                 autoPreload: pick('autoPreload'),
@@ -37,6 +45,7 @@ export function createSettingsStore(kv: KvBackend) {
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
                 preferLogos: pick('preferLogos'),
+                libraryGridColumns: pickColumns(),
             };
             emit();
         },
@@ -88,6 +97,12 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setPreferLogos(preferLogos: boolean): Promise<void> {
             current = { ...current, preferLogos };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setLibraryGridColumns(libraryGridColumns: number): Promise<void> {
+            const clamped = Math.min(7, Math.max(3, Math.round(libraryGridColumns)));
+            current = { ...current, libraryGridColumns: clamped };
             emit();
             await kv.set(KEY, current);
         },

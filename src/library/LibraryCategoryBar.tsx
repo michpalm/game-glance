@@ -52,7 +52,11 @@ export function LibraryCategoryBar({
 
             {/* Right: Category Count Info */}
             <div className="sgl-header-info">
-                {activeCategory ? `${activeCategory.count} GAMES` : ''}
+                {activeCategory
+                    ? activeCategory.id === 'soundtracks'
+                        ? `${activeCategory.count} SOUNDTRACKS`
+                        : `${activeCategory.count} GAMES`
+                    : ''}
             </div>
         </header>
     );

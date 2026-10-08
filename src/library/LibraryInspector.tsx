@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { FaPlay, FaInfoCircle } from 'react-icons/fa';
-import { browserStores, capsuleUrls as getCapsuleUrls, logoUrls as getLogoUrls } from '../home/artwork';
+import { browserStores, capsuleUrls as getCapsuleUrls } from '../home/artwork';
 import { Chip, gameChips } from '../home/chips';
-import { steamLanguageToLocale } from '../logic/format';
+import { formatHours, minutesToHours, steamLanguageToLocale } from '../logic/format';
+import { formatLastPlayed } from '../home/recents';
 import { peekSteamLanguage } from '../data/steam';
 import { LibraryGameItem } from './libraryData';
 
@@ -21,7 +22,6 @@ export function LibraryInspector({
     accent,
     description,
     hltbMainHours,
-    preferLogos = true,
     onPlay,
     onDetails,
 }: LibraryInspectorProps) {
@@ -29,7 +29,7 @@ export function LibraryInspector({
         return (
             <aside className="sgl-inspector">
                 <div style={{ color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center', marginTop: 40 }}>
-                    Select a game
+                    Select an item
                 </div>
             </aside>
         );
@@ -59,34 +59,21 @@ export function LibraryInspector({
         }
     };
 
-    // Logo artwork candidates
-    const logoCandidates = React.useMemo(() => {
-        if (game.logoUrl) return [game.logoUrl];
-        return getLogoUrls(game.appId, browserStores);
-    }, [game.appId, game.logoUrl]);
-
-    const [logoSrc, setLogoSrc] = useState<string>(logoCandidates[0] ?? '');
-    const [logoCandidateIdx, setLogoCandidateIdx] = useState(0);
-    const [logoFailed, setLogoFailed] = useState(false);
-
-    useEffect(() => {
-        setLogoCandidateIdx(0);
-        setLogoFailed(false);
-        setLogoSrc(logoCandidates[0] ?? '');
-    }, [logoCandidates]);
-
-    const handleLogoError = () => {
-        const nextIdx = logoCandidateIdx + 1;
-        if (nextIdx < logoCandidates.length) {
-            setLogoCandidateIdx(nextIdx);
-            setLogoSrc(logoCandidates[nextIdx]);
-        } else {
-            setLogoFailed(true);
-        }
-    };
-
-    // Compute chips using gameChips helper
+    // Compute chips: customized for soundtracks vs regular games
     const chips: Chip[] = React.useMemo(() => {
+        if (game.isSoundtrack) {
+            const playedHours = minutesToHours(game.playedMinutes);
+            const list: Chip[] = [];
+            if (game.playedMinutes > 0) {
+                list.push({ key: 'played', label: 'Time Listened', value: formatHours(playedHours, locale) });
+            }
+            if (game.lastPlayed) {
+                list.push({ key: 'lastPlayed', label: 'Last played', value: formatLastPlayed(game.lastPlayed, Math.floor(Date.now() / 1000), locale) });
+            }
+            list.push({ key: 'type', label: 'Format', value: 'Soundtrack' });
+            return list;
+        }
+
         return gameChips(
             {
                 playedMinutes: game.playedMinutes,
@@ -97,14 +84,18 @@ export function LibraryInspector({
             Date.now(),
             locale
         );
-    }, [game.playedMinutes, game.achievements, game.lastPlayed, hltbMainHours, locale]);
+    }, [game.isSoundtrack, game.playedMinutes, game.achievements, game.lastPlayed, hltbMainHours, locale]);
 
-    const playLabel = game.running ? 'Resume' : game.installed ? 'Play' : 'Install';
+    const playLabel = game.running
+        ? (game.isSoundtrack ? 'Playing' : 'Resume')
+        : game.installed
+            ? (game.isSoundtrack ? 'Play Soundtrack' : 'Play')
+            : 'Install';
 
     return (
         <aside className="sgl-inspector" style={{ '--accent': accent } as React.CSSProperties}>
-            {/* Vertical Poster Art */}
-            <div className="sgl-poster-wrapper">
+            {/* Poster Art: vertical 2:3 for games, square 1:1 for soundtracks */}
+            <div className={`sgl-poster-wrapper${game.isSoundtrack ? ' sgl-poster-square' : ''}`}>
                 {posterSrc ? (
                     <img
                         key={posterSrc}
@@ -133,24 +124,14 @@ export function LibraryInspector({
                 )}
             </div>
 
-            {/* Game Title or Logo */}
+            {/* Game Title: Clean typography, no cluttered secondary logo */}
             <div className="sgl-title-box">
-                {preferLogos && logoSrc && !logoFailed ? (
-                    <img
-                        key={logoSrc}
-                        src={logoSrc}
-                        alt={game.name}
-                        className="sgl-title-logo"
-                        onError={handleLogoError}
-                    />
-                ) : (
-                    <div className="sgl-title-text">{game.name}</div>
-                )}
+                <div className="sgl-title-text">{game.name}</div>
             </div>
 
             {/* Badges row: Source and Status */}
             <div className="sgl-meta-row">
-                <span className="sgl-source-pill">{game.source}</span>
+                <span className="sgl-source-pill">{game.isSoundtrack ? 'Soundtrack' : game.source}</span>
                 {game.running && <span className="sgl-status-pill">Running</span>}
                 {!game.installed && (
                     <span
