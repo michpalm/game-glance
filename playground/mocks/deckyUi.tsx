@@ -160,6 +160,38 @@ export const TextField: React.FC<any> = ({ label, value, onChange, placeholder, 
     </div>
 );
 
+export const SliderField: React.FC<any> = ({
+    label,
+    description,
+    value,
+    min = 0,
+    max = 100,
+    step = 1,
+    showValue = true,
+    onChange,
+    disabled,
+}) => (
+    <div style={{ opacity: disabled ? 0.5 : 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>{label}</div>
+                {description && <div style={{ fontSize: 12, color: '#8f98a0', marginTop: 2 }}>{description}</div>}
+            </div>
+            {showValue && <div style={{ fontSize: 13, fontWeight: 700, color: '#1a9fff', minWidth: 24, textAlign: 'right' }}>{value}</div>}
+        </div>
+        <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange?.(Number(e.target.value))}
+            style={{ width: '100%', cursor: disabled ? 'not-allowed' : 'pointer', accentColor: '#1a9fff' }}
+        />
+    </div>
+);
+
 export const ConfirmModal: React.FC<any> = () => null;
 export const showModal = () => {};
 export const showContextMenu = () => {};
