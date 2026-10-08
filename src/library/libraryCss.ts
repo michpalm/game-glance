@@ -4,6 +4,9 @@ export const LIBRARY_CSS = `
     inset: 0;
     width: 100vw;
     height: 100vh;
+    box-sizing: border-box;
+    padding-top: var(--sgl-top-inset, 70px);
+    padding-bottom: var(--sgl-bottom-inset, 58px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -314,7 +317,7 @@ export const LIBRARY_CSS = `
     padding-top: 6px;
 }
 
-.sgl-btn-play {
+.sgl-btn-details {
     flex: 1;
     padding: 10px 16px;
     border-radius: 24px;
@@ -333,14 +336,15 @@ export const LIBRARY_CSS = `
     outline: none;
 }
 
-.sgl-btn-play:hover,
-.sgl-btn-play:focus-visible {
+.sgl-btn-details:hover,
+.sgl-btn-details:focus-visible {
     filter: brightness(1.15);
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 14px var(--accent-glow, rgba(88, 166, 255, 0.45));
 }
 
-.sgl-btn-details {
+.sgl-btn-play {
+    flex: 1;
     padding: 10px 14px;
     border-radius: 24px;
     font-size: 13px;
@@ -357,12 +361,13 @@ export const LIBRARY_CSS = `
     outline: none;
 }
 
-.sgl-btn-details:hover,
-.sgl-btn-details:focus-visible {
-    background: rgba(255, 255, 255, 0.16);
+.sgl-btn-play:hover,
+.sgl-btn-play:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.25);
     transform: translateY(-1px);
 }
+
 
 .sgl-btn-badge {
     font-size: 10.5px;

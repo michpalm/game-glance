@@ -166,19 +166,20 @@ export function LibraryInspector({
             {/* Short Description */}
             {description && <div className="sgl-description">{description}</div>}
 
-            {/* Action Buttons */}
+            {/* Action Buttons: Details with A, Play with Y */}
             <div className="sgl-actions">
-                <button className="sgl-btn-play" onClick={onPlay}>
-                    <FaPlay size={11} />
-                    <span>{playLabel}</span>
-                    <span className="sgl-btn-badge">A</span>
-                </button>
                 <button className="sgl-btn-details" onClick={onDetails}>
                     <FaInfoCircle size={13} />
                     <span>Details</span>
+                    <span className="sgl-btn-badge">A</span>
+                </button>
+                <button className="sgl-btn-play" onClick={onPlay}>
+                    <FaPlay size={11} />
+                    <span>{playLabel}</span>
                     <span className="sgl-btn-badge">Y</span>
                 </button>
             </div>
+
         </aside>
     );
 }

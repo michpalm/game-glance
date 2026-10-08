@@ -195,3 +195,22 @@ export const SliderField: React.FC<any> = ({
 export const ConfirmModal: React.FC<any> = () => null;
 export const showModal = () => {};
 export const showContextMenu = () => {};
+
+export enum GamepadButton {
+    INVALID = 0,
+    OK = 1,
+    CANCEL = 2,
+    SECONDARY = 3,
+    OPTIONS = 4,
+    BUMPER_LEFT = 5,
+    BUMPER_RIGHT = 6,
+    TRIGGER_LEFT = 7,
+    TRIGGER_RIGHT = 8,
+    DIR_UP = 9,
+    DIR_DOWN = 10,
+    DIR_LEFT = 11,
+    DIR_RIGHT = 12,
+    SELECT = 13,
+    START = 14,
+}
+

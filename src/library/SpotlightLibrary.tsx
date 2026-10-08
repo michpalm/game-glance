@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigation } from '@decky/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Focusable, GamepadButton, GamepadEvent, Navigation } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { cache } from '../data/cache';
 import { HltbResult, lookupHltb } from '../data/hltb';
@@ -15,6 +15,7 @@ import { LibraryGrid } from './LibraryGrid';
 import { LibraryInspector } from './LibraryInspector';
 import { LIBRARY_CSS } from './libraryCss';
 import { buildCategories, LibraryCategory, LibraryGameItem } from './libraryData';
+import { markLeavingLibrary, noteLibrary, takeLibraryRestore } from './libraryMemory';
 
 interface SpotlightLibraryProps {
     mockGames?: LibraryGameItem[];
@@ -32,15 +33,36 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
     const columns = Math.min(7, Math.max(3, currentSettings.libraryGridColumns ?? 3));
     const categories: LibraryCategory[] = useMemo(() => buildCategories(mockGames), [mockGames]);
 
-    const [activeCategoryId, setActiveCategoryId] = useState<string>(() => categories[0]?.id ?? 'installed');
-    const [selectedGameIdx, setSelectedGameIdx] = useState<number>(0);
-    const [focusZone, setFocusZone] = useState<'grid' | 'tabs'>('grid');
+    // Memory restore on mount
+    const restoreRef = useRef(takeLibraryRestore());
+    const initialRestore = restoreRef.current;
+
+    const initialCatId = useMemo(() => {
+        if (initialRestore && categories.some((c) => c.id === initialRestore.categoryId)) {
+            return initialRestore.categoryId;
+        }
+        return categories[0]?.id ?? 'installed';
+    }, [categories, initialRestore]);
+
+    const [activeCategoryId, setActiveCategoryId] = useState<string>(initialCatId);
 
     const activeCategory = useMemo(() => {
         return categories.find((c) => c.id === activeCategoryId) ?? categories[0];
     }, [categories, activeCategoryId]);
 
     const games = activeCategory?.games ?? [];
+
+    const initialGameIdx = useMemo(() => {
+        if (initialRestore && initialRestore.appId) {
+            const found = games.findIndex((g) => g.appId === initialRestore.appId);
+            if (found >= 0) return found;
+        }
+        return 0;
+    }, [games, initialRestore]);
+
+    const [selectedGameIdx, setSelectedGameIdx] = useState<number>(initialGameIdx);
+    const [focusZone, setFocusZone] = useState<'grid' | 'tabs'>(initialRestore?.focusZone ?? 'grid');
+
     const selectedGame: LibraryGameItem | null = games[selectedGameIdx] ?? null;
 
     // Reset game index when category changes
@@ -57,6 +79,15 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         const nextIdx = (curIdx + direction + categories.length) % categories.length;
         selectCategory(categories[nextIdx].id);
     }, [categories, activeCategoryId, selectCategory]);
+
+    // Keep memory updated with latest position
+    useEffect(() => {
+        noteLibrary({
+            categoryId: activeCategoryId,
+            appId: selectedGame?.appId ?? 0,
+            focusZone,
+        });
+    }, [activeCategoryId, selectedGame?.appId, focusZone]);
 
     // Asynchronous details for selected game (HLTB, Description, Accent, Hero art)
     const [gameAccent, setGameAccent] = useState<string>(selectedGame?.accent ?? DEFAULT_ACCENT);
@@ -117,9 +148,21 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         };
     }, [selectedGame]);
 
-    // Primary action: Play game
+    // Primary action: Open game details (A button)
+    const handleDetails = useCallback((gameToShow: LibraryGameItem | null = selectedGame) => {
+        if (!gameToShow) return;
+        markLeavingLibrary();
+        try {
+            Navigation.Navigate(`/library/app/${gameToShow.appId}`);
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} SpotlightLibrary: Navigate failed`, error);
+        }
+    }, [selectedGame]);
+
+    // Secondary action: Play game (Y button)
     const handlePlayGame = useCallback((gameToPlay: LibraryGameItem | null = selectedGame) => {
         if (!gameToPlay) return;
+        markLeavingLibrary();
         try {
             const steamClient = (globalThis as unknown as { SteamClient?: { Apps?: { RunGame?(id: string, opts: string, param: number, src: number): void } } }).SteamClient;
             if (typeof steamClient?.Apps?.RunGame === 'function') {
@@ -137,25 +180,150 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         }
     }, [selectedGame]);
 
-    // Secondary action: Details
-    const handleDetails = useCallback((gameToShow: LibraryGameItem | null = selectedGame) => {
-        if (!gameToShow) return;
-        try {
-            Navigation.Navigate(`/library/app/${gameToShow.appId}`);
-        } catch (error) {
-            console.warn(`${LOG_PREFIX} SpotlightLibrary: Navigate failed`, error);
-        }
-    }, [selectedGame]);
-
     // Game selection with sound feedback
     const handleSelectGame = useCallback((index: number) => {
         setSelectedGameIdx(index);
         playNavSound();
     }, []);
 
-    // Gamepad & Keyboard Navigation Handlers
-    const activeCategoryIdx = categories.findIndex((c) => c.id === activeCategoryId);
+    // Activation debounce and mount guard
+    const mountTimeRef = useRef(Date.now());
+    const lastActivateRef = useRef(0);
 
+    const onActivate = useCallback(() => {
+        const now = Date.now();
+        // Swallow activations within 400ms of mount (prevents double-tap on enter from launching immediately)
+        if (now - mountTimeRef.current < 400) return;
+        if (now - lastActivateRef.current < 800) return;
+        lastActivateRef.current = now;
+        handleDetails();
+    }, [handleDetails]);
+
+    const onCancel = useCallback(() => {
+        if (focusZone === 'grid') {
+            setFocusZone('tabs');
+            playNavSound();
+        }
+    }, [focusZone]);
+
+    // Gamepad controller event handler for Decky's Focusable tree
+    const onGamepadButtonDown = useCallback((evt: GamepadEvent) => {
+        try {
+            const btn = Number(evt?.detail?.button);
+            const now = Date.now();
+
+            // Ignore inputs within 400ms of mount
+            if (now - mountTimeRef.current < 400) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                return;
+            }
+
+            // Bumpers: L1 (5) and R1 (6)
+            if (btn === GamepadButton.BUMPER_LEFT || btn === 5) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                cycleCategory(-1);
+                return;
+            }
+            if (btn === GamepadButton.BUMPER_RIGHT || btn === 6) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                cycleCategory(1);
+                return;
+            }
+
+            // Y Button: Play / Launch (OPTIONS = 4)
+            if (btn === GamepadButton.OPTIONS || btn === 4) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                handlePlayGame();
+                return;
+            }
+
+            // A Button: Details (OK = 1)
+            if (btn === GamepadButton.OK || btn === 1) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                onActivate();
+                return;
+            }
+
+            // B Button: Cancel (CANCEL = 2)
+            if (btn === GamepadButton.CANCEL || btn === 2) {
+                if (focusZone === 'grid') {
+                    evt.preventDefault?.();
+                    evt.stopPropagation?.();
+                    setFocusZone('tabs');
+                    playNavSound();
+                    return;
+                }
+                // When on tabs, let Steam handle B so user exits the library cleanly
+                return;
+            }
+
+            // D-Pad and Left Stick Navigation
+            if (btn === GamepadButton.DIR_LEFT || btn === 11) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                if (focusZone === 'tabs') {
+                    cycleCategory(-1);
+                } else if (games.length > 0 && selectedGameIdx > 0) {
+                    handleSelectGame(selectedGameIdx - 1);
+                }
+                return;
+            }
+
+            if (btn === GamepadButton.DIR_RIGHT || btn === 12) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                if (focusZone === 'tabs') {
+                    cycleCategory(1);
+                } else if (games.length > 0 && selectedGameIdx < games.length - 1) {
+                    handleSelectGame(selectedGameIdx + 1);
+                }
+                return;
+            }
+
+            if (btn === GamepadButton.DIR_UP || btn === 9) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                if (focusZone === 'grid') {
+                    if (selectedGameIdx >= columns) {
+                        handleSelectGame(selectedGameIdx - columns);
+                    } else {
+                        setFocusZone('tabs');
+                        playNavSound();
+                    }
+                }
+                return;
+            }
+
+            if (btn === GamepadButton.DIR_DOWN || btn === 10) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                if (focusZone === 'tabs') {
+                    setFocusZone('grid');
+                    playNavSound();
+                } else if (games.length > 0) {
+                    if (selectedGameIdx + columns < games.length) {
+                        handleSelectGame(selectedGameIdx + columns);
+                    } else {
+                        const curRow = Math.floor(selectedGameIdx / columns);
+                        const lastRow = Math.floor((games.length - 1) / columns);
+                        if (curRow < lastRow) {
+                            handleSelectGame(games.length - 1);
+                        }
+                    }
+                }
+                return;
+            }
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} SpotlightLibrary: Gamepad button error`, error);
+        }
+    }, [columns, cycleCategory, focusZone, games.length, handlePlayGame, handleSelectGame, onActivate, selectedGameIdx]);
+
+    // Keyboard handlers for browser preview and physical keyboards
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -204,7 +372,6 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 if (selectedGameIdx >= columns) {
                     handleSelectGame(selectedGameIdx - columns);
                 } else {
-                    // Moving up from top row moves to Category Tabs
                     setFocusZone('tabs');
                     playNavSound();
                 }
@@ -221,125 +388,36 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 }
                 e.preventDefault();
             } else if (e.key === 'Enter' || e.key === ' ') {
-                handlePlayGame();
+                onActivate();
                 e.preventDefault();
             } else if (e.key === 'y' || e.key === 'Y') {
-                handleDetails();
+                handlePlayGame();
                 e.preventDefault();
+            } else if (e.key === 'Escape') {
+                if (focusZone === 'grid') {
+                    setFocusZone('tabs');
+                    playNavSound();
+                    e.preventDefault();
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [focusZone, selectedGameIdx, games.length, columns, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
+    }, [focusZone, selectedGameIdx, games.length, columns, cycleCategory, handleSelectGame, onActivate, handlePlayGame]);
 
-    // Gamepad controller polling (Standard Gamepad API loop)
-    useEffect(() => {
-        let rafId: number;
-        let lastButtonState = new Map<number, boolean>();
-        let lastDpadTime = 0;
-        const DPAD_DELAY = 180; // ms throttle for held D-pad
-
-        const pollGamepad = () => {
-            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            const gp = gamepads[0];
-            if (gp) {
-                const now = Date.now();
-                const isPressed = (btnIdx: number) => Boolean(gp.buttons[btnIdx]?.pressed);
-
-                // L1 / R1 Bumpers (LB: 4, RB: 5 in Standard Gamepad)
-                if (isPressed(4) && !lastButtonState.get(4)) {
-                    cycleCategory(-1);
-                }
-                if (isPressed(5) && !lastButtonState.get(5)) {
-                    cycleCategory(1);
-                }
-
-                // D-Pad and Left Stick
-                const leftStickX = gp.axes[0] ?? 0;
-                const leftStickY = gp.axes[1] ?? 0;
-                const dpadUp = isPressed(12) || leftStickY < -0.55;
-                const dpadDown = isPressed(13) || leftStickY > 0.55;
-                const dpadLeft = isPressed(14) || leftStickX < -0.55;
-                const dpadRight = isPressed(15) || leftStickX > 0.55;
-
-                if (now - lastDpadTime > DPAD_DELAY) {
-                    if (focusZone === 'tabs') {
-                        if (dpadLeft) {
-                            cycleCategory(-1);
-                            lastDpadTime = now;
-                        } else if (dpadRight) {
-                            cycleCategory(1);
-                            lastDpadTime = now;
-                        } else if (dpadDown) {
-                            setFocusZone('grid');
-                            playNavSound();
-                            lastDpadTime = now;
-                        }
-                    } else if (games.length > 0) {
-                        if (dpadLeft && selectedGameIdx > 0) {
-                            handleSelectGame(selectedGameIdx - 1);
-                            lastDpadTime = now;
-                        } else if (dpadRight && selectedGameIdx < games.length - 1) {
-                            handleSelectGame(selectedGameIdx + 1);
-                            lastDpadTime = now;
-                        } else if (dpadUp) {
-                            if (selectedGameIdx >= columns) {
-                                handleSelectGame(selectedGameIdx - columns);
-                            } else {
-                                setFocusZone('tabs');
-                                playNavSound();
-                            }
-                            lastDpadTime = now;
-                        } else if (dpadDown) {
-                            if (selectedGameIdx + columns < games.length) {
-                                handleSelectGame(selectedGameIdx + columns);
-                            } else {
-                                const currentRow = Math.floor(selectedGameIdx / columns);
-                                const lastRow = Math.floor((games.length - 1) / columns);
-                                if (currentRow < lastRow) {
-                                    handleSelectGame(games.length - 1);
-                                }
-                            }
-                            lastDpadTime = now;
-                        }
-                    }
-                }
-
-                // A Button (0): Play
-                if (isPressed(0) && !lastButtonState.get(0)) {
-                    handlePlayGame();
-                }
-
-                // Y Button (3): Details
-                if (isPressed(3) && !lastButtonState.get(3)) {
-                    handleDetails();
-                }
-
-                // B Button (1): Move to tabs or back
-                if (isPressed(1) && !lastButtonState.get(1)) {
-                    if (focusZone === 'grid') {
-                        setFocusZone('tabs');
-                        playNavSound();
-                    }
-                }
-
-                // Update button states
-                for (let i = 0; i < gp.buttons.length; i++) {
-                    lastButtonState.set(i, isPressed(i));
-                }
-            }
-            rafId = requestAnimationFrame(pollGamepad);
-        };
-
-        rafId = requestAnimationFrame(pollGamepad);
-        return () => cancelAnimationFrame(rafId);
-    }, [focusZone, selectedGameIdx, games.length, columns, cycleCategory, handleSelectGame, handlePlayGame, handleDetails]);
-
+    const activeCategoryIdx = categories.findIndex((c) => c.id === activeCategoryId);
     const hltbHours = gameHltb?.status === 'found' ? gameHltb.times.main : null;
 
     return (
-        <div className="sgl-root">
+        <Focusable
+            className="sgl-root"
+            preferredFocus={true}
+            noFocusRing
+            onButtonDown={onGamepadButtonDown}
+            onActivate={onActivate}
+            onCancel={onCancel}
+        >
             <style>{LIBRARY_CSS}</style>
 
             {/* Ambient Blurred Background */}
@@ -373,9 +451,9 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                     columns={columns}
                     isGridFocused={focusZone === 'grid'}
                     onSelectGame={handleSelectGame}
-                    onLaunchGame={handlePlayGame}
+                    onLaunchGame={handleDetails}
                 />
             </div>
-        </div>
+        </Focusable>
     );
 }
