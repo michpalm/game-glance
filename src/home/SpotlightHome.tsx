@@ -127,7 +127,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // The bottom section (What's new, Friends, Recommended tabs); off: Home is the selected game only, and a remembered
     // tab or feed zone restores to the game cards instead.
-    const { homeFeed: feed, homeStatusBar, preferLogos, trailerBackground } = useSettings();
+    const { homeFeed: feed, homeStatusBar, preferLogos } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -296,10 +296,13 @@ export function SpotlightHome() {
         noteHome(recent ? { zone, recent } : { zone });
     }, [resolved, zone, focusIndex, gameIds]);
 
-    // 5-second idle lock on a game: plays the game trailer in the background in place of the hero art (disabled by default)
+    // Preserved for future Steam client support; disabled completely for now
+    const ENABLE_TRAILER_BACKGROUND = false;
+
+    // 5-second idle lock on a game: plays the game trailer in the background in place of the hero art (disabled)
     useEffect(() => {
         setShowTrailer(false);
-        if (!trailerBackground || onLibrary || !data.focused) {
+        if (!ENABLE_TRAILER_BACKGROUND || onLibrary || !data.focused) {
             setTrailer(null);
             return undefined;
         }
@@ -318,7 +321,7 @@ export function SpotlightHome() {
             active = false;
             clearTimeout(timer);
         };
-    }, [focusIndex, onLibrary, data.focused?.appId, trailerBackground]);
+    }, [focusIndex, onLibrary, data.focused?.appId]);
 
     // Focus in Steam's own top bar (Up from the action row): the status bar fades out so the two never overlap, and fades
     // back in when focus returns to Home. Only a focus move to a known element outside Home counts as leaving: a blur
