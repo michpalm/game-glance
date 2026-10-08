@@ -79,11 +79,11 @@ export const LIBRARY_CSS = `
 .sgl-tabs-container {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     min-width: 0;
     flex: 1;
     justify-content: center;
-    max-width: 820px;
+    max-width: 860px;
     overflow: hidden;
 }
 
@@ -102,12 +102,12 @@ export const LIBRARY_CSS = `
 .sgl-tabs {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 26px;
     position: relative;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-behavior: smooth;
-    padding: 2px 4px;
+    padding: 2px 8px 4px;
     max-width: 100%;
 }
 
@@ -116,54 +116,83 @@ export const LIBRARY_CSS = `
 }
 
 .sgl-tab {
+    position: relative;
     white-space: nowrap;
     flex-shrink: 0;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 11.5px;
+    padding: 8px 2px 10px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.14em;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
-    border: 1px solid transparent;
+    gap: 8px;
+    border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.6);
-    transition: all 0.15s ease;
+    transition: color 0.2s ease;
     outline: none;
     text-transform: uppercase;
 }
 
 .sgl-tab:hover {
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    background: transparent;
 }
 
 .sgl-tab.active {
-    background: rgba(255, 255, 255, 0.14);
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .sgl-tab.focused,
 .sgl-tab:focus-visible {
-    border-color: var(--accent, #58a6ff);
-    box-shadow: 0 0 0 1px var(--accent, #58a6ff), 0 0 12px var(--accent-glow, rgba(88, 166, 255, 0.45));
+    color: #ffffff;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+.sgl-tab-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent, #58a6ff);
+    opacity: 0;
+    box-shadow: none;
+    transition: opacity 0.25s ease, box-shadow 0.25s ease, background 0.35s ease;
+    pointer-events: none;
+}
+
+.sgl-tab.active .sgl-tab-line {
+    opacity: 0.65;
+}
+
+.sgl-tab.focused .sgl-tab-line,
+.sgl-tab:focus-visible .sgl-tab-line {
+    opacity: 1;
+    box-shadow: 0 0 14px 2px var(--accent, #58a6ff);
 }
 
 .sgl-tab-count {
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 1px 5px;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.65);
+    transition: all 0.2s ease;
 }
 
-.sgl-tab.active .sgl-tab-count {
-    background: rgba(255, 255, 255, 0.2);
+.sgl-tab.active .sgl-tab-count,
+.sgl-tab.focused .sgl-tab-count {
+    background: rgba(255, 255, 255, 0.18);
     color: #ffffff;
 }
 
@@ -382,62 +411,73 @@ export const LIBRARY_CSS = `
 .sgl-btn-details {
     flex: 1;
     padding: 10px 16px;
-    border-radius: 24px;
+    border-radius: 999px;
     font-size: 13.5px;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--accent, #1f6feb) 0%, rgba(31, 111, 235, 0.75) 100%);
-    color: #ffffff;
-    border: none;
+    font-weight: 800;
+    background: var(--accent, #58a6ff);
+    color: #0b0d10;
+    border: 1px solid var(--accent, #58a6ff);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    transition: all 0.15s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.35s ease;
     outline: none;
 }
 
 .sgl-btn-details:hover,
 .sgl-btn-details:focus-visible {
-    filter: brightness(1.15);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 14px var(--accent-glow, rgba(88, 166, 255, 0.45));
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 12px 30px -6px var(--accent, #58a6ff);
 }
 
 .sgl-btn-play {
     flex: 1;
     padding: 10px 14px;
-    border-radius: 24px;
+    border-radius: 999px;
     font-size: 13px;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-weight: 700;
+    background: rgba(12, 16, 22, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(12px);
     color: #ffffff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    transition: all 0.15s ease;
+    gap: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     outline: none;
 }
 
 .sgl-btn-play:hover,
 .sgl-btn-play:focus-visible {
     background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-
 .sgl-btn-badge {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 800;
-    padding: 1px 5px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.35);
-    color: rgba(255, 255, 255, 0.9);
+    padding: 1px 6px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.sgl-btn-details .sgl-btn-badge {
+    background: rgba(0, 0, 0, 0.22);
+    color: #0b0d10;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.sgl-btn-play .sgl-btn-badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Right Panel: Game Grid */
@@ -474,24 +514,61 @@ export const LIBRARY_CSS = `
     position: relative;
     cursor: pointer;
     background: #11151f;
-    border: 2px solid rgba(255, 255, 255, 0.08);
-    transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s ease, box-shadow 0.16s ease;
+    border: none;
+    box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.6);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
     contain: paint;
     outline: none;
 }
 
+.sgl-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: box-shadow 0.22s ease;
+}
+
 .sgl-card:hover {
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: scale(1.02);
+    transform: translateY(-2px) scale(1.015);
+}
+
+.sgl-card:hover::after {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 .sgl-card.focused,
 .sgl-card:focus-visible {
-    transform: scale(1.045);
+    transform: translateY(-4px) scale(1.035);
     z-index: 5;
-    border-color: var(--accent, #58a6ff);
-    box-shadow: 0 0 0 1px var(--accent, #58a6ff), 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 18px var(--accent-glow, rgba(88, 166, 255, 0.45));
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 16px 40px -10px var(--accent, #58a6ff);
+}
+
+.sgl-card.focused::after,
+.sgl-card:focus-visible::after {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.sgl-card-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--accent, #58a6ff);
+    opacity: 0;
+    box-shadow: 0 0 8px var(--accent, #58a6ff);
+    transition: opacity 0.2s ease, background 0.3s ease;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.sgl-card.focused .sgl-card-bar,
+.sgl-card-collection.focused .sgl-card-bar {
+    opacity: 1;
 }
 
 .sgl-card-img {
@@ -561,26 +638,44 @@ export const LIBRARY_CSS = `
     overflow: hidden;
     position: relative;
     cursor: pointer;
-    background: radial-gradient(circle at 50% 25%, rgba(28, 38, 56, 0.9) 0%, rgba(10, 14, 22, 0.98) 100%);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s ease, box-shadow 0.16s ease;
+    background: radial-gradient(circle at 50% 25%, rgba(28, 38, 56, 0.85) 0%, rgba(10, 14, 22, 0.95) 100%);
+    border: none;
+    box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.6);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
     outline: none;
     display: flex;
     flex-direction: column;
 }
 
+.sgl-card-collection::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: box-shadow 0.22s ease;
+}
+
 .sgl-card-collection:hover {
-    border-color: rgba(255, 255, 255, 0.28);
-    transform: scale(1.02);
+    transform: translateY(-2px) scale(1.015);
+}
+
+.sgl-card-collection:hover::after {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 .sgl-card-collection.focused,
 .sgl-card-collection:focus-visible {
-    transform: scale(1.045);
+    transform: translateY(-4px) scale(1.035);
     z-index: 5;
-    border-color: var(--accent, #58a6ff);
-    box-shadow: 0 0 0 1px var(--accent, #58a6ff), 0 10px 28px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow, rgba(88, 166, 255, 0.45));
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 16px 40px -10px var(--accent, #58a6ff);
+}
+
+.sgl-card-collection.focused::after,
+.sgl-card-collection:focus-visible::after {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .sgl-col-fan-area {

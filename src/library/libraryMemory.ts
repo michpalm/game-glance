@@ -10,6 +10,7 @@ export interface LibraryMemory {
     subCollectionId: string | null;
     appId: number;
     focusZone: 'grid' | 'tabs';
+    collectionIndex?: number;
 }
 
 export const DEFAULT_LIBRARY_MEMORY: LibraryMemory = {
@@ -26,8 +27,9 @@ let memory: LibraryMemory | null = null;
 let leftAt: number | null = null;
 
 /** Records the current position in the library (partial update). */
-export function noteLibrary(patch: Partial<LibraryMemory>) {
+export function noteLibrary(patch: Partial<LibraryMemory>, now: number = Date.now()) {
     memory = { ...(memory ?? DEFAULT_LIBRARY_MEMORY), ...patch };
+    leftAt = now;
 }
 
 /** Called when navigating away to a game page or action where B will return to the library. */

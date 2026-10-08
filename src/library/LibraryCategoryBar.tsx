@@ -80,8 +80,9 @@ export function LibraryCategoryBar({
                                     className={`sgl-tab${isActive ? ' active' : ''}${isFocused ? ' focused' : ''}`}
                                     onClick={() => onSelectCategory(cat.id)}
                                 >
-                                    <span>{cat.name}</span>
+                                    <span className="sgl-tab-label">{cat.name}</span>
                                     <span className="sgl-tab-count">{cat.count}</span>
+                                    <div className="sgl-tab-line" />
                                 </button>
                             );
                         })}

@@ -103,6 +103,8 @@ function BannerCard({ game, isFocused, accent, onClick, onDoubleClick }: BannerC
                     <span>PLAYING</span>
                 </div>
             )}
+
+            <div className="sgl-card-bar" />
         </div>
     );
 }
@@ -239,6 +241,8 @@ function CollectionCard({ collection, isFocused, accent, onClick, onDoubleClick 
                 <span className="sgl-col-footer-title">{collection.name}</span>
                 <span className="sgl-col-footer-badge">{collection.count} {collection.count === 1 ? 'GAME' : 'GAMES'}</span>
             </div>
+
+            <div className="sgl-card-bar" />
         </div>
     );
 }

@@ -6,7 +6,7 @@ import { HltbResult, lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getDescription, peekSteamLanguage } from '../data/steam';
 import { openGameActions } from '../home/ActionRow';
-import { accentFor, DEFAULT_ACCENT } from '../home/accent';
+import { accentFor, DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { sampleAccent } from '../home/accentSample';
 import { browserStores, guessedHeroUrls, heroUrls as getHeroUrls } from '../home/artwork';
 import { playNavSound } from '../home/navSound';
@@ -16,7 +16,7 @@ import { LibraryGrid } from './LibraryGrid';
 import { LibraryInspector } from './LibraryInspector';
 import { LIBRARY_CSS } from './libraryCss';
 import { buildCategories, LibraryCategory, LibraryCollectionItem, LibraryGameItem } from './libraryData';
-import { markLeavingLibrary, noteLibrary, takeLibraryRestore } from './libraryMemory';
+import { markLeavingLibrary, noteLibrary, resetLibraryMemory, takeLibraryRestore } from './libraryMemory';
 
 interface SpotlightLibraryProps {
     mockGames?: LibraryGameItem[];
@@ -78,12 +78,18 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
     const totalItemsCount = isCollectionsTab && !isInsideSubCollection ? currentCollections.length : currentGames.length;
 
     const initialGameIdx = useMemo(() => {
-        if (initialRestore && initialRestore.appId && currentGames.length > 0) {
-            const found = currentGames.findIndex((g) => g.appId === initialRestore.appId);
-            if (found >= 0) return found;
+        if (initialRestore) {
+            if (initialRestore.appId && currentGames.length > 0) {
+                const found = currentGames.findIndex((g) => g.appId === initialRestore.appId);
+                if (found >= 0) return found;
+            }
+            if (isCollectionsTab && !initialRestore.subCollectionId && currentCollections.length > 0) {
+                const colIdx = initialRestore.collectionIndex ?? 0;
+                if (colIdx >= 0 && colIdx < currentCollections.length) return colIdx;
+            }
         }
         return 0;
-    }, [currentGames, initialRestore]);
+    }, [currentGames, currentCollections, isCollectionsTab, initialRestore]);
 
     const [selectedGameIdx, setSelectedGameIdx] = useState<number>(initialGameIdx);
     const [focusZone, setFocusZone] = useState<'grid' | 'tabs'>(initialRestore?.focusZone ?? 'grid');
@@ -118,8 +124,20 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         selectCategory(categories[nextIdx].id);
     }, [isInsideSubCollection, activeCategory, selectedCollectionId, categories, activeCategoryId, selectCategory]);
 
+    const isExitingHomeRef = useRef(false);
+
+    // Save position whenever leaving or unmounting (so Steam sub-screens like Properties restore exact state)
+    useEffect(() => {
+        return () => {
+            if (!isExitingHomeRef.current) {
+                markLeavingLibrary();
+            }
+        };
+    }, []);
+
     const navigateHome = useCallback(() => {
-        markLeavingLibrary();
+        isExitingHomeRef.current = true;
+        resetLibraryMemory();
         try {
             Navigation.Navigate('/library/home');
         } catch {
@@ -152,9 +170,10 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
             categoryId: activeCategoryId,
             subCollectionId: selectedCollectionId,
             appId: selectedGame?.appId ?? 0,
+            collectionIndex: isCollectionsTab && !selectedCollectionId ? selectedGameIdx : 0,
             focusZone,
         });
-    }, [activeCategoryId, selectedCollectionId, selectedGame?.appId, focusZone]);
+    }, [activeCategoryId, selectedCollectionId, selectedGame?.appId, selectedGameIdx, isCollectionsTab, focusZone]);
 
     // Asynchronous details for selected game (HLTB, Description, Accent)
     const [gameAccent, setGameAccent] = useState<string>(selectedGame?.accent ?? DEFAULT_ACCENT);
@@ -344,6 +363,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                         document.querySelector('.sgl-root') ??
                         document.body
                     ) as HTMLElement;
+                    markLeavingLibrary();
                     openGameActions(selectedGame.appId, cardEl);
                     return;
                 }
@@ -519,6 +539,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                         document.querySelector('.sgl-inspector') ??
                         document.body
                     ) as HTMLElement;
+                    markLeavingLibrary();
                     openGameActions(selectedGame.appId, cardEl);
                     e.preventDefault();
                 }
@@ -540,6 +561,12 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
             className="sgl-root"
             preferredFocus={true}
             noFocusRing
+            style={{
+                '--accent': gameAccent,
+                '--glance-accent': gameAccent,
+                '--glance-accent-text': legibleAccent(gameAccent),
+                '--accent-glow': `${gameAccent}55`,
+            } as React.CSSProperties}
             onGamepadFocus={() => {
                 // Focus returns from top header onto category tabs
                 setFocusZone('tabs');
