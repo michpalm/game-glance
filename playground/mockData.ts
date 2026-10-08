@@ -5,6 +5,7 @@ export interface MockGame {
     info: GameInfo;
     heroUrl: string;
     logoUrl?: string;
+    trailerUrl?: string;
     source: string;
     description: string;
     hltb: HltbResult;
@@ -23,6 +24,7 @@ export const MOCK_GAMES: MockGame[] = [
         },
         heroUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/292030/library_hero.jpg',
         logoUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/292030/logo.png',
+        trailerUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/256658589/movie480.mp4',
         source: 'Steam',
         description:
             'As war rages on throughout the Northern Realms, you take on the greatest contract of your life — tracking down the Child of Prophecy, a living weapon that can alter the shape of the world.',
@@ -44,6 +46,7 @@ export const MOCK_GAMES: MockGame[] = [
         },
         heroUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/library_hero.jpg',
         logoUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/logo.png',
+        trailerUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/256910609/movie480.mp4',
         source: 'Steam',
         description:
             'Cyberpunk 2077 is an open-world, action-adventure RPG set in the megalopolis of Night City, where you play as a cyberpunk mercenary wrapped up in a do-or-die fight for survival.',
@@ -65,6 +68,7 @@ export const MOCK_GAMES: MockGame[] = [
         },
         heroUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1229240/library_hero.jpg',
         logoUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1229240/logo.png',
+        trailerUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/256918847/movie480.mp4',
         source: 'GOG',
         description:
             'Take up your sword, channel your magic or board your Mech. Chained Echoes is a 16-bit style RPG set in a fantasy world where dragons are as common as piloted mechanical suits.',
@@ -86,6 +90,7 @@ export const MOCK_GAMES: MockGame[] = [
         },
         heroUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1145360/library_hero.jpg',
         logoUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1145360/logo.png',
+        trailerUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/256801252/movie480.mp4',
         source: 'Epic',
         description:
             'Defy the god of the dead as you hack and slash out of the Underworld in this rogue-like dungeon crawler from the creators of Bastion and Transistor.',

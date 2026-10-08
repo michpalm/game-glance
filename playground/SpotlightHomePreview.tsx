@@ -132,7 +132,9 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
         if (!currentSettings.trailerBackground) return undefined;
 
         let active = true;
-        const resolvePromise = resolveGameTrailer(currentGame.info);
+        const resolvePromise = currentGame.trailerUrl
+            ? Promise.resolve({ url: currentGame.trailerUrl, isHls: false } as GameTrailer)
+            : resolveGameTrailer(currentGame.info);
 
         idleTrailerTimerRef.current = setTimeout(async () => {
             const resolved = await resolvePromise;
@@ -147,7 +149,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
             active = false;
             if (idleTrailerTimerRef.current) clearTimeout(idleTrailerTimerRef.current);
         };
-    }, [selectedIndex, currentSettings.trailerBackground, currentGame.info]);
+    }, [selectedIndex, currentSettings.trailerBackground, currentGame.info, currentGame.trailerUrl]);
 
     useEffect(() => {
         setLogoLoaded(false);

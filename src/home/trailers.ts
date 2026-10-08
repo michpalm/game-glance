@@ -141,3 +141,13 @@ export async function getGameTrailer(
 
     return result;
 }
+
+/**
+ * Convenience helper to resolve trailer for a game info object.
+ */
+export async function resolveGameTrailer(
+    game: { appId: number; name?: string },
+    deps: TrailerDeps = defaultDeps
+): Promise<GameTrailer | null> {
+    return getGameTrailer(game.appId, game.name ?? '', deps);
+}
