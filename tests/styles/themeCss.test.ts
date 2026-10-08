@@ -455,6 +455,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(title).toContain('font-size: calc(64 * var(--gg-d))');
         expect(title).toContain('font-weight: 800');
         expect(title).toContain('-webkit-line-clamp: 2');
+        expect(rulesFor(restyled, '.gg-titleslot')).toContain('display: flex');
+        expect(rulesFor(restyled, '.gg-logo')).toContain('object-fit: contain');
         // placed where the logo was (top 120 of 810), the logo and Steam's text title hidden in place
         expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('position: absolute');
         expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(120 * var(--gg-d))');

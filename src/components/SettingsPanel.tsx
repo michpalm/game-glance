@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -162,6 +162,16 @@ export function SettingsPanel() {
                         />
                     </PanelSectionRow>
                 )}
+            </PanelSection>
+            <PanelSection title="Appearance">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Prefer game logos"
+                        description="Shows game logos instead of text titles in Spotlight Home and Game Glance pages when available. Off always displays text."
+                        checked={preferLogos}
+                        onChange={(value) => settings.setPreferLogos(value)}
+                    />
+                </PanelSectionRow>
             </PanelSection>
             <PanelSection title="HowLongToBeat match">
                 {game ? (

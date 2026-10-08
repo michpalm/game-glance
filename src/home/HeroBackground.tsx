@@ -91,8 +91,9 @@ const sameArt = (a: Art | undefined, b: Art) =>
 
 const bg = (url: string) => ({ backgroundImage: `url("${url.replace(/"/g, '%22')}")` });
 
-function Layer({ art, settled }: { art: Art; settled: boolean }) {
-    const cls = `gh-hero-layer${settled ? ' gh-hero-settled' : ''}`;
+function Layer({ art, settled, direction }: { art: Art; settled: boolean; direction?: 'left' | 'right' | 'none' }) {
+    const dirCls = direction === 'left' ? ' gh-hero-in-left' : direction === 'right' ? ' gh-hero-in-right' : '';
+    const cls = `gh-hero-layer${settled ? ' gh-hero-settled' : ''}${dirCls}`;
     if (art.mode === 'full') {
         return (
             <div className={cls}>
@@ -117,11 +118,24 @@ function Layer({ art, settled }: { art: Art; settled: boolean }) {
  * once instead of stacking fades (heroLayers.nextHeroLayers). No spinner: until the art loads, the last one stays.
  * `neighbours`: the games either side of the selection; once the selection has rested briefly their art is
  * pre-loaded (local steamloopback files, at most 2 x HERO_PRELOAD_RADIUS, deduplicated), so the next switch starts at once.
+ * `direction`: 'left' | 'right' | 'none', applies a directional zoom-in entrance aligned with recents navigation.
  */
-export function HeroBackground({ appId, detailsVersion, neighbours = [] }: { appId: number | null; detailsVersion: number; neighbours?: number[] }) {
+export function HeroBackground({
+    appId,
+    detailsVersion,
+    neighbours = [],
+    direction = 'none',
+}: {
+    appId: number | null;
+    detailsVersion: number;
+    neighbours?: number[];
+    direction?: 'left' | 'right' | 'none';
+}) {
     const [layers, setLayers] = useState<Array<HeroLayer<Art>>>([]);
     const nextId = useRef(0);
     const shown = useRef<Art | undefined>(undefined);
+    const directionRef = useRef(direction);
+    directionRef.current = direction;
 
     useEffect(() => {
         if (appId === null) {
@@ -131,11 +145,12 @@ export function HeroBackground({ appId, detailsVersion, neighbours = [] }: { app
         }
         let active = true;
         let prune: ReturnType<typeof setTimeout> | undefined;
+        const currentDir = directionRef.current;
         resolveArt(appId).then((art) => {
             if (!active || sameArt(shown.current, art)) return; // re-resolved to what is already up
             shown.current = art;
             const id = ++nextId.current;
-            setLayers((current) => nextHeroLayers(current, { id, art }, Date.now(), HERO_FADE_MS));
+            setLayers((current) => nextHeroLayers(current, { id, art, direction: currentDir }, Date.now(), HERO_FADE_MS));
             prune = setTimeout(() => setLayers((current) => current.filter((layer) => layer.id >= id)), HERO_FADE_MS + 50);
         }, () => undefined);
         return () => {
@@ -157,7 +172,7 @@ export function HeroBackground({ appId, detailsVersion, neighbours = [] }: { app
     return (
         <div className="gh-hero" aria-hidden="true">
             {layers.map((layer) => (
-                <Layer key={layer.id} art={layer.art} settled={layer.settled} />
+                <Layer key={layer.id} art={layer.art} settled={layer.settled} direction={layer.direction} />
             ))}
         </div>
     );

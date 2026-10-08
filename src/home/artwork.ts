@@ -1,7 +1,7 @@
-import { memoDetails } from './detailsMemo';
+import { memoDetails, noteDetails } from './detailsMemo';
 
 export interface SteamStores {
-    details(appId: number): { libraryAssets?: { strHeroImage?: string; strHeaderImage?: string } } | undefined;
+    details(appId: number): { libraryAssets?: { strHeroImage?: string; strHeaderImage?: string; strLogoImage?: string } } | undefined;
     overview(appId: number): { header_filename?: string; library_capsule_filename?: string; app_type?: number } | undefined;
     /** Steam's own landscape (header) art list for the app, custom art first; root-relative or absolute urls. */
     landscape?(appId: number): string[] | undefined;
@@ -9,6 +9,8 @@ export interface SteamStores {
     customHero?(appId: number): string[] | undefined;
     /** Custom (SteamGridDB) portrait capsule art, jpg then png; root-relative urls; [] without custom art. */
     customCapsule?(appId: number): string[] | undefined;
+    /** Custom (SteamGridDB) logo art, png; root-relative urls; [] without custom art. */
+    customLogo?(appId: number): string[] | undefined;
 }
 
 const HOST = 'https://steamloopback.host';
@@ -20,10 +22,6 @@ function guarded<T>(read: () => T | undefined): T | undefined {
     } catch {
         return undefined; // store not loaded for this app
     }
-}
-
-function toUrls(appId: number, paths: (string | undefined)[]): string[] {
-    return paths.filter((p): p is string => typeof p === 'string' && p.length > 0).map((p) => `${ASSETS}/${appId}/${p}`);
 }
 
 /** Root-relative urls ("/customimages/...") resolve against Big Picture's origin. */
@@ -41,6 +39,42 @@ function listed(read: () => unknown): string[] {
 
 /** Steam's app type for a game (not a shortcut, tool or mod). */
 const GAME_APP_TYPE = 1;
+const SHORTCUT_APP_TYPE = 1073741824;
+const FIRST_SHORTCUT_APP_ID = 0x80000000;
+
+function toAssetUrl(appId: number, path: string): string {
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path.startsWith('/') && !path.startsWith('//')) return `${HOST}${path}`;
+    return `${ASSETS}/${appId}/${path}`;
+}
+
+function toUrls(appId: number, paths: (string | undefined)[]): string[] {
+    return paths.filter((p): p is string => typeof p === 'string' && p.length > 0).map((p) => toAssetUrl(appId, p));
+}
+
+function extractLogoPath(d: unknown): string | undefined {
+    if (!d || typeof d !== 'object') return undefined;
+    const obj = d as Record<string, unknown>;
+    const assets = obj.libraryAssets as Record<string, unknown> | undefined;
+    if (typeof assets?.strLogoImage === 'string' && assets.strLogoImage.length > 0) return assets.strLogoImage;
+    if (typeof obj.strLogoImage === 'string' && obj.strLogoImage.length > 0) return obj.strLogoImage;
+    if (typeof obj.strLogoURL === 'string' && obj.strLogoURL.length > 0) return obj.strLogoURL;
+    if (typeof obj.logo_filename === 'string' && obj.logo_filename.length > 0) return obj.logo_filename;
+    return undefined;
+}
+
+function getDomLogoUrl(): string | undefined {
+    try {
+        if (typeof document === 'undefined') return undefined;
+        const img = document.querySelector('div[class*="TitleImageContainer"] img, div[class*="titleImageContainer"] img') as HTMLImageElement | null;
+        if (img && typeof img.src === 'string' && img.src.length > 0) {
+            return img.src;
+        }
+    } catch {
+        // ignore in non-browser or test environments
+    }
+    return undefined;
+}
 
 /**
  * Where a Steam game's library hero is when its hashed file name is unknown (no details from Steam yet): the old,
@@ -90,6 +124,40 @@ export function landscapeUrls(appId: number, stores: SteamStores): string[] {
     return [...new Set(toUrls(appId, [header, overview?.header_filename]))];
 }
 
+/**
+ * Where a Steam game's library logo is when its hashed file name is unknown: the old,
+ * unhashed local path, then Steam's CDN server.
+ */
+export function guessedLogoUrls(appId: number): string[] {
+    return [
+        `${ASSETS}/${appId}/logo.png`,
+        `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/logo.png`,
+        `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/logo.png`,
+    ];
+}
+
+/**
+ * Custom (SteamGridDB) logo art first (`appStore.GetCustomLogoImageURLs`: `/customimages/<id>_logo.png`),
+ * then any logo image Steam already rendered in the DOM, then the library assets in their hashed folders
+ * (`strLogoImage`), then guessedLogoUrls for Steam games.
+ */
+export function logoUrls(appId: number, stores: SteamStores): string[] {
+    const custom = listed(() => stores.customLogo?.(appId));
+    const domLogo = getDomLogoUrl();
+    const details = guarded(() => stores.details(appId));
+    const logo = extractLogoPath(details);
+    const overview = guarded(() => stores.overview(appId));
+    const overviewLogo = typeof (overview as Record<string, unknown> | undefined)?.logo_filename === 'string'
+        ? (overview as Record<string, unknown>).logo_filename as string
+        : undefined;
+    const isShortcut = (overview as { app_type?: number } | undefined)?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
+    const isGame = overview?.app_type === GAME_APP_TYPE || (overview?.app_type === undefined && !isShortcut);
+    const guessed = !logo && isGame ? guessedLogoUrls(appId) : [];
+    const directLogos = toUrls(appId, [logo, overviewLogo]);
+    const domLogos = domLogo ? [domLogo] : [];
+    return [...new Set([...custom, ...domLogos, ...directLogos, ...guessed])];
+}
+
 interface StoreGlobals {
     appDetailsStore?: {
         GetAppDetails?(appId: number): ReturnType<SteamStores['details']>;
@@ -99,6 +167,7 @@ interface StoreGlobals {
         GetAppOverviewByAppID?(appId: number): ReturnType<SteamStores['overview']>;
         GetCustomHeroImageURLs?(overview: unknown): string[] | undefined;
         GetCustomVerticalCapsuleURLs?(overview: unknown): string[] | undefined;
+        GetCustomLogoImageURLs?(overview: unknown): string[] | undefined;
     };
 }
 
@@ -128,7 +197,59 @@ export const browserStores: SteamStores = {
         const overview = store?.GetAppOverviewByAppID?.(id);
         return overview ? store?.GetCustomVerticalCapsuleURLs?.(overview) : undefined;
     },
+    customLogo: (id) => {
+        const store = globals().appStore;
+        const overview = store?.GetAppOverviewByAppID?.(id);
+        return overview ? store?.GetCustomLogoImageURLs?.(overview) : undefined;
+    },
 };
+
+/**
+ * Resolves candidate logo URLs for a game, optionally given its overview and details objects.
+ * Caches details in detailsMemo when provided.
+ */
+export function getGameLogoUrls(appId: number, overview?: unknown, details?: unknown): string[] {
+    if (appId === 0) return [];
+    if (details) {
+        noteDetails(appId, details);
+    }
+    const stores: SteamStores = {
+        ...browserStores,
+        details: (id) => {
+            if (id === appId && details) {
+                const d = details as ReturnType<SteamStores['details']>;
+                if (d?.libraryAssets) return d;
+                const remembered = memoDetails(id);
+                if (remembered) return { ...d, libraryAssets: remembered };
+                const fromStore = browserStores.details(id);
+                if (fromStore?.libraryAssets) return fromStore;
+                return d;
+            }
+            return browserStores.details(id);
+        },
+        overview: (id) => {
+            if (id === appId && overview) {
+                return overview as ReturnType<SteamStores['overview']>;
+            }
+            return browserStores.overview(id);
+        },
+        customLogo: (id) => {
+            if (id === appId && overview) {
+                const store = globals().appStore;
+                const custom = store?.GetCustomLogoImageURLs?.(overview);
+                if (custom && custom.length > 0) return custom;
+            }
+            return browserStores.customLogo?.(id);
+        },
+    };
+    const list = logoUrls(appId, stores);
+    const isShortcut = (overview as { app_type?: number } | undefined)?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
+    if (appId > 0 && !isShortcut) {
+        return [...new Set([...list, ...guessedLogoUrls(appId)])];
+    }
+    return list;
+}
+
 
 /**
  * A game's store header on Steam's CDN (the url pattern Steam's own GetHeaderImages lists last, probed on the Ally),

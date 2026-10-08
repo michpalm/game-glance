@@ -7,6 +7,8 @@ export interface HeroLayer<A> {
     start: number;
     /** Shown at once, without the fade: its fade was interrupted by a newer switch. */
     settled: boolean;
+    /** Entrance direction for the zoom animation. */
+    direction?: 'left' | 'right' | 'none';
 }
 
 /**
@@ -14,8 +16,19 @@ export interface HeroLayer<A> {
  * top layer is still fading in (a quick run of L1/R1), it is settled, i.e. shown fully at once, and everything
  * under it is dropped, so fades never stack up. Otherwise the top layer simply stays under the new one.
  */
-export function nextHeroLayers<A>(layers: Array<HeroLayer<A>>, incoming: { id: number; art: A }, now: number, fadeMs: number): Array<HeroLayer<A>> {
-    const added: HeroLayer<A> = { id: incoming.id, art: incoming.art, start: now, settled: false };
+export function nextHeroLayers<A>(
+    layers: Array<HeroLayer<A>>,
+    incoming: { id: number; art: A; direction?: 'left' | 'right' | 'none' },
+    now: number,
+    fadeMs: number,
+): Array<HeroLayer<A>> {
+    const added: HeroLayer<A> = {
+        id: incoming.id,
+        art: incoming.art,
+        start: now,
+        settled: false,
+        ...(incoming.direction ? { direction: incoming.direction } : {}),
+    };
     const top = layers[layers.length - 1];
     if (!top) return [added];
     const fading = !top.settled && now - top.start < fadeMs;

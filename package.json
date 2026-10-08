@@ -1,10 +1,12 @@
 {
   "name": "game-glance",
-  "version": "2.0.0",
+  "version": "2.1.1",
   "description": "Immersive game page for Steam Game Mode: full-screen art, HowLongToBeat times, descriptions and store info",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "build": "rollup -c",
+    "package": "python scripts/package.py",
     "watch": "rollup -c -w",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -19,6 +21,7 @@
     "@types/react-dom": "19.1.1",
     "linkedom": "^0.18.13",
     "react": "19.1.1",
+    "react-dom": "^19.1.1",
     "rollup": "^4.53.3",
     "typescript": "^5.6.2",
     "vitest": "^5.0.3"

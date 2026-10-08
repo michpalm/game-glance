@@ -113,13 +113,19 @@ export function SpotlightHome() {
     // The selected recents item: 0..games.length, where games.length is the Library card (the hero then stays on the
     // last game). Left/Right on the game cards and L1/R1 (from the cards or the action row) change it.
     const [recentIndex, setRecentIndex] = useState(0);
+    const prevIndexRef = useRef(0);
+    const navDirectionRef = useRef<'left' | 'right' | 'none'>('none');
+    if (recentIndex !== prevIndexRef.current) {
+        navDirectionRef.current = recentIndex < prevIndexRef.current ? 'left' : 'right';
+        prevIndexRef.current = recentIndex;
+    }
     // Where Home was when the user left it for a game, news or store page (homeMemory), taken once per mount; null on
     // a cold start. It is applied as soon as the recents are known and before the content mounts, so Home never shows
     // the first game and then jumps. `restoring` also keeps the Play pill from claiming focus while it runs.
     const [restore] = useState(takeRestore);
     // The bottom section (What's new, Friends, Recommended tabs); off: Home is the selected game only, and a remembered
     // tab or feed zone restores to the game cards instead.
-    const { homeFeed: feed, homeStatusBar } = useSettings();
+    const { homeFeed: feed, homeStatusBar, preferLogos } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -334,7 +340,7 @@ export function SpotlightHome() {
     return (
         <div ref={rootRef} className="gh-root" onFocus={onRootFocus} onBlur={onRootBlur} style={{ '--glance-accent': data.accent, '--glance-accent-text': legibleAccent(data.accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, feed)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>
             <style>{css}</style>
-            <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
+            <HeroBackground appId={game?.appId ?? null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} direction={navDirectionRef.current} />
             <div className="gh-scrim gh-scrim-dim" />
             <div className="gh-scrim gh-scrim-v" />
             <div className="gh-scrim gh-scrim-l" />
@@ -360,7 +366,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title="View more in your Library" chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} />
+                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} logoUrls={data.logoUrls} preferLogos={preferLogos} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}

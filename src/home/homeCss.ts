@@ -162,6 +162,9 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
         `@property --gh-card-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
         `@keyframes gh-fade-in { from { opacity: 0; } to { opacity: 1; } }`,
+        `@keyframes gh-hero-in-left { from { opacity: 0; transform: scale(1.08) translate3d(-36px, 0, 0); } to { opacity: 1; transform: scale(1.02) translate3d(0, 0, 0); } }`,
+        `@keyframes gh-hero-in-right { from { opacity: 0; transform: scale(1.08) translate3d(36px, 0, 0); } to { opacity: 1; transform: scale(1.02) translate3d(0, 0, 0); } }`,
+        `@keyframes gh-hero-ambient { 0% { transform: scale(1.02) translate3d(0, 0, 0); } 50% { transform: scale(1.06) translate3d(14px, -6px, 0); } 100% { transform: scale(1.03) translate3d(-10px, 4px, 0); } }`,
         rule('.gh-root', `--glance-accent: ${DEFAULT_ACCENT}; --glance-accent-text: ${DEFAULT_ACCENT}; --gh-top: 52px; --gh-bottom: ${FEED_SHEET.legendReserve}px; --gh-shift: 0px; --gh-dim: .15;
             --gh-ink: #07090c; --gh-on-accent: #0b0d10; --gh-r-capsule: 8px; --gh-r-card: 12px; --gh-r-panel: 16px; --gh-r-pill: 999px;
             transition: none;
@@ -173,14 +176,17 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
 
         // Hero art: full-bleed on the real screen (not the scaled canvas). Each new art fades in over the last.
         rule('.gh-hero', 'position: absolute; inset: 0; overflow: hidden; pointer-events: none'),
-        rule('.gh-hero-layer', `position: absolute; inset: 0; will-change: opacity; animation: gh-fade-in ${HERO_FADE_MS}ms ease both`),
+        rule('.gh-hero-layer', `position: absolute; inset: 0; will-change: opacity, transform; animation: gh-fade-in ${HERO_FADE_MS}ms ease both`),
+        rule('.gh-hero-layer.gh-hero-in-left', `animation: gh-hero-in-left ${HERO_FADE_MS}ms cubic-bezier(.16, 1, .3, 1) both`),
+        rule('.gh-hero-layer.gh-hero-in-right', `animation: gh-hero-in-right ${HERO_FADE_MS}ms cubic-bezier(.16, 1, .3, 1) both`),
         // A layer whose fade a newer switch interrupted: shown at once (HeroBackground keeps at most two layers).
-        rule('.gh-hero-layer.gh-hero-settled', 'animation: none; opacity: 1'),
+        rule('.gh-hero-layer.gh-hero-settled', 'animation: none; opacity: 1; transform: none'),
         rule('.gh-hero-none', 'background: var(--gh-ink)'),
-        rule('.gh-hero-full', 'position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat'),
+        rule('.gh-hero-full', `position: absolute; inset: -30px; background-size: cover; background-position: center 30%; background-repeat: no-repeat;
+            animation: gh-hero-ambient 24s ease-in-out infinite alternate; will-change: transform`),
         rule('.gh-hero-blur', 'position: absolute; inset: -60px; background-size: cover; background-position: center; filter: blur(42px) saturate(1.25) brightness(.8)'),
-        rule('.gh-hero-sharp', `position: absolute; right: 0; top: 0; height: 100%; width: 62%; background-size: cover; background-position: center 30%;
-            background-repeat: no-repeat; opacity: .92;
+        rule('.gh-hero-sharp', `position: absolute; right: 0; top: -30px; bottom: -30px; width: 62%; background-size: cover; background-position: center 30%;
+            background-repeat: no-repeat; opacity: .92; animation: gh-hero-ambient 24s ease-in-out infinite alternate; will-change: transform;
             -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%)`),
 
         // Scrims: flat dim, vertical, left.
@@ -202,7 +208,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-title-block', `position: absolute; left: 56px; top: calc(${t.top}px - var(--gh-top)); width: 620px; display: flex; flex-direction: column; gap: ${t.gap}px; margin: 0; padding: 0`),
         // The title's slot: always two lines tall, the title aligned to its bottom, so a one-line title leaves room above
         // it and nothing below moves (titleBlockLayout). Not clipped: the title's own bleed reaches past it.
-        rule('.gh-title-slot', `height: ${t.titleLines * t.titleSize}px; display: flex; flex-direction: column; justify-content: flex-end; margin: 0; padding: 0; overflow: visible`),
+        rule('.gh-title-slot', `height: ${t.titleLines * t.titleSize}px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; margin: 0; padding: 0; overflow: visible`),
         // Eyebrow, between the title and the chips: always one line (ellipsis), so it never pushes the chips.
         rule('.gh-eyebrow', `margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; line-height: 1.2; height: ${t.eyebrow}px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--glance-accent-text)`),
@@ -210,7 +216,14 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // shadow; equal negative margins keep the layout box at exactly two 58px lines.
         rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: ${t.titleSize}px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
             text-shadow: 0 4px 30px rgba(0,0,0,.4); color: #fff; overflow-wrap: anywhere;
-            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: ${t.titleLines}; overflow: hidden`),
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: ${t.titleLines}; overflow: hidden;
+            width: 100%; text-align: left`),
+        // Game logo, when available: aligned to bottom-left with at least 70px extra height and a soft drop shadow.
+        rule('.gh-logo', `max-height: ${t.titleLines * t.titleSize + 70}px; max-width: 560px; width: auto; height: auto;
+            object-fit: contain; object-position: left bottom; margin: 0;
+            filter: drop-shadow(0 4px 20px rgba(0,0,0,.75));
+            user-select: none; pointer-events: none;
+            animation: gh-fade-in 250ms ease both`),
         // One row of fixed height, present even with no chips yet, so the actions never move.
         rule('.gh-chips', `height: ${t.chipRow}px; display: flex; gap: 10px; flex-wrap: nowrap; align-items: stretch; margin: 0; padding: 0`),
         rule('.gh-chip', `display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),

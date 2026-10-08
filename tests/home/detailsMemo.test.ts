@@ -4,11 +4,11 @@ import { DETAILS_MEMO_MAX, memoDetails, noteDetails, resetDetailsMemo } from '..
 describe('detailsMemo', () => {
     afterEach(resetDetailsMemo);
 
-    it("keeps the hero and header file names from Steam's details callback, the latest winning", () => {
+    it("keeps the hero, header and logo file names from Steam's details callback, the latest winning", () => {
         noteDetails(7, { libraryAssets: { strHeroImage: 'h1.jpg', strHeaderImage: 'x.jpg', logoPosition: {} }, strDisplayName: 'G' });
         expect(memoDetails(7)).toEqual({ strHeroImage: 'h1.jpg', strHeaderImage: 'x.jpg' });
-        noteDetails(7, { libraryAssets: { strHeroImage: 'h2.jpg' } });
-        expect(memoDetails(7)).toEqual({ strHeroImage: 'h2.jpg' });
+        noteDetails(7, { libraryAssets: { strHeroImage: 'h2.jpg', strLogoImage: 'logo.png' } });
+        expect(memoDetails(7)).toEqual({ strHeroImage: 'h2.jpg', strLogoImage: 'logo.png' });
     });
     it('ignores details without assets, broken ids and junk', () => {
         for (const junk of [undefined, null, 5, 'x', {}, { libraryAssets: null }, { libraryAssets: 'x' }]) noteDetails(8, junk);

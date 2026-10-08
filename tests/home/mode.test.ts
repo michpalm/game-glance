@@ -10,6 +10,8 @@ const make = (enabled: boolean, spotlightHome: boolean, cleanPage = false): Sett
     homeFeed: true,
     homeNewGames: false,
     cleanPage,
+    homeStatusBar: true,
+    preferLogos: true,
 });
 
 describe('homeMode', () => {

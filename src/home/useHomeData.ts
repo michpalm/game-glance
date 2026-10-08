@@ -33,6 +33,7 @@ import { pageHidden } from './pageVisible';
 import { noteDetails } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
+import { browserStores, logoUrls as getLogoUrls } from './artwork';
 
 export interface HomeGame extends RecentGame {
     installed: boolean;
@@ -75,6 +76,8 @@ export interface HomeData {
     recommended: RecommendedCard[];
     /** Wishlist sales for the Recommended tab's second row (only with Show wishlist deals on); biggest discount first. */
     deals: DealCard[];
+    /** Candidate logo URLs for the focused game; [] when none. */
+    logoUrls: string[];
 }
 
 type AnyApp = RawApp & { installed?: boolean; m_gameid?: string; appid: number };
@@ -593,5 +596,10 @@ export function useHomeData(focusIndex = 0): HomeData {
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    const logoUrls = useMemo(() => {
+        if (appId === null) return [];
+        return guarded('logo urls', () => getLogoUrls(appId, browserStores), []);
+    }, [appId, detailsVersion]);
+
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals, logoUrls };
 }

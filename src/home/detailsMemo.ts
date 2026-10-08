@@ -9,6 +9,7 @@
 export interface LibraryAssets {
     strHeroImage?: string;
     strHeaderImage?: string;
+    strLogoImage?: string;
 }
 
 /** At most this many games are remembered; the oldest go first. */
@@ -21,10 +22,11 @@ export function noteDetails(appId: number, details: unknown) {
     try {
         const assets = (details as { libraryAssets?: unknown } | null | undefined)?.libraryAssets;
         if (!Number.isInteger(appId) || appId <= 0 || !assets || typeof assets !== 'object') return;
-        const { strHeroImage, strHeaderImage } = assets as Record<string, unknown>;
+        const { strHeroImage, strHeaderImage, strLogoImage } = assets as Record<string, unknown>;
         const kept: LibraryAssets = {};
         if (typeof strHeroImage === 'string') kept.strHeroImage = strHeroImage;
         if (typeof strHeaderImage === 'string') kept.strHeaderImage = strHeaderImage;
+        if (typeof strLogoImage === 'string') kept.strLogoImage = strLogoImage;
         memo.delete(appId);
         memo.set(appId, kept);
         while (memo.size > DETAILS_MEMO_MAX) memo.delete(memo.keys().next().value as number);

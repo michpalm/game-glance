@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { browserStores, capsuleUrls, guessedHeroUrls, heroUrls, landscapeUrls, SteamStores } from '../../src/home/artwork';
+import { browserStores, capsuleUrls, getGameLogoUrls, guessedHeroUrls, guessedLogoUrls, heroUrls, landscapeUrls, logoUrls, SteamStores } from '../../src/home/artwork';
 import { noteDetails, resetDetailsMemo } from '../../src/home/detailsMemo';
 
 const stores: SteamStores = {
@@ -183,3 +183,48 @@ describe('storeHeaderUrl', () => {
         expect(storeHeaderUrl(1.5)).toBeNull();
     });
 });
+
+describe('logoUrls', () => {
+    const host = 'https://steamloopback.host';
+    it('prefers custom logo, then libraryAsset strLogoImage, then guessed CDN urls', () => {
+        const customLogo: SteamStores = {
+            details: () => ({ libraryAssets: { strLogoImage: 'lib_logo.png' } }),
+            overview: () => ({ app_type: 1 }),
+            customLogo: () => ['/customimages/42_logo.png'],
+        };
+        expect(logoUrls(42, customLogo)).toEqual([
+            `${host}/customimages/42_logo.png`,
+            `${host}/assets/42/lib_logo.png`,
+        ]);
+    });
+
+    it('falls back to guessed logo urls when no custom or library logo is known', () => {
+        const noLogo: SteamStores = {
+            details: () => undefined,
+            overview: () => ({ app_type: 1 }),
+        };
+        expect(logoUrls(42, noLogo)).toEqual(guessedLogoUrls(42));
+    });
+
+    it('shortcuts or non-games with no logo get an empty list', () => {
+        const shortcut: SteamStores = {
+            details: () => undefined,
+            overview: () => ({ app_type: 1073741824 }),
+        };
+        expect(logoUrls(42, shortcut)).toEqual([]);
+    });
+});
+
+describe('getGameLogoUrls', () => {
+    it('uses details and overview when provided', () => {
+        const details = { libraryAssets: { strLogoImage: 'detail_logo.png' } };
+        const overview = { app_type: 1 };
+        const urls = getGameLogoUrls(42, overview, details);
+        expect(urls[0]).toBe('https://steamloopback.host/assets/42/detail_logo.png');
+    });
+
+    it('returns empty list for appId 0', () => {
+        expect(getGameLogoUrls(0)).toEqual([]);
+    });
+});
+

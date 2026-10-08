@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
@@ -9,6 +9,7 @@ import { getSourceLabel } from '../data/source';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { accentFor } from '../home/accent';
 import { sampleAccent } from '../home/accentSample';
+import { getGameLogoUrls } from '../home/artwork';
 import { homeMode } from '../home/mode';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
@@ -54,7 +55,78 @@ function lastPlayedEyebrow(overview: unknown, locale: string): string | null {
     }
 }
 
-function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean; clean: boolean }) {
+function GameTitleBlock({
+    eyebrow,
+    title,
+    logoUrls,
+    preferLogos,
+}: {
+    eyebrow: string | null;
+    title: string;
+    logoUrls: string[];
+    preferLogos: boolean;
+}) {
+    const urls = useMemo(() => (preferLogos ? logoUrls.filter(Boolean) : []), [preferLogos, logoUrls]);
+    const [logoIdx, setLogoIdx] = useState(0);
+    const [logoLoaded, setLogoLoaded] = useState(false);
+    const [allFailed, setAllFailed] = useState(false);
+    const [showFallbackText, setShowFallbackText] = useState(urls.length === 0);
+
+    useEffect(() => {
+        setLogoIdx(0);
+        setLogoLoaded(false);
+        setAllFailed(false);
+        if (urls.length === 0) {
+            setShowFallbackText(true);
+            return;
+        }
+        setShowFallbackText(false);
+        const timer = setTimeout(() => {
+            setShowFallbackText(true);
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [title, urls]);
+
+    const handleError = () => {
+        if (logoIdx + 1 < urls.length) {
+            setLogoIdx((i) => i + 1);
+            setLogoLoaded(false);
+        } else {
+            setAllFailed(true);
+            setShowFallbackText(true);
+        }
+    };
+
+    const handleLoad = () => {
+        setLogoLoaded(true);
+        setShowFallbackText(false);
+    };
+
+    const shouldTryLogo = urls.length > 0 && !allFailed;
+    const shouldShowFallback = !logoLoaded && (urls.length === 0 || allFailed || showFallbackText);
+
+    return (
+        <div className="gg-titleblock">
+            {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
+            <div className="gg-titleslot">
+                {shouldTryLogo && (
+                    <img
+                        key={urls[logoIdx]}
+                        src={urls[logoIdx]}
+                        alt={title}
+                        className="gg-logo"
+                        onLoad={handleLoad}
+                        onError={handleError}
+                        style={logoLoaded ? undefined : { position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                    />
+                )}
+                {shouldShowFallback && <div className="gg-title">{title}</div>}
+            </div>
+        </div>
+    );
+}
+
+function Hero({ overview, details, restyle, clean, preferLogos }: Props & { restyle: boolean; clean: boolean; preferLogos: boolean }) {
     const game = readGameInfo(overview, details);
     const overrideVersion = useOverrideVersion();
     const knownLang = peekSteamLanguage();
@@ -71,6 +143,11 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const hltb = useAsync(`hltb:${game.appId}:${overrideVersion}`, () =>
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
+
+    const logoUrls = useMemo(() => {
+        if (!preferLogos || !restyle || game.appId === 0) return [];
+        return getGameLogoUrls(game.appId, overview, details);
+    }, [game.appId, preferLogos, restyle, overview, details]);
 
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
@@ -95,10 +172,12 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
         <>
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
-                <div className="gg-titleblock">
-                    {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
-                    <div className="gg-title">{game.name}</div>
-                </div>
+                <GameTitleBlock
+                    eyebrow={eyebrow}
+                    title={game.name}
+                    logoUrls={logoUrls}
+                    preferLogos={preferLogos}
+                />
             )}
             <div className="gg-hero" ref={heroRef}>
                 <style>{themeCss({ restyle })}</style>
@@ -127,7 +206,7 @@ export function GameHero(props: Props) {
     const { restyleDetails, cleanDetails } = homeMode(settings);
     return (
         <ErrorBoundary>
-            <Hero {...props} restyle={restyleDetails} clean={cleanDetails} />
+            <Hero {...props} restyle={restyleDetails} clean={cleanDetails} preferLogos={settings.preferLogos} />
         </ErrorBoundary>
     );
 }

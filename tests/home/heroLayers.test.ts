@@ -20,6 +20,10 @@ describe('nextHeroLayers', () => {
         expect(layers.map((l) => l.id)).toEqual([7, 8]);
         expect(layers[0].settled).toBe(true);
     });
+    it('records incoming direction when provided', () => {
+        const withDir = nextHeroLayers([], { id: 1, art: 'a1', direction: 'left' }, 0, 260);
+        expect(withDir[0].direction).toBe('left');
+    });
 });
 
 describe('neighbourIds', () => {
