@@ -86,6 +86,52 @@ type StoreGlobals = {
 
 const steam = () => globalThis as unknown as StoreGlobals;
 
+function isSoundtrackCollection(col: Record<string, unknown>, id: string, name: string): boolean {
+    const rawId = String(col.id ?? col.m_strId ?? id ?? '').toLowerCase();
+    if (
+        rawId === 'soundtracks' ||
+        rawId === 'soundtrack' ||
+        rawId === 'music' ||
+        rawId.includes('soundtrack') ||
+        rawId.includes('music') ||
+        col.bIsSoundtracks === true ||
+        col.bIsMusic === true
+    ) {
+        return true;
+    }
+    const lower = name.toLowerCase().trim();
+    return (
+        lower === 'soundtracks' ||
+        lower === 'soundtrack' ||
+        lower === 'bandas sonoras' ||
+        lower === 'banda sonora' ||
+        lower === 'musica' ||
+        lower === 'música' ||
+        lower === 'ost' ||
+        lower.startsWith('soundtrack') ||
+        lower.startsWith('banda sonora')
+    );
+}
+
+function isFavoritesCollection(col: Record<string, unknown>, id: string, name: string): boolean {
+    const rawId = String(col.id ?? col.m_strId ?? id ?? '').toLowerCase();
+    if (
+        rawId === 'favorite_games' ||
+        rawId === 'favorites' ||
+        rawId === 'favorite' ||
+        col.bIsFavorites === true
+    ) {
+        return true;
+    }
+    const lower = name.toLowerCase().trim();
+    return (
+        lower === 'favorites' ||
+        lower === 'favorite' ||
+        lower === 'favoritos' ||
+        lower === 'favorito'
+    );
+}
+
 function isSystemCollection(col: Record<string, unknown>, id: string, name: string): boolean {
     const rawId = String(col.id ?? col.m_strId ?? id ?? '').toLowerCase();
     if (
@@ -142,6 +188,7 @@ export function readRawApps(): {
     favorites: RawApp[];
     shortcuts: RawApp[];
     soundtracks: RawApp[];
+    soundtrackAppIds: Set<number>;
     userCollections: Array<{ id: string; name: string; apps: RawApp[] }>;
     runningAppIds: Set<number>;
 } {
@@ -262,68 +309,7 @@ export function readRawApps(): {
     // All apps
     const all = Array.from(allAppsMap.values());
 
-    // Favorites
-    let favorites = extractCollectionApps(cStore?.favoriteGamesCollection ?? cStore?.favoritesCollection);
-    if (favorites.length === 0 && cStore?.BIsFavorite) {
-        for (const a of allAppsMap.values()) {
-            try {
-                if (cStore.BIsFavorite(a) || cStore.BIsFavorite(a.appid)) {
-                    favorites.push(a);
-                }
-            } catch {}
-        }
-    }
-
-    // Steam Deck Compatible ("GREAT ON DECK")
-    const deckApps = extractCollectionApps(cStore?.deckGamesCollection ?? cStore?.deckDesktopApps);
-    const deckSeen = new Set<number>(deckApps.map((a) => a.appid));
-    const deckCompat: RawApp[] = [...deckApps];
-    for (const a of allAppsMap.values()) {
-        if (deckSeen.has(a.appid)) continue;
-        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid) as (RawApp & { steam_deck_compat_category?: number }) | undefined;
-        const cat = overview?.steam_deck_compat_category ?? a.steam_deck_compat_category;
-        // 3 = Verified, 2 = Playable
-        if (cat === 3 || cat === 2) {
-            deckSeen.add(a.appid);
-            deckCompat.push(a);
-        }
-    }
-
-    // Shortcuts / Non-Steam
-    const shortcuts: RawApp[] = [];
-    for (const a of allAppsMap.values()) {
-        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid);
-        const isShortcut =
-            a.app_type === SHORTCUT_APP_TYPE ||
-            a.appid >= 0x80000000 ||
-            a.appid < 0 ||
-            overview?.is_shortcut === true ||
-            a.is_shortcut === true ||
-            (typeof a.m_gameid === 'string' && a.m_gameid.length > 0 && a.m_gameid !== String(a.appid));
-        if (isShortcut) {
-            shortcuts.push(a);
-        }
-    }
-
-    // Soundtracks
-    const musicCollectionApps = extractCollectionApps(cStore?.musicCollection ?? cStore?.soundtracksCollection);
-    const ostSeen = new Set<number>(musicCollectionApps.map((a) => a.appid));
-    const soundtracks: RawApp[] = [...musicCollectionApps];
-    for (const a of allAppsMap.values()) {
-        if (ostSeen.has(a.appid)) continue;
-        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid);
-        const isOst =
-            a.app_type === 8 ||
-            Boolean(a.app_type && (a.app_type & 8) !== 0) ||
-            overview?.app_type === 8;
-        if (isOst) {
-            ostSeen.add(a.appid);
-            soundtracks.push(a);
-        }
-    }
-
-    // User Collections
-    const userCols: Array<{ id: string; name: string; apps: RawApp[] }> = [];
+    // Gather all raw collections from collectionStore early
     const rawColsList: unknown[] = [];
     try {
         const uCols = cStore?.userCollections;
@@ -363,6 +349,106 @@ export function readRawApps(): {
         // ignore
     }
 
+    // Favorites
+    const favorites = extractCollectionApps(cStore?.favoriteGamesCollection ?? cStore?.favoritesCollection);
+    const favSeen = new Set<number>(favorites.map((a) => a.appid));
+    for (const c of rawColsList) {
+        if (!c || typeof c !== 'object') continue;
+        const col = c as Record<string, unknown>;
+        const name = (col.name ?? col.strName ?? col.m_strName ?? col.label ?? col.title) as string | undefined;
+        const id = String(col.id ?? col.m_strId ?? name ?? '');
+        if (name && isFavoritesCollection(col, id, name)) {
+            const apps = extractCollectionApps(col);
+            for (const a of apps) {
+                if (!favSeen.has(a.appid)) {
+                    favSeen.add(a.appid);
+                    favorites.push(a);
+                }
+            }
+        }
+    }
+    if (favorites.length === 0 && cStore?.BIsFavorite) {
+        for (const a of allAppsMap.values()) {
+            try {
+                if (cStore.BIsFavorite(a) || cStore.BIsFavorite(a.appid)) {
+                    if (!favSeen.has(a.appid)) {
+                        favSeen.add(a.appid);
+                        favorites.push(a);
+                    }
+                }
+            } catch {}
+        }
+    }
+
+    // Steam Deck Compatible ("GREAT ON DECK")
+    const deckApps = extractCollectionApps(cStore?.deckGamesCollection ?? cStore?.deckDesktopApps);
+    const deckSeen = new Set<number>(deckApps.map((a) => a.appid));
+    const deckCompat: RawApp[] = [...deckApps];
+    for (const a of allAppsMap.values()) {
+        if (deckSeen.has(a.appid)) continue;
+        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid) as (RawApp & { steam_deck_compat_category?: number }) | undefined;
+        const cat = overview?.steam_deck_compat_category ?? a.steam_deck_compat_category;
+        // 3 = Verified, 2 = Playable
+        if (cat === 3 || cat === 2) {
+            deckSeen.add(a.appid);
+            deckCompat.push(a);
+        }
+    }
+
+    // Shortcuts / Non-Steam
+    const shortcuts: RawApp[] = [];
+    for (const a of allAppsMap.values()) {
+        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid);
+        const isShortcut =
+            a.app_type === SHORTCUT_APP_TYPE ||
+            a.appid >= 0x80000000 ||
+            a.appid < 0 ||
+            overview?.is_shortcut === true ||
+            a.is_shortcut === true ||
+            (typeof a.m_gameid === 'string' && a.m_gameid.length > 0 && a.m_gameid !== String(a.appid));
+        if (isShortcut) {
+            shortcuts.push(a);
+        }
+    }
+
+    // Soundtracks
+    const musicCollectionApps = extractCollectionApps(cStore?.musicCollection ?? cStore?.soundtracksCollection);
+    const soundtrackAppIds = new Set<number>(musicCollectionApps.map((a) => a.appid));
+    const soundtracks: RawApp[] = [...musicCollectionApps];
+
+    // Check if any collection in rawColsList is the soundtracks collection (auto or manual)
+    for (const c of rawColsList) {
+        if (!c || typeof c !== 'object') continue;
+        const col = c as Record<string, unknown>;
+        const name = (col.name ?? col.strName ?? col.m_strName ?? col.label ?? col.title) as string | undefined;
+        const id = String(col.id ?? col.m_strId ?? name ?? '');
+        if (name && isSoundtrackCollection(col, id, name)) {
+            const apps = extractCollectionApps(col);
+            for (const a of apps) {
+                if (!soundtrackAppIds.has(a.appid)) {
+                    soundtrackAppIds.add(a.appid);
+                    soundtracks.push(a);
+                }
+            }
+        }
+    }
+
+    // Also check all apps for app_type === 8
+    for (const a of allAppsMap.values()) {
+        if (soundtrackAppIds.has(a.appid)) continue;
+        const overview = s.appStore?.GetAppOverviewByAppID?.(a.appid);
+        const isOst =
+            a.app_type === 8 ||
+            Boolean(a.app_type && (a.app_type & 8) !== 0) ||
+            overview?.app_type === 8;
+        if (isOst) {
+            soundtrackAppIds.add(a.appid);
+            soundtracks.push(a);
+        }
+    }
+
+    // User Collections: strictly non-system, non-soundtrack, non-favorites
+    const userCols: Array<{ id: string; name: string; apps: RawApp[] }> = [];
     const seenColIds = new Set<string>();
     for (const c of rawColsList) {
         if (!c || typeof c !== 'object') continue;
@@ -371,8 +457,8 @@ export function readRawApps(): {
         const id = String(col.id ?? col.m_strId ?? name ?? '');
         if (!name || seenColIds.has(id)) continue;
 
-        // Skip internal/system collections (localized or not)
-        if (isSystemCollection(col, id, name)) {
+        // Skip internal/system collections, soundtracks, and favorites
+        if (isSoundtrackCollection(col, id, name) || isFavoritesCollection(col, id, name) || isSystemCollection(col, id, name)) {
             continue;
         }
 
@@ -390,20 +476,26 @@ export function readRawApps(): {
         favorites,
         shortcuts,
         soundtracks,
+        soundtrackAppIds,
         userCollections: userCols,
         runningAppIds: running,
     };
 }
 
-export function rawAppToItem(app: RawApp, isRunning: boolean): LibraryGameItem {
+export function rawAppToItem(app: RawApp, isRunning: boolean, soundtrackAppIds?: Set<number>): LibraryGameItem {
     const s = steam();
     const overview = s.appStore?.GetAppOverviewByAppID?.(app.appid) ?? app;
     const details = s.appDetailsStore?.GetAppDetails?.(app.appid);
     const info = readGameInfo(overview, details);
     const isSoundtrack =
+        soundtrackAppIds?.has(app.appid) === true ||
         app.app_type === 8 ||
         Boolean(app.app_type && (app.app_type & 8) !== 0) ||
-        (overview as { app_type?: number } | undefined)?.app_type === 8;
+        (overview as { app_type?: number } | undefined)?.app_type === 8 ||
+        (overview as { bIsSoundtrack?: boolean } | undefined)?.bIsSoundtrack === true ||
+        (app.display_name?.toLowerCase().includes('soundtrack') ?? false) ||
+        (app.display_name?.toLowerCase().includes('banda sonora') ?? false) ||
+        (app.display_name?.toLowerCase().includes(' - ost') ?? false);
     const source = isSoundtrack
         ? 'Soundtrack'
         : !info.isShortcut
@@ -463,22 +555,28 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
         return baseCategories;
     }
 
-    const { installed, deckCompat, all, favorites, shortcuts, soundtracks, userCollections, runningAppIds } = readRawApps();
+    const { installed, deckCompat, all, favorites, shortcuts, soundtracks, soundtrackAppIds, userCollections, runningAppIds } = readRawApps();
 
-    const toItems = (apps: RawApp[]): LibraryGameItem[] => {
+    const toItems = (apps: RawApp[], forceSoundtrack = false): LibraryGameItem[] => {
         // Deduplicate by appid and sort alphabetically by name
         const seen = new Set<number>();
         const list: LibraryGameItem[] = [];
         for (const app of apps) {
             if (!seen.has(app.appid)) {
                 seen.add(app.appid);
-                list.push(rawAppToItem(app, runningAppIds.has(app.appid)));
+                const item = rawAppToItem(app, runningAppIds.has(app.appid), soundtrackAppIds);
+                if (forceSoundtrack) item.isSoundtrack = true;
+                list.push(item);
             }
         }
         return list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     };
 
-    const isOst = (app: RawApp) => app.app_type === 8 || Boolean(app.app_type && (app.app_type & 8) !== 0);
+    const isOst = (app: RawApp) =>
+        soundtrackAppIds.has(app.appid) ||
+        app.app_type === 8 ||
+        Boolean(app.app_type && (app.app_type & 8) !== 0);
+
     const regularInstalled = installed.filter((a) => !isOst(a));
     const regularDeckCompat = deckCompat.filter((a) => !isOst(a));
     const regularAll = all.filter((a) => !isOst(a));
@@ -533,7 +631,7 @@ export function buildCategories(mockGames?: LibraryGameItem[]): LibraryCategory[
             id: 'soundtracks',
             name: 'SOUNDTRACKS',
             count: soundtracks.length,
-            games: toItems(soundtracks),
+            games: toItems(soundtracks, true),
         });
     }
 

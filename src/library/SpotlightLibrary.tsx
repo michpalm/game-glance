@@ -5,9 +5,10 @@ import { cache } from '../data/cache';
 import { HltbResult, lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getDescription, peekSteamLanguage } from '../data/steam';
+import { openGameActions } from '../home/ActionRow';
 import { accentFor, DEFAULT_ACCENT } from '../home/accent';
 import { sampleAccent } from '../home/accentSample';
-import { browserStores, heroUrls as getHeroUrls } from '../home/artwork';
+import { browserStores, guessedHeroUrls, heroUrls as getHeroUrls } from '../home/artwork';
 import { playNavSound } from '../home/navSound';
 import { LibraryBackground } from './LibraryBackground';
 import { LibraryCategoryBar } from './LibraryCategoryBar';
@@ -133,41 +134,45 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         });
     }, [activeCategoryId, selectedCollectionId, selectedGame?.appId, focusZone]);
 
-    // Asynchronous details for selected game (HLTB, Description, Accent, Hero art)
+    // Asynchronous details for selected game (HLTB, Description, Accent)
     const [gameAccent, setGameAccent] = useState<string>(selectedGame?.accent ?? DEFAULT_ACCENT);
     const [gameDesc, setGameDesc] = useState<string | null>(selectedGame?.description ?? null);
     const [gameHltb, setGameHltb] = useState<HltbResult | null>(null);
-    const [heroUrl, setHeroUrl] = useState<string>(selectedGame?.heroUrl ?? '');
 
-    useEffect(() => {
-        // If in collections overview, show first game's hero art as ambient background
+    // Resolve hero candidate URLs for ambient background (includes custom, local, and Steam CDN fallbacks)
+    const heroCandidates = useMemo(() => {
         if (isCollectionsTab && !isInsideSubCollection && selectedCollectionItem) {
             const firstGame = selectedCollectionItem.games[0];
-            if (firstGame) {
-                if (firstGame.heroUrl) {
-                    setHeroUrl(firstGame.heroUrl);
-                } else {
-                    const heroes = getHeroUrls(firstGame.appId, browserStores);
-                    if (heroes.length > 0) setHeroUrl(heroes[0]);
-                }
-            }
-            return;
+            if (!firstGame) return [];
+            if (firstGame.heroUrl) return [firstGame.heroUrl];
+            const heroes = getHeroUrls(firstGame.appId, browserStores);
+            return [...heroes, ...guessedHeroUrls(firstGame.appId)];
         }
+        if (!selectedGame) return [];
+        if (selectedGame.heroUrl) return [selectedGame.heroUrl];
+        const heroes = getHeroUrls(selectedGame.appId, browserStores);
+        return [...heroes, ...guessedHeroUrls(selectedGame.appId)];
+    }, [selectedGame, isCollectionsTab, isInsideSubCollection, selectedCollectionItem]);
 
+    // Keep parent containers pinned at scrollLeft 0 (guards against layout shifts)
+    useEffect(() => {
+        const el = document.querySelector('.sgl-root') as HTMLElement | null;
+        let parent: HTMLElement | null = el;
+        while (parent) {
+            if (parent.scrollLeft !== 0) {
+                parent.scrollLeft = 0;
+            }
+            parent = parent.parentElement;
+        }
+    }, [activeCategoryId, selectedGameIdx]);
+
+    useEffect(() => {
         if (!selectedGame) return;
 
         // Reset details for new game
         setGameAccent(selectedGame.accent ?? DEFAULT_ACCENT);
         setGameDesc(selectedGame.description ?? null);
         setGameHltb(null);
-
-        // Resolve hero url for ambient background
-        if (selectedGame.heroUrl) {
-            setHeroUrl(selectedGame.heroUrl);
-        } else {
-            const heroes = getHeroUrls(selectedGame.appId, browserStores);
-            if (heroes.length > 0) setHeroUrl(heroes[0]);
-        }
 
         let cancelled = false;
 
@@ -204,7 +209,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
         return () => {
             cancelled = true;
         };
-    }, [selectedGame, isCollectionsTab, isInsideSubCollection, selectedCollectionItem]);
+    }, [selectedGame]);
 
     // Primary action: Open game details (A button)
     const handleDetails = useCallback((gameToShow: LibraryGameItem | null = selectedGame) => {
@@ -299,6 +304,17 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                 evt.stopPropagation?.();
                 cycleCategory(1);
                 return;
+            }
+
+            // START Button (Menu): Open Steam Game Options Menu (START = 14)
+            if (btn === GamepadButton.START || btn === 14) {
+                if (selectedGame) {
+                    evt.preventDefault?.();
+                    evt.stopPropagation?.();
+                    const anchor = document.querySelector('.sgl-card.focused, .sgl-card-collection.focused') as HTMLElement | null;
+                    openGameActions(selectedGame.appId, anchor);
+                    return;
+                }
             }
 
             // Y Button: Play / Launch (OPTIONS = 4)
@@ -474,6 +490,12 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
                     handlePlayGame();
                 }
                 e.preventDefault();
+            } else if (e.key === 'm' || e.key === 'M' || e.key === 'ContextMenu') {
+                if (selectedGame) {
+                    const anchor = document.querySelector('.sgl-card.focused, .sgl-card-collection.focused') as HTMLElement | null;
+                    openGameActions(selectedGame.appId, anchor);
+                    e.preventDefault();
+                }
             } else if (e.key === 'Escape') {
                 onCancel();
                 e.preventDefault();
@@ -482,7 +504,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [focusZone, selectedGameIdx, totalItemsCount, columns, cycleCategory, handleSelectGame, onActivate, handlePlayGame, onCancel, isCollectionsTab, isInsideSubCollection]);
+    }, [focusZone, selectedGameIdx, totalItemsCount, columns, cycleCategory, handleSelectGame, onActivate, handlePlayGame, onCancel, isCollectionsTab, isInsideSubCollection, selectedGame]);
 
     const activeCategoryIdx = categories.findIndex((c) => c.id === activeCategoryId);
     const hltbHours = gameHltb?.status === 'found' ? gameHltb.times.main : null;
@@ -503,7 +525,7 @@ export function SpotlightLibrary({ mockGames }: SpotlightLibraryProps) {
             <style>{LIBRARY_CSS}</style>
 
             {/* Ambient Blurred Background */}
-            <LibraryBackground heroUrl={heroUrl} />
+            <LibraryBackground candidates={heroCandidates} />
 
             {/* Top Categories Ribbon */}
             <LibraryCategoryBar

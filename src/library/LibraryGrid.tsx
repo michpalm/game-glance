@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { FaFolder } from 'react-icons/fa';
-import { browserStores, landscapeUrls as getLandscapeUrls } from '../home/artwork';
+import { browserStores, capsuleUrls as getCapsuleUrls, landscapeUrls as getLandscapeUrls } from '../home/artwork';
 import { LibraryCollectionItem, LibraryGameItem } from './libraryData';
 
 interface LibraryGridProps {
@@ -27,14 +27,19 @@ interface BannerCardProps {
 function BannerCard({ game, isFocused, accent, onClick, onDoubleClick }: BannerCardProps) {
     const cardRef = useRef<HTMLDivElement>(null);
 
-    // Ensure focused card scrolls into view
+    // Ensure focused card scrolls into view vertically within the grid panel (never scrolls parent layout)
     useEffect(() => {
         if (isFocused && cardRef.current) {
-            cardRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-                inline: 'nearest',
-            });
+            const container = cardRef.current.closest('.sgl-grid-panel');
+            if (container) {
+                const cRect = container.getBoundingClientRect();
+                const elRect = cardRef.current.getBoundingClientRect();
+                if (elRect.top < cRect.top + 20) {
+                    container.scrollTop += elRect.top - cRect.top - 20;
+                } else if (elRect.bottom > cRect.bottom - 20) {
+                    container.scrollTop += elRect.bottom - cRect.bottom + 20;
+                }
+            }
         }
     }, [isFocused]);
 
@@ -101,6 +106,50 @@ function BannerCard({ game, isFocused, accent, onClick, onDoubleClick }: BannerC
     );
 }
 
+function MiniCover({ game, className }: { game?: LibraryGameItem; className: string }) {
+    const candidates = React.useMemo(() => {
+        if (!game) return [];
+        if (game.capsuleUrl) return [game.capsuleUrl];
+        return getCapsuleUrls(game.appId, browserStores);
+    }, [game]);
+
+    const [src, setSrc] = React.useState<string>(candidates[0] ?? '');
+    const [idx, setIdx] = React.useState(0);
+    const [hasError, setHasError] = React.useState(false);
+
+    useEffect(() => {
+        setIdx(0);
+        setHasError(false);
+        setSrc(candidates[0] ?? '');
+    }, [candidates]);
+
+    const handleError = () => {
+        const next = idx + 1;
+        if (next < candidates.length) {
+            setIdx(next);
+            setSrc(candidates[next]);
+        } else {
+            setHasError(true);
+        }
+    };
+
+    if (!game || !src || hasError) {
+        return (
+            <div className={`sgl-col-fan-card ${className}`}>
+                <div style={{ width: '100%', height: '100%', background: '#1c2433', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaFolder size={18} color="rgba(255,255,255,0.4)" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`sgl-col-fan-card ${className}`}>
+            <img src={src} alt={game.name} onError={handleError} loading="lazy" />
+        </div>
+    );
+}
+
 interface CollectionCardProps {
     collection: LibraryCollectionItem;
     isFocused: boolean;
@@ -114,47 +163,30 @@ function CollectionCard({ collection, isFocused, accent, onClick, onDoubleClick 
 
     useEffect(() => {
         if (isFocused && cardRef.current) {
-            cardRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-                inline: 'nearest',
-            });
+            const container = cardRef.current.closest('.sgl-grid-panel');
+            if (container) {
+                const cRect = container.getBoundingClientRect();
+                const elRect = cardRef.current.getBoundingClientRect();
+                if (elRect.top < cRect.top + 20) {
+                    container.scrollTop += elRect.top - cRect.top - 20;
+                } else if (elRect.bottom > cRect.bottom - 20) {
+                    container.scrollTop += elRect.bottom - cRect.bottom + 20;
+                }
+            }
         }
     }, [isFocused]);
 
-    const firstGame = collection.games[0];
-    const candidates = React.useMemo(() => {
-        if (!firstGame) return [];
-        if (firstGame.landscapeUrl) return [firstGame.landscapeUrl];
-        return getLandscapeUrls(firstGame.appId, browserStores);
-    }, [firstGame]);
-
-    const [src, setSrc] = React.useState<string>(candidates[0] ?? '');
-    const [candidateIdx, setCandidateIdx] = React.useState(0);
-    const [hasError, setHasError] = React.useState(false);
-
-    useEffect(() => {
-        setCandidateIdx(0);
-        setHasError(false);
-        setSrc(candidates[0] ?? '');
-    }, [candidates]);
-
-    const handleError = () => {
-        const next = candidateIdx + 1;
-        if (next < candidates.length) {
-            setCandidateIdx(next);
-            setSrc(candidates[next]);
-        } else {
-            setHasError(true);
-        }
-    };
+    const games = collection.games;
+    const game0 = games[0];
+    const game1 = games[1];
+    const game2 = games[2];
 
     return (
         <div
             ref={cardRef}
             role="button"
             tabIndex={0}
-            className={`sgl-card${isFocused ? ' focused' : ''}`}
+            className={`sgl-card-collection${isFocused ? ' focused' : ''}`}
             style={{
                 '--accent': accent,
                 '--accent-glow': `${accent}55`,
@@ -162,29 +194,31 @@ function CollectionCard({ collection, isFocused, accent, onClick, onDoubleClick 
             onClick={onClick}
             onDoubleClick={onDoubleClick}
         >
-            {src && !hasError ? (
-                <img
-                    key={src}
-                    src={src}
-                    alt={collection.name}
-                    className="sgl-card-img"
-                    onError={handleError}
-                    loading="lazy"
-                />
-            ) : (
-                <div className="sgl-card-fallback">
-                    <span className="sgl-card-title">{collection.name}</span>
-                </div>
-            )}
-
-            <div className="sgl-card-col-badge">
-                <FaFolder size={11} />
-                <span>COLLECTION</span>
+            <div className="sgl-col-fan-area">
+                {games.length >= 3 ? (
+                    <>
+                        <MiniCover game={game1} className="sgl-col-card-left" />
+                        <MiniCover game={game2} className="sgl-col-card-right" />
+                        <MiniCover game={game0} className="sgl-col-card-center" />
+                    </>
+                ) : games.length === 2 ? (
+                    <>
+                        <MiniCover game={game1} className="sgl-col-card-left" />
+                        <MiniCover game={game0} className="sgl-col-card-center" />
+                    </>
+                ) : games.length === 1 ? (
+                    <MiniCover game={game0} className="sgl-col-card-center" />
+                ) : (
+                    <div style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <FaFolder size={32} color="var(--accent, #58a6ff)" />
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>Empty Collection</span>
+                    </div>
+                )}
             </div>
 
-            <div className="sgl-card-col-info">
-                <div className="sgl-card-col-title">{collection.name}</div>
-                <div className="sgl-card-col-count">{collection.count} {collection.count === 1 ? 'GAME' : 'GAMES'}</div>
+            <div className="sgl-col-footer">
+                <span className="sgl-col-footer-title">{collection.name}</span>
+                <span className="sgl-col-footer-badge">{collection.count} {collection.count === 1 ? 'GAME' : 'GAMES'}</span>
             </div>
         </div>
     );

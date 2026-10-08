@@ -20,6 +20,50 @@ interface LibraryInspectorProps {
     onOpenCollection?: () => void;
 }
 
+function InspectorFanCover({ game, className }: { game?: LibraryGameItem; className: string }) {
+    const candidates = React.useMemo(() => {
+        if (!game) return [];
+        if (game.capsuleUrl) return [game.capsuleUrl];
+        return getCapsuleUrls(game.appId, browserStores);
+    }, [game]);
+
+    const [src, setSrc] = React.useState<string>(candidates[0] ?? '');
+    const [idx, setIdx] = React.useState(0);
+    const [hasError, setHasError] = React.useState(false);
+
+    useEffect(() => {
+        setIdx(0);
+        setHasError(false);
+        setSrc(candidates[0] ?? '');
+    }, [candidates]);
+
+    const handleError = () => {
+        const next = idx + 1;
+        if (next < candidates.length) {
+            setIdx(next);
+            setSrc(candidates[next]);
+        } else {
+            setHasError(true);
+        }
+    };
+
+    if (!game || !src || hasError) {
+        return (
+            <div className={`sgl-insp-col-card ${className}`}>
+                <div style={{ width: '100%', height: '100%', background: '#1c2433', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaFolderOpen size={24} color="rgba(255,255,255,0.4)" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`sgl-insp-col-card ${className}`}>
+            <img src={src} alt={game.name} onError={handleError} />
+        </div>
+    );
+}
+
 export function LibraryInspector({
     game,
     collection,
@@ -31,33 +75,40 @@ export function LibraryInspector({
     onDetails,
     onOpenCollection,
 }: LibraryInspectorProps) {
-    // Collection overview mode
+    // Collection overview mode with multi-poster fan showcase
     if (isCollectionView && collection) {
-        const firstGame = collection.games[0];
-        const posterUrl = firstGame?.capsuleUrl ?? (firstGame ? getCapsuleUrls(firstGame.appId, browserStores)[0] : '');
+        const games = collection.games;
+        const game0 = games[0];
+        const game1 = games[1];
+        const game2 = games[2];
 
         return (
             <aside className="sgl-inspector" style={{ '--accent': accent } as React.CSSProperties}>
-                <div className="sgl-poster-wrapper">
-                    {posterUrl ? (
-                        <img
-                            src={posterUrl}
-                            alt={collection.name}
-                            className="sgl-poster-img"
-                        />
+                <div className="sgl-inspector-col-fan">
+                    {games.length >= 3 ? (
+                        <>
+                            <InspectorFanCover game={game1} className="sgl-insp-col-card-left" />
+                            <InspectorFanCover game={game2} className="sgl-insp-col-card-right" />
+                            <InspectorFanCover game={game0} className="sgl-insp-col-card-center" />
+                        </>
+                    ) : games.length === 2 ? (
+                        <>
+                            <InspectorFanCover game={game1} className="sgl-insp-col-card-left" />
+                            <InspectorFanCover game={game0} className="sgl-insp-col-card-center" />
+                        </>
+                    ) : games.length === 1 ? (
+                        <InspectorFanCover game={game0} className="sgl-insp-col-card-center" />
                     ) : (
                         <div
                             style={{
-                                width: '100%',
-                                height: '100%',
+                                width: 96,
+                                height: 144,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 background: '#161b24',
-                                color: '#8b949e',
-                                fontSize: 13,
-                                padding: 12,
-                                textAlign: 'center',
+                                borderRadius: 8,
+                                border: '1px solid rgba(255,255,255,0.15)',
                             }}
                         >
                             <FaFolderOpen size={36} color="var(--accent, #58a6ff)" />

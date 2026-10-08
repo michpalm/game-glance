@@ -2,12 +2,13 @@ export const LIBRARY_CSS = `
 .sgl-root {
     position: absolute;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
     padding-top: var(--sgl-top-inset, 70px);
     padding-bottom: var(--sgl-bottom-inset, 58px);
     overflow: hidden;
+    overflow: clip;
     display: flex;
     flex-direction: column;
     background: #06090e;
@@ -15,6 +16,10 @@ export const LIBRARY_CSS = `
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     user-select: none;
     z-index: 1;
+}
+
+.sgl-root * {
+    box-sizing: border-box;
 }
 
 /* Ambient Blurred Background */
@@ -79,6 +84,7 @@ export const LIBRARY_CSS = `
     flex: 1;
     justify-content: center;
     max-width: 820px;
+    overflow: hidden;
 }
 
 .sgl-bumper-badge {
@@ -97,6 +103,7 @@ export const LIBRARY_CSS = `
     display: flex;
     align-items: center;
     gap: 6px;
+    position: relative;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-behavior: smooth;
@@ -547,53 +554,166 @@ export const LIBRARY_CSS = `
     50% { opacity: 0.4; }
 }
 
-/* Collection Folder Card */
-.sgl-card-col-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-    color: var(--accent, #58a6ff);
-    z-index: 2;
-}
-
-.sgl-card-col-info {
-    position: absolute;
-    inset: 0;
+/* Steam Deck-Style Collection Card with Multi-Cover Fan Collage */
+.sgl-card-collection {
+    aspect-ratio: 460 / 215;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    background: radial-gradient(circle at 50% 25%, rgba(28, 38, 56, 0.9) 0%, rgba(10, 14, 22, 0.98) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s ease, box-shadow 0.16s ease;
+    will-change: transform;
+    outline: none;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    padding: 14px 16px;
-    background: linear-gradient(0deg, rgba(6, 9, 14, 0.95) 0%, rgba(6, 9, 14, 0.5) 60%, transparent 100%);
+}
+
+.sgl-card-collection:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    transform: scale(1.02);
+}
+
+.sgl-card-collection.focused,
+.sgl-card-collection:focus-visible {
+    transform: scale(1.045);
+    z-index: 5;
+    border-color: var(--accent, #58a6ff);
+    box-shadow: 0 0 0 1px var(--accent, #58a6ff), 0 10px 28px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow, rgba(88, 166, 255, 0.45));
+}
+
+.sgl-col-fan-area {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-top: 6px;
+}
+
+.sgl-col-fan-card {
+    position: absolute;
+    width: 62px;
+    height: 93px;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #161b22;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sgl-col-fan-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.sgl-col-card-left {
+    transform: translateX(-32px) translateY(5px) rotate(-8deg) scale(0.9);
     z-index: 1;
 }
 
-.sgl-card-col-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: #ffffff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-    margin-bottom: 3px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.sgl-col-card-right {
+    transform: translateX(32px) translateY(5px) rotate(8deg) scale(0.9);
+    z-index: 2;
 }
 
-.sgl-card-col-count {
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
+.sgl-col-card-center {
+    transform: translateX(0) translateY(-2px) rotate(0deg) scale(1);
+    z-index: 3;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.85);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sgl-card-collection.focused .sgl-col-card-center {
+    transform: translateX(0) translateY(-7px) rotate(0deg) scale(1.04);
+}
+
+.sgl-col-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(10, 14, 22, 0.85);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 4;
+}
+
+.sgl-col-footer-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
+}
+
+.sgl-col-footer-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    margin-left: 8px;
     letter-spacing: 0.5px;
+}
+
+/* Inspector 3-Card Fan for Collections */
+.sgl-inspector-col-fan {
+    width: 100%;
+    max-width: 290px;
+    height: 180px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    margin-bottom: 6px;
+}
+
+.sgl-insp-col-card {
+    position: absolute;
+    width: 96px;
+    height: 144px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #11141c;
+    transition: transform 0.25s ease;
+}
+
+.sgl-insp-col-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.sgl-insp-col-card-left {
+    transform: translateX(-48px) translateY(8px) rotate(-10deg) scale(0.9);
+    z-index: 1;
+}
+
+.sgl-insp-col-card-right {
+    transform: translateX(48px) translateY(8px) rotate(10deg) scale(0.9);
+    z-index: 2;
+}
+
+.sgl-insp-col-card-center {
+    transform: translateX(0) translateY(-4px) rotate(0deg) scale(1);
+    z-index: 3;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.85);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Empty state */

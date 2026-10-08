@@ -22,16 +22,21 @@ export function LibraryCategoryBar({
     onBackToCollections,
 }: LibraryCategoryBarProps) {
     const activeCategory = categories.find((c) => c.id === activeCategoryId) ?? categories[0];
+    const navRef = useRef<HTMLElement | null>(null);
     const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-    // Automatically scroll the active tab into the center of the viewport
+    // Automatically scroll the active tab strictly within the tabs nav container (never scrolls parent layout)
     useEffect(() => {
+        const nav = navRef.current;
         const activeTabEl = tabRefs.current.get(activeCategoryId);
-        if (activeTabEl) {
-            activeTabEl.scrollIntoView({
+        if (nav && activeTabEl) {
+            const navRect = nav.getBoundingClientRect();
+            const tabRect = activeTabEl.getBoundingClientRect();
+            const relativeLeft = tabRect.left - navRect.left + nav.scrollLeft;
+            const targetLeft = relativeLeft - (nav.clientWidth / 2) + (tabRect.width / 2);
+            nav.scrollTo({
+                left: Math.max(0, targetLeft),
                 behavior: 'smooth',
-                block: 'nearest',
-                inline: 'center',
             });
         }
     }, [activeCategoryId]);
@@ -55,7 +60,7 @@ export function LibraryCategoryBar({
             ) : (
                 <div className="sgl-tabs-container">
                     <span className="sgl-bumper-badge">L1</span>
-                    <nav className="sgl-tabs" role="tablist">
+                    <nav className="sgl-tabs" role="tablist" ref={navRef}>
                         {categories.map((cat, idx) => {
                             const isActive = cat.id === activeCategoryId;
                             const isFocused = isHeaderFocused && idx === focusedIndex;
