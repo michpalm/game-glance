@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos, trailerBackground } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -133,6 +133,14 @@ export function SettingsPanel() {
                         description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
                         checked={homeStatusBar}
                         onChange={(value) => settings.setHomeStatusBar(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Enable trailer background"
+                        description="Plays the game trailer in the background when focused on a game for more than 5 seconds. Off keeps the hero art."
+                        checked={trailerBackground}
+                        onChange={(value) => settings.setTrailerBackground(value)}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

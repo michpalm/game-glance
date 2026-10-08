@@ -5,7 +5,30 @@ import { homeCss } from '../src/home/homeCss';
 import { CARD_SCALE_HANDHELD, CARD_SCALE_DOCKED } from '../src/home/recentsLayout';
 import { SourcePill } from '../src/components/SourcePill';
 import { useSettings } from '../src/data/settings';
+import { TrailerPlayer } from '../src/home/TrailerPlayer';
+import { resolveGameTrailer, type GameTrailer } from '../src/home/trailers';
 import { MOCK_GAMES, MockGame } from './mockData';
+
+function playNavSound() {
+    try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.04);
+    } catch {
+        // audio might be blocked before first user gesture
+    }
+}
 
 interface Props {
     deviceMode: 'handheld' | 'tv';
@@ -47,14 +70,24 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
     const [logoLoaded, setLogoLoaded] = useState(false);
     const [showFallbackText, setShowFallbackText] = useState(false);
 
+    const [trailer, setTrailer] = useState<GameTrailer | null>(null);
+    const [showTrailer, setShowTrailer] = useState(false);
+    const idleTrailerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Multi-layer hero background for seamless directional crossfade
     const [bgLayers, setBgLayers] = useState<Array<{ id: number; url: string; direction: 'left' | 'right' | 'none' }>>([
         { id: 1, url: MOCK_GAMES[0].heroUrl, direction: 'none' },
     ]);
     const pruneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    const dismissTrailer = () => {
+        if (showTrailer) setShowTrailer(false);
+    };
+
     const handleSelectIndex = (nextIndex: number) => {
         if (nextIndex === selectedIndex) return;
+        playNavSound();
+        dismissTrailer();
         const direction: 'left' | 'right' = nextIndex < selectedIndex ? 'left' : 'right';
         setSelectedIndex(nextIndex);
         setLogoFailed(false);
@@ -74,6 +107,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
     // Keyboard navigation with Left and Right arrow keys
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            dismissTrailer();
             if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 const prev = (selectedIndex - 1 + MOCK_GAMES.length) % MOCK_GAMES.length;
@@ -86,9 +120,34 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIndex]);
+    }, [selectedIndex, showTrailer]);
 
     const currentGame: MockGame = MOCK_GAMES[selectedIndex];
+
+    // 5-second idle lock trailer background
+    useEffect(() => {
+        setShowTrailer(false);
+        setTrailer(null);
+        if (idleTrailerTimerRef.current) clearTimeout(idleTrailerTimerRef.current);
+        if (!currentSettings.trailerBackground) return undefined;
+
+        let active = true;
+        const resolvePromise = resolveGameTrailer(currentGame.info);
+
+        idleTrailerTimerRef.current = setTimeout(async () => {
+            const resolved = await resolvePromise;
+            if (!active) return;
+            if (resolved) {
+                setTrailer(resolved);
+                setShowTrailer(true);
+            }
+        }, 5000);
+
+        return () => {
+            active = false;
+            if (idleTrailerTimerRef.current) clearTimeout(idleTrailerTimerRef.current);
+        };
+    }, [selectedIndex, currentSettings.trailerBackground, currentGame.info]);
 
     useEffect(() => {
         setLogoLoaded(false);
@@ -121,6 +180,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
     return (
         <div
             className="gh-root"
+            onClick={dismissTrailer}
             style={{
                 width: '100%',
                 height: '100%',
@@ -256,6 +316,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
                         </div>
                     );
                 })}
+                {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} />}
             </div>
             <div className="gh-scrim-layer" />
 

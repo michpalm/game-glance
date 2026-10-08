@@ -1,6 +1,6 @@
 {
   "name": "game-glance",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Immersive game page for Steam Game Mode: full-screen art, HowLongToBeat times, descriptions and store info",
   "type": "module",
   "scripts": {
@@ -29,6 +29,7 @@
   "dependencies": {
     "@decky/api": "^1.1.3",
     "fast-levenshtein": "^3.0.0",
+    "hls.js": "^1.7.3",
     "react-icons": "^5.3.0",
     "tslib": "^2.7.0"
   },
