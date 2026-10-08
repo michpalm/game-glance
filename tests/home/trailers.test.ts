@@ -38,6 +38,7 @@ describe('parseTrailerFromAppDetails', () => {
         expect(result).toEqual({
             url: 'https://video.steam.com/trailer/hls_master.m3u8',
             isHls: true,
+            fallbackUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/256801252/movie480.mp4',
             name: 'Launch Trailer',
             thumbnail: undefined,
         });
@@ -75,6 +76,7 @@ describe('parseTrailerFromAppDetails', () => {
         expect(result).toEqual({
             url: 'https://cdn.cloudflare.steamstatic.com/steam/apps/5787/movie480.mp4',
             isHls: false,
+            fallbackUrl: 'https://cdn.cloudflare.steamstatic.com/steam/apps/5787/movie480.mp4',
             name: 'Demo',
             thumbnail: undefined,
         });

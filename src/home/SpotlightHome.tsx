@@ -9,6 +9,7 @@ import { useSettings } from '../data/settings';
 import { recentsButton, repeatStep, RepeatState, selectionForButton, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { getGameTrailer, type GameTrailer } from './trailers';
+import { playNavSound } from './navSound';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_RADIUS } from './motion';
 import { legibleAccent } from './accent';
@@ -181,6 +182,7 @@ export function SpotlightHome() {
             if (pill && !pill.contains(pill.ownerDocument.activeElement)) focusElement(pill, 'the Play pill');
         }
         setRecentIndex(next);
+        playNavSound();
     };
     const bumpers = useBumperSelect(actionsRef, focusIndex, data.games.length, select);
     // The game cards (focusZones.recentsButton): Left/Right select the previous / next game and focus stays on the
@@ -207,7 +209,10 @@ export function SpotlightHome() {
             }
             const paced = repeatStep(Date.now(), heldDirection.current, isRepeat);
             heldDirection.current = paced.next;
-            if (paced.step) setRecentIndex(what.select);
+            if (paced.step) {
+                setRecentIndex(what.select);
+                playNavSound();
+            }
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: game card navigation failed`, error);
         }
@@ -378,6 +383,7 @@ export function SpotlightHome() {
                 direction={navDirectionRef.current}
                 trailer={trailer}
                 showTrailer={showTrailer}
+                onDismissTrailer={dismissTrailer}
             />
             <div className="gh-scrim gh-scrim-dim" />
             <div className="gh-scrim gh-scrim-v" />

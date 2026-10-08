@@ -6,6 +6,7 @@ import { cleanTitle } from '../logic/names';
 export interface GameTrailer {
     url: string;
     isHls: boolean;
+    fallbackUrl?: string;
     name?: string;
     thumbnail?: string;
 }
@@ -44,22 +45,40 @@ export function parseTrailerFromAppDetails(json: unknown, appId: number): GameTr
         const movie = movies.find((m: any) => m?.highlight) ?? movies[0];
         if (!movie) return null;
 
+        const webmFallback = typeof movie.webm?.max === 'string' && movie.webm.max.length > 0
+            ? movie.webm.max
+            : typeof movie.webm?.['480'] === 'string' && movie.webm['480'].length > 0
+                ? movie.webm['480']
+                : undefined;
+
+        const mp4Fallback = typeof movie.mp4?.max === 'string' && movie.mp4.max.length > 0
+            ? movie.mp4.max
+            : typeof movie.mp4?.['480'] === 'string' && movie.mp4['480'].length > 0
+                ? movie.mp4['480']
+                : movie.id
+                    ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${movie.id}/movie480.mp4`
+                    : undefined;
+
+        const fallbackUrl = webmFallback || mp4Fallback;
+
         // Try direct HLS master playlist URL first (highest quality modern Steam stream)
         const hls = movie.hls_h264;
         if (typeof hls === 'string' && hls.length > 0) {
             return {
                 url: hls,
                 isHls: true,
+                fallbackUrl,
                 name: typeof movie.name === 'string' ? movie.name : undefined,
                 thumbnail: typeof movie.thumbnail === 'string' ? movie.thumbnail : undefined,
             };
         }
 
-        // Fall back to direct MP4 URL on Cloudflare/Akamai CDN
-        if (movie.id) {
+        // Fall back to direct static video URL (WebM or MP4)
+        if (fallbackUrl) {
             return {
-                url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${movie.id}/movie480.mp4`,
+                url: fallbackUrl,
                 isHls: false,
+                fallbackUrl,
                 name: typeof movie.name === 'string' ? movie.name : undefined,
                 thumbnail: typeof movie.thumbnail === 'string' ? movie.thumbnail : undefined,
             };

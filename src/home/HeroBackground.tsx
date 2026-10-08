@@ -129,6 +129,7 @@ export function HeroBackground({
     direction = 'none',
     trailer = null,
     showTrailer = false,
+    onDismissTrailer,
 }: {
     appId: number | null;
     detailsVersion: number;
@@ -136,6 +137,7 @@ export function HeroBackground({
     direction?: 'left' | 'right' | 'none';
     trailer?: GameTrailer | null;
     showTrailer?: boolean;
+    onDismissTrailer?: () => void;
 }) {
     const [layers, setLayers] = useState<Array<HeroLayer<Art>>>([]);
     const nextId = useRef(0);
@@ -180,7 +182,7 @@ export function HeroBackground({
             {layers.map((layer) => (
                 <Layer key={layer.id} art={layer.art} settled={layer.settled} direction={layer.direction} />
             ))}
-            {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} />}
+            {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} onDismiss={onDismissTrailer} />}
         </div>
     );
 }

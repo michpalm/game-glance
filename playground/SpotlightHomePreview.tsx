@@ -7,28 +7,8 @@ import { SourcePill } from '../src/components/SourcePill';
 import { useSettings } from '../src/data/settings';
 import { TrailerPlayer } from '../src/home/TrailerPlayer';
 import { resolveGameTrailer, type GameTrailer } from '../src/home/trailers';
+import { playNavSound } from '../src/home/navSound';
 import { MOCK_GAMES, MockGame } from './mockData';
-
-function playNavSound() {
-    try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(320, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.04);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.04);
-    } catch {
-        // audio might be blocked before first user gesture
-    }
-}
 
 interface Props {
     deviceMode: 'handheld' | 'tv';
@@ -318,7 +298,7 @@ export function SpotlightHomePreview({ deviceMode, customAccent }: Props) {
                         </div>
                     );
                 })}
-                {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} />}
+                {trailer && <TrailerPlayer trailer={trailer} active={showTrailer} onDismiss={dismissTrailer} />}
             </div>
             <div className="gh-scrim-layer" />
 
