@@ -62,7 +62,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
+    const { enabled, autoPreload, spotlightHome, spotlightLibrary, wishlistDeals, homeFeed, homeNewGames, cleanPage, homeStatusBar, preferLogos } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -162,6 +162,16 @@ export function SettingsPanel() {
                         />
                     </PanelSectionRow>
                 )}
+            </PanelSection>
+            <PanelSection title="Spotlight Library">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Spotlight Library"
+                        description="Replaces Steam's Library with Spotlight Library (clean 2-panel Pegasus layout with horizontal banners and game inspector). Off returns Steam's own Library."
+                        checked={spotlightLibrary}
+                        onChange={(value) => settings.setSpotlightLibrary(value)}
+                    />
+                </PanelSectionRow>
             </PanelSection>
             <PanelSection title="Appearance">
                 <PanelSectionRow>

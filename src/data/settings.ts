@@ -5,6 +5,7 @@ export interface Settings {
     enabled: boolean;
     autoPreload: boolean; // pre-load game data for installed games in the background
     spotlightHome: boolean; // replace Steam's Home screen with Spotlight Home
+    spotlightLibrary: boolean; // replace Steam's Library screen with Spotlight Library
     wishlistDeals: boolean; // look up wishlist sales on Steam's public store
     homeFeed: boolean; // Spotlight Home's bottom section: the What's new, Friends and Recommended tabs
     homeNewGames: boolean; // Spotlight Home's recents also show the games Steam lists as new to the library (unplayed)
@@ -14,7 +15,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, spotlightLibrary: false, wishlistDeals: false, homeFeed: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, preferLogos: true };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -29,6 +30,7 @@ export function createSettingsStore(kv: KvBackend) {
                 enabled: pick('enabled'),
                 autoPreload: pick('autoPreload'),
                 spotlightHome: pick('spotlightHome'),
+                spotlightLibrary: pick('spotlightLibrary'),
                 wishlistDeals: pick('wishlistDeals'),
                 homeFeed: pick('homeFeed'),
                 homeNewGames: pick('homeNewGames'),
@@ -51,6 +53,11 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setSpotlightHome(spotlightHome: boolean): Promise<void> {
             current = { ...current, spotlightHome };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setSpotlightLibrary(spotlightLibrary: boolean): Promise<void> {
+            current = { ...current, spotlightLibrary };
             emit();
             await kv.set(KEY, current);
         },

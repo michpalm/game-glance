@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaCloud, FaCog, FaGamepad, FaPlay, FaSlidersH, FaTv, FaMobileAlt, FaHome, FaThLarge } from 'react-icons/fa';
+import { FaCloud, FaCog, FaGamepad, FaPlay, FaSlidersH, FaTv, FaMobileAlt, FaHome, FaThLarge, FaLayerGroup } from 'react-icons/fa';
 import { CleanInfo } from '../src/components/CleanInfo';
 import { HltbCard } from '../src/components/HltbCard';
 import { InfoCard } from '../src/components/InfoCard';
@@ -8,10 +8,11 @@ import { SourcePill } from '../src/components/SourcePill';
 import { useSettings } from '../src/data/settings';
 import { MOCK_GAMES } from './mockData';
 import { SpotlightHomePreview } from './SpotlightHomePreview';
+import { SpotlightLibraryPreview } from './SpotlightLibraryPreview';
 
 export function App() {
     const currentSettings = useSettings();
-    const [currentView, setCurrentView] = useState<'details' | 'home'>('home');
+    const [currentView, setCurrentView] = useState<'details' | 'home' | 'library'>('library');
     const [selectedGameIdx, setSelectedGameIdx] = useState(0);
     const [restyle, setRestyle] = useState(true);
     const [cleanLook, setCleanLook] = useState(false);
@@ -84,6 +85,25 @@ export function App() {
                             }}
                         >
                             <FaHome size={14} /> Spotlight Home
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('library')}
+                            style={{
+                                padding: '6px 14px',
+                                borderRadius: 6,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                border: 'none',
+                                background: currentView === 'library' ? '#1f6feb' : 'transparent',
+                                color: currentView === 'library' ? '#ffffff' : '#8b949e',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            <FaLayerGroup size={13} /> Spotlight Library
                         </button>
                         <button
                             onClick={() => setCurrentView('details')}
@@ -248,6 +268,13 @@ export function App() {
                 {currentView === 'home' && (
                     <div style={{ flex: 1, height: '100%', position: 'relative' }}>
                         <SpotlightHomePreview deviceMode={deviceMode} customAccent={customAccent} />
+                    </div>
+                )}
+
+                {/* View 2: Spotlight Library Screen */}
+                {currentView === 'library' && (
+                    <div style={{ flex: 1, height: '100%', position: 'relative' }}>
+                        <SpotlightLibraryPreview deviceMode={deviceMode} customAccent={customAccent} />
                     </div>
                 )}
 
