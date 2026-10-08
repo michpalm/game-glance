@@ -1,10 +1,9 @@
 import { Focusable } from '@decky/ui';
 import type { GamepadEvent } from '@decky/ui';
-import { memo, Ref, useEffect, useMemo, useRef } from 'react';
+import { memo, Ref, useMemo } from 'react';
 import { browserStores, capsuleUrls, heroUrls, landscapeUrls } from './artwork';
 import { wideArt } from './homeView';
 import { clampFocus, isLibraryFocus, MAX_GHOSTS, RecentsGeometry, recentsLayout } from './recentsLayout';
-import { focusElement } from './homeNav';
 import type { HomeGame } from './useHomeData';
 
 function urls(read: () => string[]): string[] {
@@ -49,7 +48,6 @@ export function capsuleBlur(i: number, selected: number): boolean {
 /**
  * One recents card. Memoized on plain props, so an L1/R1 step re-renders only the cards whose place or state changed;
  * its art urls are read from Steam's stores only when the game or its expanded state changes.
- * Rendered as an individual Focusable so Steam dispatches its native navigation sound on every carousel step.
  */
 const GameCapsule = memo(function GameCapsule({
     game,
@@ -58,11 +56,6 @@ const GameCapsule = memo(function GameCapsule({
     dim,
     wide,
     blur,
-    preferred,
-    setRef,
-    onFocus,
-    onButtonDown,
-    onActivate,
 }: {
     game: HomeGame;
     left: number;
@@ -70,11 +63,6 @@ const GameCapsule = memo(function GameCapsule({
     dim: boolean;
     wide: boolean;
     blur: boolean;
-    preferred: boolean;
-    setRef?(el: HTMLDivElement | null): void;
-    onFocus(): void;
-    onButtonDown(evt: GamepadEvent): void;
-    onActivate(): void;
 }) {
     const appId = game.appId;
     const cover = useMemo(() => urls(() => capsuleUrls(appId, browserStores)), [appId]);
@@ -83,24 +71,12 @@ const GameCapsule = memo(function GameCapsule({
         [appId, wide, cover],
     );
     return (
-        <Focusable
-            ref={setRef as Ref<HTMLDivElement>}
-            className={`gh-cap${wide ? ' gh-cap-wide' : ''}`}
-            noFocusRing
-            preferredFocus={preferred}
-            onFocus={onFocus}
-            onGamepadFocus={onFocus}
-            onButtonDown={onButtonDown}
-            onActivate={onActivate}
-            style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }}
-            role="option"
-            aria-selected={wide}
-        >
+        <div className={`gh-cap${wide ? ' gh-cap-wide' : ''}`} style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }}>
             <CapsuleArt cover={cover} art={art} blur={blur} />
             {/* A game new to the library (the "New to library" setting), as Steam's Home marks it. */}
             {game.isNew && <div className="gh-cap-new">New</div>}
             <div className="gh-cap-bar" />
-        </Focusable>
+        </div>
     );
 });
 
@@ -117,9 +93,11 @@ export interface RecentsRowNav {
 }
 
 /**
- * The recents row: games, then "View more in your Library", then the loop preview of the first games.
- * Each card is an individual Focusable so navigation across cards produces Steam's native gamepad sound,
- * while maintaining the exact sliding transform and layout.
+ * The recents row: games, then "View more in your Library", then the loop preview of the first games. One focusable for
+ * the whole row (the cards slide by transform, so Steam's spatial navigation never moves between them): while it has
+ * focus the selected card is highlighted, Left/Right select games and A opens the selected one (`nav`, from
+ * SpotlightHome, which owns `selected`: it drives hero, title and actions; the row slides to follow).
+ * Focus cleanly moves Down to the feed tabs or Up to the action row.
  */
 export function RecentsRow({
     games,
@@ -139,24 +117,19 @@ export function RecentsRow({
     const layout = recentsLayout(count, at, geometry);
     const onLibrary = isLibraryFocus(count, at);
     const library = layout.items[count];
-    const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-
-    // Sync active card ref with parent and transfer focus on selection change so Steam plays nav sound
-    useEffect(() => {
-        const currentEl = itemRefs.current[at];
-        if (currentEl) {
-            nav.setRef(currentEl);
-            if (isFocused && currentEl.ownerDocument?.activeElement !== currentEl) {
-                focusElement(currentEl, `card ${at}`);
-            }
-        }
-    }, [at, isFocused, nav]);
-
     // The loop preview's portraits, read once per list of games (not on every step).
     const ghostCovers = useMemo(() => games.slice(0, MAX_GHOSTS).map((g) => urls(() => capsuleUrls(g.appId, browserStores))), [games]);
     return (
-        <div
+        <Focusable
+            ref={nav.setRef as Ref<HTMLDivElement>}
             className={`gh-recents${isFocused ? ' gh-recents-focus' : ''}`}
+            focusClassName="gh-recents-focus"
+            noFocusRing
+            preferredFocus={nav.preferred}
+            onFocus={nav.onFocus}
+            onGamepadFocus={nav.onFocus}
+            onButtonDown={nav.onButtonDown}
+            onActivate={nav.onActivate}
             role="listbox"
             aria-label="Recent games"
         >
@@ -170,32 +143,9 @@ export function RecentsRow({
                         dim={layout.items[i].dim}
                         wide={!onLibrary && i === at}
                         blur={capsuleBlur(i, at)}
-                        preferred={nav.preferred && !onLibrary && i === at}
-                        setRef={(el) => {
-                            itemRefs.current[i] = el;
-                            if (i === at && !onLibrary) nav.setRef(el);
-                        }}
-                        onFocus={nav.onFocus}
-                        onButtonDown={nav.onButtonDown}
-                        onActivate={nav.onActivate}
                     />
                 ))}
-                <Focusable
-                    ref={(el) => {
-                        itemRefs.current[count] = el as HTMLDivElement | null;
-                        if (onLibrary) nav.setRef(el as HTMLDivElement | null);
-                    }}
-                    className={`gh-cap gh-cap-lib${onLibrary ? ' gh-cap-lib-on' : ''}`}
-                    style={{ left: `${library.left}px`, width: `${library.width}px` }}
-                    noFocusRing
-                    preferredFocus={nav.preferred && onLibrary}
-                    onFocus={nav.onFocus}
-                    onGamepadFocus={nav.onFocus}
-                    onButtonDown={nav.onButtonDown}
-                    onActivate={nav.onActivate}
-                    role="option"
-                    aria-selected={onLibrary}
-                >
+                <div className={`gh-cap gh-cap-lib${onLibrary ? ' gh-cap-lib-on' : ''}`} style={{ left: `${library.left}px`, width: `${library.width}px` }}>
                     <div className="gh-lib-body">
                         <div className="gh-lib-grid">
                             <div className="gh-lib-cell gh-lib-cell-accent" />
@@ -206,7 +156,7 @@ export function RecentsRow({
                         <div className="gh-lib-label">View more in your Library</div>
                     </div>
                     <div className="gh-cap-bar" />
-                </Focusable>
+                </div>
                 {layout.ghosts.map((ghost, j) => (
                     <div
                         key={`ghost-${games[j].appId}`}
@@ -225,6 +175,6 @@ export function RecentsRow({
                     </div>
                 ))}
             </div>
-        </div>
+        </Focusable>
     );
 }
