@@ -29,6 +29,7 @@ import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
+import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
@@ -57,8 +58,10 @@ export interface HomeData {
     locale: string;
     /** When the focused game was last played ("Yesterday"), or, for a game new to the library, when it was added. */
     lastPlayedLabel: string | null;
-    /** The focused game is new to the library (never played; shown with the "New to library" setting). */
+    /** The focused game is new to the library (never played; Steam lists it with its recent games). */
     focusedIsNew: boolean;
+    /** The collection the games row shows (Quick Access → Games row), null for the recent games. */
+    rowCollection: string | null;
     chips: Chip[];
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
     source: string | undefined;
@@ -86,6 +89,7 @@ type StoreGlobals = {
     collectionStore?: {
         recentAppsCollection?: { allApps?: AnyApp[] };
         localGamesCollection?: { allApps?: AnyApp[] };
+        userCollections?: Array<{ id?: unknown; displayName?: unknown; allApps?: AnyApp[] } | null | undefined>;
         BIsHidden?(appId: number): boolean;
     };
     appStore?: { GetAppOverviewByAppID?(appId: number): (AnyApp & Record<string, unknown>) | undefined | null; allApps?: AnyApp[] };
@@ -141,27 +145,53 @@ let recentsSourcesLogged = false;
  * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
  * on the Ally it gave 10 while Steam's Home shows more).
  */
-function readRecentGames(includeNew: boolean): HomeGame[] {
+function readRecentGames(): HomeGame[] {
     return guarded('recents', () => {
         const recent = steam.collectionStore?.recentAppsCollection?.allApps;
         if (!Array.isArray(recent)) return [];
         const listed = guarded('library apps', () => steam.appStore?.allApps, undefined);
         const all = Array.isArray(listed) ? listed : [];
         const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
-        const picked = pickHomeRecents({ recent, all, isHidden, includeNew });
+        const picked = pickHomeRecents({ recent, all, isHidden, includeNew: true });
         if (!recentsSourcesLogged && recent.length > 0) {
             recentsSourcesLogged = true;
             const merged = pickRecents(mergeRecentSources(recent, all, isHidden)).length;
             console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
         }
         // Steam's recent list wins for its own games (`installed`, `m_gameid` as Steam keeps them there).
-        const byId = new Map([...all, ...recent].map((a) => [a.appid, a]));
-        return picked.map((g) => {
-            const app = byId.get(g.appId);
-            const gameId = app?.m_gameid;
-            return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };
-        });
+        return withLaunchInfo(picked, [...all, ...recent]);
     }, []);
+}
+
+/** Steam's `installed` and `m_gameid` for each picked game, from the app objects it came from. */
+function withLaunchInfo(picked: RecentGame[], apps: AnyApp[]): HomeGame[] {
+    const byId = new Map(apps.map((a) => [a.appid, a]));
+    return picked.map((g) => {
+        const app = byId.get(g.appId);
+        const gameId = app?.m_gameid;
+        return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };
+    });
+}
+
+/**
+ * The games row: a collection's games (`row` is its id, collections.pickCollectionGames, sorted by `sort`) with its
+ * name for the eyebrow, or Steam's recent games with those new to the library. A collection that is gone, not offered
+ * or has no games left falls back to the recent games, so Home is never empty because of the setting.
+ */
+function readRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null } {
+    if (row !== RECENT_ROW) {
+        const chosen = guarded('collection', () => {
+            const store = steam.collectionStore;
+            const found = store?.userCollections?.find((c) => c?.id === row);
+            const offered = homeCollections(found ? [found] : [])[0];
+            if (!found || !offered || !Array.isArray(found.allApps)) return null;
+            const isHidden = (appId: number) => store?.BIsHidden?.(appId) === true;
+            const games = withLaunchInfo(pickCollectionGames(found.allApps, isHidden, sort), found.allApps);
+            return games.length > 0 ? { games, collection: offered.name } : null;
+        }, null);
+        if (chosen) return chosen;
+    }
+    return { games: readRecentGames(), collection: null };
 }
 
 function readPlayNextApps(): AnyApp[] {
@@ -214,15 +244,16 @@ let dealsMemo: DealCard[] = [];
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
 
-function useRecentGames(includeNew: boolean): { games: HomeGame[]; settled: boolean } {
-    const [games, setGames] = useState<HomeGame[]>(() => readRecentGames(includeNew));
-    // The "New to library" setting changed while Home is open: read the row again.
-    const shownWith = useRef(includeNew);
+function useRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null; settled: boolean } {
+    const [shown, setShown] = useState(() => readRowGames(row, sort));
+    const games = shown.games;
+    // The Games row setting changed while Home is open: read the row again.
+    const shownWith = useRef({ row, sort });
     useEffect(() => {
-        if (shownWith.current === includeNew) return;
-        shownWith.current = includeNew;
-        setGames(readRecentGames(includeNew));
-    }, [includeNew]);
+        if (shownWith.current.row === row && shownWith.current.sort === sort) return;
+        shownWith.current = { row, sort };
+        setShown(readRowGames(row, sort));
+    }, [row, sort]);
     const [retriesDone, setRetriesDone] = useState(false);
     useEffect(() => {
         if (games.length > 0) return undefined;
@@ -230,16 +261,16 @@ function useRecentGames(includeNew: boolean): { games: HomeGame[]; settled: bool
         let tries = 0;
         const timer = setInterval(() => {
             tries++;
-            const next = readRecentGames(shownWith.current);
-            if (next.length > 0) setGames(next);
-            if (next.length > 0 || tries >= RECENTS_RETRIES) {
+            const next = readRowGames(shownWith.current.row, shownWith.current.sort);
+            if (next.games.length > 0) setShown(next);
+            if (next.games.length > 0 || tries >= RECENTS_RETRIES) {
                 clearInterval(timer);
-                if (next.length === 0) setRetriesDone(true);
+                if (next.games.length === 0) setRetriesDone(true);
             }
         }, RECENTS_RETRY_MS);
         return () => clearInterval(timer);
     }, [games.length]);
-    return { games, settled: games.length > 0 || retriesDone };
+    return { games, collection: shown.collection, settled: games.length > 0 || retriesDone };
 }
 
 /**
@@ -521,8 +552,8 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeNewGames } = useSettings();
-    const { games, settled: recentsSettled } = useRecentGames(homeNewGames);
+    const { wishlistDeals, homeRow, homeRowSort } = useSettings();
+    const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
 
@@ -596,7 +627,11 @@ export function useHomeData(focusIndex = 0): HomeData {
     // Unifideck knows a last played Steam does not: such a game is no longer "new to library".
     const focusedIsNew = focused?.isNew === true && !unifideck?.lastPlayed;
     const lastPlayedLabel = focused
-        ? guarded('last played', () => formatLastPlayed(focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, unifideck).lastPlayed, nowSeconds, locale), null)
+        ? guarded('last played', () => {
+            const when = focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, unifideck).lastPlayed;
+            // Never played (a collection's game): no date, the eyebrow says so (homeView.eyebrowText).
+            return when > 0 ? formatLastPlayed(when, nowSeconds, locale) : null;
+        }, null)
         : null;
 
     const library = useMemo(
@@ -622,5 +657,5 @@ export function useHomeData(focusIndex = 0): HomeData {
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
 }

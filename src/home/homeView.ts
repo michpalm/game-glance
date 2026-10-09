@@ -3,8 +3,10 @@ import { tr } from '../i18n/steamText';
 
 /** Small pure helpers behind the Spotlight Home components. */
 
-export function eyebrowText(lastPlayedLabel: string | null, onLibrary = false, isNew = false): string {
+export function eyebrowText(lastPlayedLabel: string | null, onLibrary = false, isNew = false, inCollection = false): string {
     if (onLibrary) return tr('myGames');
+    // A collection's game never played (the recent games row only has played and new ones).
+    if (inCollection && !lastPlayedLabel && !isNew) return tr('noPlayTime');
     // A game new to the library: when it was added ("New to library · Yesterday"), as on Steam's Home.
     if (isNew) return lastPlayedLabel ? `${tr('newToLibrary')} · ${lastPlayedLabel}` : tr('newToLibrary');
     return lastPlayedLabel ? `${tr('lastPlayed')} · ${lastPlayedLabel}` : tr('recentGames');

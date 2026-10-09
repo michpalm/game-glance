@@ -60,9 +60,9 @@ Spotlight Home is an optional new Home screen. It is off by default; turn it on 
   wide card with the game's landscape art (custom art included), highlighted while the row has focus, and the row slides
   to follow. The row ends in a Library card (Right or R1 past the last game, A opens the Library; again goes back to the
   first) with a faded preview of more games. B on the buttons or the tabs comes back to the cards. Tapping a card does
-  nothing. With no recent games, Home shows a Library button. With **New to library** on, games Steam lists as new to
-  your library (not played yet) join the row by the date they were added, marked NEW, with "New to library · {when}"
-  above the title and an "Added to library" chip.
+  nothing. With no recent games, Home shows a Library button. As on Steam's Home, games Steam lists as new to your
+  library (not played yet) join the row by the date they were added, marked NEW, with "New to library · {when}"
+  above the title and an "Added to library" chip. The row can show one of your collections instead (Games row, below).
 - **Feed.** Press down for tabs: **What's new** (news updates, which open the news; under them, as on Steam's Home, the
   games recently updated on this device, with the size and when), **Friends** (your friends, in game first, then online,
   away and offline, kept up to date while Home is open; the number online on the tab turns green when anyone is on,
@@ -99,8 +99,11 @@ with Steam's own game page.
 without a logo (or a custom SteamGridDB one) keeps its name. Logos Steam has not stored on the device yet load from
 Steam's image servers.
 
-**New to library** (off by default) adds the games Steam's own Home shows as new to your library, not played yet, to the
-recents row.
+**Games row** (Recent games by default) picks what Home's row shows: your recent games, or one of your Steam collections
+(Favorites, Installed and your own; empty ones, Soundtracks and Uncategorized are left out), up to 20 games, without hidden
+ones. With a collection, **Sort by** orders it by Last Played (never-played games after, newest added first), Alphabetical
+or Date Added to Library (Steam's own sort names), and the line above the title starts with the collection's name ("Backlog · Last played · Yesterday").
+If the collection is deleted or empty, Home shows the recent games.
 
 **Language.** The words Game Glance draws follow Steam's: in your Steam language, with Steam's own wording where it has one (for
 example "Última sesión" and "Tiempo de juego" in Spanish). A few have no Steam equivalent and stay in English (see
@@ -148,7 +151,7 @@ Quick Access (…) → Game Glance:
   HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
   description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
   title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **Status bar**, **Game logo**, **New to library**, **Show wishlist deals:** see above.
+- **Spotlight Home**, **Status bar**, **Game logo**, **Games row**, **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**

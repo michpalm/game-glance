@@ -27,6 +27,7 @@ import { TitleBlock } from './TitleBlock';
 import { useBumperSelect } from './useBumperSelect';
 import { useCloud } from './useCloud';
 import { useHomeData } from './useHomeData';
+import { collectionEyebrow } from './collections';
 import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 
@@ -355,7 +356,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title={tr('viewLibrary')} chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} />
+                                        <TitleBlock eyebrow={collectionEyebrow(data.rowCollection, eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew, data.rowCollection !== null))} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}

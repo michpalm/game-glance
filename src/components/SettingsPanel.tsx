@@ -1,6 +1,6 @@
 import { toaster } from '@decky/api';
-import { ButtonItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
-import { useEffect, useState } from 'react';
+import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
+import { useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
@@ -8,6 +8,8 @@ import { settings, useSettings } from '../data/settings';
 import { installUpdate, UpdateState, useUpdate } from '../data/update';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
+import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
+import { tr } from '../i18n/steamText';
 
 /** The Updates section's line under the title: the installed version and what the check found. */
 function updateLine(state: UpdateState): string {
@@ -61,7 +63,10 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeNewGames, cleanPage, homeStatusBar, gameLogo } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, gameLogo, homeRow, homeRowSort } = useSettings();
+    // Read when the panel opens, so a collection made since shows up.
+    const collections = useMemo(steamHomeCollections, []);
+    const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -143,13 +148,26 @@ export function SettingsPanel() {
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>
-                    <ToggleField
-                        label="New to library"
-                        description="Adds games new to your library that you have not played yet to the recent games row, as on Steam's Home."
-                        checked={homeNewGames}
-                        onChange={(value) => settings.setHomeNewGames(value)}
+                    <DropdownItem
+                        label="Games row"
+                        description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
+                        menuLabel="Games row"
+                        rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
+                        selectedOption={rowChosen}
+                        onChange={(option) => settings.setHomeRow(String(option.data))}
                     />
                 </PanelSectionRow>
+                {rowChosen !== RECENT_ROW && (
+                    <PanelSectionRow>
+                        <DropdownItem
+                            label={sortByLabel()}
+                            menuLabel={sortByLabel()}
+                            rgOptions={ROW_SORTS.map((s) => ({ data: s, label: rowSortLabel(s) }))}
+                            selectedOption={homeRowSort}
+                            onChange={(option) => settings.setHomeRowSort(option.data as RowSort)}
+                        />
+                    </PanelSectionRow>
+                )}
                 <PanelSectionRow>
                     <ToggleField
                         label="Show wishlist deals"

@@ -35,6 +35,7 @@ export const PHRASES = {
     gameDetails: p('AppDetails_GameInfo', 'Game details'),
     viewLibrary: p('GamepadHome_GoToLibrary', 'View more in your Library'),
     recentGames: p('LibraryHome_RecentGames', 'Recent games'),
+    noPlayTime: p('AppBox_NoPlayTimeYet', 'No playtime yet'),
     tabWhatsNew: p('HomeTab_WhatsNew', "What's new"),
     tabFriends: p('tab_friends', 'Friends'),
     tabRecommended: p('HomeTab_Recommended', 'Recommended'),
@@ -93,6 +94,12 @@ export const PHRASES = {
     download: p('GameAction_Download', 'Download'),
     installed: p('LibraryTab_Installed', 'Installed'),
     favorites: p('LibraryTab_Favorites', 'Favorites'),
+    // The Games row picker (Quick Access): Steam's own names for its installed collection and its library sorts.
+    localGames: p('GameList_View_LocalGames', 'Locally Installed Games'),
+    sortLastPlayed: p('Library_SortByLastPlayed', 'Last Played'),
+    sortName: p('Library_SortByAlphabetical', 'Alphabetical'),
+    sortAdded: p('Library_SortByAddedToLibrary', 'Date Added to Library'),
+    sortBy: p('AppProperties_Workshop_SortBy_Label', 'Sort By:'),
     storage: p('Settings_Page_Storage', 'Storage'),
     wired: p('VRLinkType_WiredToRouter', 'Wired connection'),
 } as const;

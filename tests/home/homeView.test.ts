@@ -10,6 +10,10 @@ describe('eyebrowText', () => {
         expect(eyebrowText(null, false, true)).toBe('New to library');
         expect(eyebrowText('Yesterday', true, true)).toBe('My games');
     });
+    it('in a collection, a game never played says so (Steam\'s "No playtime yet"), not "Recent games"', () => {
+        expect(eyebrowText(null, false, false, true)).toBe('No playtime yet');
+        expect(eyebrowText('Today', false, false, true)).toBe('Last played · Today');
+    });
     it('drops the separator when there is no label', () => {
         expect(eyebrowText(null)).toBe('Recent games');
         expect(eyebrowText('')).toBe('Recent games');

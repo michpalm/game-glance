@@ -7,7 +7,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -22,7 +22,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
     });
 });
 
@@ -34,16 +34,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
     });
 });
 
@@ -79,20 +79,32 @@ describe('settings: the removed Home switches', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed' });
     });
 });
 
-describe('settings: New to library', () => {
-    it('is off by default and remembers being turned on', async () => {
+describe('settings: Games row', () => {
+    it('shows the recent games, sorted by last played, by default and remembers a collection and its sort', async () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get().homeNewGames).toBe(false);
-        await store.setHomeNewGames(true);
+        expect(store.get().homeRow).toBe('recent');
+        expect(store.get().homeRowSort).toBe('lastPlayed');
+        await store.setHomeRow('uc-vHNTb8+oFvas');
+        await store.setHomeRowSort('name');
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get().homeNewGames).toBe(true);
+        expect(reloaded.get().homeRow).toBe('uc-vHNTb8+oFvas');
+        expect(reloaded.get().homeRowSort).toBe('name');
+    });
+    it('reads junk, and the old New to library switch, as the defaults', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { homeRow: 7, homeRowSort: 'bogus', homeNewGames: true });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().homeRow).toBe('recent');
+        expect(store.get().homeRowSort).toBe('lastPlayed');
+        expect('homeNewGames' in store.get()).toBe(false);
     });
 });
 

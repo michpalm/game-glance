@@ -34,6 +34,14 @@ words with the prefix `AppDetails_Feature_SteamCloud` ("Partidas guardadas en Cl
 `LaunchApp_Action_SynchronizingCloud`, a newer save or not uploaded yet = No sincronizado, save folder not found = No se ha podido
 sincronizar, nothing saved yet = Desconocido (the icon and colour still tell the states apart).
 
+Added 2026-10-09: the Games row (Quick Access → Spotlight Home): "Recent Games" (`LibraryHome_RecentGames`), Steam's own
+collections named by Steam ("Favorites" `LibraryTab_Favorites`, "Locally Installed Games" `GameList_View_LocalGames`: their
+stored `displayName` keeps the language Steam had when it made them; the user's own collections keep their names), the sorts
+as Steam's library names them ("Last Played" `Library_SortByLastPlayed`, "Alphabetical" `Library_SortByAlphabetical`, "Date
+Added to Library" `Library_SortByAddedToLibrary`), the "Sort By" label (`AppProperties_Workshop_SortBy_Label`, its colon
+dropped); a collection's never-played game in the eyebrow: "No playtime yet" (`AppBox_NoPlayTimeYet`). The Game logo option
+draws no words (the logo's alt text is the game's name); the tab sounds are Steam's own (`ChangeTabs`, `FailedNav`).
+
 ### B. Reworded onto Steam's own words (done)
 
 "Open Library" is now "Library" (`StartPage_Library`); the Library card's eyebrow is "My games" (`GameList_View_MyOwnGames`); the
@@ -47,5 +55,5 @@ only "{friend} · {game}" under Steam's own "Join game" title and buttons; the e
 ### C. Still no Steam token (English until we write our own words)
 
 - HowLongToBeat columns: "Main" (Steam's only "Main" is the OS branch, "Principal": not used), "+ Extras", "100%"; the chip "HLTB main"; "Main story complete"; the Quick Access hints ("Set the right game in Quick Access → Game Glance").
-- Quick Access settings panel (a Decky panel): every label and description. Deferred to the end, once its wording has settled.
+- Quick Access settings panel (a Decky panel): every label and description, including the new "Game logo" and "Games row" labels and their descriptions (no Steam token: Steam's only match is "Logo", `LibraryAssetType_Logo`). Deferred to the end, once its wording has settled; the Games row's choices and Sort By above already follow Steam.
 - Plugin log lines and error text: English by design.
