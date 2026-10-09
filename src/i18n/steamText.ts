@@ -59,6 +59,11 @@ export const PHRASES = {
     invisible: p('PersonaStateInvisible', 'Invisible'),
     lastPlayedGame: p('EventCalender_LastPlayed', 'Last played %1$s'),
     playingGame: p('Notification_FriendInGame_Body_Short', 'Playing %1$s'),
+    // Friends who play a game (Steam's own game cards and game page say it so).
+    friendPlaying: p('AppPortraitHover_FriendsPlaying', '%1$s friend playing'),
+    friendsPlaying: p('AppPortraitHover_FriendsPlaying_Plural', '%1$s friends playing'),
+    friendPlayedRecently: p('AppDetails_FriendsPlayedRecently', '%1$s friend played recently'),
+    friendsPlayedRecently: p('AppDetails_FriendsPlayedRecently_Plural', '%1$s friends played recently'),
     inLibrary: p('Sale_InLibrary', 'In library'),
     freeToPlay: p('EventDisplay_CallToAction_FreeToPlay', 'Free to play'),
     onWishlist: p('EventDisplay_OnWishlist', 'On your wishlist'),

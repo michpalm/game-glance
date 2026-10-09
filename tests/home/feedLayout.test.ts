@@ -256,7 +256,7 @@ describe('Recommended second row: wishlist sales', () => {
     const art = (appId: number) => ({ hero: [`hero-${appId}`], capsule: [`cap-${appId}`], wide: [`wide-${appId}`] });
     const play = [{ appId: 30, name: 'Game 30', pill: 'Play next', pillKey: 'playNext' as const, sub: '' }];
     const deals = [
-        { appId: 70, name: 'Big Sale', pill: '-75%', sub: '$4.99 - was $19.99' },
+        { appId: 70, name: 'Big Sale', pill: '-75%', sub: '$4.99 $19.99', subParts: [{ text: '$4.99' }, { text: ' ' }, { text: '$19.99', struck: true }] },
         { appId: 71, name: 'Small Sale', pill: '-20%', sub: 'On your wishlist' },
     ];
     it('wide row-2 deal cards under Play next (row 1 at 270), discount badge and price, opening the store page', () => {
@@ -269,7 +269,7 @@ describe('Recommended second row: wishlist sales', () => {
             ['deal-70', 1, 128, 274],
             ['deal-71', 1, 128, 274],
         ]);
-        expect(items[1]).toMatchObject({ art: ['wide-70'], pill: '-75%', title: 'Big Sale', sub: '$4.99 - was $19.99', opens: { kind: 'store', appId: 70 } });
+        expect(items[1]).toMatchObject({ art: ['wide-70'], pill: '-75%', title: 'Big Sale', sub: '$4.99 $19.99', subParts: [{ text: '$4.99' }, { text: ' ' }, { text: '$19.99', struck: true }], opens: { kind: 'store', appId: 70 } });
     });
     it('no deals (setting off, private wishlist or none): one row, Play next keeps its 270 size', () => {
         const items = feedItems('recommended', { news: [], friends: [], recommended: play, deals: [] }, art, 436);
@@ -298,7 +298,7 @@ describe('Friends second row: trending amongst friends', () => {
     const trending = [
         { appId: 80, name: 'Owned Game', playing: 2, played: 0, label: '2 friends playing', inLibrary: true, avatars: [{ url: 'a.jpg', initial: 'A' }], moreFriends: 1, tag: 'In library', storeArt: null },
         { appId: 81, name: 'Store Game', playing: 0, played: 1, label: '1 friend played recently', inLibrary: false, avatars: [], moreFriends: 0, tag: '', storeArt: null },
-        { appId: 82, name: 'Sale Game', playing: 0, played: 1, label: '1 friend plays - 3,99€ (was 19,99€)', inLibrary: false, avatars: [], moreFriends: 0, tag: '-80%', storeArt: 'https://cdn/82/header.jpg' },
+        { appId: 82, name: 'Sale Game', playing: 0, played: 1, label: '3,99€ 19,99€', labelParts: [{ text: '3,99€ ' }, { text: '19,99€', struck: true }], inLibrary: false, avatars: [], moreFriends: 0, tag: '-80%', storeArt: 'https://cdn/82/header.jpg' },
     ];
     it('rows on every screen: friends stay 260; trending under its header is shorter (at most 128) and fits above the legend', () => {
         for (const h of [800, 810, 810.75, 960, 2000]) {
@@ -320,7 +320,7 @@ describe('Friends second row: trending amongst friends', () => {
         expect(items[1]).toMatchObject({ art: ['wide-80'], title: 'Owned Game', pill: 'In library', sub: '2 friends playing', opens: { kind: 'page', appId: 80 }, accentAppId: 80, friends: [{ url: 'a.jpg', initial: 'A' }], moreFriends: 1 });
         expect(items[2]).toMatchObject({ art: ['store-81'], sub: '1 friend played recently', opens: { kind: 'store', appId: 81 }, accentAppId: null });
         // Steam's own store header for a game not in the library, with its discount tag.
-        expect(items[3]).toMatchObject({ art: ['https://cdn/82/header.jpg'], pill: '-80%', opens: { kind: 'store', appId: 82 } });
+        expect(items[3]).toMatchObject({ art: ['https://cdn/82/header.jpg'], pill: '-80%', subParts: [{ text: '3,99€ ' }, { text: '19,99€', struck: true }], opens: { kind: 'store', appId: 82 } });
     });
     it('no trending games: no header and no row, the friend cards keep their size', () => {
         const items = feedItems('friends', { news: [], recommended: [], friends, trending: [] }, art, 426);

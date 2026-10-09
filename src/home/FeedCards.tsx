@@ -129,7 +129,13 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef }: {
             <div className="gh-card-text">
                 {item.pill && <span className="gh-pill">{item.pill}</span>}
                 <div className="gh-card-title">{item.title}</div>
-                {item.sub && <div className="gh-card-sub">{item.sub}</div>}
+                {item.subParts && item.subParts.length > 0 ? (
+                    <div className="gh-card-sub">
+                        {item.subParts.map((part, i) => (part.struck ? <s key={i} className="gh-card-was">{part.text}</s> : <span key={i}>{part.text}</span>))}
+                    </div>
+                ) : (
+                    item.sub && <div className="gh-card-sub">{item.sub}</div>
+                )}
             </div>
             <div className="gh-card-bar" />
         </Focusable>

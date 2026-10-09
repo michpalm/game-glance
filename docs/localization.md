@@ -42,6 +42,12 @@ Added to Library" `Library_SortByAddedToLibrary`), the "Sort By" label (`AppProp
 dropped); a collection's never-played game in the eyebrow: "No playtime yet" (`AppBox_NoPlayTimeYet`). The Game logo option
 draws no words (the logo's alt text is the game's name); the tab sounds are Steam's own (`ChangeTabs`, `FailedNav`).
 
+Added 2026-10-09 (later): Popular with friends cards from Steam's own list carry no "N friends" line, as Steam's shelf
+(the avatars show who plays it; our "1 friend plays" is gone). The fallback built from friends' activity, when Steam's list
+is empty, says "1 amigo jugando" / "3 amigos jugando" (`AppPortraitHover_FriendsPlaying`, `_Plural`: Steam's game cards)
+or "2 amigos han jugado recientemente" (`AppDetails_FriendsPlayedRecently`, `_Plural`). A sale's price no longer says "was": the
+full price is struck through after the sale price, as Steam's store shows it, so there is no word to translate.
+
 ### B. Reworded onto Steam's own words (done)
 
 "Open Library" is now "Library" (`StartPage_Library`); the Library card's eyebrow is "My games" (`GameList_View_MyOwnGames`); the

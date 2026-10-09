@@ -178,6 +178,8 @@ export interface FeedItem {
     pill: string;
     title: string;
     sub: string;
+    /** The sub line in pieces when part of it is drawn differently (a sale's full price struck through); else `sub`. */
+    subParts?: SubPart[];
     /** The game whose accent colours the pill (and a friend's ring); null = no game. */
     accentAppId: number | null;
     /** What A opens; null = A does nothing. */
@@ -192,6 +194,12 @@ export interface FeedItem {
     /** Small avatars of friends who play the game (trending cards), and how many more ("+N"). */
     friends?: Array<{ url: string | null; initial: string }>;
     moreFriends?: number;
+}
+
+/** A piece of a card's sub line: `struck` draws it struck through (a sale's full price, instead of the word "was"). */
+export interface SubPart {
+    text: string;
+    struck?: boolean;
 }
 
 export interface FeedData {
@@ -321,6 +329,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             pill: c.tag,
             title: c.name,
             sub: c.label,
+            subParts: c.labelParts,
             accentAppId: c.inLibrary ? c.appId : null,
             opens: c.inLibrary ? { kind: 'page', appId: c.appId } : { kind: 'store', appId: c.appId },
             avatar: null,
@@ -356,6 +365,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             pill: c.pill,
             title: c.name,
             sub: c.sub,
+            subParts: c.subParts,
             accentAppId: c.appId,
             opens: { kind: 'store', appId: c.appId },
             avatar: null,
