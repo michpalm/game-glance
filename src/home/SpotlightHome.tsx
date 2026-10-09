@@ -26,6 +26,7 @@ import { CARD_SCALE_HANDHELD, cardScaleFor, clampFocus, isLibraryFocus, recentsG
 import { homeCanvas } from './scale';
 import { TitleBlock } from './TitleBlock';
 import { useBumperSelect } from './useBumperSelect';
+import { gameStepSound, playNavSound } from './navSound';
 import { useCloud } from './useCloud';
 import { useHomeData } from './useHomeData';
 import { collectionEyebrow } from './collections';
@@ -209,7 +210,12 @@ export function SpotlightHome() {
             }
             const paced = repeatStep(Date.now(), heldDirection.current, isRepeat);
             heldDirection.current = paced.next;
-            if (paced.step) setRecentIndex(what.select);
+            if (paced.step) {
+                setRecentIndex(what.select);
+                // Home took the press, so Steam plays no move sound for it: play its own (navSound.gameStepSound).
+                const sound = gameStepSound(focusIndex, what.select, 'dpad');
+                if (sound) playNavSound(sound);
+            }
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: game card navigation failed`, error);
         }

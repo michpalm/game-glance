@@ -47,7 +47,20 @@ describe('prefers24Hour', () => {
         expect(prefers24Hour(steam(false), false)).toBe(false);
         expect(prefers24Hour(steam(1), true)).toBe(true);
     });
+    // Where current Steam builds keep it (seen on the Ally 2026-10-09: no friendStore.m_ChatStore any more).
+    const settings = (value: unknown) => ({ settingsStore: { m_FriendSettings: { b24HourClock: value } } });
+    it("follows Steam's setting in settingsStore, over the locale", () => {
+        expect(prefers24Hour(settings(true), true)).toBe(true);
+        expect(prefers24Hour(settings(false), false)).toBe(false);
+        expect(prefers24Hour(settings(1), true)).toBe(true);
+        expect(prefers24Hour(settings(0), false)).toBe(false);
+    });
+    it('reads settingsStore before the older friendStore place', () => {
+        expect(prefers24Hour({ ...settings(true), ...steam(false) }, true)).toBe(true);
+        expect(prefers24Hour({ ...settings('yes'), ...steam(true) }, true)).toBe(true);
+    });
     it("falls back to the locale's default", () => {
+        expect(prefers24Hour(settings(undefined), true)).toBe(false);
         expect(prefers24Hour({}, false)).toBe(true);
         expect(prefers24Hour({}, true)).toBe(false);
         expect(prefers24Hour(null, undefined)).toBe(false);

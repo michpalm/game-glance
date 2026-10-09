@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { navSoundParts, shoulderSound } from '../../src/home/navSound';
+import { gameStepSound, navSoundParts, shoulderSound } from '../../src/home/navSound';
 
 describe('navSoundParts', () => {
     // The shape probed on the Ally: one module exports the sound names (an enum) and the player (minified names change).
@@ -23,5 +23,18 @@ describe('shoulderSound', () => {
         expect(shoulderSound(0, 1)).toBe('ChangeTabs');
         expect(shoulderSound(2, 2)).toBe('FailedNav');
         expect(shoulderSound(1, null)).toBeNull();
+    });
+});
+
+describe('gameStepSound', () => {
+    it("switching games: Steam's tab sound for L1/R1, its move sound for Left/Right (both taken before Steam plays one)", () => {
+        expect(gameStepSound(0, 1, 'bumper')).toBe('ChangeTabs');
+        expect(gameStepSound(5, 0, 'bumper')).toBe('ChangeTabs');
+        expect(gameStepSound(2, 1, 'dpad')).toBe('BasicNav');
+    });
+    it('no sound when the selection does not change or there is none', () => {
+        expect(gameStepSound(3, 3, 'bumper')).toBeNull();
+        expect(gameStepSound(3, 3, 'dpad')).toBeNull();
+        expect(gameStepSound(0, null, 'bumper')).toBeNull();
     });
 });

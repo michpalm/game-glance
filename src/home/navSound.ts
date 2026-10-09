@@ -1,8 +1,11 @@
 import { findModule } from '@decky/ui';
 import { memoLookup } from './moduleLookup';
 
-/** Steam's navigation sound names used here (its enum, probed on the Ally: ChangeTabs for L1/R1 tabs, FailedNav at an end). */
-export type NavSoundName = 'ChangeTabs' | 'FailedNav';
+/**
+ * Steam's navigation sound names used here (its enum, probed on the Ally: ChangeTabs for L1/R1 tabs, FailedNav at an
+ * end, BasicNav for a d-pad move).
+ */
+export type NavSoundName = 'ChangeTabs' | 'FailedNav' | 'BasicNav';
 
 interface NavSoundParts {
     player: { PlayNavSound(sound: number): void };
@@ -35,6 +38,16 @@ export function navSoundParts(m: unknown): NavSoundParts | null {
 export function shoulderSound(tab: number, next: number | null): NavSoundName | null {
     if (next === null) return null;
     return next === tab ? 'FailedNav' : 'ChangeTabs';
+}
+
+/**
+ * The sound for one step through Home's games: ChangeTabs for L1/R1 (as on the feed tabs), BasicNav for Left/Right on
+ * the game cards (Steam's own d-pad sound, which it no longer plays because Home takes those presses). None when the
+ * selection stays (`next` equals `at`) or there is none (`next` null).
+ */
+export function gameStepSound(at: number, next: number | null, kind: 'bumper' | 'dpad'): NavSoundName | null {
+    if (next === null || next === at) return null;
+    return kind === 'bumper' ? 'ChangeTabs' : 'BasicNav';
 }
 
 const parts = memoLookup<NavSoundParts>('navigation sounds', () => navSoundParts(findModule((m: unknown) => navSoundParts(m) !== null)));
