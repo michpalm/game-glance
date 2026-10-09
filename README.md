@@ -60,8 +60,8 @@ An optional new Home screen, off by default (Quick Access → Game Glance → Sp
   gear button, or View/Select, opens Steam's own menu for the game.
 - **Steam Cloud.** For games with cloud saves, Steam's and Unifideck's, a cloud button shows the sync state and opens
   Steam's sync dialog when there is a problem.
-- **Status bar.** The time, battery (a bolt while charging, red under 20%), Wi-Fi or wired, and a dot for your own
-  online status, at the top right, on Home and the game page. It steps aside for Steam's own top bar when you move up
+- **Status bar.** The time (12 or 24 hours, as set in Steam's Settings → System), battery (a bolt while charging, red
+  under 20%), Wi-Fi or wired, and a dot for your own online status, at the top right, on Home and the game page. It steps aside for Steam's own top bar when you move up
   to it or open a Steam menu.
 - **Press down for more.** Home itself stays clean; one press down brings up three tabs (L1 and R1 switch between them,
   with Steam's tab sound):

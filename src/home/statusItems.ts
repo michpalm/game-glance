@@ -34,17 +34,32 @@ export function msToNextMinute(date: Date): number {
     return Math.max(1, 60_000 - (date.getSeconds() * 1000 + date.getMilliseconds()));
 }
 
+/** A `b24HourClock` value as a choice, or null when it is not one. */
+function clockChoice(value: unknown): boolean | null {
+    if (typeof value === 'boolean') return value;
+    if (value === 0 || value === 1) return value === 1;
+    return null;
+}
+
+type ClockGlobals = {
+    settingsStore?: { m_FriendSettings?: { b24HourClock?: unknown } };
+    friendStore?: { m_ChatStore?: { m_SettingsStore?: Record<string, unknown> } };
+};
+
 /**
  * Steam's clock setting (Settings > System's 24-hour clock is the friends setting `b24HourClock`), else the locale's
- * own default; never throws.
+ * own default; never throws. Current Steam keeps it in `settingsStore.m_FriendSettings`; older builds in the friends
+ * chat store, still read as a fallback.
  */
 export function prefers24Hour(globals: unknown, localeHour12: boolean | undefined): boolean {
     try {
-        const chat = (globals as { friendStore?: { m_ChatStore?: { m_SettingsStore?: Record<string, unknown> } } })?.friendStore?.m_ChatStore?.m_SettingsStore;
+        const g = globals as ClockGlobals | null | undefined;
+        const current = clockChoice(g?.settingsStore?.m_FriendSettings?.b24HourClock);
+        if (current !== null) return current;
+        const chat = g?.friendStore?.m_ChatStore?.m_SettingsStore;
         for (const key of ['m_FriendsSettings', 'FriendsSettings']) {
-            const value = (chat?.[key] as { b24HourClock?: unknown } | undefined)?.b24HourClock;
-            if (typeof value === 'boolean') return value;
-            if (value === 0 || value === 1) return value === 1;
+            const older = clockChoice((chat?.[key] as { b24HourClock?: unknown } | undefined)?.b24HourClock);
+            if (older !== null) return older;
         }
     } catch {
         // fall through to the locale
