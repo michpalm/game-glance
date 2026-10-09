@@ -23,6 +23,7 @@ function themeClasses(): ThemeClasses {
             root: safeFind((m) => Boolean(m.AppDetailsRoot && m.PlaySection && m.AppDetailsContainer)),
             overview: safeFind((m) => Boolean(m.Backdrop && m.BackdropGlass)),
             launch: safeFind((m) => Boolean(m.Container && m.ConfigurationHeader && m.ControlOverviewContainer)),
+            shared: safeFind((m) => Boolean(m.SharedLibrary && m.Row)),
         };
     }
     return classes;

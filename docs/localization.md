@@ -48,6 +48,9 @@ is empty, says "1 amigo jugando" / "3 amigos jugando" (`AppPortraitHover_Friends
 or "2 amigos han jugado recientemente" (`AppDetails_FriendsPlayedRecently`, `_Plural`). A sale's price no longer says "was": the
 full price is struck through after the sale price, as Steam's store shows it, so there is no word to translate.
 
+The family library pill says Steam's own "Préstamo familiar" (`AppDetails_Feature_FamilySharing`, "Family Sharing") and
+the owner's name; Steam's own line under Play ("De la biblioteca de tu grupo familiar de Steam") is hidden on the restyled page.
+
 ### B. Reworded onto Steam's own words (done)
 
 "Open Library" is now "Library" (`StartPage_Library`); the Library card's eyebrow is "My games" (`GameList_View_MyOwnGames`); the

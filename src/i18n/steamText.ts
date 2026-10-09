@@ -99,6 +99,8 @@ export const PHRASES = {
     download: p('GameAction_Download', 'Download'),
     installed: p('LibraryTab_Installed', 'Installed'),
     favorites: p('LibraryTab_Favorites', 'Favorites'),
+    // A game borrowed from the user's Steam Families library (Steam's name for the feature).
+    familySharing: p('AppDetails_Feature_FamilySharing', 'Family Sharing'),
     // The Games row picker (Quick Access): Steam's own names for its installed collection and its library sorts.
     localGames: p('GameList_View_LocalGames', 'Locally Installed Games'),
     sortLastPlayed: p('Library_SortByLastPlayed', 'Last Played'),

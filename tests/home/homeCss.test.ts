@@ -366,3 +366,13 @@ describe('homeCss', () => {
         expect(css).not.toMatch(/\.gh-card-ingame \{[^}]*--gh-ring/);
     });
 });
+
+describe('family pill on Home', () => {
+    it('sits just left of the store pill (inside it, so it follows it), drawn like it', () => {
+        const css = homeCss();
+        const rule = css.match(/\.gh-family\s*\{[^}]*\}/)?.[0] ?? '';
+        expect(rule).toMatch(/position: absolute !important; right: calc\(100% \+ 10px\) !important; top: 50% !important; transform: translateY\(-50%\) !important/);
+        expect(rule).toContain(sourcePillLook((n) => `${n}px`).split(';')[0]);
+        expect(css).toMatch(/\.gh-family-icon\s*\{/);
+    });
+});

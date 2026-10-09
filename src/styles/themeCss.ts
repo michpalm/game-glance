@@ -15,6 +15,7 @@ export interface ThemeClasses {
     root: ClassMap; // app details root module: AppDetailsRoot, PlaySection, ActionRow, ActionButtonAndStatusPanel, AppButtons, AppDetailsContainer
     play: ClassMap; // playSectionClasses: StatusAndStats, MenuButton, CloudStatus*, OfflineMode
     launch?: ClassMap; // Steam's launch overlay module: Container, ConfigurationHeader, ControlOverviewContainer, LaunchStatus
+    shared?: ClassMap; // the Play section's family library line module: Row, SharedLibrary
 }
 
 function cls(map: ClassMap, key: string): string | null {
@@ -350,7 +351,7 @@ export function buildLaunchCss(classes: ThemeClasses): string {
  * The eyebrow/title block is shown only with the full-screen layout, where the logo was; otherwise (a renamed Steam
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
-function restyleRules({ header, details, root, play }: ThemeClasses, layout: boolean): string[] {
+function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean): string[] {
     const topCapsule = cls(header, 'TopCapsule');
     const titleImage = cls(header, 'TitleImageContainer');
     const svgTitle = cls(header, 'SVGTitle');
@@ -444,6 +445,13 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         `.gg-more { display: none; }`,
         `.gg-pill { top: calc(-1 * ${d(82)}); ${sourcePillLook(d)} }`,
         `.gg-pill-icon { ${sourcePillIcon(d)} }`,
+        // A game from the family library: Steam's line under Play ("From your Steam Family's library") has no room between
+        // the row and the cards; the family pill (data/family) says it beside the store pill instead, drawn like it. It sits
+        // inside the store pill, just to its left, so it follows the pill wherever the layout puts it.
+        rule(cls(shared, 'SharedLibrary'), ` display: none !important; `),
+        `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
+        `.gg-family-icon { flex: 0 0 auto; ${sourcePillIcon(d)} }`,
     ];
 
     if (layout) {

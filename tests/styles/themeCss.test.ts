@@ -436,6 +436,13 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     };
     const restyled = buildThemeCss(steam, { restyle: true });
 
+    it('family library: Steam\'s line under Play is hidden, and the family pill sits just left of the store pill, drawn like it', () => {
+        const withShared = buildThemeCss({ ...steam, shared: { SharedLibrary: 'sl_Shared', Row: 'sl_Row' } }, { restyle: true });
+        expect(withShared).toContain('.sl_Shared { display: none !important; }');
+        expect(restyled).not.toContain('sl_Shared');
+        expect(restyled).toMatch(/\.gg-family \{ position: absolute; right: calc\(100% \+ calc\(10 \* var\(--gg-d\)\)\); top: 50%; transform: translateY\(-50%\);/);
+        expect(rulesFor(restyled, '.gg-family')).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
+    });
     it('the logo option: the same 560 x 180 box as Home, in the page\'s scale unit', () => {
         expect(restyled).toContain('.gg-logo { display: block; width: auto; height: auto; max-width: calc(560 * var(--gg-d)); max-height: calc(180 * var(--gg-d));');
     });
@@ -558,7 +565,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(none).not.toContain('visibility: hidden');
         expect(none).not.toContain('::after');
         expect(none).not.toContain('--gg-side:');
-        expect(none).not.toContain('position: absolute');
+        // (our own family pill is positioned inside our own store pill; nothing of Steam's is)
+        expect(none.replace(/\.gg-family \{[^}]*\}/, '')).not.toContain('position: absolute');
         expect(none).toContain('.gg-title {');
         expect(none).toContain('.gg-eyebrow {');
 

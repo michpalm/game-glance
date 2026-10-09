@@ -18,7 +18,8 @@ import { findLegendHeight, legendReserve } from './legend';
 import { FEED_SHEET, homeCss, stackShift } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
-import { SourcePill } from '../components/SourcePill';
+import { FamilyPill, SourcePill } from '../components/SourcePill';
+import { familyPillLabel } from '../data/family';
 import { GameStatusBar } from '../components/GameStatusBar';
 import { RecentsRow } from './RecentsRow';
 import { CARD_SCALE_HANDHELD, cardScaleFor, clampFocus, isLibraryFocus, recentsGeometry } from './recentsLayout';
@@ -303,6 +304,8 @@ export function SpotlightHome() {
     const geometry = useMemo(() => recentsGeometry(scale), [scale]);
     const css = useMemo(() => homeCss(scale), [scale]);
     const game = data.focused;
+    // A game from the family library: "Family Sharing · Grave" beside the store pill (data/family).
+    const family = game ? familyPillLabel(game.appId) : null;
     const contentUp = measuredScale !== null && resolved;
     // Once the content is up: focus what was focused. The game cards or the actions here; the tabs and the feed are
     // the feed sheet's (their cards may still be loading), which says when it is done. Without a restore (a cold start
@@ -370,7 +373,11 @@ export function SpotlightHome() {
                                     />
                                 </section>
                                 {/* The selected game's store, as the game page's pill; not on the Library card. */}
-                                {!onLibrary && data.source && <SourcePill label={data.source} className="gh-source" iconClassName="gh-source-icon" />}
+                                {!onLibrary && data.source && (
+                                    <SourcePill label={data.source} className="gh-source" iconClassName="gh-source-icon">
+                                        {family && <FamilyPill label={family} className="gh-family" iconClassName="gh-family-icon" />}
+                                    </SourcePill>
+                                )}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} />
                                 <FeedSheet
                                         data={data}

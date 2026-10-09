@@ -31,7 +31,8 @@ import { GameStatusBar } from './GameStatusBar';
 import { UnifideckRowNav } from './UnifideckRowNav';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
-import { SourcePill } from './SourcePill';
+import { FamilyPill, SourcePill } from './SourcePill';
+import { familyPillLabel } from '../data/family';
 import { GameTitle } from './GameTitle';
 
 /** A canvas length in the restyled page's scale unit (themeCss: --gg-d). */
@@ -120,6 +121,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     if (game.appId === 0) return null;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
+    const family = restyle ? familyPillLabel(game.appId) : null;
     const eyebrow = restyle ? lastPlayedEyebrow(overview, locale, unifideck?.lastPlayed ?? null) : null;
     return (
         <>
@@ -141,7 +143,12 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
-                {source && <SourcePill label={source} />}
+                {source && (
+                    <SourcePill label={source}>
+                        {/* A game from the family library (Steam's line under Play is hidden): with the restyled look only. */}
+                        {restyle && family && <FamilyPill label={family} />}
+                    </SourcePill>
+                )}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
                 <div className="gg-cards">
                     <InfoCard game={game} locale={locale} description={description} size={size} />
