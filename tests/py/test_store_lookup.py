@@ -61,3 +61,26 @@ def test_registry_cache_reloads_when_file_changes(tmp_path):
     later = time.time() + 5
     os.utime(path, (later, later))
     assert store_for_appid(cache.get(), 1) == "GOG"
+
+
+def test_key_for_appid_returns_store_key_and_game_id():
+    from gameglance.store_lookup import key_for_appid
+
+    registry = {
+        "epic:abc": {"appid": 1},
+        "gog:1450711444": {"appid": SIGNED},
+        "bad": {"appid": 5},
+        "gog:": {"appid": 6},
+    }
+    assert key_for_appid(registry, APPID) == {"store": "gog", "id": "1450711444"}
+    assert key_for_appid(registry, 1) == {"store": "epic", "id": "abc"}
+    assert key_for_appid(registry, 5) is None
+    assert key_for_appid(registry, 6) is None
+    assert key_for_appid(registry, 99) is None
+    assert key_for_appid(registry, "x") is None  # type: ignore[arg-type]
+
+
+def test_key_for_appid_keeps_colons_in_the_game_id():
+    from gameglance.store_lookup import key_for_appid
+
+    assert key_for_appid({"epic:a:b": {"appid": 7}}, 7) == {"store": "epic", "id": "a:b"}

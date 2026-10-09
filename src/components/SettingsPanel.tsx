@@ -1,15 +1,72 @@
 import { toaster } from '@decky/api';
-import { ButtonItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
-import { useEffect, useState } from 'react';
+import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
+import { useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { settings, useSettings } from '../data/settings';
+import { installUpdate, UpdateState, useUpdate } from '../data/update';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
+import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
+import { tr } from '../i18n/steamText';
+
+/** The Updates section's line under the title: the installed version and what the check found. */
+function updateLine(state: UpdateState): string {
+    const version = state.current ? `Version ${state.current}` : 'Game Glance';
+    switch (state.status) {
+        case 'checking':
+            return `${version} · checking for updates…`;
+        case 'upToDate':
+            return `${version} · up to date`;
+        case 'available':
+            return `${version} · ${state.release.version} is available`;
+        default:
+            return `${version} · could not check for updates`;
+    }
+}
+
+/**
+ * Updates: checks GitHub's latest release once a day (data/update.ts: when Game Glance loads, then daily while it runs),
+ * and installs a newer one through Decky's own installer, which asks to confirm and then reloads Game Glance. Check for
+ * updates (always there; off while a check runs) asks GitHub again.
+ */
+function UpdatesSection() {
+    const { state, recheck } = useUpdate();
+    return (
+        <PanelSection title="Updates">
+            <PanelSectionRow>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>{updateLine(state)}</div>
+            </PanelSectionRow>
+            {state.status === 'available' && (
+                <PanelSectionRow>
+                    <ButtonItem
+                        layout="below"
+                        description="Decky asks to confirm, then installs it and reloads Game Glance."
+                        onClick={async () => {
+                            if (!(await installUpdate(state.release))) {
+                                toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the update. Install it from the release page instead.' });
+                            }
+                        }}
+                    >
+                        Update to {state.release.version}
+                    </ButtonItem>
+                </PanelSectionRow>
+            )}
+            <PanelSectionRow>
+                <ButtonItem layout="below" disabled={state.status === 'checking'} onClick={recheck}>
+                    Check for updates
+                </ButtonItem>
+            </PanelSectionRow>
+        </PanelSection>
+    );
+}
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, gameLogo, homeRow, homeRowSort } = useSettings();
+    // Read when the panel opens, so a collection made since shows up.
+    const collections = useMemo(steamHomeCollections, []);
+    const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -54,6 +111,16 @@ export function SettingsPanel() {
                 <PanelSectionRow>
                     <ToggleField label="Game Glance page" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
                 </PanelSectionRow>
+                {enabled && (
+                    <PanelSectionRow>
+                        <ToggleField
+                            label="Clean look"
+                            description="One row at the bottom: Play, your stats and the store, over the full art. No description or HowLongToBeat cards."
+                            checked={cleanPage}
+                            onChange={(value) => settings.setCleanPage(value)}
+                        />
+                    </PanelSectionRow>
+                )}
             </PanelSection>
             <PanelSection title="Spotlight Home">
                 <PanelSectionRow>
@@ -64,6 +131,43 @@ export function SettingsPanel() {
                         onChange={(value) => settings.setSpotlightHome(value)}
                     />
                 </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Status bar"
+                        description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
+                        checked={homeStatusBar}
+                        onChange={(value) => settings.setHomeStatusBar(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Game logo"
+                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
+                        checked={gameLogo}
+                        onChange={(value) => settings.setGameLogo(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Games row"
+                        description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
+                        menuLabel="Games row"
+                        rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
+                        selectedOption={rowChosen}
+                        onChange={(option) => settings.setHomeRow(String(option.data))}
+                    />
+                </PanelSectionRow>
+                {rowChosen !== RECENT_ROW && (
+                    <PanelSectionRow>
+                        <DropdownItem
+                            label={sortByLabel()}
+                            menuLabel={sortByLabel()}
+                            rgOptions={ROW_SORTS.map((s) => ({ data: s, label: rowSortLabel(s) }))}
+                            selectedOption={homeRowSort}
+                            onChange={(option) => settings.setHomeRowSort(option.data as RowSort)}
+                        />
+                    </PanelSectionRow>
+                )}
                 <PanelSectionRow>
                     <ToggleField
                         label="Show wishlist deals"
@@ -142,6 +246,7 @@ export function SettingsPanel() {
                     </ButtonItem>
                 </PanelSectionRow>
             </PanelSection>
+            <UpdatesSection />
         </>
     );
 }

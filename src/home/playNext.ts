@@ -1,3 +1,4 @@
+import { tr } from '../i18n/steamText';
 export interface PlayNextCandidate {
     appId: number;
     name: string;
@@ -39,13 +40,11 @@ function hours(minutes: number): string {
 }
 
 function toCard(c: PlayNextCandidate): RecommendedCard {
-    const short = isShort(c);
     const played = c.playedMinutes > 0 ? `${hours(c.playedMinutes)} played` : '';
     const beat = c.hltbMainHours !== null && c.hltbMainHours > 0 ? `${Math.round(c.hltbMainHours * 10) / 10} h to beat` : '';
     const sub = [played, beat].filter(Boolean).join(' - ');
-    if (c.playedMinutes <= 0) return { appId: c.appId, name: c.name, pill: 'Not started', pillKey: 'notStarted', sub };
-    if (short) return { appId: c.appId, name: c.name, pill: 'Short game', pillKey: 'short', sub };
-    return { appId: c.appId, name: c.name, pill: 'Play next', pillKey: 'playNext', sub };
+    if (c.playedMinutes <= 0) return { appId: c.appId, name: c.name, pill: tr('notStarted'), pillKey: 'notStarted', sub };
+    return { appId: c.appId, name: c.name, pill: tr('playNext'), pillKey: 'playNext', sub };
 }
 
 /** Owned installed games worth picking up next: not started, then barely played, then short ones. */

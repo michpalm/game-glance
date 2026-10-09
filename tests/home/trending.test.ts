@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LastGames, RawFriend } from '../../src/home/friends';
 import {
-    mapSteamTrending, playsLabel, StoreInfo, TRENDING_AVATARS, TRENDING_MAX, TRENDING_WINDOW_MS, trendingGames, trendingLabel,
+    mapSteamTrending, StoreInfo, TRENDING_AVATARS, TRENDING_MAX, TRENDING_WINDOW_MS, trendingGames, trendingLabel,
 } from '../../src/home/trending';
 import fixture from './fixtures/friends.json';
 import steamApps from './fixtures/trending-apps.json';
@@ -82,12 +82,18 @@ describe('mapSteamTrending (Steam\'s trendingStore list, real shapes)', () => {
     it('keeps Steam\'s order: owned games "In library", others with the discount and price or Free to play, store art', () => {
         const cards = mapSteamTrending(steamApps, lookup, true);
         expect(cards.map((c) => [c.appId, c.name, c.tag, c.label, c.inLibrary, c.storeArt])).toEqual([
-            [870780, 'CONTROL Ultimate Edition', 'In library', '1 friend plays', true, null],
-            [394510, 'HELLDIVERS Dive Harder Edition', '-80%', '1 friend plays - 3,99€ (was 19,99€)', false, 'https://cdn/394510/header.jpg'],
-            [1085660, 'Destiny 2', 'Free to play', '1 friend plays', false, 'https://cdn/1085660/header.jpg'],
-            [17410, "Mirror's Edge", '-65%', '6 friends play - 6,99€ (was 19,99€)', false, 'https://cdn/17410/header.jpg'],
-            [976730, 'Halo: The Master Chief Collection', 'In library', '1 friend plays', true, null],
+            [870780, 'CONTROL Ultimate Edition', 'In library', '', true, null],
+            [394510, 'HELLDIVERS Dive Harder Edition', '-80%', '3,99€ 19,99€', false, 'https://cdn/394510/header.jpg'],
+            [1085660, 'Destiny 2', 'Free to play', '', false, 'https://cdn/1085660/header.jpg'],
+            [17410, "Mirror's Edge", '-65%', '6,99€ 19,99€', false, 'https://cdn/17410/header.jpg'],
+            [976730, 'Halo: The Master Chief Collection', 'In library', '', true, null],
         ]);
+    });
+    it('a sale strikes the full price through instead of saying "was"', () => {
+        const helldivers = mapSteamTrending(steamApps, lookup, true)[1];
+        expect(helldivers.labelParts).toEqual([{ text: '3,99€' }, { text: ' ' }, { text: '19,99€', struck: true }]);
+        // As Steam's own shelf: no "N friends" line (the avatars show who plays it); an owned game has no line.
+        expect(mapSteamTrending(steamApps, lookup, true)[0].labelParts).toEqual([]);
     });
     it('avatars: Steam\'s top friends, at most 3, "+N" for the rest of the total', () => {
         const mirror = mapSteamTrending(steamApps, lookup, true)[3];
@@ -101,7 +107,5 @@ describe('mapSteamTrending (Steam\'s trendingStore list, real shapes)', () => {
         expect(mapSteamTrending(steamApps, lookup, true, 2)).toHaveLength(2);
         expect(mapSteamTrending(null, lookup, true)).toEqual([]);
         expect(mapSteamTrending([null, { appid: -1 }, { appid: 870780 }, { appid: 870780 }], lookup, true).map((c) => c.appId)).toEqual([870780]);
-        expect(playsLabel(1)).toBe('1 friend plays');
-        expect(playsLabel(4)).toBe('4 friends play');
     });
 });

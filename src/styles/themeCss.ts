@@ -1,6 +1,7 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_FOCUS_BAD } from '../home/cloud';
+import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
 
@@ -14,6 +15,7 @@ export interface ThemeClasses {
     root: ClassMap; // app details root module: AppDetailsRoot, PlaySection, ActionRow, ActionButtonAndStatusPanel, AppButtons, AppDetailsContainer
     play: ClassMap; // playSectionClasses: StatusAndStats, MenuButton, CloudStatus*, OfflineMode
     launch?: ClassMap; // Steam's launch overlay module: Container, ConfigurationHeader, ControlOverviewContainer, LaunchStatus
+    shared?: ClassMap; // the Play section's family library line module: Row, SharedLibrary
 }
 
 function cls(map: ClassMap, key: string): string | null {
@@ -205,6 +207,149 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
 }
 
 /**
+ * Unifideck (https://github.com/mubaraknumann/unifideck, read 2026-10-05 at ed43931): on the games it manages it marks
+ * Steam's page container with this class, hides Steam's Play row and tabs, and puts its own Play row (a Focusable with
+ * its buttons) and an info panel right after the header. Our header is screen-tall, so its row would sit on the next
+ * screen ("broken view" on Reddit); these rules place it where Steam's Play row sits on the art.
+ */
+export const UNIFIDECK_PAGE = '.unifideck-hide-native-play';
+/** Unifideck's primary buttons (Play, Install, Resume, Update), each as one pill like ours. Cancel and Stop keep its look. */
+export const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn'];
+
+/** Unifideck's meta row on its page: the class-less div right after its primary button (hidden by our page; read for its words, data/unifideckLabel). */
+export const UNIFIDECK_META = `${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) + div:not([class])`;
+
+/**
+ * The Game Glance layout on a Unifideck game's page, as its own stylesheet next to buildThemeCss's (with the layout only;
+ * scoped to Unifideck's own page class, so no other page is touched; '' when the layout's classes are missing). Its Play row moves onto the art at the Play row's place (its info panel then starts the next
+ * screen, as Steam's tabs do) and its primary button becomes our accent pill. Its circle buttons wear Steam's
+ * MenuButton class, so the round buttons above already apply to them; its icon group wears AppButtons (no push right).
+ */
+export function buildUnifideckCss({ header, details, root }: ThemeClasses, options: ThemeOptions = {}): string {
+    const inner = cls(details, 'InnerContainer');
+    // Our page is on: Unifideck's own meta items (Installed size or Space required, Played, Last played) are hidden, as our
+    // card shows them. They are the children of one class-less div right after the primary button (Install or Play; the
+    // Downloading row has none, nor its Cancel / Stop). Structural, since its labels are translated; whatever the layout.
+    const hideMeta = options.restyle
+        ? rule(UNIFIDECK_META, ` display: none !important; `)
+        : '';
+    // The rest only with the full-screen layout (the same classes buildThemeCss needs for it); otherwise the page is stacked and
+    // Unifideck's row is already where it belongs.
+    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return hideMeta;
+    const primary = UNIFIDECK_PRIMARY.map((c) => `${UNIFIDECK_PAGE} ${c}`);
+    const focused = UNIFIDECK_PRIMARY.flatMap((c) => ['.gpfocus', ':focus', ':focus-within', ':hover'].map((f) => `${UNIFIDECK_PAGE} ${c}${f}`));
+    // Steam's circles run controller, settings, cloud, then extras. Unifideck's installed row has its cloud-save button first, then
+    // controller, settings and Uninstall (the only row with four buttons; the others have two), so the cloud moves after settings
+    // and anything beyond the usual four goes after it.
+    const buttons = cls(root, 'AppButtons');
+    const circleOrder = buttons
+        ? [
+            rule(`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :first-child`, ` order: 3 !important; `),
+            rule(`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :nth-child(n+4)`, ` order: 4 !important; `),
+        ]
+        : [];
+    return [
+        hideMeta,
+        ...circleOrder,
+        rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` position: absolute !important; top: var(--gg-play-top) !important;
+            left: 0 !important; right: 0 !important; width: auto !important; z-index: 2 !important; box-sizing: border-box !important;
+            padding: ${u(16)} var(--gg-side) !important; gap: var(--gg-gap) !important; background: transparent !important; `),
+        rule(primary, ` width: var(--gg-play-w) !important; min-width: 0 !important; flex: 0 0 var(--gg-play-w) !important; height: var(--gg-icon) !important;
+            justify-content: center !important; border-radius: 999px !important; background: var(--gg-accent) !important; box-shadow: none !important;
+            color: #ffffff !important; font-size: ${u(16)} !important; `),
+        rule(focused, ` background: var(--gg-accent) !important; box-shadow: 0 0 0 ${u(2)} rgba(255, 255, 255, 0.9) !important; `),
+        // Spotlight Home's look: Steam's Play row has no top padding and a 36 one below (see the playSection rule above), so the buttons start
+        // at --gg-play-top; the same here, or Unifideck's pill sits lower than Steam's.
+        options.restyle ? rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` padding-top: 0 !important; padding-bottom: ${d(36)} !important; `) : '',
+        // And the handoff's pill type, dark text on the accent, as on our own Play pill.
+        options.restyle ? rule(primary, ` font-size: ${d(22)} !important; font-weight: 700 !important; color: #0b0d10 !important; `) : '',
+    ].filter((r) => r.length > 0).join('\n');
+}
+
+/** The Clean look's bottom margin under the Play row (room for Steam's button legend), and the gaps around the row. */
+const CLEAN_BOTTOM = 36;
+/**
+ * The least space, in CSS px, from the Play pill's bottom to the screen's bottom: Steam's button legend is a fixed ~41 px strip (measured
+ * on the Ally at 828x466 and 1500x844), so on the small handheld screen the scaled 2 x 36 would put the pill under it. Docked it is exceeded (75).
+ */
+/** Steam's bottom button legend (MENU / SELECT / BACK): a fixed css height at every screen size (measured on the Ally, handheld and docked). */
+export const STEAM_LEGEND_PX = 41;
+/** The restyled cards' height with three description lines, in canvas px (measured docked: 185 css px at 1500 wide). */
+const TV_CARDS_H = 178;
+/** On a TV the cards end this far above Steam's legend: the TV's side inset (home/insets.SIDE_INSET.tv). */
+const TV_CARDS_GAP = 24;
+const CLEAN_MIN_BELOW_ROW = 61;
+const CLEAN_GAP = 28;
+
+/**
+ * The Game Glance page's Clean look (homeMode().cleanDetails, on top of the restyled page): the art takes the screen;
+ * the eyebrow and title sit just above one row at the bottom, which holds Steam's Play row (Play, controller, settings,
+ * cloud) at the left and our info card (.gg-clean-info: played, achievements, HLTB main) at the right; the store pill
+ * sits above the row at the right edge. The description and HowLongToBeat cards are not shown; Steam's tabs still
+ * start on the next screen. Its own stylesheet, only with the full-screen layout (the classes buildThemeCss needs for
+ * it); '' otherwise, and the page keeps its usual look.
+ */
+export function buildCleanCss({ header, details, root }: ThemeClasses): string {
+    const inner = cls(details, 'InnerContainer');
+    if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
+    return [
+        // The Play row moves down to the bottom: the row (pill 60 + 36 gap, --gg-row-h) ends CLEAN_BOTTOM above the screen's
+        // bottom. Steam's tabs still start at 100vh (their margin follows --gg-play-top), so nothing else moves.
+        `:root { --gg-play-top: calc(100vh - ${d(96)} - max(${d(CLEAN_BOTTOM)}, calc(${CLEAN_MIN_BELOW_ROW}px - ${d(36)}))); }`,
+        // Our block sits on the Play row itself (not under it), clicks go through to Steam's buttons.
+        rule(`${inner} > .gg-hero`, ` top: var(--gg-play-top) !important; height: var(--gg-icon) !important; pointer-events: none; `),
+        // No description or HowLongToBeat cards in this look.
+        `.gg-cards { display: none !important; }`,
+        // The info card at the right end of the row, vertically centred on the Play pill; the glass of the other cards.
+        `.gg-clean-info { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${d(28)};
+            padding: ${d(14)} ${d(24)}; border-radius: ${d(16)}; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 16, 22, 0.38);
+            backdrop-filter: blur(${d(16)}); color: #fff; }`,
+        `.gg-clean-info > div { display: flex; flex-direction: column; gap: ${d(4)}; }`,
+        `.gg-clean-info .gg-value { font-size: ${d(22)}; line-height: 1.2; }`,
+        `.gg-clean-info .gg-bar { width: ${d(96)}; height: ${d(4)}; margin-top: ${d(2)}; }`,
+        // The store pill above the row, at its right edge.
+        `.gg-pill { top: auto; bottom: calc(100% + ${d(CLEAN_GAP - 8)}); }`,
+        // The eyebrow and title just above the row, at the left (their bottom CLEAN_GAP above the Play pill).
+        rule(`${inner} > .gg-titleblock`, ` top: calc(var(--gg-play-top) - ${d(CLEAN_GAP)}) !important; transform: translateY(-100%); `),
+    ].filter((r) => r.length > 0).join('\n');
+}
+
+/** How long the page takes to fade away under Steam's launch overlay (and back if the launch is cancelled). */
+const LAUNCH_FADE_MS = 200;
+
+/**
+ * What hides while Steam's launch overlay is up: `overlay`, the overlay's selector (null: unknown, nothing hides), and
+ * `hide`, everything on the page with text on it (our title and cards, Steam's logo and title, its Play row and tabs).
+ * Steam's art (the header itself) is not in the list, so only the game's art is left under the overlay.
+ */
+export function launchTargets({ header, details, root, launch }: ThemeClasses): { overlay: string | null; hide: string[] } {
+    const overlay = cls(launch, 'Container');
+    if (!overlay) return { overlay: null, hide: [] };
+    const hide = present([
+        cls(header, 'BoxSizer'),
+        cls(header, 'TitleImageContainer'),
+        cls(header, 'SVGTitle'),
+        cls(details, 'AppDetailsOverviewPanel'),
+        cls(root, 'AppDetailsContainer'),
+    ]);
+    return { overlay, hide: ['.gg-titleblock', '.gg-hero', ...hide] };
+}
+
+/**
+ * While a game launches (only while the overlay is shown, see launchOverlay.launchOverlayShown): the page's text fades
+ * away and the overlay dims the art less than its resting dim, so Steam's launch screen sits on the game's art alone
+ * (Reddit feedback: the page's text bled through the overlay's). '' when the overlay's class is unknown.
+ */
+export function buildLaunchCss(classes: ThemeClasses): string {
+    const { overlay, hide } = launchTargets(classes);
+    if (!overlay) return '';
+    return [
+        `${hide.join(', ')} { opacity: 0 !important; transition: opacity ${LAUNCH_FADE_MS}ms ease !important; }`,
+        `:root ${overlay} { background: rgba(0, 0, 0, 0.55) !important; }`,
+    ].join('\n');
+}
+
+/**
  * Spotlight Home's details look (handoff "2. Game Glance (details)"), appended after the 1.1.1 rules so they win
  * without touching them. Same defensive pattern: a rule needing a Steam class that is missing is skipped. On Steam's
  * elements it only sets colours, the focus glow, the scrim, the logo's visibility (its box stays in place) and the
@@ -212,7 +357,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
  * The eyebrow/title block is shown only with the full-screen layout, where the logo was; otherwise (a renamed Steam
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
-function restyleRules({ header, details, root, play }: ThemeClasses, layout: boolean): string[] {
+function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean): string[] {
     const topCapsule = cls(header, 'TopCapsule');
     const titleImage = cls(header, 'TitleImageContainer');
     const svgTitle = cls(header, 'SVGTitle');
@@ -236,6 +381,9 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
         // so the cloud icon's position (counted from --gg-side) stays right.
         playSection ? `:root { --gg-side: ${d(56)}; }` : '',
+        // A TV (screenScale.isTvScreen: 1.7x the handheld's 828x466 or more: 1408 x 793) takes the status dot's centre line (1.7vw, 24 canvas px) instead of 3.9vw:
+        // 56 read too far from the edge on a big screen. The handheld and the Deck keep 56. (Home does the same: home/insets.)
+        playSection ? `@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-side: ${d(24)}; } }` : '',
         rule(playSection, ` padding-left: var(--gg-side) !important; padding-right: var(--gg-side) !important; `),
 
         // Handoff sizes (Play pill 340x60, 60px circles, gap 14), scaled like Home's. They feed the 1.1.1 rules
@@ -276,7 +424,11 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
         `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; font-size: ${d(64)}; line-height: 1; font-weight: 800; letter-spacing: -0.02em;
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;
-            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }`,
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }`,
+
+        // The logo option (components/GameTitle): the game's logo in the title's place, the same box as on Home (homeCss.LOGO_BOX).
+        `.gg-logo { display: block; width: auto; height: auto; max-width: ${d(LOGO_BOX.width)}; max-height: ${d(LOGO_BOX.height)}; object-fit: contain; object-position: left bottom;
+            filter: drop-shadow(0 ${d(4)} ${d(24)} rgba(0, 0, 0, 0.45)); }`,
 
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass; its type sizes.
         `.gg-cards { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: ${d(18)}; }`,
@@ -299,19 +451,33 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         `.gg-more { display: none; }`,
         `.gg-pill { top: calc(-1 * ${d(82)}); ${sourcePillLook(d)} }`,
         `.gg-pill-icon { ${sourcePillIcon(d)} }`,
+        // A game from the family library: Steam's line under Play ("From your Steam Family's library") has no room between
+        // the row and the cards; the family pill (data/family) says it beside the store pill instead, drawn like it. It sits
+        // inside the store pill, just to its left, so it follows the pill wherever the layout puts it.
+        rule(cls(shared, 'SharedLibrary'), ` display: none !important; `),
+        `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
+        `.gg-family-icon { flex: 0 0 auto; ${sourcePillIcon(d)} }`,
     ];
 
     if (layout) {
         rules.push(
-            // Where the logo was: left inset, top 120 (as on Home, measured from the screen's top).
-            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: ${d(120)} !important;
-                left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
+            // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the
+            // Play row on every screen (the row sits lower on a TV, --gg-play-top's media query): title, eyebrow, row and
+            // cards stay one stack, the eyebrow always the same distance above the row, and a longer title grows upward.
+            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: calc(var(--gg-play-top) - ${d(36)}) !important;
+                transform: translateY(-100%) !important; left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
             // Steam's logo, and its text title for games without one, give way to our title (hidden in place), only
             // while our title is on the page: Steam's header is the first child of the page container.
             rule(titleImage && `${inner}:has(> .gg-titleblock) ${topCapsule} ${titleImage}`, ` visibility: hidden !important; `),
             rule(svgTitle && `${inner}:has(> .gg-titleblock) ${topCapsule} ${svgTitle}`, ` visibility: hidden !important; `),
             // Handoff: Play row top = H - 386 and row = pill 60 + 36 gap, so the cards (at the row's bottom) start at H - 290.
             `:root { --gg-play-top: calc(100vh - ${d(386)}); --gg-row-h: ${d(96)}; }`,
+            // A TV (the side inset's media query): Steam's legend is a fixed STEAM_LEGEND_PX at every size, so the handoff's
+            // H - 386, made for the handheld (where the legend is a third of that space), left a wide band under the cards.
+            // There the row and cards are set from the bottom: the cards (three description lines, TV_CARDS_H) end the TV's
+            // side inset (24) above the legend. The handheld and the Deck keep H - 386.
+            `@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-play-top: calc(100vh - ${STEAM_LEGEND_PX}px - ${d(96 + TV_CARDS_H + TV_CARDS_GAP)}); } }`,
             // The handoff's stronger scrims over the 1.1.1 ones.
             rule(`${topCapsule}::after`, ` background: ${HANDOFF_SCRIM_LEFT}, ${HANDOFF_SCRIM_BOTTOM},
                 ${SCRIM_BOTTOM}, ${SCRIM_LEFT}; `),

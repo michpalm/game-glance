@@ -3,6 +3,7 @@ import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ReactNode, useRef } from 'react';
 import { IoCloudDoneOutline, IoCloudOfflineOutline, IoCloudOutline, IoCloudUploadOutline, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { LOG_PREFIX } from '../constants';
+import { markLaunch } from '../data/launchIntent';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
@@ -12,6 +13,7 @@ import { gameOpenArt, openGame, openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
 import type { HomeGame } from './useHomeData';
+import { pillWord, tr } from '../i18n/steamText';
 
 type AppsApi = {
     RunGame?(gameId: string, launchOptions: string, param: number, launchSource: number): void;
@@ -34,6 +36,16 @@ function steamOr(what: string, appId: number, call: (api: AppsApi) => boolean) {
         console.warn(`${LOG_PREFIX} Home: ${what} failed`, error);
     }
     openPage(appId);
+}
+
+/** Steam's game context menu at `anchor`, as the game page's gear opens it (gameMenu); Properties if it is unavailable. */
+export function openGameActions(appId: number, anchor: HTMLElement | null) {
+    if (openGameMenu(appId, anchor)) return;
+    steamOr('properties', appId, (api) => {
+        if (!api.OpenAppSettingsDialog) return false;
+        api.OpenAppSettingsDialog(appId, '');
+        return true;
+    });
 }
 
 /** The local client's id in Steam's download calls (per_client_data.clientid of this machine). */
@@ -127,13 +139,26 @@ export interface RowButtons {
     onButtonUp?(evt: GamepadEvent): void;
 }
 
+/** B on the action row: back to the game cards (focusZones.onBack('actions')); the event stops here. */
+function backHandler(onBack: (() => void) | undefined) {
+    if (!onBack) return undefined;
+    return (evt: CustomEvent) => {
+        try {
+            evt?.stopPropagation?.();
+            onBack();
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} Home: back from the actions failed`, error);
+        }
+    };
+}
+
 /** Home's only action when there are no recents: the Library pill, which takes Home's focus then. */
 export function LibraryActionRow({ preferred }: { preferred?: boolean }) {
     return (
         <Focusable className="gh-actions" flow-children="row">
-            <ActionButton className="gh-btn-library" label="Open Library" onPress={openLibrary} preferredFocus={preferred}>
+            <ActionButton className="gh-btn-library" label={tr('library')} onPress={openLibrary} preferredFocus={preferred}>
                 <span className="gh-btn-icon"><IoGrid /></span>
-                <span>Open Library</span>
+                <span>{tr('library')}</span>
             </ActionButton>
         </Focusable>
     );
@@ -152,10 +177,10 @@ export function LibraryActionRow({ preferred }: { preferred?: boolean }) {
  * Install, missing Steam calls) open it directly. For the running game the pill reads Resume and opens its page
  * rather than launching it again. While Steam installs, updates or downloads the game the pill fills left to right
  * with the progress and reads the state and percent (downloadProgress).
- * `preferred`: the pill takes focus when focus enters the row and on Home's first focus. B is not handled here, so
- * it reaches Steam's own handling exactly as on stock Home (focusZones.onBack('actions') === 'stock').
+ * `preferred`: the pill takes focus when focus enters the row (Home's first focus is the game cards). B goes back to
+ * the game cards (`onBack`, focusZones.onBack('actions')).
  */
-export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null }: {
+export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null, onBack }: {
     game: HomeGame | null;
     /** The selected game's Steam Cloud state (useCloud); null hides the cloud button, as the game page hides its status. */
     cloud?: CloudState | null;
@@ -164,15 +189,17 @@ export function ActionRow({ game, running = false, download = null, preferred, b
     status?: number | null;
     preferred?: boolean;
     buttons?: RowButtons;
+    /** B: back to the game cards. */
+    onBack?(): void;
 }) {
     const gear = useRef<HTMLElement | null>(null);
-    const row = { className: 'gh-actions', 'flow-children': 'row', navEntryPreferPosition: PREFERRED_CHILD as NavEntryPositionPreferences, onButtonDown: buttons?.onButtonDown, onButtonUp: buttons?.onButtonUp };
+    const row = { className: 'gh-actions', 'flow-children': 'row', navEntryPreferPosition: PREFERRED_CHILD as NavEntryPositionPreferences, onButtonDown: buttons?.onButtonDown, onButtonUp: buttons?.onButtonUp, onCancel: backHandler(onBack) };
     if (!game) {
         return (
             <Focusable {...row}>
-                <ActionButton key="primary" className="gh-btn-library" label="Open Library" onPress={openLibrary} preferredFocus={preferred}>
+                <ActionButton key="primary" className="gh-btn-library" label={tr('library')} onPress={openLibrary} preferredFocus={preferred}>
                     <span className="gh-btn-icon"><IoGrid /></span>
-                    <span>Open Library</span>
+                    <span>{tr('library')}</span>
                 </ActionButton>
             </Focusable>
         );
@@ -200,25 +227,20 @@ export function ActionRow({ game, running = false, download = null, preferred, b
     const fill = steamPill ? (download ? play.fill : null) : play.fill;
     const appId = game.appId;
     // Steam's game context menu, as the game page's gear opens it (gameMenu); Properties if it is unavailable.
-    function openMenu(anchor: HTMLElement | null) {
-        if (openGameMenu(appId, anchor)) return;
-        steamOr('properties', appId, (api) => {
-            if (!api.OpenAppSettingsDialog) return false;
-            api.OpenAppSettingsDialog(appId, '');
-            return true;
-        });
-    }
+    const openMenu = (anchor: HTMLElement | null) => openGameActions(appId, anchor);
     return (
         <Focusable {...gameRow}>
             <ActionButton
                 key="primary"
                 className={`gh-btn-play${fill === null ? '' : ' gh-btn-dl'}`}
-                label={steamPill?.label ?? play.label}
+                label={pillWord(steamPill?.label ?? play.label)}
                 fill={fill}
                 preferredFocus={preferred}
                 onPress={(el) => {
                     if (steamPill) {
                         try {
+                            // Steam's Play opens the game's page for its launch screen; the page then shows only the art.
+                            if (steamPill.action === 'Play') markLaunch(appId);
                             steamPill.run(el?.ownerDocument?.defaultView ?? window);
                             return;
                         } catch (error) {
@@ -229,17 +251,18 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                     if (!play.launch) return openPage(appId);
                     steamOr('launch', appId, (api) => {
                         if (!api.RunGame) return false;
+                        markLaunch(appId);
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
                     });
                 }}
             >
                 <span className="gh-btn-icon">{steamPill ? steamPill.icon : play.label === 'Pause' ? <IoPause /> : play.label === 'Download' || play.label === 'Update' ? <IoDownload /> : <IoPlay />}</span>
-                <span className="gh-btn-label">{steamPill?.label ?? play.label}</span>
+                <span className="gh-btn-label">{pillWord(steamPill?.label ?? play.label)}</span>
             </ActionButton>
             <ActionButton
                 className="gh-btn-circle"
-                label="Controller settings"
+                label={tr('controllerSettings')}
                 onPress={() => steamOr('controller settings', appId, (api) => {
                     if (!api.ShowControllerConfigurator) return false;
                     api.ShowControllerConfigurator(appId);
@@ -248,12 +271,12 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             >
                 <span className="gh-btn-icon"><IoGameControllerOutline /></span>
             </ActionButton>
-            <ActionButton className="gh-btn-circle" label="Manage" setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
+            <ActionButton className="gh-btn-circle" label={tr('manage')} setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
                 <span className="gh-btn-icon"><IoSettingsOutline /></span>
             </ActionButton>
             <ActionButton
                 className="gh-btn-circle"
-                label="Game details"
+                label={tr('gameDetails')}
                 onPress={(el) => openGame(appId, focusedCapsule(el) ?? el, gameOpenArt(appId))}
             >
                 <span className="gh-btn-icon"><IoInformationCircleOutline /></span>

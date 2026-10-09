@@ -67,7 +67,7 @@ describe('feedScroll', () => {
 
 describe('feedCardWidth', () => {
     it('uses the handoff widths per card type', () => {
-        expect(feedCardWidth('news', true)).toBe(600);
+        expect(feedCardWidth('news', true)).toBe(462);
         expect(feedCardWidth('news', false)).toBe(320);
         expect(feedCardWidth('friends', false)).toBe(230);
         expect(feedCardWidth('recommended', false)).toBe(187);
@@ -90,12 +90,14 @@ describe('feedItems', () => {
         recommended: [{ appId: 30, name: 'Game 30', pill: 'Not started', pillKey: 'notStarted' as const, sub: '' }],
     };
 
-    it('maps news: featured 623 then 332 (the handoff 600/320 at row 1\'s 270), event art first, opens the news update', () => {
+    it('maps news: featured 480 (16:9 at row 1\'s 270, the event art\'s shape) then 332 (the handoff 320 at 270), event art fitted over the hero, opens the news update', () => {
         const items = feedItems('news', data, art);
-        expect(items.map((i) => i.width)).toEqual([623, 332]);
+        expect(items.map((i) => i.width)).toEqual([480, 332]);
         expect(items.map((i) => i.featured)).toEqual([true, false]);
-        expect(items[0].art).toEqual(['https://event/1.png', 'hero-10']);
+        expect(items[0].art).toEqual(['hero-10']);
+        expect(items[0].fit).toBe('https://event/1.png');
         expect(items[1].art).toEqual(['hero-11']);
+        expect(items[1]).not.toHaveProperty('fit');
         expect(items[0]).toMatchObject({ pill: 'Major update', title: 'Big update', sub: 'GAME 10 - TODAY', accentAppId: 10, avatar: null });
         expect(items[0].opens).toEqual({ kind: 'news', appId: 10, gid: '1' });
         expect(items[1].opens).toEqual({ kind: 'news', appId: 11, gid: '2' });
@@ -146,7 +148,7 @@ describe('feedItems', () => {
     it('a joinable friend: Join tag, A asks to join with Steam\'s url; a game not owned opens its store page', () => {
         const join = { ...data.friends[0], joinUrl: 'steam://rungame/20/7656' };
         const [card] = feedItems('friends', { ...data, friends: [join] }, art);
-        expect(card).toMatchObject({ pill: 'Join', opens: { kind: 'join', appId: 20, url: 'steam://rungame/20/7656', question: 'Join friend one in Game 20?' } });
+        expect(card).toMatchObject({ pill: 'Join', opens: { kind: 'join', appId: 20, url: 'steam://rungame/20/7656', question: 'friend one · Game 20' } });
         const store = { ...data.friends[0], gameInLibrary: false };
         expect(feedItems('friends', { ...data, friends: [store] }, art)[0].opens).toEqual({ kind: 'store', appId: 20 });
     });
@@ -213,7 +215,8 @@ describe('feed rows (raised sheet geometry)', () => {
             expect(feedRows('recommended', space, true).row1).toBe(270);
         }
         expect(feedRows('friends', 436, false)).toEqual({ row1: 260, row2: 0, row2Top: 0, total: 260 });
-        expect(feedCardWidthAt('news', true, 270)).toBe(623);
+        expect(feedCardWidthAt('news', true, 270)).toBe(480);
+        expect(feedCardWidthAt('news', true, 230)).toBe(409);
         expect(feedCardWidthAt('news', false, 270)).toBe(332);
         expect(feedCardWidthAt('recommended', false, 270)).toBe(194);
         expect(feedCardWidthAt('friends', false, 360)).toBe(230);
@@ -235,7 +238,7 @@ describe('What\'s new second row', () => {
         const data = { ...base, updated: [{ appId: 50, name: 'Updated Game', rtLastUpdated: 1, label: 'Updated today' }] };
         expect(hasSecondRow('news', data)).toBe(true);
         const items = feedItems('news', data, art, 426);
-        expect(items.map((i) => [i.key, i.row, i.height, i.width])).toEqual([['news-1', 0, 270, 623], ['updated-50', 1, 118, 252]]);
+        expect(items.map((i) => [i.key, i.row, i.height, i.width])).toEqual([['news-1', 0, 270, 480], ['updated-50', 1, 118, 252]]);
         expect(items[1]).toMatchObject({ art: ['hero-50'], title: 'Updated Game', sub: 'Updated today', pill: '', opens: { kind: 'page', appId: 50 }, accentAppId: 50 });
     });
     it('Steam\'s recently completed cards show the update line and the size, as stock', () => {
@@ -245,7 +248,7 @@ describe('What\'s new second row', () => {
     it('without updated games there is no second row; the news cards keep their 270 size', () => {
         expect(hasSecondRow('news', base)).toBe(false);
         const items = feedItems('news', { ...base, updated: [] }, art, 426);
-        expect(items.map((i) => [i.row, i.height, i.width])).toEqual([[0, 270, 623]]);
+        expect(items.map((i) => [i.row, i.height, i.width])).toEqual([[0, 270, 480]]);
     });
 });
 
@@ -253,7 +256,7 @@ describe('Recommended second row: wishlist sales', () => {
     const art = (appId: number) => ({ hero: [`hero-${appId}`], capsule: [`cap-${appId}`], wide: [`wide-${appId}`] });
     const play = [{ appId: 30, name: 'Game 30', pill: 'Play next', pillKey: 'playNext' as const, sub: '' }];
     const deals = [
-        { appId: 70, name: 'Big Sale', pill: '-75%', sub: '$4.99 - was $19.99' },
+        { appId: 70, name: 'Big Sale', pill: '-75%', sub: '$4.99 $19.99', subParts: [{ text: '$4.99' }, { text: ' ' }, { text: '$19.99', struck: true }] },
         { appId: 71, name: 'Small Sale', pill: '-20%', sub: 'On your wishlist' },
     ];
     it('wide row-2 deal cards under Play next (row 1 at 270), discount badge and price, opening the store page', () => {
@@ -266,7 +269,7 @@ describe('Recommended second row: wishlist sales', () => {
             ['deal-70', 1, 128, 274],
             ['deal-71', 1, 128, 274],
         ]);
-        expect(items[1]).toMatchObject({ art: ['wide-70'], pill: '-75%', title: 'Big Sale', sub: '$4.99 - was $19.99', opens: { kind: 'store', appId: 70 } });
+        expect(items[1]).toMatchObject({ art: ['wide-70'], pill: '-75%', title: 'Big Sale', sub: '$4.99 $19.99', subParts: [{ text: '$4.99' }, { text: ' ' }, { text: '$19.99', struck: true }], opens: { kind: 'store', appId: 70 } });
     });
     it('no deals (setting off, private wishlist or none): one row, Play next keeps its 270 size', () => {
         const items = feedItems('recommended', { news: [], friends: [], recommended: play, deals: [] }, art, 436);
@@ -295,7 +298,7 @@ describe('Friends second row: trending amongst friends', () => {
     const trending = [
         { appId: 80, name: 'Owned Game', playing: 2, played: 0, label: '2 friends playing', inLibrary: true, avatars: [{ url: 'a.jpg', initial: 'A' }], moreFriends: 1, tag: 'In library', storeArt: null },
         { appId: 81, name: 'Store Game', playing: 0, played: 1, label: '1 friend played recently', inLibrary: false, avatars: [], moreFriends: 0, tag: '', storeArt: null },
-        { appId: 82, name: 'Sale Game', playing: 0, played: 1, label: '1 friend plays - 3,99€ (was 19,99€)', inLibrary: false, avatars: [], moreFriends: 0, tag: '-80%', storeArt: 'https://cdn/82/header.jpg' },
+        { appId: 82, name: 'Sale Game', playing: 0, played: 1, label: '3,99€ 19,99€', labelParts: [{ text: '3,99€ ' }, { text: '19,99€', struck: true }], inLibrary: false, avatars: [], moreFriends: 0, tag: '-80%', storeArt: 'https://cdn/82/header.jpg' },
     ];
     it('rows on every screen: friends stay 260; trending under its header is shorter (at most 128) and fits above the legend', () => {
         for (const h of [800, 810, 810.75, 960, 2000]) {
@@ -317,7 +320,7 @@ describe('Friends second row: trending amongst friends', () => {
         expect(items[1]).toMatchObject({ art: ['wide-80'], title: 'Owned Game', pill: 'In library', sub: '2 friends playing', opens: { kind: 'page', appId: 80 }, accentAppId: 80, friends: [{ url: 'a.jpg', initial: 'A' }], moreFriends: 1 });
         expect(items[2]).toMatchObject({ art: ['store-81'], sub: '1 friend played recently', opens: { kind: 'store', appId: 81 }, accentAppId: null });
         // Steam's own store header for a game not in the library, with its discount tag.
-        expect(items[3]).toMatchObject({ art: ['https://cdn/82/header.jpg'], pill: '-80%', opens: { kind: 'store', appId: 82 } });
+        expect(items[3]).toMatchObject({ art: ['https://cdn/82/header.jpg'], pill: '-80%', subParts: [{ text: '3,99€ ' }, { text: '19,99€', struck: true }], opens: { kind: 'store', appId: 82 } });
     });
     it('no trending games: no header and no row, the friend cards keep their size', () => {
         const items = feedItems('friends', { news: [], recommended: [], friends, trending: [] }, art, 426);

@@ -20,7 +20,15 @@ export interface FetchAllDeps {
     sleep(ms: number): Promise<void>;
     notify(message: string): void;
     delayMs: number; // pause after each network fetch, to stay gentle on HowLongToBeat
+    /** How long one game may take before it is skipped (a request that never answers must not stop the run). */
+    gameTimeoutMs?: number;
 }
+
+/**
+ * One game's time limit: a HowLongToBeat lookup and a description, each normally a second or two. A request that never
+ * answered (seen on the Ally: the run stuck at 0 / 55, Stop doing nothing) skips the game instead of holding the run.
+ */
+export const GAME_TIMEOUT_MS = 45_000;
 
 const plural = (n: number) => (n === 1 ? 'game' : 'games');
 
@@ -28,6 +36,8 @@ const plural = (n: number) => (n === 1 ? 'game' : 'games');
 export function createFetchAll(deps: FetchAllDeps) {
     let state: FetchAllState = { running: false, done: 0, total: 0, found: 0, notFound: 0 };
     let stopRequested = false;
+    /** Wakes a run waiting on a game, so Stop takes effect at once. */
+    let wakeOnStop: (() => void) | null = null;
     const listeners = new Set<() => void>();
     const set = (next: Partial<FetchAllState>) => {
         state = { ...state, ...next };
@@ -54,13 +64,29 @@ export function createFetchAll(deps: FetchAllDeps) {
             return;
         }
         set({ total: games.length });
+        const limit = deps.gameTimeoutMs ?? GAME_TIMEOUT_MS;
         for (const game of games) {
             let outcome: PrefetchOutcome | null = null;
+            let timer: ReturnType<typeof setTimeout> | undefined;
             try {
-                outcome = await deps.prefetch(game);
+                // The game's lookup, its time limit, or Stop: whichever comes first.
+                outcome = await Promise.race([
+                    deps.prefetch(game),
+                    new Promise<null>((resolve) => {
+                        timer = setTimeout(() => resolve(null), limit);
+                    }),
+                    new Promise<null>((resolve) => {
+                        wakeOnStop = () => resolve(null);
+                    }),
+                ]);
             } catch {
                 outcome = null; // one broken game should not stop the rest
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
+                wakeOnStop = null;
             }
+            // Stop interrupted a game still waiting: it does not count. A game that finished still does (below).
+            if (stopRequested && outcome === null) break;
             if (outcome?.status === 'unavailable') {
                 set({ running: false });
                 notify('HowLongToBeat could not be reached. Try again later.');
@@ -87,6 +113,7 @@ export function createFetchAll(deps: FetchAllDeps) {
         start,
         stop: () => {
             stopRequested = true;
+            wakeOnStop?.();
         },
         state: () => state,
         subscribe(listener: () => void) {

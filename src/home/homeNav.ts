@@ -4,6 +4,7 @@ import { browserStores, capsuleUrls, heroUrls, landscapeUrls } from './artwork';
 import { markLeaving } from './homeMemory';
 import { cssLayers, openArtLayers, wideArt } from './homeView';
 import { mountOpenOverlay } from './OpenOverlay';
+import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, DOMRectLike, OpenTransition } from './openTransition';
 
 /** Opens a game's page directly, without the transition (Play pill fallbacks, Steam call fallbacks). */
@@ -104,13 +105,17 @@ export function openLibrary() {
 /**
  * Moves gamepad focus to a Home element (the handoff's "focus item 0 via a ref"): the one mechanism used by the
  * restore, the Library card hand-off and every B step (tabs -> the Play pill, feed -> tabs), so there is a single fix point.
- * Assumes Steam's gamepad focus follows DOM focus; warns when the element did not take it (device diagnostic).
+ * Steam's gamepad focus normally follows DOM focus; when it does not (Steam's window without system focus), the
+ * element's own navigation node takes it (steamFocus). Warns when the element did not take DOM focus (device diagnostic).
  */
-export function focusElement(el: HTMLElement | null | undefined, what: string) {
+export function focusElement(el: HTMLElement | null | undefined, what: string, steamFocus: (el: HTMLElement) => boolean = takeSteamFocus) {
     try {
         if (!el) return;
         el.focus({ preventScroll: true });
         if (el.ownerDocument?.activeElement !== el) console.warn(`${LOG_PREFIX} Home: ${what} did not take focus`);
+        // Steam's gamepad focus (what the controller drives) did not follow: its window has no system focus. Hand it over
+        // directly, as Steam's own D-pad does (steamFocus).
+        if (!el.classList?.contains('gpfocus')) steamFocus(el);
     } catch (error) {
         console.warn(`${LOG_PREFIX} Home: could not focus ${what}`, error);
     }

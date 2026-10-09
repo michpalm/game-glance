@@ -10,14 +10,17 @@ import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from '.
 import { focusElement } from './homeNav';
 import { clampTab, HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
 import { useCardAccents } from './useHomeData';
+import { playNavSound, shoulderSound } from './navSound';
+import { tr } from '../i18n/steamText';
 
 const PREFERRED_CHILD = PREFERRED as NavEntryPositionPreferences;
 const FIRST = NAV_FIRST as NavEntryPositionPreferences;
 
-const TABS: Array<{ id: FeedTab; label: string; empty: string }> = [
-    { id: 'news', label: 'What\'s new', empty: 'Nothing new' },
-    { id: 'friends', label: 'Friends', empty: 'No friends online' },
-    { id: 'recommended', label: 'Recommended', empty: 'Nothing to suggest yet' },
+// Labels and empty lines are Steam's words, read when drawn (Steam's table may not be loaded when this module is).
+const TABS: Array<{ id: FeedTab; label: () => string; empty: () => string }> = [
+    { id: 'news', label: () => tr('tabWhatsNew'), empty: () => tr('noUpdates') },
+    { id: 'friends', label: () => tr('tabFriends'), empty: () => tr('noResults') },
+    { id: 'recommended', label: () => tr('tabRecommended'), empty: () => tr('noResults') },
 ];
 
 function urls(read: () => string[]): string[] {
@@ -54,22 +57,22 @@ function cancel(zone: 'tabs' | 'feed', step: () => void) {
  * The feed sheet: tab strip (What's new / Friends / Recommended) and the selected tab's cards. Like Steam's own
  * tabs, a tab is selected when it takes focus (so left/right switches the tab) and, once the sheet has been
  * entered, the selected tab is the preferred child when focus comes down from the actions. A tab without cards shows its own empty text and
- * renders no focusable row, so focus stays on the tabs. B: feed -> selected tab -> the Play pill (focusZones.onBack).
+ * renders no focusable row, so focus stays on the tabs. B: feed -> selected tab -> the game cards (focusZones.onBack).
  * `raised`: focus is in the tabs or feed (the page is translated up); `onZone` reports which one took focus.
  * L1/R1 anywhere in the tabs or feed switch the tab, as on Steam's own tabbed pages (focusZones.tabForButton);
- * on the action row L1/R1 select the game instead (bumper navigation), so the off-screen feed never changes from there.
+ * on the game cards and the action row L1/R1 select the game instead, so the off-screen feed never changes from there.
  */
-export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActions, restore = null, onRestored }: {
+export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames, restore = null, onRestored }: {
     data: FeedData;
     raised: boolean;
     viewport: number;
     /** Height the raised sheet's rows may use (feedLayout.feedSpace of the canvas height). */
     space: number;
     onZone(zone: 'tabs' | 'feed'): void;
-    onBackToActions(): void;
+    onBackToGames(): void;
     /** Where Home was when the user left it (homeMemory), applied once: the tab, the card, and focus in the tabs or feed. */
     restore?: HomeMemory | null;
-    /** The restore is done (or given up), so Home stops holding the Play pill's focus back. */
+    /** The restore is done (or given up), so Home stops holding its first focus back. */
     onRestored?(): void;
 }) {
     const [tab, setTab] = useState(() => clampTab(restore?.tab ?? 0, TABS.length));
@@ -78,7 +81,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
     const [at, setAt] = useState<[number, number]>([0, 0]);
     const [row, setRow] = useState<0 | 1>(0);
     // Set once focus has been in the tabs or feed in this mount. Until then the sheet claims no preferred focus
-    // (Home opens on the Play pill) and its rows enter at their first child, which is then the selected
+    // (Home opens on the game cards) and its rows enter at their first child, which is then the selected
     // tab and card (tab 0, card 0: neither can change before the sheet is entered). Card accents also wait for it.
     const [entered, setEntered] = useState(false);
     const [restoring, setRestoring] = useState(restore !== null);
@@ -171,7 +174,8 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
     /**
      * L1/R1 (Steam's own tab pattern: handled, then stopped so nothing else acts on them). In the tabs, focusing
      * the new tab selects it through its own focus handler (selectTab). In the feed, the tab switches and focus moves
-     * to the new tab's first card once rendered (the old card unmounts). At an end nothing changes.
+     * to the new tab's first card once rendered (the old card unmounts). At an end nothing changes. Steam's tab sounds play
+ * either way (navSound: the press never reaches Steam).
      */
     const shoulder = (zone: 'tabs' | 'feed') => (evt: GamepadEvent) => {
         try {
@@ -179,6 +183,8 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
             if (next === null) return;
             evt.preventDefault?.();
             evt.stopPropagation?.();
+            const sound = shoulderSound(tab, next);
+            if (sound) playNavSound(sound);
             if (next === tab) return;
             if (zone === 'tabs') {
                 focusElement(tabRefs.current[next], `${TABS[next].id} tab`);
@@ -193,7 +199,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
     };
     const onlineFriends = Math.max(0, Math.floor(Number(data.friendsOnline) || 0));
     const backFromTabs = cancel('tabs', () => {
-        if (onBack('tabs') === 'actions') onBackToActions();
+        if (onBack('tabs') === 'recents') onBackToGames();
     });
     const backFromFeed = cancel('feed', () => {
         if (onBack('feed') === 'tabs') focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
@@ -219,7 +225,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
                         role="tab"
                         aria-selected={i === tab}
                     >
-                        <span>{t.label}</span>
+                        <span>{t.label()}</span>
                         {t.id === 'friends' && (
                             <span className={`gh-tab-count${onlineFriends > 0 ? ' gh-tab-count-on' : ''}`} aria-label={`${onlineFriends} online`}>
                                 <FaUserFriends aria-hidden="true" />
@@ -268,7 +274,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToActio
                         </div>
                     ))
                 ) : (
-                    <div className="gh-feed-empty">{TABS[tab].empty}</div>
+                    <div className="gh-feed-empty">{TABS[tab].empty()}</div>
                 )}
             </div>
         </>

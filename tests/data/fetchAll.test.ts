@@ -101,3 +101,26 @@ describe('createFetchAll quiet runs', () => {
         expect(offline.notify).not.toHaveBeenCalled();
     });
 });
+
+describe('createFetchAll: a request that never answers (seen on the Ally: stuck at 0 / 55)', () => {
+    const never = () => new Promise<never>(() => undefined);
+    it('skips a game that takes longer than the time limit and carries on with the rest', async () => {
+        const prefetch = vi.fn(async (g: InstalledGame) => (g.appId === 1 ? never() : { status: 'found' as const, fetched: false }));
+        const d = deps({ prefetch, gameTimeoutMs: 20 });
+        const run = createFetchAll(d);
+        await run.start();
+        expect(prefetch).toHaveBeenCalledTimes(3);
+        expect(run.state()).toEqual({ running: false, done: 3, total: 3, found: 2, notFound: 0 });
+    });
+    it('Stop takes effect at once, even while a game is still waiting', async () => {
+        const d = deps({ prefetch: vi.fn(never), gameTimeoutMs: 60_000 });
+        const run = createFetchAll(d);
+        const started = run.start();
+        await new Promise((r) => setTimeout(r, 5));
+        expect(run.state().running).toBe(true);
+        run.stop();
+        await started;
+        expect(run.state().running).toBe(false);
+        expect(d.notify).toHaveBeenCalledWith('Stopped after 0 of 3 games.');
+    });
+});

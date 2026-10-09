@@ -7,20 +7,32 @@ import type { RecommendedCard } from './playNext';
 import type { DealCard } from './recommended';
 import type { UpdatedCard } from './recentlyUpdated';
 import type { TrendingCard } from './trending';
+import { rowInset } from './insets';
+import { tr } from '../i18n/steamText';
 
 export type FeedTab = 'news' | 'friends' | 'recommended';
 
 /** Gap between cards. */
 export const FEED_GAP = 14;
-/** The row's visible width is the canvas width minus 44 px on each side. */
+/** The row's visible width is the canvas width minus 44 px on each side (the handheld's; `feedViewportInset` for the real side inset). */
 export const FEED_VIEWPORT_INSET = 88;
+
+/** The canvas width the feed row does not use, for a side inset (insets.rowInset on each side): 88 on the handheld's 56. */
+export function feedViewportInset(side: number, tv = false): number {
+    return 2 * rowInset(side, tv);
+}
 /** Card height; the recommended card is portrait at 0.72 of it. */
 export const FEED_CARD_H = 260;
 
 const WIDTH: Record<FeedTab, number> = { news: 320, friends: 230, recommended: Math.round(FEED_CARD_H * 0.72) };
-const FEATURED_W = 600;
+/**
+ * Steam's event capsule art, the featured news card's image: 800 x 450 (16:9). The featured card is exactly as wide as
+ * that image at the card's height, so the image fills it whole (any other shape still fits, over its blurred copy).
+ */
+export const NEWS_ART_ASPECT = 16 / 9;
+const FEATURED_W = Math.round(FEED_CARD_H * NEWS_ART_ASPECT);
 
-/** Width of one card: featured news 600, news 320, friend 230, recommended 187. */
+/** Width of one card: featured news 462 (16:9 at 260), news 320, friend 230, recommended 187. */
 export function feedCardWidth(tab: FeedTab, featured: boolean): number {
     return tab === 'news' && featured ? FEATURED_W : WIDTH[tab];
 }
@@ -78,8 +90,12 @@ export function feedRows(tab: FeedTab, space: number, secondRow: boolean): FeedR
     return { row1, row2, row2Top, total: row2Top + row2 };
 }
 
-/** A row-1 card's width at height `h`: the handoff widths (at 260) scaled with the height; friends stay 230. */
+/**
+ * A row-1 card's width at height `h`: the handoff widths (at 260) scaled with the height; friends stay 230; the
+ * featured news card is 16:9 at `h` (its image's shape), so it always fits the image exactly.
+ */
 export function feedCardWidthAt(tab: FeedTab, featured: boolean, h: number): number {
+    if (tab === 'news' && featured) return Math.round(h * NEWS_ART_ASPECT);
     const base = feedCardWidth(tab, featured);
     if (tab === 'friends') return base;
     return Math.round((base * h) / FEED_CARD_H);
@@ -153,10 +169,17 @@ export interface FeedItem {
     featured: boolean;
     /** Background art, stacked: the first url that loads paints over the rest. Empty = glass only. */
     art: string[];
+    /**
+     * Art shown whole, never cropped: a news event's own image, fitted inside the card over a blurred copy of itself
+     * (which covers `art`). When it fails to load, `art` shows as before. Missing = none.
+     */
+    fit?: string;
     /** Empty = no pill. */
     pill: string;
     title: string;
     sub: string;
+    /** The sub line in pieces when part of it is drawn differently (a sale's full price struck through); else `sub`. */
+    subParts?: SubPart[];
     /** The game whose accent colours the pill (and a friend's ring); null = no game. */
     accentAppId: number | null;
     /** What A opens; null = A does nothing. */
@@ -171,6 +194,12 @@ export interface FeedItem {
     /** Small avatars of friends who play the game (trending cards), and how many more ("+N"). */
     friends?: Array<{ url: string | null; initial: string }>;
     moreFriends?: number;
+}
+
+/** A piece of a card's sub line: `struck` draws it struck through (a sale's full price, instead of the word "was"). */
+export interface SubPart {
+    text: string;
+    struck?: boolean;
 }
 
 export interface FeedData {
@@ -213,12 +242,12 @@ export function hasSecondRow(tab: FeedTab, data: FeedData): boolean {
 
 /** The second row's small header for a tab. */
 export function secondRowTitle(tab: FeedTab): string {
-    return tab === 'news' ? 'Recently updated' : tab === 'recommended' ? 'On sale from your wishlist' : 'Trending among friends';
+    return tab === 'news' ? tr('recentlyUpdated') : tab === 'recommended' ? tr('wishlistSale') : tr('trending');
 }
 
 /**
- * The selected tab's cards, row 1 first, then row 2 (`row` says which). News: the event's own art, then the game's
- * hero art; row 2: recently updated games, wide, with their update line, opening the game's page. Friends: the
+ * The selected tab's cards, row 1 first, then row 2 (`row` says which). News: the event's own art fitted whole (`fit`)
+ * over the game's hero art; row 2: recently updated games, wide, with their update line, opening the game's page. Friends: the
  * capsule of the game being played, else of the last played game (when its name is known), else glass only.
  * Recommended: the portrait capsule; row 2: wishlist sales, wide, with the discount and price. A opens a news card's event (its game page when it has no gid), a wishlist
  * deal's store page, a play-next or updated game's page; nothing on a friend. `space`: the height the raised
@@ -239,7 +268,8 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             width: feedCardWidthAt('news', c.featured, rows.row1),
             height: rows.row1,
             featured: c.featured,
-            art: [...(c.imageUrl ? [c.imageUrl] : []), ...art(c.appId).hero],
+            art: art(c.appId).hero,
+            ...(c.imageUrl ? { fit: c.imageUrl } : {}),
             pill: c.pill,
             title: c.title,
             sub: c.sub,
@@ -275,7 +305,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
                 featured: false,
                 art: artId !== null && artId > 0 ? art(artId).capsule : [],
                 backdrop: { url: c.avatarUrl, tone: friendRing(c.state) },
-                pill: inGame ? (c.joinUrl ? 'Join' : 'In game') : '',
+                pill: inGame ? (c.joinUrl ? tr('join') : tr('inGame')) : '',
                 title: c.name,
                 sub: c.sub,
                 accentAppId: inGame ? c.appId : null,
@@ -299,6 +329,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             pill: c.tag,
             title: c.name,
             sub: c.label,
+            subParts: c.labelParts,
             accentAppId: c.inLibrary ? c.appId : null,
             opens: c.inLibrary ? { kind: 'page', appId: c.appId } : { kind: 'store', appId: c.appId },
             avatar: null,
@@ -334,6 +365,7 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
             pill: c.pill,
             title: c.name,
             sub: c.sub,
+            subParts: c.subParts,
             accentAppId: c.appId,
             opens: { kind: 'store', appId: c.appId },
             avatar: null,

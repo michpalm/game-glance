@@ -5,7 +5,7 @@ import decky
 from gameglance.heroic import HeroicLibrary, heroic_cache_dirs
 from gameglance.kv import KvStore
 from gameglance.migrate import carry_over, old_data_path
-from gameglance.store_lookup import RegistryCache, store_for_appid
+from gameglance.store_lookup import RegistryCache, key_for_appid, store_for_appid
 
 DATA_PATH = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "data.json")
 if carry_over(old_data_path(decky.DECKY_PLUGIN_SETTINGS_DIR), DATA_PATH):
@@ -38,12 +38,24 @@ class Plugin:
             decky.logger.exception("[game-glance] get_store failed")
             return None
 
+    async def get_unifideck_key(self, appid: int):
+        # {"store": "gog", "id": "1450711444"}: the key Unifideck's own backend takes (e.g. its get_playtime), or None.
+        try:
+            return key_for_appid(REGISTRY.get(), int(appid))
+        except Exception:
+            decky.logger.exception("[game-glance] get_unifideck_key failed")
+            return None
+
     async def get_heroic_description(self, runner: str, app_name: str):
         try:
             return HEROIC.description(str(runner), str(app_name))
         except Exception:
             decky.logger.exception("[game-glance] get_heroic_description failed")
             return None
+
+    async def get_version(self):
+        # The installed version, from package.json at install time (Decky's environment); the updater compares it.
+        return decky.DECKY_PLUGIN_VERSION
 
     async def _main(self):
         decky.logger.info("[game-glance] backend started")

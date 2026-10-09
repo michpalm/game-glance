@@ -33,3 +33,16 @@ export function formatHours(hours: number, locale: string): string {
     const decimals = Number.isInteger(rounded) ? 0 : 1;
     return `${formatNumber(rounded, locale, decimals)} h`;
 }
+
+/** A size like Unifideck's own ("3.2 GB", "512 MB": binary units, one decimal under 100); null when unknown (never "0 B"). */
+export function formatBytes(bytes: unknown, locale: string): string | null {
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return null;
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    let v = bytes;
+    while (v >= 1024 && i < units.length - 1) {
+        v /= 1024;
+        i++;
+    }
+    return `${formatNumber(v, locale, v >= 100 ? 0 : 1)} ${units[i]}`;
+}

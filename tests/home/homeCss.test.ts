@@ -86,7 +86,7 @@ describe('homeCss', () => {
         // Action row 379.4..433.4 -> centre 406.4; pill 32 tall -> top 390.4.
         expect(sourcePillTop()).toBeCloseTo(390.4, 5);
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
-        expect(pill).toMatch(/right:\s*56px\s*!important/);
+        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
         expect(pill).toMatch(/border-radius:\s*999px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
@@ -96,9 +96,34 @@ describe('homeCss', () => {
         // The old icon-only chip badge is gone; the chip row keeps its fixed height.
         expect(css).not.toMatch(/\.gh-source\s*\{[^}]*var\(--gh-r-card\)/);
     });
+    it('the status bar sits in Steam\'s top strip, right-aligned with the store pill, in the same glass pill', () => {
+        const css = homeCss();
+        const bar = css.match(/\.gh-status\s*\{[^}]*\}/)?.[0] ?? '';
+        // Placed by StatusBar from the canvas scale (the dot over Steam's avatar), with the fixed place as the fallback.
+        expect(bar).toMatch(/right:\s*var\(--gh-status-right,\s*32px\)\s*!important/);
+        expect(bar).toMatch(/top:\s*calc\(var\(--gh-status-cy,\s*32px\) - 16px\)\s*!important/);
+        expect(bar).toMatch(/height:\s*32px/);
+        expect(bar).toMatch(/pointer-events:\s*none/);
+        expect(bar).toMatch(/transition:\s*opacity 150ms/);
+        expect(css).toMatch(/\.gh-status\.gh-status-away\s*\{[^}]*opacity:\s*0/);
+        const pill = css.match(/\.gh-status-pill\s*\{[^}]*\}/)?.[0] ?? '';
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(css).toMatch(/\.gh-status-low\s*\{[^}]*color:\s*#ff8585/);
+        // The status dot: the Friends tab's green and blue, grey when invisible or offline.
+        expect(css).toMatch(/\.gh-status-dot\s*\{[^}]*width:\s*12px[^}]*border-radius:\s*50%/);
+        expect(css).toMatch(/\.gh-status-dot-online\s*\{[^}]*background:\s*#8cd61d/);
+        expect(css).toMatch(/\.gh-status-dot-away\s*\{[^}]*background:\s*#4cb4ff/);
+        expect(css).toMatch(/\.gh-status-dot-off\s*\{[^}]*background:\s*rgba\(196,201,209,\.85\)/);
+    });
     it('the recents row is display only: no pointer events, so a tap or click on a card does nothing', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
         expect(css).toMatch(/\.gh-recents\s*\{[^}]*pointer-events:\s*none\s*!important/);
+        // While the card row has focus, the selected (or Library) card gets a white ring outside it and an even accent
+        // glow (no y offset), and no bar along its bottom edge.
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-wide, \.gh-recents-focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\), 0 0 [\d.]+px [\d.]+px var\(--glance-accent\)/);
+        expect(css).not.toMatch(/gh-recents-focus[^{]*\.gh-cap-bar/);
+        // A game new to the library: a small light "New" pill at the card's top left.
+        expect(css).toMatch(/\.gh-cap-new\s*\{[^}]*position:\s*absolute[^}]*text-transform:\s*uppercase[^}]*background:\s*rgba\(255,255,255,\.92\)/);
         expect(css).not.toMatch(/\.gh-cap\s*\{[^}]*cursor:\s*pointer/);
     });
     it('homeCss gives ghosts no blur base and no recents-on-library variant', () => {
@@ -124,13 +149,15 @@ describe('homeCss', () => {
         // Default (before Home has measured its box): handheld.
         expect(homeCss()).toBe(homeCss(CARD_SCALE_HANDHELD));
     });
-    it('homeCss clamps the title to 2 lines with an ellipsis, keeping balance and the shadow, at the 2-line height', () => {
+    it('homeCss clamps the title to 3 lines with an ellipsis, keeping balance and the shadow, in a 2-line slot', () => {
         const css = homeCss();
         const title = css.match(/\.gh-title\s*\{[^}]*\}/)?.[0] ?? '';
         expect(title).toMatch(/display:\s*-webkit-box\s*!important/);
-        expect(title).toMatch(/-webkit-line-clamp:\s*2\s*!important/);
+        expect(title).toMatch(/-webkit-line-clamp:\s*3\s*!important/);
         expect(title).toMatch(/-webkit-box-orient:\s*vertical\s*!important/);
         expect(title).toMatch(/overflow:\s*hidden\s*!important/);
+        // Not shrunk to the 2-line slot: a third line keeps its height and rises above it.
+        expect(title).toMatch(/flex:\s*0 0 auto\s*!important/);
         expect(title).toMatch(/text-wrap:\s*balance/);
         expect(title).toMatch(/text-shadow:\s*0 4px 30px rgba\(0,0,0,\.4\)/);
         expect(title).toMatch(/font-size:\s*58px/);
@@ -138,6 +165,7 @@ describe('homeCss', () => {
         expect(title).toMatch(/padding:\s*16px\s*!important/);
         expect(title).toMatch(/margin:\s*-16px\s*!important/);
         expect(TITLE_BLOCK.titleLines).toBe(2);
+        expect(TITLE_BLOCK.maxTitleLines).toBe(3);
     });
     describe('title block: fixed from the eyebrow down, the title grows upward', () => {
         it('order is title slot, eyebrow, chips, actions, each 18 apart (actions add their 8 margin)', () => {
@@ -158,10 +186,20 @@ describe('homeCss', () => {
             expect(one.actionsTop).toBe(two.actionsTop);
             expect(one.bottom).toBe(two.bottom);
         });
-        it('clamps to 1..2 lines (no 3-line title)', () => {
-            expect(titleBlockLayout(3)).toEqual(titleBlockLayout(2));
+        it('a three-line title rises one line above the slot, leaving the rest where it is; clamps to 1..3 lines', () => {
+            const two = titleBlockLayout(2);
+            const three = titleBlockLayout(3);
+            expect(three.titleTop).toBe(two.titleTop - 58);
+            expect(three.eyebrowTop).toBe(two.eyebrowTop);
+            expect(three.bottom).toBe(two.bottom);
+            expect(titleBlockLayout(9)).toEqual(three);
             expect(titleBlockLayout(0)).toEqual(titleBlockLayout(1));
             expect(titleBlockLayout(NaN)).toEqual(titleBlockLayout(1));
+        });
+        it('a three-line title still starts below the 52 px safe area on every screen, with the stack shift', () => {
+            for (const h of [800, 466 / (828 / 1440), 810.75]) {
+                expect(titleBlockLayout(3).titleTop + stackShift(h)).toBeGreaterThanOrEqual(52);
+            }
         });
         it('worst case (2-line title) clears Steam\'s 52 px top bar on every screen, with the stack shift', () => {
             for (const h of [800, 466 / (828 / 1440), 810.75]) {
@@ -276,6 +314,13 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card-friend \{[^}]*width: 24px[^}]*border-radius: 3px/);
         expect(css).toMatch(/\.gh-card-friend-more \{[^}]*width: auto/);
     });
+    it('news art is fitted whole: contained at the top (centred on the featured card) over a blurred cover copy', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-card-fit-blur \{[^}]*inset: -28px[^}]*background-size: cover[^}]*filter: blur\(24px\)/);
+        expect(css).toMatch(/\.gh-card-fit \{[^}]*inset: 0[^}]*background-size: contain[^}]*background-position: center top/);
+        expect(css).toMatch(/\.gh-card-featured \.gh-card-fit \{\s*background-position: center/);
+        expect(css).toMatch(/\.gh-card-fitted \.gh-card-title \{\s*-webkit-line-clamp: 2/);
+    });
     it('friend card placeholder: blurred, darkened avatar backdrop, faint presence tint, accent gradient without an avatar', () => {
         const css = homeCss();
         expect(css).toMatch(/\.gh-card-backdrop \{[^}]*inset: -28px[^}]*background-size: cover[^}]*filter: blur\(28px\) saturate\(\.55\) brightness\(\.5\)/);
@@ -319,5 +364,15 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card-ring-away \{\s*--gh-ring: #4cb4ff/);
         expect(css).toMatch(/\.gh-card-offline \.gh-avatar \{[^}]*box-shadow: none !important[^}]*opacity: \.55/);
         expect(css).not.toMatch(/\.gh-card-ingame \{[^}]*--gh-ring/);
+    });
+});
+
+describe('family pill on Home', () => {
+    it('sits just left of the store pill (inside it, so it follows it), drawn like it', () => {
+        const css = homeCss();
+        const rule = css.match(/\.gh-family\s*\{[^}]*\}/)?.[0] ?? '';
+        expect(rule).toMatch(/position: absolute !important; right: calc\(100% \+ 10px\) !important; top: 50% !important; transform: translateY\(-50%\) !important/);
+        expect(rule).toContain(sourcePillLook((n) => `${n}px`).split(';')[0]);
+        expect(css).toMatch(/\.gh-family-icon\s*\{/);
     });
 });

@@ -1,5 +1,6 @@
 import { formatHours, minutesToHours } from '../logic/format';
 import { formatLastPlayed } from './recents';
+import { tr } from '../i18n/steamText';
 
 export interface Chip {
     key: string;
@@ -12,23 +13,28 @@ export interface Chip {
 export interface GameChipInput {
     playedMinutes: number;
     achievements: { achieved: number; total: number } | null;
+    /** Unix seconds; shown in the eyebrow under the title ("Last played · Today"), no longer as a chip. */
     lastPlayed: number;
     hltbMainHours: number | null;
+    /** Set for a game new to the library (never played): when it was added. Replaces Played and Last played. */
+    addedAt?: number;
 }
 
 export function gameChips(i: GameChipInput, now: number, locale: string): Chip[] {
     const playedHours = minutesToHours(i.playedMinutes);
-    const chips: Chip[] = [{ key: 'played', label: 'Played', value: formatHours(playedHours, locale) }];
+    const isNew = typeof i.addedAt === 'number' && i.addedAt > 0;
+    const chips: Chip[] = isNew
+        ? [{ key: 'added', label: tr('added'), value: formatLastPlayed(i.addedAt as number, now, locale) }]
+        : [{ key: 'played', label: tr('played'), value: formatHours(playedHours, locale) }];
     if (i.achievements && i.achievements.total > 0) {
         const { achieved, total } = i.achievements;
         chips.push({
             key: 'achievements',
-            label: 'Achievements',
+            label: tr('achievements'),
             value: `${achieved} / ${total}`,
             progress: Math.min(1, Math.max(0, achieved / total)),
         });
     }
-    chips.push({ key: 'lastPlayed', label: 'Last played', value: formatLastPlayed(i.lastPlayed, now, locale) });
     if (i.hltbMainHours !== null && i.hltbMainHours > 0) {
         chips.push({
             key: 'hltb',
@@ -68,11 +74,11 @@ function formatGigabytes(bytes: number, locale: string): string {
 
 export function libraryChips(i: LibraryChipInput, locale: string): Chip[] {
     const chips: Chip[] = [
-        { key: 'games', label: 'Games', value: formatCount(i.games, locale) },
-        { key: 'installed', label: 'Installed', value: formatCount(i.installed, locale) },
-        { key: 'favorites', label: 'Favorites', value: formatCount(i.favorites, locale) },
+        { key: 'games', label: tr('games'), value: formatCount(i.games, locale) },
+        { key: 'installed', label: tr('installed'), value: formatCount(i.installed, locale) },
+        { key: 'favorites', label: tr('favorites'), value: formatCount(i.favorites, locale) },
     ];
-    if (i.storageBytes !== null) chips.push({ key: 'storage', label: 'Storage', value: formatGigabytes(i.storageBytes, locale) });
+    if (i.storageBytes !== null) chips.push({ key: 'storage', label: tr('storage'), value: formatGigabytes(i.storageBytes, locale) });
     return chips;
 }
 

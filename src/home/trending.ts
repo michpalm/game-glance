@@ -1,4 +1,6 @@
 import type { LastGames, RawFriend } from './friends';
+import type { SubPart } from './feedLayout';
+import { tr } from '../i18n/steamText';
 
 /**
  * "Trending among friends" for the Friends tab's second row. Primary source: Steam's own list, the one stock Home's
@@ -24,8 +26,10 @@ export interface TrendingCard {
     playing: number;
     /** Friends who played it recently and are not in it now. */
     played: number;
-    /** "3 friends playing", "1 friend playing", "2 friends played recently". */
+    /** "3 friends playing", "1 friend playing", "2 friends played recently" (Steam's words), and a sale's prices. */
     label: string;
+    /** The label in pieces when a sale's full price is struck through; missing otherwise. */
+    labelParts?: SubPart[];
     /** In the user's library: A opens the game page; else the store page. */
     inLibrary: boolean;
 }
@@ -40,8 +44,8 @@ export const TRENDING_AVATARS = 3;
 const initialOf = (name: string) => Array.from(name.trim())[0] ?? '?';
 
 export function trendingLabel(playing: number, played: number): string {
-    if (playing > 0) return `${playing} ${playing === 1 ? 'friend' : 'friends'} playing`;
-    return `${played} ${played === 1 ? 'friend' : 'friends'} played recently`;
+    if (playing > 0) return tr(playing === 1 ? 'friendPlaying' : 'friendsPlaying', [playing]);
+    return tr(played === 1 ? 'friendPlayedRecently' : 'friendsPlayedRecently', [played]);
 }
 
 interface Tally {
@@ -113,7 +117,7 @@ export function trendingGames(
         });
         cards.push({
             appId, name, playing, played, label: trendingLabel(playing, played), inLibrary: owned,
-            avatars, moreFriends: Math.max(0, ids.length - avatars.length), tag: owned ? 'In library' : '', storeArt: null, last: t.last,
+            avatars, moreFriends: Math.max(0, ids.length - avatars.length), tag: owned ? tr('inLibrary') : '', storeArt: null, last: t.last,
         });
     }
     cards.sort((a, b) => b.playing + b.played - (a.playing + a.played) || b.playing - a.playing || b.last - a.last || a.appId - b.appId);
@@ -146,15 +150,10 @@ export interface TrendingLookup {
     friend(accountId: number): { name: string; avatarUrl: string | null } | null;
 }
 
-/** "1 friend plays", "3 friends play" (Steam's list counts friends who play the game). */
-export function playsLabel(total: number): string {
-    return `${total} ${total === 1 ? 'friend plays' : 'friends play'}`;
-}
-
 /**
  * Steam's trending list as cards, in Steam's order. As stock Home: only owned games unless Steam's "show store content
  * on Home" setting is on (`showStoreContent`). Owned: "In library", the library name. Not owned: the store name, the
- * discount ("-85%", the line "5,99€ (was 39,99€)") or "Free to play", and the store header as art. Avatars: the
+ * discount ("-85%", the line "5,99€ 39,99€", the full price struck through) or "Free to play", and the store header as art. Avatars: the
  * friends Steam names (rgAccountIDs, the top friends), "+N" for the rest of totalFriends. Games with no name known
  * yet are skipped. At most `max`.
  */
@@ -180,15 +179,18 @@ export function mapSteamTrending(apps: unknown, lookup: TrendingLookup, showStor
             return { url: f?.avatarUrl ?? null, initial: initialOf(f?.name ?? '') };
         });
         let tag = '';
-        let line = playsLabel(total);
-        if (owned) tag = 'In library';
-        else if (store?.free) tag = 'Free to play';
+        // No "N friends" line, as on Steam's own shelf: the avatars show who plays it. A game on sale gets its price.
+        const parts: SubPart[] = [];
+        if (owned) tag = tr('inLibrary');
+        else if (store?.free) tag = tr('freeToPlay');
         else if (store && store.discountPct > 0) {
             tag = `-${store.discountPct}%`;
-            if (store.finalPrice) line += ` - ${store.finalPrice}${store.originalPrice ? ` (was ${store.originalPrice})` : ''}`;
-        } else if (store?.finalPrice) line += ` - ${store.finalPrice}`;
+            // The sale price, then the full price struck through, as Steam's store shows it (no "was" to translate).
+            if (store.finalPrice) parts.push({ text: store.finalPrice }, ...(store.originalPrice ? [{ text: ' ' }, { text: store.originalPrice, struck: true }] : []));
+        } else if (store?.finalPrice) parts.push({ text: store.finalPrice });
+        const line = parts.map((p) => p.text).join('');
         out.push({
-            appId, name, playing: 0, played: total, label: line, inLibrary: owned,
+            appId, name, playing: 0, played: total, label: line, labelParts: parts, inLibrary: owned,
             avatars, moreFriends: Math.max(0, total - avatars.length), tag, storeArt: owned ? null : store?.header ?? null,
         });
     }

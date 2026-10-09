@@ -5,8 +5,14 @@ import type { Deal } from '../../src/home/wishlist';
 const deal = (appId: number, discountPercent = 40, extra: Partial<Deal> = {}): Deal => ({ appId, name: `D${appId}`, discountPercent, deckVerified: false, ...extra });
 
 describe('dealCard', () => {
-    it('discount badge, name, price with the full price', () => {
-        expect(dealCard(deal(10, 50, { price: '$29.99', fullPrice: '$59.99' }))).toEqual({ appId: 10, name: 'D10', pill: '-50%', sub: '$29.99 - was $59.99' });
+    it('discount badge, name, the price and the full price struck through (no word to translate)', () => {
+        expect(dealCard(deal(10, 50, { price: '$29.99', fullPrice: '$59.99' }))).toEqual({
+            appId: 10, name: 'D10', pill: '-50%', sub: '$29.99 $59.99',
+            subParts: [{ text: '$29.99' }, { text: ' ' }, { text: '$59.99', struck: true }],
+        });
+        expect(dealCard(deal(13, 50, { price: '$1', fullPrice: '$2', deckVerified: true })).subParts).toEqual([
+            { text: '$1' }, { text: ' ' }, { text: '$2', struck: true }, { text: ' - ' }, { text: 'Deck verified' },
+        ]);
     });
     it('Deck verified after the price; no price reads On your wishlist', () => {
         expect(dealCard(deal(11, 40, { price: '$9.99', deckVerified: true })).sub).toBe('$9.99 - Deck verified');

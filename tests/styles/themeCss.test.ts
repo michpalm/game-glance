@@ -1,6 +1,7 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
-import { buildAccentCss, buildDownloadCss, buildThemeCss, ThemeClasses } from '../../src/styles/themeCss';
+import { buildAccentCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
+import { STEAM_LEGEND_PX } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -190,6 +191,96 @@ describe('buildThemeCss launch overlay', () => {
     });
 });
 
+describe('buildLaunchCss (while a game launches)', () => {
+    const withLaunch: ThemeClasses = {
+        ...full,
+        header: { ...full.header, TitleImageContainer: 'hd_Title', SVGTitle: 'hd_Svg' },
+        launch: { Container: 'ln_Container' },
+    };
+
+    it('hides everything with text on it: our title and cards, Steam\u2019s logo, title, Play row and tabs, never the art', () => {
+        const { overlay, hide } = launchTargets(withLaunch);
+        expect(overlay).toBe('.ln_Container');
+        expect(hide).toEqual(['.gg-titleblock', '.gg-hero', '.hd_Box', '.hd_Title', '.hd_Svg', '.ad_Overview', '.rt_Tabs']);
+        expect(hide).not.toContain('.hd_Top');
+        const css = buildLaunchCss(withLaunch);
+        expect(css).toContain(`${hide.join(', ')} { opacity: 0 !important; transition: opacity 200ms ease !important; }`);
+    });
+    it('lets more of the art through the overlay than its resting dim', () => {
+        const css = buildLaunchCss(withLaunch);
+        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; }');
+    });
+    it('hides nothing when the overlay class is unknown; Steam classes that are missing are just left out', () => {
+        expect(buildLaunchCss(full)).toBe('');
+        expect(launchTargets({ ...full, launch: {} })).toEqual({ overlay: null, hide: [] });
+        const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined, launch: { Container: 'ln_Container' } };
+        expect(launchTargets(none).hide).toEqual(['.gg-titleblock', '.gg-hero']);
+    });
+});
+
+describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
+    it('moves Unifideck\u2019s Play row onto the art where Steam\u2019s Play row sits, scoped to Unifideck\u2019s page class', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.ad_Inner\.unifideck-hide-native-play > div:has\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) \{[^}]*position: absolute !important;[^}]*top: var\(--gg-play-top\) !important;[^}]*background: transparent !important;/);
+        // Every rule is under Unifideck's marker, so no other page is touched.
+        for (const line of css.split('\n').filter((l) => l.includes('{'))) expect(line).toContain('.unifideck-hide-native-play');
+    });
+    it('makes its primary buttons our accent pill, focus included (over Unifideck\u2019s own focus colours)', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.unifideck-hide-native-play \.unifideck-install-btn[^{]*\{[^}]*width: var\(--gg-play-w\) !important;[^}]*border-radius: 999px !important;[^}]*background: var\(--gg-accent\) !important;/);
+        expect(css).toContain('.unifideck-hide-native-play .unifideck-play-btn.gpfocus');
+        expect(css).not.toContain('.unifideck-cancel-btn');
+        expect(css).not.toContain('.unifideck-stop-btn');
+    });
+    it('Spotlight Home\u2019s look adds the handoff type with dark text; without it, white text', () => {
+        expect(buildUnifideckCss(full)).not.toContain('#0b0d10');
+        expect(buildUnifideckCss(full, { restyle: true })).toMatch(/\.unifideck-hide-native-play \.unifideck-play-btn[^{]*\{[^}]*color: #0b0d10 !important;/);
+    });
+    it('with Spotlight Home\u2019s look its row has Steam\u2019s padding (none above, 36 below), so the pill is level with Steam\u2019s', () => {
+        const rowRule = /:has\([^)]*\) \{[^}]*padding-top: 0 !important; padding-bottom: [^;]+ !important;/;
+        expect(buildUnifideckCss(full, { restyle: true })).toMatch(rowRule);
+        expect(buildUnifideckCss(full)).not.toMatch(/padding-top: 0 !important/);
+    });
+    it('puts the cloud-save button after controller and settings (the row with four buttons only), extras last', () => {
+        const css = buildUnifideckCss(full);
+        expect(css).toMatch(/\.unifideck-hide-native-play [^{]*:has\(> :nth-child\(4\)\) > :first-child \{ order: 3 !important; \}/);
+        expect(css).toMatch(/:has\(> :nth-child\(4\)\) > :nth-child\(n\+4\) \{ order: 4 !important; \}/);
+    });
+    it('hides Unifideck\u2019s own meta items (the class-less div after its primary button) only with our page on', () => {
+        expect(buildUnifideckCss(full)).not.toContain('display: none');
+        for (const css of [buildUnifideckCss(full, { restyle: true }), buildUnifideckCss({ ...full, details: undefined }, { restyle: true })]) {
+            const line = css.split('\n').find((l) => l.includes('display: none'));
+            expect(line).toMatch(/^\.unifideck-hide-native-play :is\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) \+ div:not\(\[class\]\) \{ display: none !important; \}$/);
+            // Not the buttons, the round buttons or the download UI.
+            expect(line).not.toMatch(/cancel|stop|button/i);
+            expect(css.split('\n').filter((l) => l.includes('display: none'))).toHaveLength(1);
+        }
+    });
+    it('nothing without the full-screen layout (the page is stacked then, Unifideck\u2019s row already in place)', () => {
+        expect(buildUnifideckCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
+        expect(buildUnifideckCss({ ...full, details: undefined })).toBe('');
+    });
+});
+
+describe('buildCleanCss (the Clean look)', () => {
+    it('moves the Play row to the bottom and puts our block on it, letting clicks through', () => {
+        const css = buildCleanCss(full);
+        expect(css).toContain(':root { --gg-play-top: calc(100vh - calc(96 * var(--gg-d)) - max(calc(36 * var(--gg-d)), calc(61px - calc(36 * var(--gg-d))))); }');
+        expect(css).toMatch(/\.ad_Inner > \.gg-hero \{[^}]*top: var\(--gg-play-top\) !important;[^}]*pointer-events: none;/);
+    });
+    it('hides the description and HowLongToBeat cards; the info card goes right, the store pill above the row, the title just above it', () => {
+        const css = buildCleanCss(full);
+        expect(css).toContain('.gg-cards { display: none !important; }');
+        expect(css).toMatch(/\.gg-clean-info \{[^}]*position: absolute; right: 0;[^}]*border-radius:/);
+        expect(css).toMatch(/\.gg-pill \{ top: auto; bottom: calc\(100% \+ /);
+        expect(css).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - [^}]*transform: translateY\(-100%\)/);
+    });
+    it('nothing without the full-screen layout, so the page keeps its cards', () => {
+        expect(buildCleanCss({ ...full, details: undefined })).toBe('');
+        expect(buildCleanCss({ ...full, root: { ...full.root, AppDetailsContainer: undefined } })).toBe('');
+    });
+});
+
 describe('buildThemeCss 1.1.1 baseline', () => {
     const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined };
 
@@ -346,6 +437,17 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     };
     const restyled = buildThemeCss(steam, { restyle: true });
 
+    it('family library: Steam\'s line under Play is hidden, and the family pill sits just left of the store pill, drawn like it', () => {
+        const withShared = buildThemeCss({ ...steam, shared: { SharedLibrary: 'sl_Shared', Row: 'sl_Row' } }, { restyle: true });
+        expect(withShared).toContain('.sl_Shared { display: none !important; }');
+        expect(restyled).not.toContain('sl_Shared');
+        expect(restyled).toMatch(/\.gg-family \{ position: absolute; right: calc\(100% \+ calc\(10 \* var\(--gg-d\)\)\); top: 50%; transform: translateY\(-50%\);/);
+        expect(rulesFor(restyled, '.gg-family')).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
+    });
+    it('the logo option: the same 560 x 180 box as Home, in the page\'s scale unit', () => {
+        expect(restyled).toContain('.gg-logo { display: block; width: auto; height: auto; max-width: calc(560 * var(--gg-d)); max-height: calc(180 * var(--gg-d));');
+    });
+
     it('changes nothing without the option, or with it off', () => {
         expect(buildThemeCss(steam, {})).toBe(buildThemeCss(steam));
         expect(buildThemeCss(steam, { restyle: false })).toBe(buildThemeCss(steam));
@@ -384,10 +486,10 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         const title = rulesFor(restyled, '.gg-title');
         expect(title).toContain('font-size: calc(64 * var(--gg-d))');
         expect(title).toContain('font-weight: 800');
-        expect(title).toContain('-webkit-line-clamp: 2');
+        expect(title).toContain('-webkit-line-clamp: 3');
         // placed where the logo was (top 120 of 810), the logo and Steam's text title hidden in place
         expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('position: absolute');
-        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(120 * var(--gg-d))');
+        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(var(--gg-play-top) - calc(36 * var(--gg-d)))');
         // (only while our title is rendered, so a failed render never leaves the page without a title)
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_TitleImg')).toContain('visibility: hidden');
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_Svg')).toContain('visibility: hidden');
@@ -440,9 +542,31 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(pill).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
         expect(rulesFor(restyled, '.gg-pill-icon')).toContain(sourcePillIcon((n) => `calc(${n} * var(--gg-d))`));
     });
-    it('uses no fixed pixel sizes except hairline borders', () => {
-        const fixed = [...restyled.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999'].includes(n));
+    it('uses no fixed pixel sizes except hairline borders and Steam\'s own button legend', () => {
+        // (A media query's viewport thresholds are conditions, not sizes. Steam's legend is a fixed 41 css px at every screen size.)
+        const sizes = restyled.replace(/@media[^{]*\{/g, '{');
+        const fixed = [...sizes.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999', String(STEAM_LEGEND_PX)].includes(n));
         expect(fixed).toEqual([]);
+    });
+    it('a TV sets the Play row and cards from the bottom: the cards (three description lines) end 24 above Steam\'s legend; the handheld keeps its place', () => {
+        expect(STEAM_LEGEND_PX).toBe(41);
+        expect(restyled).toContain(':root { --gg-play-top: calc(100vh - calc(386 * var(--gg-d))); --gg-row-h: calc(96 * var(--gg-d)); }');
+        // 298 = the row (96) + the cards (178, three description lines) + the gap (24, the TV's side inset).
+        expect(restyled).toContain('@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-play-top: calc(100vh - 41px - calc(298 * var(--gg-d))); } }');
+        expect(restyled.indexOf('--gg-play-top: calc(100vh - 41px')).toBeGreaterThan(restyled.indexOf('--gg-play-top: calc(100vh - calc(386'));
+    });
+    it('the title block sits on the Play row on every screen: its bottom 36 above the row (the row-to-cards gap), so it grows upward', () => {
+        expect(restyled).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - calc\(36 \* var\(--gg-d\)\)\) !important;\s+transform: translateY\(-100%\) !important/);
+        expect(restyled).not.toContain('top: calc(120 * var(--gg-d))');
+        expect(restyled).not.toMatch(/@media[^{]*\{ \.\w+ > \.gg-titleblock/);
+    });
+    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck keep 56', () => {
+        expect(restyled).toMatch(/:root \{ --gg-side: calc\(56 \* var\(--gg-d\)\); \}/);
+        expect(restyled).toMatch(/@media \(min-width: 1408px\) and \(min-height: 793px\) \{ :root \{ --gg-side: calc\(24 \* var\(--gg-d\)\); \} \}/);
+        // the media query comes after the default, so on a TV it wins; the thresholds are screenScale's 1.7x the handheld's 828x466
+        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(56 * var(--gg-d))'));
+        expect(Math.ceil(828 * 1.7)).toBe(1408);
+        expect(Math.ceil(466 * 1.7)).toBe(793);
     });
     it('restyle rules do nothing when their Steam classes are missing and never touch layout', () => {
         const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length);
@@ -454,7 +578,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(none).not.toContain('visibility: hidden');
         expect(none).not.toContain('::after');
         expect(none).not.toContain('--gg-side:');
-        expect(none).not.toContain('position: absolute');
+        // (our own family pill is positioned inside our own store pill; nothing of Steam's is)
+        expect(none.replace(/\.gg-family \{[^}]*\}/, '')).not.toContain('position: absolute');
         expect(none).toContain('.gg-title {');
         expect(none).toContain('.gg-eyebrow {');
 
@@ -489,8 +614,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
                 expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|transition|color|background|border|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display)$/)]);
             }
         }
-        // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read)
-        expect(extra(steam).replace(/--gg-play-top: [^;]*;/, '')).not.toMatch(/z-index|100vh/);
+        // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's)
+        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '')).not.toMatch(/z-index|100vh/);
     });
 });
 

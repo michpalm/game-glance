@@ -1,5 +1,5 @@
 import { fetchNoCors } from '@decky/api';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, overrides, TTL } from '../data/cache';
@@ -7,9 +7,13 @@ import { hltbCacheKey, lookupHltb } from '../data/hltb';
 import { GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
 import { getSourceLabel } from '../data/source';
+import { mergePlaytime } from '../data/unifideckPlaytime';
+import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
 import { getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
+import { useSettled } from '../hooks/useSettled';
+import { BUMPER_REPEAT_MS } from './focusZones';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { accentFor, DEFAULT_ACCENT } from './accent';
@@ -25,9 +29,15 @@ import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
-import { formatLastPlayed, pickRecents, RawApp, RecentGame } from './recents';
+import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
+import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
+import { memoAchievements, noteDetails } from './detailsMemo';
+import { neighbourIds } from './heroLayers';
+import { useWarmup, useWarmVersion } from './useWarmup';
+import { forgetHltb, peekHltb, rememberHltb } from './warmup';
+import { HERO_PRELOAD_RADIUS } from './motion';
 
 export interface HomeGame extends RecentGame {
     installed: boolean;
@@ -46,7 +56,12 @@ export interface HomeData {
     /** Bumps when Steam delivers the focused game's details (hero art may be known only then). */
     detailsVersion: number;
     locale: string;
+    /** When the focused game was last played ("Yesterday"), or, for a game new to the library, when it was added. */
     lastPlayedLabel: string | null;
+    /** The focused game is new to the library (never played; Steam lists it with its recent games). */
+    focusedIsNew: boolean;
+    /** The collection the games row shows (Quick Access → Games row), null for the recent games. */
+    rowCollection: string | null;
     chips: Chip[];
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
     source: string | undefined;
@@ -74,9 +89,10 @@ type StoreGlobals = {
     collectionStore?: {
         recentAppsCollection?: { allApps?: AnyApp[] };
         localGamesCollection?: { allApps?: AnyApp[] };
+        userCollections?: Array<{ id?: unknown; displayName?: unknown; allApps?: AnyApp[] } | null | undefined>;
         BIsHidden?(appId: number): boolean;
     };
-    appStore?: { GetAppOverviewByAppID?(appId: number): (AnyApp & Record<string, unknown>) | undefined | null };
+    appStore?: { GetAppOverviewByAppID?(appId: number): (AnyApp & Record<string, unknown>) | undefined | null; allApps?: AnyApp[] };
     appDetailsStore?: { GetAppDetails?(appId: number): unknown };
     SteamUIStore?: { RunningApps?: Array<{ appid?: number }>; MainRunningAppID?: number };
     App?: { m_CurrentUser?: { strSteamID?: string } };
@@ -84,12 +100,17 @@ type StoreGlobals = {
 };
 const steam = globalThis as unknown as StoreGlobals;
 
-const RECENTS_LIMIT = 10;
 /** Play next skips the games already in the first recents slots (spec section 5). */
 const PLAY_NEXT_EXCLUDE = 7;
 const RECENTS_RETRY_MS = 1500;
 const RECENTS_RETRIES = 10;
 const HLTB_READ_BATCH = 8;
+/**
+ * How long the selection rests before the per-game work that only matters where the user stops starts (HLTB lookup,
+ * accent sampling, Steam details for the neighbours). Longer than a held L1/R1's repeat (BUMPER_REPEAT_MS), so holding
+ * a bumper through ten games does that work once, for the game it stops on.
+ */
+export const SELECTION_SETTLE_MS = Math.max(250, BUMPER_REPEAT_MS + 50);
 /** Feed pills: accents sampled a few games at a time, repainting after each batch. */
 const CARD_ACCENT_BATCH = 4;
 
@@ -116,18 +137,61 @@ function appName(appId: number): string {
     return typeof name === 'string' ? name : '';
 }
 
-/** Verified on the Ally: `collectionStore.recentAppsCollection.allApps` (20 items, newest first, `installed`, `m_gameid` for shortcuts). */
+/** Logged once per session: where the recents came from (Steam's recent list, the rest of the library). */
+let recentsSourcesLogged = false;
+
+/**
+ * `collectionStore.recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
+ * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
+ * on the Ally it gave 10 while Steam's Home shows more).
+ */
 function readRecentGames(): HomeGame[] {
     return guarded('recents', () => {
-        const apps = steam.collectionStore?.recentAppsCollection?.allApps;
-        if (!Array.isArray(apps)) return [];
-        const byId = new Map(apps.map((a) => [a.appid, a]));
-        return pickRecents(apps, RECENTS_LIMIT).map((g) => {
-            const app = byId.get(g.appId);
-            const gameId = app?.m_gameid;
-            return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };
-        });
+        const recent = steam.collectionStore?.recentAppsCollection?.allApps;
+        if (!Array.isArray(recent)) return [];
+        const listed = guarded('library apps', () => steam.appStore?.allApps, undefined);
+        const all = Array.isArray(listed) ? listed : [];
+        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
+        const picked = pickHomeRecents({ recent, all, isHidden, includeNew: true });
+        if (!recentsSourcesLogged && recent.length > 0) {
+            recentsSourcesLogged = true;
+            const merged = pickRecents(mergeRecentSources(recent, all, isHidden)).length;
+            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
+        }
+        // Steam's recent list wins for its own games (`installed`, `m_gameid` as Steam keeps them there).
+        return withLaunchInfo(picked, [...all, ...recent]);
     }, []);
+}
+
+/** Steam's `installed` and `m_gameid` for each picked game, from the app objects it came from. */
+function withLaunchInfo(picked: RecentGame[], apps: AnyApp[]): HomeGame[] {
+    const byId = new Map(apps.map((a) => [a.appid, a]));
+    return picked.map((g) => {
+        const app = byId.get(g.appId);
+        const gameId = app?.m_gameid;
+        return { ...g, installed: app?.installed === true, gameId: typeof gameId === 'string' ? gameId : undefined };
+    });
+}
+
+/**
+ * The games row: a collection's games (`row` is its id, collections.pickCollectionGames, sorted by `sort`) with its
+ * name for the eyebrow, or Steam's recent games with those new to the library. A collection that is gone, not offered
+ * or has no games left falls back to the recent games, so Home is never empty because of the setting.
+ */
+function readRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null } {
+    if (row !== RECENT_ROW) {
+        const chosen = guarded('collection', () => {
+            const store = steam.collectionStore;
+            const found = store?.userCollections?.find((c) => c?.id === row);
+            const offered = homeCollections(found ? [found] : [])[0];
+            if (!found || !offered || !Array.isArray(found.allApps)) return null;
+            const isHidden = (appId: number) => store?.BIsHidden?.(appId) === true;
+            const games = withLaunchInfo(pickCollectionGames(found.allApps, isHidden, sort), found.allApps);
+            return games.length > 0 ? { games, collection: offered.name } : null;
+        }, null);
+        if (chosen) return chosen;
+    }
+    return { games: readRecentGames(), collection: null };
 }
 
 function readPlayNextApps(): AnyApp[] {
@@ -180,8 +244,16 @@ let dealsMemo: DealCard[] = [];
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
 
-function useRecentGames(): { games: HomeGame[]; settled: boolean } {
-    const [games, setGames] = useState<HomeGame[]>(readRecentGames);
+function useRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null; settled: boolean } {
+    const [shown, setShown] = useState(() => readRowGames(row, sort));
+    const games = shown.games;
+    // The Games row setting changed while Home is open: read the row again.
+    const shownWith = useRef({ row, sort });
+    useEffect(() => {
+        if (shownWith.current.row === row && shownWith.current.sort === sort) return;
+        shownWith.current = { row, sort };
+        setShown(readRowGames(row, sort));
+    }, [row, sort]);
     const [retriesDone, setRetriesDone] = useState(false);
     useEffect(() => {
         if (games.length > 0) return undefined;
@@ -189,27 +261,39 @@ function useRecentGames(): { games: HomeGame[]; settled: boolean } {
         let tries = 0;
         const timer = setInterval(() => {
             tries++;
-            const next = readRecentGames();
-            if (next.length > 0) setGames(next);
-            if (next.length > 0 || tries >= RECENTS_RETRIES) {
+            const next = readRowGames(shownWith.current.row, shownWith.current.sort);
+            if (next.games.length > 0) setShown(next);
+            if (next.games.length > 0 || tries >= RECENTS_RETRIES) {
                 clearInterval(timer);
-                if (next.length === 0) setRetriesDone(true);
+                if (next.games.length === 0) setRetriesDone(true);
             }
         }, RECENTS_RETRY_MS);
         return () => clearInterval(timer);
     }, [games.length]);
-    return { games, settled: games.length > 0 || retriesDone };
+    return { games, collection: shown.collection, settled: games.length > 0 || retriesDone };
 }
 
-function useAccent(appId: number | null): string {
+/**
+ * What the accent does for the focused game `appId`: a colour already known this session shows at once, on the very
+ * step (a Map lookup, free while L1/R1 move through games); looking one up (a cache read over the backend, an image
+ * sample on a miss) waits until the selection rests on that game (`resting`). Pure.
+ */
+export function accentNow(appId: number | null, resting: number | null, memo: Map<number, string>): { show?: string; fetch: boolean } {
+    if (appId === null) return { fetch: false };
+    const known = memo.get(appId);
+    if (known) return { show: known, fetch: false };
+    return { fetch: resting === appId };
+}
+
+function useAccent(appId: number | null, resting: number | null): string {
     const [accent, setAccent] = useState(() => (appId !== null ? accentMemo.get(appId) : undefined) ?? DEFAULT_ACCENT);
     useEffect(() => {
-        if (appId === null) return undefined;
-        const memo = accentMemo.get(appId);
-        if (memo) {
-            setAccent(memo);
+        const now = accentNow(appId, resting, accentMemo);
+        if (now.show) {
+            setAccent(now.show);
             return undefined;
         }
+        if (!now.fetch || appId === null) return undefined;
         let active = true;
         // accentFor never rejects, but a guard costs nothing and Home must not see an unhandled rejection.
         accentFor(appId, { cache, sample: sampleAccent })
@@ -221,8 +305,45 @@ function useAccent(appId: number | null): string {
         return () => {
             active = false;
         };
-    }, [appId]);
+    }, [appId, resting]);
     return accent;
+}
+
+/** How long after the selection first rests the remaining recents' accents are looked up, in the background. */
+const ACCENT_WARMUP_DELAY_MS = 1500;
+
+/**
+ * Looks up accents ahead of time, so a stop is almost always a known colour (accentNow): the games around the
+ * selection as soon as it rests (`neighbours`), and, ACCENT_WARMUP_DELAY_MS after that, every recent game (`ids`), a few
+ * at a time, so even a long L1/R1 hold shows each game's colour as it passes. Mostly persisted-cache reads; an image is
+ * sampled only for a game never seen. Stops on unmount; waits while the page is hidden.
+ */
+function useAccentWarmup(ids: number[], neighbours: number[]) {
+    const lookup = (id: number) => accentFor(id, { cache, sample: sampleAccent });
+    const neighbourKey = neighbours.join(',');
+    useEffect(() => {
+        if (neighbours.length === 0) return;
+        fillMissing(neighbours, accentMemo, lookup, CARD_ACCENT_BATCH, DEFAULT_ACCENT).catch((error) => console.warn(`${LOG_PREFIX} Home: accent warm-up failed`, error));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [neighbourKey]);
+    const idsKey = ids.join(',');
+    useEffect(() => {
+        if (ids.length === 0) return undefined;
+        let active = true;
+        const timer = setTimeout(() => {
+            (async () => {
+                for (let i = 0; i < ids.length && active; i += CARD_ACCENT_BATCH) {
+                    if (pageHidden()) return;
+                    await fillMissing(ids.slice(i, i + CARD_ACCENT_BATCH), accentMemo, lookup, CARD_ACCENT_BATCH, DEFAULT_ACCENT);
+                }
+            })().catch((error) => console.warn(`${LOG_PREFIX} Home: accent warm-up failed`, error));
+        }, ACCENT_WARMUP_DELAY_MS);
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [idsKey]);
 }
 
 /** Makes Steam load the focused game's details (achievements) if it has not yet; bumps a version when they arrive. */
@@ -230,19 +351,41 @@ function useAppDetailsVersion(appId: number | null): number {
     const [version, setVersion] = useState(0);
     useEffect(() => {
         if (appId === null) return undefined;
-        const registration = guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(appId, () => setVersion((v) => v + 1)), undefined);
+        // The details are kept (detailsMemo): Steam's store may not hold them, and the hero art needs their file name.
+        const registration = guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(appId, (details) => {
+            noteDetails(appId, details);
+            setVersion((v) => v + 1);
+        }), undefined);
         return () => guarded('details unregister', () => registration?.unregister(), undefined);
     }, [appId]);
     return version;
 }
 
-function useRecommended(games: HomeGame[], wishlistDeals: boolean): { cards: RecommendedCard[]; deals: DealCard[] } {
+/**
+ * Asks Steam for the details of the games either side of the selection (the ones whose hero art is pre-loaded) and
+ * keeps their library assets (detailsMemo), so their full-screen art is the real hero once selected, not the blurred
+ * capsule. One registration per game, dropped when it leaves the set or Home unmounts.
+ */
+function useNeighbourDetails(ids: number[]) {
+    const key = ids.join(',');
+    useEffect(() => {
+        if (ids.length === 0) return undefined;
+        const registrations = ids.map((id) =>
+            guarded('details registration', () => steam.SteamClient?.Apps?.RegisterForAppDetails?.(id, (details) => noteDetails(id, details)), undefined),
+        );
+        return () => registrations.forEach((r) => guarded('details unregister', () => r?.unregister(), undefined));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+}
+
+function useRecommended(games: HomeGame[], wishlistDeals: boolean, enabled: boolean): { cards: RecommendedCard[]; deals: DealCard[] } {
     const [cards, setCards] = useState<RecommendedCard[]>(recommendedMemo);
     const [deals, setDeals] = useState<DealCard[]>(() => (wishlistDeals ? dealsMemo : []));
     const [installed] = useState(readPlayNextApps);
     const installedKey = installed.map((a) => a.appid).join(',');
     const excludeKey = games.slice(0, PLAY_NEXT_EXCLUDE).map((g) => g.appId).join(',');
     useEffect(() => {
+        if (!enabled) return undefined;
         let active = true;
         (async () => {
             const exclude = new Set(excludeKey ? excludeKey.split(',').map(Number) : []);
@@ -270,7 +413,8 @@ function useRecommended(games: HomeGame[], wishlistDeals: boolean): { cards: Rec
         };
         // `installed` is read once per mount; installedKey stands for it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [installedKey, excludeKey, wishlistDeals]);
+    }, [installedKey, excludeKey, wishlistDeals, enabled]);
+    if (!enabled) return { cards: [], deals: [] };
     return { cards, deals: wishlistDeals ? deals : [] };
 }
 
@@ -303,9 +447,10 @@ export function useCardAccents(appIds: number[], enabled: boolean): (appId: numb
 const UPDATED_DELAY_MS = 1500;
 
 /** The What's new tab's "Recently updated" games (recentlyUpdated.loadRecentlyUpdated: local IPC, memoised for 10 minutes). */
-function useRecentlyUpdated(): UpdatedCard[] {
+function useRecentlyUpdated(enabled: boolean): UpdatedCard[] {
     const [cards, setCards] = useState<UpdatedCard[]>([]);
     useEffect(() => {
+        if (!enabled) return undefined;
         let active = true;
         const timer = setTimeout(() => {
             loadRecentlyUpdated(Date.now, () => !active).then((list) => {
@@ -316,8 +461,8 @@ function useRecentlyUpdated(): UpdatedCard[] {
             active = false;
             clearTimeout(timer);
         };
-    }, []);
-    return cards;
+    }, [enabled]);
+    return enabled ? cards : [];
 }
 
 /** Steam's trending list is re-read this often (Steam itself refreshes it once a day), and once soon after mount, when its store names may have arrived. */
@@ -325,9 +470,10 @@ const STEAM_TRENDING_REFRESH_MS = 5 * 60_000;
 const STEAM_TRENDING_SECOND_READ_MS = 3000;
 
 /** Steam's own "Trending among friends" list (steamTrending.readSteamTrending); null when Steam's source is missing or failed. */
-function useSteamTrending(): TrendingCard[] | null {
-    const [cards, setCards] = useState<TrendingCard[] | null>(() => guarded('steam trending', readSteamTrending, null));
+function useSteamTrending(enabled: boolean): TrendingCard[] | null {
+    const [cards, setCards] = useState<TrendingCard[] | null>(() => (enabled ? guarded('steam trending', readSteamTrending, null) : null));
     useEffect(() => {
+        if (!enabled) return undefined;
         const read = () => setCards((old) => {
             const next = guarded('steam trending', readSteamTrending, null);
             return JSON.stringify(old) === JSON.stringify(next) ? old : next;
@@ -338,9 +484,12 @@ function useSteamTrending(): TrendingCard[] | null {
             clearTimeout(soon);
             clearInterval(timer);
         };
-    }, []);
-    return cards;
+    }, [enabled]);
+    return enabled ? cards : null;
 }
+
+/** No friends (the bottom section is hidden): one stable empty list, so nothing downstream recomputes. */
+const NO_FRIENDS: RawFriend[] = [];
 
 /** How often the friends list is re-read while Home is open (an in-memory read of Steam's friend store). */
 const FRIENDS_POLL_MS = 2000;
@@ -350,12 +499,13 @@ const FRIENDS_POLL_MS = 2000;
  * shows changed (friends.friendsKey), so statuses, rings, order and "Playing" update within about two seconds
  * without re-rendering Home for nothing. Cleaned up on unmount; a failed read keeps the last list.
  */
-function useLiveFriends(): RawFriend[] {
+function useLiveFriends(enabled: boolean): RawFriend[] {
     const [state, setState] = useState(() => {
-        const list = guarded('friends', readFriends, [] as RawFriend[]);
+        const list = enabled ? guarded('friends', readFriends, [] as RawFriend[]) : [];
         return { list, key: friendsKey(list) };
     });
     useEffect(() => {
+        if (!enabled) return undefined;
         const timer = setInterval(() => {
             if (pageHidden()) return;
             const list = guarded('friends', readFriends, null as RawFriend[] | null);
@@ -364,8 +514,8 @@ function useLiveFriends(): RawFriend[] {
             setState((old) => (old.key === key ? old : { list, key }));
         }, FRIENDS_POLL_MS);
         return () => clearInterval(timer);
-    }, []);
-    return state.list;
+    }, [enabled]);
+    return enabled ? state.list : NO_FRIENDS;
 }
 
 /** The friend last-played cache for the session (loaded once, then kept in step with what Home observes). */
@@ -402,8 +552,8 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals } = useSettings();
-    const { games, settled: recentsSettled } = useRecentGames();
+    const { wishlistDeals, homeRow, homeRowSort } = useSettings();
+    const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
 
@@ -412,53 +562,100 @@ export function useHomeData(focusIndex = 0): HomeData {
     const locale = steamLanguageToLocale(knownLang ?? loadedLang ?? 'english');
 
     const detailsVersion = useAppDetailsVersion(appId);
+    // What the background warm-up has learned (HowLongToBeat, achievement counts) for the games in the row: refreshes the chips.
+    const [warmVersion, bumpWarm] = useWarmVersion();
+    const gameIds = useMemo(() => games.map((g) => g.appId), [games]);
+    // The selection once it has rested (SELECTION_SETTLE_MS); `resting` is the focused game when it has, null while
+    // L1/R1 or Left/Right are still moving through games.
+    const settledIndex = useSettled(focusIndex, SELECTION_SETTLE_MS);
+    const settledId = games.length > 0 ? games[Math.min(Math.max(0, settledIndex), games.length - 1)].appId : null;
+    const resting = settledId !== null && settledId === appId ? appId : null;
+    const restNeighbours = useMemo(() => neighbourIds(gameIds, Math.max(0, settledIndex), HERO_PRELOAD_RADIUS), [gameIds, settledIndex]);
+    useNeighbourDetails(restNeighbours);
+    useAccentWarmup(gameIds, restNeighbours);
     const overrideVersion = useOverrideVersion();
-    const info = useMemo(
-        () => (appId === null ? null : guarded('game info', () => readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId)), null)),
+    useWarmup(games, focusIndex, recentsSettled && games.length > 0, (id) => readGameInfo(overview(id), undefined).isShortcut, bumpWarm);
+    // A new HowLongToBeat match for a game: what was remembered for the old one is dropped.
+    const seenOverrides = useRef(overrideVersion);
+    useEffect(() => {
+        if (seenOverrides.current === overrideVersion) return;
+        seenOverrides.current = overrideVersion;
+        forgetHltb();
+        bumpWarm();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [appId, detailsVersion],
+    }, [overrideVersion]);
+    const info = useMemo(
+        () => (appId === null ? null : guarded('game info', () => {
+            const read = readGameInfo(overview(appId), steam.appDetailsStore?.GetAppDetails?.(appId));
+            // Steam's store has no achievement counts for a game it did not load itself; the details callback did carry them.
+            return read.achievements || read.isShortcut ? read : { ...read, achievements: memoAchievements(appId) ?? null };
+        }, null)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [appId, detailsVersion, warmVersion],
     );
-    const hltb = useAsync(focused && info ? `hltb:${focused.appId}:${overrideVersion}` : null, () =>
-        lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false }),
-    );
+    // Known already (the warm-up, or an earlier visit this session): shown at once, without waiting for the selection to rest.
+    const warmedHltb = focused ? peekHltb(focused.appId) : undefined;
+    const liveHltb = useAsync(focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
+        const result = await lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false });
+        if (focused) rememberHltb(focused.appId, result);
+        return result;
+    });
+    const hltb = warmedHltb ?? liveHltb;
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
-    const accent = useAccent(appId);
+    // Unifideck's own play time for the selected game once it rests (one request, cached), for Unifideck games only.
+    const unifideck = useUnifideckPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, resting !== null);
+    // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and
+    // useAccentWarmup makes most of them known beforehand.
+    const accent = useAccent(appId, resting);
 
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
         if (!focused) return [];
+        const merged = mergePlaytime({ minutes: focused.playedMinutes, lastPlayed: focused.lastPlayed }, unifideck);
+        const isNew = focused.isNew && !(unifideck?.lastPlayed);
         return guarded('game chips', () => gameChips({
-            playedMinutes: focused.playedMinutes,
+            playedMinutes: merged.minutes,
             achievements: info?.achievements ?? null,
-            lastPlayed: focused.lastPlayed,
+            lastPlayed: merged.lastPlayed,
             hltbMainHours: hltb?.status === 'found' ? hltb.times.main : null,
+            addedAt: isNew ? focused.addedAt : undefined,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, locale]);
-    const lastPlayedLabel = focused ? guarded('last played', () => formatLastPlayed(focused.lastPlayed, nowSeconds, locale), null) : null;
+    }, [focused, info, hltb, locale, unifideck]);
+    // Unifideck knows a last played Steam does not: such a game is no longer "new to library".
+    const focusedIsNew = focused?.isNew === true && !unifideck?.lastPlayed;
+    const lastPlayedLabel = focused
+        ? guarded('last played', () => {
+            const when = focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, unifideck).lastPlayed;
+            // Never played (a collection's game): no date, the eyebrow says so (homeView.eyebrowText).
+            return when > 0 ? formatLastPlayed(when, nowSeconds, locale) : null;
+        }, null)
+        : null;
 
     const library = useMemo(
         () => guarded('library chips', () => libraryChips({ ...readLibraryCounts(), storageBytes: readStorageBytes() }, locale), []),
         [locale],
     );
-    const [news] = useState(() => guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []));
-    const updated = useRecentlyUpdated();
-    const rawFriends = useLiveFriends();
+    // Read once per mount (and again if the bottom section is turned back on while Home is open).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const news = useMemo(() => guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []), []);
+    const updated = useRecentlyUpdated(true);
+    const rawFriends = useLiveFriends(true);
     const lastGames = useFriendLastGames(rawFriends);
     const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
-    const steamTrending = useSteamTrending();
+    const steamTrending = useSteamTrending(true);
     const derivedTrending = useMemo(() => guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []), [rawFriends, lastGames]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
-    const { cards: recommended, deals } = useRecommended(games, wishlistDeals);
+    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, true);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
 }

@@ -55,6 +55,23 @@ def store_for_appid(registry: dict, appid: int) -> str | None:
     return None
 
 
+def key_for_appid(registry: dict, appid: int) -> dict | None:
+    """Unifideck's own key for a shortcut ("<store>:<game id>" in its registry) as {"store", "id"}, or None."""
+    target = _as_u32(appid)
+    if target is None:
+        return None
+    for key, entry in registry.items():
+        if not isinstance(key, str) or ":" not in key or not isinstance(entry, dict):
+            continue
+        store, game_id = key.split(":", 1)
+        if not store or not game_id:
+            continue
+        for field in APPID_FIELDS:
+            if field in entry and _as_u32(entry[field]) == target:
+                return {"store": store.lower(), "id": game_id}
+    return None
+
+
 class RegistryCache:
     """Reloads the registry only when the file's modification time changes."""
 
