@@ -5,8 +5,60 @@ import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { settings, useSettings } from '../data/settings';
+import { installUpdate, UpdateState, useUpdate } from '../data/update';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
+
+/** The Updates section's line under the title: the installed version and what the check found. */
+function updateLine(state: UpdateState): string {
+    const version = state.current ? `Version ${state.current}` : 'Game Glance';
+    switch (state.status) {
+        case 'checking':
+            return `${version} · checking for updates…`;
+        case 'upToDate':
+            return `${version} · up to date`;
+        case 'available':
+            return `${version} · ${state.release.version} is available`;
+        default:
+            return `${version} · could not check for updates`;
+    }
+}
+
+/**
+ * Updates: checks GitHub's latest release once a day (data/update.ts: when Game Glance loads, then daily while it runs),
+ * and installs a newer one through Decky's own installer, which asks to confirm and then reloads Game Glance. Check for
+ * updates (always there; off while a check runs) asks GitHub again.
+ */
+function UpdatesSection() {
+    const { state, recheck } = useUpdate();
+    return (
+        <PanelSection title="Updates">
+            <PanelSectionRow>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>{updateLine(state)}</div>
+            </PanelSectionRow>
+            {state.status === 'available' && (
+                <PanelSectionRow>
+                    <ButtonItem
+                        layout="below"
+                        description="Decky asks to confirm, then installs it and reloads Game Glance."
+                        onClick={async () => {
+                            if (!(await installUpdate(state.release))) {
+                                toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the update. Install it from the release page instead.' });
+                            }
+                        }}
+                    >
+                        Update to {state.release.version}
+                    </ButtonItem>
+                </PanelSectionRow>
+            )}
+            <PanelSectionRow>
+                <ButtonItem layout="below" disabled={state.status === 'checking'} onClick={recheck}>
+                    Check for updates
+                </ButtonItem>
+            </PanelSectionRow>
+        </PanelSection>
+    );
+}
 
 export function SettingsPanel() {
     const { enabled, autoPreload, spotlightHome, wishlistDeals } = useSettings();
@@ -142,6 +194,7 @@ export function SettingsPanel() {
                     </ButtonItem>
                 </PanelSectionRow>
             </PanelSection>
+            <UpdatesSection />
         </>
     );
 }

@@ -7,6 +7,7 @@ import { LOG_PREFIX, PLUGIN_NAME } from './constants';
 import { startAutoPreload } from './data/autoPreload';
 import { settings } from './data/settings';
 import { getSteamLanguage } from './data/steam';
+import { startUpdateChecks } from './data/update';
 import { patchGamePage } from './patches/gamePage';
 import { patchHomePage } from './patches/homePage';
 
@@ -16,6 +17,7 @@ export default definePlugin(() => {
     const unpatch = patchGamePage();
     const unpatchHome = patchHomePage(); // never throws; applied after and independent of the game page patch
     const stopAutoPreload = startAutoPreload();
+    const stopUpdateChecks = startUpdateChecks(); // quiet: once now (a day-old answer is reused), then daily
     console.log(`${LOG_PREFIX} loaded`);
     return {
         name: PLUGIN_NAME,
@@ -28,6 +30,7 @@ export default definePlugin(() => {
                 ['game page unpatch', unpatch],
                 ['Home unpatch', unpatchHome],
                 ['auto preload stop', stopAutoPreload],
+                ['update checks stop', stopUpdateChecks],
                 ['downloads stop', stopDownloads],
             ];
             for (const [what, step] of steps) {
