@@ -7,11 +7,9 @@ came from), and can replace Steam's Home with **Spotlight Home**: your games, on
 ![A game page on a TV: the game's logo, Play row, cards, and the Family Sharing pill](docs/images/tv-page-family.jpg)
 
 <details>
-<summary>More screenshots: the Clean look in Spanish, and the classic look</summary>
+<summary>More screenshots: the Clean look in Spanish, and the Quick Access panel</summary>
 
 ![The Clean look, with Steam set to Spanish](docs/images/tv-clean-look-es.jpg)
-
-The classic look (Spotlight Home off), on a handheld and on a TV:
 
 <img src="docs/images/quick-access.jpg" alt="Game Glance in Quick Access" width="320">
 
