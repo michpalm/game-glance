@@ -1,6 +1,7 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
 import { buildAccentCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
+import { STEAM_LEGEND_PX } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -488,7 +489,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(title).toContain('-webkit-line-clamp: 3');
         // placed where the logo was (top 120 of 810), the logo and Steam's text title hidden in place
         expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('position: absolute');
-        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(120 * var(--gg-d))');
+        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(var(--gg-play-top) - calc(36 * var(--gg-d)))');
         // (only while our title is rendered, so a failed render never leaves the page without a title)
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_TitleImg')).toContain('visibility: hidden');
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_Svg')).toContain('visibility: hidden');
@@ -541,11 +542,23 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(pill).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
         expect(rulesFor(restyled, '.gg-pill-icon')).toContain(sourcePillIcon((n) => `calc(${n} * var(--gg-d))`));
     });
-    it('uses no fixed pixel sizes except hairline borders', () => {
-        // (A media query's viewport thresholds are conditions, not sizes.)
+    it('uses no fixed pixel sizes except hairline borders and Steam\'s own button legend', () => {
+        // (A media query's viewport thresholds are conditions, not sizes. Steam's legend is a fixed 41 css px at every screen size.)
         const sizes = restyled.replace(/@media[^{]*\{/g, '{');
-        const fixed = [...sizes.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999'].includes(n));
+        const fixed = [...sizes.matchAll(/(\d+(?:\.\d+)?)px/g)].map((m) => m[1]).filter((n) => !['0', '1', '999', String(STEAM_LEGEND_PX)].includes(n));
         expect(fixed).toEqual([]);
+    });
+    it('a TV sets the Play row and cards from the bottom: the cards (three description lines) end 24 above Steam\'s legend; the handheld keeps its place', () => {
+        expect(STEAM_LEGEND_PX).toBe(41);
+        expect(restyled).toContain(':root { --gg-play-top: calc(100vh - calc(386 * var(--gg-d))); --gg-row-h: calc(96 * var(--gg-d)); }');
+        // 298 = the row (96) + the cards (178, three description lines) + the gap (24, the TV's side inset).
+        expect(restyled).toContain('@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-play-top: calc(100vh - 41px - calc(298 * var(--gg-d))); } }');
+        expect(restyled.indexOf('--gg-play-top: calc(100vh - 41px')).toBeGreaterThan(restyled.indexOf('--gg-play-top: calc(100vh - calc(386'));
+    });
+    it('the title block sits on the Play row on every screen: its bottom 36 above the row (the row-to-cards gap), so it grows upward', () => {
+        expect(restyled).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - calc\(36 \* var\(--gg-d\)\)\) !important;\s+transform: translateY\(-100%\) !important/);
+        expect(restyled).not.toContain('top: calc(120 * var(--gg-d))');
+        expect(restyled).not.toMatch(/@media[^{]*\{ \.\w+ > \.gg-titleblock/);
     });
     it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck keep 56', () => {
         expect(restyled).toMatch(/:root \{ --gg-side: calc\(56 \* var\(--gg-d\)\); \}/);
@@ -601,8 +614,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
                 expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|transition|color|background|border|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display)$/)]);
             }
         }
-        // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read)
-        expect(extra(steam).replace(/--gg-play-top: [^;]*;/, '')).not.toMatch(/z-index|100vh/);
+        // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's)
+        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '')).not.toMatch(/z-index|100vh/);
     });
 });
 

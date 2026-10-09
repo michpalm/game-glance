@@ -132,8 +132,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
                 <div className="gg-titleblock">
-                    {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
+                    {/* As on Home: the title (or logo) first, the eyebrow under it. */}
                     <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} />
+                    {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>

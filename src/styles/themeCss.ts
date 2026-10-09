@@ -272,6 +272,12 @@ const CLEAN_BOTTOM = 36;
  * The least space, in CSS px, from the Play pill's bottom to the screen's bottom: Steam's button legend is a fixed ~41 px strip (measured
  * on the Ally at 828x466 and 1500x844), so on the small handheld screen the scaled 2 x 36 would put the pill under it. Docked it is exceeded (75).
  */
+/** Steam's bottom button legend (MENU / SELECT / BACK): a fixed css height at every screen size (measured on the Ally, handheld and docked). */
+export const STEAM_LEGEND_PX = 41;
+/** The restyled cards' height with three description lines, in canvas px (measured docked: 185 css px at 1500 wide). */
+const TV_CARDS_H = 178;
+/** On a TV the cards end this far above Steam's legend: the TV's side inset (home/insets.SIDE_INSET.tv). */
+const TV_CARDS_GAP = 24;
 const CLEAN_MIN_BELOW_ROW = 61;
 const CLEAN_GAP = 28;
 
@@ -456,15 +462,22 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
 
     if (layout) {
         rules.push(
-            // Where the logo was: left inset, top 120 (as on Home, measured from the screen's top).
-            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: ${d(120)} !important;
-                left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
+            // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the
+            // Play row on every screen (the row sits lower on a TV, --gg-play-top's media query): title, eyebrow, row and
+            // cards stay one stack, the eyebrow always the same distance above the row, and a longer title grows upward.
+            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: calc(var(--gg-play-top) - ${d(36)}) !important;
+                transform: translateY(-100%) !important; left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
             // Steam's logo, and its text title for games without one, give way to our title (hidden in place), only
             // while our title is on the page: Steam's header is the first child of the page container.
             rule(titleImage && `${inner}:has(> .gg-titleblock) ${topCapsule} ${titleImage}`, ` visibility: hidden !important; `),
             rule(svgTitle && `${inner}:has(> .gg-titleblock) ${topCapsule} ${svgTitle}`, ` visibility: hidden !important; `),
             // Handoff: Play row top = H - 386 and row = pill 60 + 36 gap, so the cards (at the row's bottom) start at H - 290.
             `:root { --gg-play-top: calc(100vh - ${d(386)}); --gg-row-h: ${d(96)}; }`,
+            // A TV (the side inset's media query): Steam's legend is a fixed STEAM_LEGEND_PX at every size, so the handoff's
+            // H - 386, made for the handheld (where the legend is a third of that space), left a wide band under the cards.
+            // There the row and cards are set from the bottom: the cards (three description lines, TV_CARDS_H) end the TV's
+            // side inset (24) above the legend. The handheld and the Deck keep H - 386.
+            `@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-play-top: calc(100vh - ${STEAM_LEGEND_PX}px - ${d(96 + TV_CARDS_H + TV_CARDS_GAP)}); } }`,
             // The handoff's stronger scrims over the 1.1.1 ones.
             rule(`${topCapsule}::after`, ` background: ${HANDOFF_SCRIM_LEFT}, ${HANDOFF_SCRIM_BOTTOM},
                 ${SCRIM_BOTTOM}, ${SCRIM_LEFT}; `),
