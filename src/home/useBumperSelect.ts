@@ -2,6 +2,7 @@ import type { GamepadEvent } from '@decky/ui';
 import { RefObject, useEffect, useRef } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { bumperRepeatDelay, selectionForButton } from './focusZones';
+import { gameStepSound, playNavSound } from './navSound';
 
 export interface BumperHandlers {
     onButtonDown(evt: GamepadEvent): void;
@@ -15,7 +16,7 @@ export interface BumperHandlers {
  * Library card (focusZones.selectionForButton). Steam repeats only the d-pad, so a held bumper repeats here: the
  * first repeat after a pause, then a steady rate (focusZones.bumperRepeatDelay). The repeat never wraps and ends at
  * the first or last item, on the bumper's release, when focus leaves `row`, or on unmount, so it can never run on
- * by itself. `selected`/`count`: the selection now (0..count, count = the Library card); `select` applies a new one.
+ * by itself. Each step plays Steam's tab sound (navSound.gameStepSound). `selected`/`count`: the selection now (0..count, count = the Library card); `select` applies a new one.
  */
 export function useBumperSelect(row: RefObject<HTMLElement | null>, selected: number, count: number, select: (index: number) => void): BumperHandlers {
     const state = useRef({ selected, count, select });
@@ -39,6 +40,12 @@ export function useBumperSelect(row: RefObject<HTMLElement | null>, selected: nu
         }
     };
 
+    // Our handler takes the press before Steam does, so Steam plays no sound for it: each step plays its own.
+    const stepSound = (at: number, next: number) => {
+        const sound = gameStepSound(at, next, 'bumper');
+        if (sound) playNavSound(sound);
+    };
+
     const schedule = (button: number, repeats: number) => {
         timer.current = setTimeout(() => {
             timer.current = null;
@@ -52,6 +59,7 @@ export function useBumperSelect(row: RefObject<HTMLElement | null>, selected: nu
                 console.warn(`${LOG_PREFIX} Home: bumper repeat failed`, error);
                 return stop();
             }
+            stepSound(at, next);
             schedule(button, repeats + 1);
         }, bumperRepeatDelay(repeats));
     };
@@ -67,6 +75,7 @@ export function useBumperSelect(row: RefObject<HTMLElement | null>, selected: nu
             if (evt?.detail?.is_repeat) return; // Steam does not repeat bumpers; ours is the timer
             stop();
             apply(next);
+            stepSound(at, next);
             held.current = button;
             schedule(button, 0);
         } catch (error) {
