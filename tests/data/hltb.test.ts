@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCache, createOverrides } from '../../src/data/cache';
+import { createCache, createOverrides, TTL } from '../../src/data/cache';
 import { createHltbLookup, hltbCacheKey, HltbGame, parseStat } from '../../src/data/hltb';
 import { memoryKv } from '../../src/data/kv';
 
@@ -223,5 +223,31 @@ describe("cachedOnly (Home's background warm-up reads only what is on disk)", ()
         await lookup(W3);
         await overrides.set(292030, 999);
         expect(await lookup.cachedOnly(W3)).toBeNull(); // the old match is not the new one's
+    });
+});
+
+describe('createHltbLookup: a request that never answers', () => {
+    const never = () => new Promise<never>(() => undefined);
+    it('gives up after the time limit as unavailable (nothing cached), and asks again next time', async () => {
+        const fetchStats = vi.fn(never);
+        const cache = createCache(memoryKv());
+        const lookup = createHltbLookup({ fetchStats, isReachable: async () => true, cache, overrides: { get: async () => null }, timeoutMs: 20 });
+        expect(await lookup(W3)).toEqual({ status: 'unavailable' });
+        expect(await cache.get(hltbCacheKey(W3.appId, null))).toBeNull();
+        await lookup(W3);
+        expect(fetchStats).toHaveBeenCalledTimes(2);
+    });
+    it('a game with times keeps them when the refresh never answers', async () => {
+        let t = 0;
+        const cache = createCache(memoryKv(), () => t);
+        const found = vi.fn(async () => STATS);
+        await createHltbLookup({ fetchStats: found, isReachable: async () => true, cache, overrides: { get: async () => null }, now: () => t }).prefetch(W3);
+        t = TTL.hltbRefresh + 1;
+        const stuck = createHltbLookup({ fetchStats: vi.fn(never), isReachable: async () => true, cache, overrides: { get: async () => null }, now: () => t, timeoutMs: 20 });
+        expect(await stuck.prefetch(W3)).toEqual({ status: 'found', fetched: true });
+    });
+    it('a reachability check that never answers counts as unreachable', async () => {
+        const lookup = createHltbLookup({ fetchStats: vi.fn(async () => null), isReachable: vi.fn(never), cache: createCache(memoryKv()), overrides: { get: async () => null }, timeoutMs: 20 });
+        expect(await lookup(W3)).toEqual({ status: 'unavailable' });
     });
 });

@@ -23,6 +23,24 @@ export interface HltbDeps {
     cache: Cache;
     overrides: Pick<Overrides, 'get'>;
     now?: () => number;
+    /** How long one lookup (HowLongToBeat's search, or the reachability check) may take; HLTB_TIMEOUT_MS by default. */
+    timeoutMs?: number;
+}
+
+/**
+ * A HowLongToBeat lookup normally answers within a second or two. A request that never answers (Decky's proxy has no
+ * time limit; seen on the Ally after a network blip) left the game page's card waiting and the pre-load stuck, so a
+ * lookup gives up after this long: unavailable, nothing cached, a game's earlier times kept, and asked again next time.
+ */
+export const HLTB_TIMEOUT_MS = 20_000;
+
+/** `promise`, or `fallback` once `ms` have passed without an answer. */
+export function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+    });
+    return Promise.race([promise, late]).finally(() => clearTimeout(timer));
 }
 
 export function parseStat(value: unknown): number | null {
@@ -75,7 +93,14 @@ export function createHltbLookup(deps: HltbDeps) {
         return { overrideId, key, cached: usable, stale };
     }
 
-    async function fetchFresh(game: HltbGame, overrideId: number | null, key: string, previous: Found | null): Promise<HltbResult> {
+    const limit = deps.timeoutMs ?? HLTB_TIMEOUT_MS;
+
+    /** fetchSearch within the time limit: no answer reads as unavailable, keeping a game's earlier times. */
+    function fetchFresh(game: HltbGame, overrideId: number | null, key: string, previous: Found | null): Promise<HltbResult> {
+        return withTimeout(fetchSearch(game, overrideId, key, previous), limit, previous ?? { status: 'unavailable' });
+    }
+
+    async function fetchSearch(game: HltbGame, overrideId: number | null, key: string, previous: Found | null): Promise<HltbResult> {
         const steamAppId = game.isShortcut ? undefined : game.appId;
         let stats: HLTBGameStats | null;
         if (overrideId !== null) {
@@ -93,7 +118,7 @@ export function createHltbLookup(deps: HltbDeps) {
             await attempt('cache write', () => deps.cache.put<Stored>(key, { ...found, fetchedAt: now() }, TTL.hltbFound), undefined);
             return found;
         }
-        const reachable = await deps.isReachable();
+        const reachable = await withTimeout(deps.isReachable(), limit, false);
         if (previous) return reachable ? previous : { status: 'unavailable' }; // keep the old times either way
         if (reachable) {
             const notFound: HltbResult = overrideId !== null ? { status: 'notFound', overrideId } : { status: 'notFound' };
