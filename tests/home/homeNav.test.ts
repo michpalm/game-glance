@@ -1,6 +1,6 @@
 import { Navigation } from '@decky/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { newsWebUrl, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { focusElement, newsWebUrl, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
 
 const nav = vi.mocked(Navigation);
 
@@ -94,5 +94,40 @@ describe('openNews', () => {
         openNews(570, '');
         expect(app).not.toHaveBeenCalled();
         expect(nav.Navigate).toHaveBeenCalledWith('/library/app/570');
+    });
+});
+
+describe('focusElement', () => {
+    // A stand-in element: focus() sets the document's focus; Steam's own focus shows as the gpfocus class.
+    const element = (steamFollows: boolean) => {
+        const doc: { activeElement: unknown } = { activeElement: null };
+        const classes = new Set<string>();
+        const el = {
+            ownerDocument: doc,
+            classList: { contains: (c: string) => classes.has(c) },
+            focus: vi.fn(() => {
+                doc.activeElement = el;
+                if (steamFollows) classes.add('gpfocus');
+            }),
+        };
+        return el as unknown as HTMLElement & { focus: ReturnType<typeof vi.fn> };
+    };
+    it('focuses the element; when Steam\'s gamepad focus follows, nothing more', () => {
+        const el = element(true);
+        const steam = vi.fn(() => true);
+        focusElement(el, 'test', steam);
+        expect(el.focus).toHaveBeenCalled();
+        expect(steam).not.toHaveBeenCalled();
+    });
+    it('when Steam\'s gamepad focus did not follow (its window has no system focus), hands it over directly', () => {
+        const el = element(false);
+        const steam = vi.fn(() => true);
+        focusElement(el, 'test', steam);
+        expect(steam).toHaveBeenCalledWith(el);
+    });
+    it('does nothing for no element', () => {
+        const steam = vi.fn(() => true);
+        focusElement(null, 'test', steam);
+        expect(steam).not.toHaveBeenCalled();
     });
 });

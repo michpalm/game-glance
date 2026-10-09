@@ -3,7 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from '../home/StatusBar';
 import { statusCss } from '../home/homeCss';
 import { homeCanvas } from '../home/scale';
-import { findTopBar } from '../home/topBar';
+import { menuOpen, steamMenuStore } from '../home/steamMenu';
+
+/** How often the menu state is read (Steam's menu store has no event here); a menu opening shows within this. */
+const MENU_POLL_MS = 250;
+import { findTopBar, focusInTopBar } from '../home/topBar';
 
 /** The window's size, kept current. The plugin's code runs in another window than Steam's screen, so it is always `win`'s. */
 function useViewport(win: Window | null): { width: number; height: number } {
@@ -24,39 +28,42 @@ function useFocusInTopBar(doc: Document | null): boolean {
     const [away, setAway] = useState(false);
     useEffect(() => {
         if (!doc) return;
-        const onFocusIn = (event: Event) => {
-            const bar = findTopBar(doc, doc.defaultView?.innerWidth ?? 0);
-            const target = event.target as Node | null;
-            setAway(!!bar && !!target && bar.contains(target));
+        // Read where focus is (topBar.focusInTopBar): on each focus event for an instant answer, and on a short poll,
+        // since no focus events arrive while Steam's window has no system focus.
+        const update = () => setAway(focusInTopBar(findTopBar(doc, doc.defaultView?.innerWidth ?? 0), doc.activeElement));
+        doc.addEventListener('focusin', update);
+        const timer = setInterval(update, MENU_POLL_MS);
+        return () => {
+            doc.removeEventListener('focusin', update);
+            clearInterval(timer);
         };
-        doc.addEventListener('focusin', onFocusIn);
-        return () => doc.removeEventListener('focusin', onFocusIn);
     }, [doc]);
     return away;
 }
 
 /**
- * True while the page's window does not have focus: Steam's menus (main menu, Quick Access) are separate windows, so one being
- * open takes the focus from the page. Steam's own top bar then shows (sharp over the menu's blur) and ours steps aside. Window
- * focus events are followed by a slow check, since focus can move between windows without one.
+ * True while one of Steam's menus (main menu, Quick Access) is open, from Steam's own menu store (home/steamMenu): Steam's
+ * top bar then shows (sharp over the menu's blur) and ours steps aside. Not the window's focus: when no Steam window has
+ * the system's focus at all, that read as a menu open for good and hid the bar. Focus events trigger a read, and a
+ * short poll catches the rest.
  */
-function useWindowUnfocused(doc: Document | null): boolean {
-    const [unfocused, setUnfocused] = useState(false);
+function useMenuOpen(doc: Document | null): boolean {
+    const [open, setOpen] = useState(false);
     useEffect(() => {
         if (!doc) return undefined;
         const win = doc.defaultView;
-        const update = () => setUnfocused(!doc.hasFocus());
+        const update = () => setOpen(menuOpen(steamMenuStore(), doc.hasFocus()));
         update();
         win?.addEventListener('focus', update);
         win?.addEventListener('blur', update);
-        const timer = setInterval(update, 500);
+        const timer = setInterval(update, MENU_POLL_MS);
         return () => {
             win?.removeEventListener('focus', update);
             win?.removeEventListener('blur', update);
             clearInterval(timer);
         };
     }, [doc]);
-    return unfocused;
+    return open;
 }
 
 /** Above Steam's menu layers (full-screen blurs at 3900), so an open menu does not blur the bar, and below Steam's own top bar (6000). */
@@ -78,8 +85,8 @@ export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
     const { width, height } = useViewport(win);
     // Away (ours fades, Steam's top bar shows): focus is in Steam's top bar, or a menu is open over the page.
     const focusInBar = useFocusInTopBar(doc);
-    const menuOpen = useWindowUnfocused(doc);
-    const away = focusInBar || menuOpen;
+    const menuShown = useMenuOpen(doc);
+    const away = focusInBar || menuShown;
     const canvas = homeCanvas(width, height);
     return (
         <>

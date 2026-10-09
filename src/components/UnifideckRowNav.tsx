@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
+import { focusElement } from '../home/homeNav';
 import { needsVisualNav, visualNeighbour } from '../logic/rowNav';
 
 const PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn', '.unifideck-cancel-btn'].join(', ');
@@ -41,7 +42,7 @@ export function UnifideckRowNav() {
                 event.stopPropagation();
                 event.preventDefault();
                 const next = visualNeighbour(xs, from, button === RIGHT ? 'right' : 'left');
-                if (next !== null) items[next].focus();
+                if (next !== null) focusElement(items[next], 'Unifideck row button');
             } catch (error) {
                 console.warn(`${LOG_PREFIX} Unifideck row navigation failed`, error);
             }

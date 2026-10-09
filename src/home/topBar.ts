@@ -20,3 +20,18 @@ export function findTopBar(doc: Document, viewportWidth: number): Element | null
     return null;
 }
 
+interface BarLike {
+    contains(node: unknown): boolean;
+    querySelector(selector: string): unknown;
+}
+
+/**
+ * Whether focus is in Steam's top bar, read directly rather than from focus events: the page's focused element is
+ * inside the bar, or Steam's gamepad focus (`.gpfocus`) is. While Steam's window has no system focus, Chrome still moves
+ * the focused element but sends no focus events (seen on the Ally), so a bar left that way was never noticed. Pure.
+ */
+export function focusInTopBar(bar: BarLike | null, active: unknown): boolean {
+    if (!bar) return false;
+    if (active && bar.contains(active)) return true;
+    return !!bar.querySelector('.gpfocus');
+}
