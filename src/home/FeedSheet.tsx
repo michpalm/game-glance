@@ -10,6 +10,7 @@ import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from '.
 import { focusElement } from './homeNav';
 import { clampTab, HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
 import { useCardAccents } from './useHomeData';
+import { playNavSound, shoulderSound } from './navSound';
 import { tr } from '../i18n/steamText';
 
 const PREFERRED_CHILD = PREFERRED as NavEntryPositionPreferences;
@@ -173,7 +174,8 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
     /**
      * L1/R1 (Steam's own tab pattern: handled, then stopped so nothing else acts on them). In the tabs, focusing
      * the new tab selects it through its own focus handler (selectTab). In the feed, the tab switches and focus moves
-     * to the new tab's first card once rendered (the old card unmounts). At an end nothing changes.
+     * to the new tab's first card once rendered (the old card unmounts). At an end nothing changes. Steam's tab sounds play
+ * either way (navSound: the press never reaches Steam).
      */
     const shoulder = (zone: 'tabs' | 'feed') => (evt: GamepadEvent) => {
         try {
@@ -181,6 +183,8 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
             if (next === null) return;
             evt.preventDefault?.();
             evt.stopPropagation?.();
+            const sound = shoulderSound(tab, next);
+            if (sound) playNavSound(sound);
             if (next === tab) return;
             if (zone === 'tabs') {
                 focusElement(tabRefs.current[next], `${TABS[next].id} tab`);
