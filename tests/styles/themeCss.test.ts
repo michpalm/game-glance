@@ -436,6 +436,10 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     };
     const restyled = buildThemeCss(steam, { restyle: true });
 
+    it('the logo option: the same 560 x 180 box as Home, in the page\'s scale unit', () => {
+        expect(restyled).toContain('.gg-logo { display: block; width: auto; height: auto; max-width: calc(560 * var(--gg-d)); max-height: calc(180 * var(--gg-d));');
+    });
+
     it('changes nothing without the option, or with it off', () => {
         expect(buildThemeCss(steam, {})).toBe(buildThemeCss(steam));
         expect(buildThemeCss(steam, { restyle: false })).toBe(buildThemeCss(steam));

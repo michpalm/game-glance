@@ -10,6 +10,10 @@ describe('detailsMemo', () => {
         noteDetails(7, { libraryAssets: { strHeroImage: 'h2.jpg' } });
         expect(memoDetails(7)).toEqual({ strHeroImage: 'h2.jpg' });
     });
+    it('keeps the logo file name too', () => {
+        noteDetails(9, { libraryAssets: { strHeroImage: 'h.jpg', strLogoImage: 'abc/logo.png' } });
+        expect(memoDetails(9)).toEqual({ strHeroImage: 'h.jpg', strLogoImage: 'abc/logo.png' });
+    });
     it('ignores details without assets, broken ids and junk', () => {
         for (const junk of [undefined, null, 5, 'x', {}, { libraryAssets: null }, { libraryAssets: 'x' }]) noteDetails(8, junk);
         expect(memoDetails(8)).toBeUndefined();

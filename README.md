@@ -95,6 +95,10 @@ with Steam's own game page.
 
 **Status bar** (on by default) shows the clock, battery, connection and your online status at the top-right of Spotlight Home.
 
+**Game logo** (off by default) shows the game's logo in place of its name, on Spotlight Home and the game page. A game
+without a logo (or a custom SteamGridDB one) keeps its name. Logos Steam has not stored on the device yet load from
+Steam's image servers.
+
 **New to library** (off by default) adds the games Steam's own Home shows as new to your library, not played yet, to the
 recents row.
 
@@ -144,7 +148,7 @@ Quick Access (…) → Game Glance:
   HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
   description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
   title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **Status bar**, **New to library**, **Show wishlist deals:** see above.
+- **Spotlight Home**, **Status bar**, **Game logo**, **New to library**, **Show wishlist deals:** see above.
 - **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
 - **Pre-load game info for installed games** and **Pre-load new games automatically.**
 - **Clear cached data.**

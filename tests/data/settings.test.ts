@@ -7,7 +7,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -22,7 +22,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
     });
 });
 
@@ -34,16 +34,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
     });
 });
 
@@ -79,7 +79,7 @@ describe('settings: the removed Home switches', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeNewGames: false, cleanPage: false, homeStatusBar: true });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false });
     });
 });
 
@@ -119,5 +119,18 @@ describe('settings: Spotlight Home status bar', () => {
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
         expect(reloaded.get().homeStatusBar).toBe(false);
+    });
+});
+
+describe('settings: game logo instead of the title', () => {
+    it('is off by default and remembers being turned on', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().gameLogo).toBe(false);
+        await store.setGameLogo(true);
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().gameLogo).toBe(true);
     });
 });

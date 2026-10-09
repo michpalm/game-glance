@@ -9,10 +9,11 @@ export interface Settings {
     homeNewGames: boolean; // Spotlight Home's recents also show the games Steam lists as new to the library (unplayed)
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
+    gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, homeNewGames: false, cleanPage: false, homeStatusBar: true, gameLogo: false };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -31,6 +32,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeNewGames: pick('homeNewGames'),
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
+                gameLogo: pick('gameLogo'),
             };
             emit();
         },
@@ -67,6 +69,11 @@ export function createSettingsStore(kv: KvBackend) {
         },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };
+            emit();
+            await kv.set(KEY, current);
+        },
+        async setGameLogo(gameLogo: boolean): Promise<void> {
+            current = { ...current, gameLogo };
             emit();
             await kv.set(KEY, current);
         },

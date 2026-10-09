@@ -61,7 +61,7 @@ function UpdatesSection() {
 }
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeNewGames, cleanPage, homeStatusBar } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, homeNewGames, cleanPage, homeStatusBar, gameLogo } = useSettings();
     const { game, hltb } = useCurrentGame();
     const fetching = useFetchAll();
     const [input, setInput] = useState('');
@@ -132,6 +132,14 @@ export function SettingsPanel() {
                         description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
                         checked={homeStatusBar}
                         onChange={(value) => settings.setHomeStatusBar(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Game logo"
+                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
+                        checked={gameLogo}
+                        onChange={(value) => settings.setGameLogo(value)}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

@@ -1,7 +1,7 @@
 import { memoDetails } from './detailsMemo';
 
 export interface SteamStores {
-    details(appId: number): { libraryAssets?: { strHeroImage?: string; strHeaderImage?: string } } | undefined;
+    details(appId: number): { libraryAssets?: { strHeroImage?: string; strHeaderImage?: string; strLogoImage?: string } } | undefined;
     overview(appId: number): { header_filename?: string; library_capsule_filename?: string; app_type?: number } | undefined;
     /** Steam's own landscape (header) art list for the app, custom art first; root-relative or absolute urls. */
     landscape?(appId: number): string[] | undefined;
@@ -9,6 +9,8 @@ export interface SteamStores {
     customHero?(appId: number): string[] | undefined;
     /** Custom (SteamGridDB) portrait capsule art, jpg then png; root-relative urls; [] without custom art. */
     customCapsule?(appId: number): string[] | undefined;
+    /** Custom (SteamGridDB) logo art; root-relative urls; [] without custom art. */
+    customLogo?(appId: number): string[] | undefined;
 }
 
 const HOST = 'https://steamloopback.host';
@@ -65,6 +67,21 @@ export function heroUrls(appId: number, stores: SteamStores): string[] {
     return [...new Set([...custom, ...toUrls(appId, [hero]), ...guessed, ...toUrls(appId, [overview?.header_filename, overview?.library_capsule_filename])])];
 }
 
+/**
+ * The game's logo (the transparent title art Steam shows on its game page): custom (SteamGridDB) logo first
+ * (`appStore.GetCustomLogoImageURLs`), then the library asset in its hashed folder (`strLogoImage`, known once Steam
+ * or its details callback has loaded the game), then, for a Steam game, Steam's image server (`apps/<id>/logo.png`,
+ * probed: present for games whose local file name is not known yet; the unhashed local `<id>_logo.png` is not).
+ * A shortcut (Unifideck, non-Steam) has only custom art. [] means no logo: the caller shows the title.
+ */
+export function logoUrls(appId: number, stores: SteamStores): string[] {
+    const custom = listed(() => stores.customLogo?.(appId));
+    const logo = guarded(() => stores.details(appId))?.libraryAssets?.strLogoImage;
+    const steamGame = guarded(() => stores.overview(appId))?.app_type === GAME_APP_TYPE;
+    const remote = steamGame ? [`https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/logo.png`] : [];
+    return [...new Set([...custom, ...toUrls(appId, [logo]), ...remote])];
+}
+
 /** Custom portrait art first (`appStore.GetCustomVerticalCapsuleURLs`: `/customimages/<id>p.jpg|.png`), then the assets. */
 export function capsuleUrls(appId: number, stores: SteamStores): string[] {
     const custom = listed(() => stores.customCapsule?.(appId));
@@ -99,6 +116,7 @@ interface StoreGlobals {
         GetAppOverviewByAppID?(appId: number): ReturnType<SteamStores['overview']>;
         GetCustomHeroImageURLs?(overview: unknown): string[] | undefined;
         GetCustomVerticalCapsuleURLs?(overview: unknown): string[] | undefined;
+        GetCustomLogoImageURLs?(overview: unknown): string[] | undefined;
     };
 }
 
@@ -127,6 +145,11 @@ export const browserStores: SteamStores = {
         const store = globals().appStore;
         const overview = store?.GetAppOverviewByAppID?.(id);
         return overview ? store?.GetCustomVerticalCapsuleURLs?.(overview) : undefined;
+    },
+    customLogo: (id) => {
+        const store = globals().appStore;
+        const overview = store?.GetAppOverviewByAppID?.(id);
+        return overview ? store?.GetCustomLogoImageURLs?.(overview) : undefined;
     },
 };
 

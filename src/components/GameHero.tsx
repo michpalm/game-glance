@@ -32,6 +32,10 @@ import { UnifideckRowNav } from './UnifideckRowNav';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
 import { SourcePill } from './SourcePill';
+import { GameTitle } from './GameTitle';
+
+/** A canvas length in the restyled page's scale unit (themeCss: --gg-d). */
+const pageUnit = (n: number) => `calc(${n} * var(--gg-d))`;
 import { tr } from '../i18n/steamText';
 
 interface Props {
@@ -86,7 +90,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
 
-    const statusBar = useSettings().homeStatusBar;
+    const { homeStatusBar: statusBar, gameLogo } = useSettings();
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -127,7 +131,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {restyle && game.name !== '' && (
                 <div className="gg-titleblock">
                     {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
-                    <div className="gg-title">{game.name}</div>
+                    <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} />
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>

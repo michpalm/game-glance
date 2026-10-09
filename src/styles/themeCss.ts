@@ -1,6 +1,7 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_FOCUS_BAD } from '../home/cloud';
+import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
 
@@ -417,6 +418,10 @@ function restyleRules({ header, details, root, play }: ThemeClasses, layout: boo
         `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; font-size: ${d(64)}; line-height: 1; font-weight: 800; letter-spacing: -0.02em;
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }`,
+
+        // The logo option (components/GameTitle): the game's logo in the title's place, the same box as on Home (homeCss.LOGO_BOX).
+        `.gg-logo { display: block; width: auto; height: auto; max-width: ${d(LOGO_BOX.width)}; max-height: ${d(LOGO_BOX.height)}; object-fit: contain; object-position: left bottom;
+            filter: drop-shadow(0 ${d(4)} ${d(24)} rgba(0, 0, 0, 0.45)); }`,
 
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass; its type sizes.
         `.gg-cards { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: ${d(18)}; }`,

@@ -11,7 +11,7 @@ import { useSettings } from '../data/settings';
 import { recentsButton, repeatStep, RepeatState, selectionForButton, type Zone } from './focusZones';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
-import { HERO_PRELOAD_RADIUS } from './motion';
+import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS } from './motion';
 import { legibleAccent } from './accent';
 import { solveRaiseDelta } from './raised';
 import { findLegendHeight, legendReserve } from './legend';
@@ -27,6 +27,7 @@ import { TitleBlock } from './TitleBlock';
 import { useBumperSelect } from './useBumperSelect';
 import { useCloud } from './useCloud';
 import { useHomeData } from './useHomeData';
+import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 
 /** Hero dim (handoff heroDim): .15 at rest, +.30 while the feed sheet is up. */
@@ -121,7 +122,7 @@ export function SpotlightHome() {
     // the first game and then jumps. `restoring` also keeps the Play pill from claiming focus while it runs.
     const [restore] = useState(takeRestore);
     // Home is clean: the What's new, Friends and Recommended tabs are always there (Down reaches them) but stay out of sight until focus is in them.
-    const { homeStatusBar } = useSettings();
+    const { homeStatusBar, gameLogo } = useSettings();
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     const data = useHomeData(recentIndex);
@@ -136,6 +137,14 @@ export function SpotlightHome() {
     const gameIds = useMemo(() => data.games.map((g) => g.appId), [data.games]);
     // The games either side of the selection, whose hero art is pre-loaded so L1/R1 crossfade at once.
     const heroNeighbours = useMemo(() => neighbourIds(gameIds, focusIndex, HERO_PRELOAD_RADIUS), [gameIds, focusIndex]);
+    // With the logo option, their logos too (home/logoArt), on the same rest as the art, so L1/R1 draw the next logo on the step.
+    const neighbourKey = heroNeighbours.join(',');
+    useEffect(() => {
+        if (!gameLogo || heroNeighbours.length === 0) return undefined;
+        const timer = setTimeout(() => preloadLogos(heroNeighbours), HERO_PRELOAD_DELAY_MS);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameLogo, neighbourKey]);
     useLayoutEffect(() => {
         if (resolved || !restore || (gameIds.length === 0 && !data.recentsSettled)) return;
         if (gameIds.length > 0) {
@@ -346,7 +355,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title={tr('viewLibrary')} chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} />
+                                        <TitleBlock eyebrow={eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew)} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}
