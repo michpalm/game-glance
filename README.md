@@ -1,131 +1,112 @@
 # Game Glance
 
-A [Decky Loader](https://decky.xyz) plugin that turns Steam's game page in Game Mode into an immersive,
-full-screen view with everything about a game at a glance: how long it takes to beat, how far you are,
-what it is about, and where it came from.
+A [Decky Loader](https://decky.xyz) plugin for Steam's Game Mode. It turns each game's page into a full-screen view
+with everything about the game at a glance (how long it takes to beat, how far you are, what it is about and where it
+came from), and can replace Steam's Home with **Spotlight Home**: your games, one at a time, over their own art.
 
-![Game Glance on a handheld: The Witcher 3](docs/images/handheld-witcher3.jpg)
+![A game page on a TV: the game's logo, Play row, cards, and the Family Sharing pill](docs/images/tv-page-family.jpg)
 
 <details>
-<summary>More screenshots: a GOG game from Heroic, a TV, and the Quick Access menu</summary>
+<summary>More screenshots: the Clean look in Spanish, and the classic look</summary>
 
-![A GOG game added by Heroic](docs/images/handheld-chained-echoes.jpg)
+![The Clean look, with Steam set to Spanish](docs/images/tv-clean-look-es.jpg)
 
-![On a TV (1080p, docked)](docs/images/tv-chained-echoes.jpg)
+The classic look (Spotlight Home off), on a handheld and on a TV:
 
-![On a TV: The Witcher 3](docs/images/tv-witcher3.jpg)
+![The classic game page on a handheld: The Witcher 3](docs/images/handheld-witcher3.jpg)
+
+![The classic game page: a GOG game added by Heroic](docs/images/handheld-chained-echoes.jpg)
+
+![The classic game page on a TV](docs/images/tv-witcher3.jpg)
 
 <img src="docs/images/quick-access.jpg" alt="Game Glance in Quick Access" width="320">
 
 </details>
 
-## What it does
+## The game page
 
-- **Full-screen art.** The game's hero art fills the screen with its logo; Steam's Activity, Your stuff,
-  Community and Game info tabs move to the next screen (press down).
-- **Restyled Play row.** A pill-shaped Play button (including the "Play from" arrow some games have), round
-  controller and settings buttons, and Steam Cloud as a small icon coloured by sync state.
-- **HowLongToBeat.** Main story, Main + Extras and 100% times, a progress bar toward the next one you have
-  not reached, and how many hours are left.
+- **Full-screen art.** The game's hero art fills the screen (your custom SteamGridDB art when you have set some).
+  Steam's Activity, Your stuff, Community and Game info tabs are one press down.
+- **HowLongToBeat.** Main story, Main + Extras and 100% times, a bar toward the next one you have not reached, and
+  how many hours are left.
 - **Info card.** Your play time, achievements and the game's description, in your Steam language.
-- **Store pill.** Where the game comes from, with the store's icon: Steam, GOG, Epic, Amazon, Battle.net,
-  Ubisoft, Xbox Cloud or Heroic.
+- **Play row.** A pill-shaped Play button (with the "Play from" arrow some games have), round controller and settings
+  buttons, and Steam Cloud as a small icon coloured by its sync state.
+- **Store pill.** Where the game comes from, with the store's icon: Steam, GOG, Epic, Amazon, Battle.net, Ubisoft,
+  Xbox Cloud or Heroic. A game borrowed through **Steam Families** gets a second pill with the owner's name
+  ("Family Sharing · Grave").
+- **Clean look** (optional): only the art and one row at the bottom (Play, the buttons, and a small card with your play
+  time, achievements and HowLongToBeat's main story), without the description and HowLongToBeat cards.
 - **Non-Steam games.** Games added by [Heroic](https://heroicgameslauncher.com) or
-  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too. On a
-  Unifideck game's page, Unifideck's own Play row (Install, Play) sits on the art in the same style. Played and Last played for those games are Unifideck's own numbers (Steam has none for them), and its install or download size sits in our info card instead of in Unifideck's row.
-- **Works offline.** Times and descriptions are kept on the device. A Quick Access button pre-loads them for
-  every installed game, and new installs are picked up automatically.
-- **Handheld and TV.** Sizes follow the screen, so it looks the same docked to a TV.
+  [Unifideck](https://github.com/mubaraknumann/unifideck) get their store, times and description too. A Unifideck game's
+  page looks and works like a Steam game's: its Play row in the same place, the buttons in Steam's order, its own play
+  time, last played and install size (in Unifideck's language), and its cloud saves.
+- **Works offline.** Times and descriptions are kept on the device. Quick Access can pre-load them for every installed
+  game, and new installs are picked up automatically.
 
-## Spotlight Home (new in 2.0)
+With Spotlight Home on (or the Clean look), the page takes Spotlight Home's look: the game's title or logo with "Last
+played" under it, just above a larger Play row in the game's colour, and the status bar at the top. With both off, the
+page keeps its classic look.
 
-![Spotlight Home](docs/images/home-demo.gif)
+## Spotlight Home
 
-Spotlight Home is an optional new Home screen. It is off by default; turn it on in Quick Access.
+![Spotlight Home on a TV: the game's logo, its chips, Play and the games row](docs/images/tv-home-logo.jpg)
 
-- **Selected game.** The selected game fills the screen with its art (your custom SteamGridDB art when you have
-  set some), with chips (play time, achievements, HowLongToBeat main story; when you last played is in the line above the title), a Play button and
-  actions. The accent colour follows each game's art (accent text is lightened, hue kept, when the colour is too dark to read). Focus starts on the first game card, as on Steam's Home:
-  The chips are filled in ahead of time: a moment after Home opens, the HowLongToBeat time and the achievement counts of every
-  game in the row are looked up, nearest the selection first, so they are already there when you get to a game. HowLongToBeat
-  results are kept on the device, and the achievement counts for a week; the lookups for games not cached go online only while
-  **Pre-load new games automatically** is on.
-  **Left and Right** pick the previous or next game and **A** opens its page; **up** reaches Play and the other
-  buttons. **L1 and R1** pick the previous or next game from anywhere above the tabs and put focus on Play (hold to keep
-  going), for starting a game in two presses. For Steam games with cloud saves, a cloud button after the info button shows the
-  sync state (green, yellow, red, grey) and opens Steam's sync dialog when there is a problem. The gear button, or
-  the View/Select button, opens Steam's own menu for the game (favourites, collections, Manage, Properties...), the
-  same one as on the game's page.
-- **Recents row.** Your recent games as capsules, as many as Steam's own Home lists (up to 20; custom portrait art included); the selected one opens into a
-  wide card with the game's landscape art (custom art included), highlighted while the row has focus, and the row slides
-  to follow. The row ends in a Library card (Right or R1 past the last game, A opens the Library; again goes back to the
-  first) with a faded preview of more games. B on the buttons or the tabs comes back to the cards. Tapping a card does
-  nothing. With no recent games, Home shows a Library button. As on Steam's Home, games Steam lists as new to your
-  library (not played yet) join the row by the date they were added, marked NEW, with "New to library · {when}"
-  above the title and an "Added to library" chip. The row can show one of your collections instead (Games row, below).
-- **Feed.** Press down for tabs: **What's new** (news updates, which open the news; under them, as on Steam's Home, the
-  games recently updated on this device, with the size and when), **Friends** (your friends, in game first, then online,
-  away and offline, kept up to date while Home is open; the number online on the tab turns green when anyone is on,
-  and each picture, a small square as in Steam, has a green frame when online or in game, a blue one when away; A on a friend
-  in a game you can join asks, then joins them, as Steam's friends menu does; under them, Steam's own
-  "Trending among friends" list as small cards: in library, on sale or free to play, and which friends play it) and **Recommended** (Play next
-  from your library; under it, with Show wishlist deals on, up to six wishlist games on sale with their discount
-  and price). Up and down move between the rows, L1 and R1 switch tabs; B goes back up to Play.
-- **Details page to match.** With both toggles on, the Game Glance page gets the same look: accent eyebrow
-  and title, a larger Play row and new cards, laid out as in the design. The store pill stays. With Spotlight
-  Home off it looks exactly as it did in 1.1.1.
-- **Store pill.** The selected game's store (Steam, GOG, Epic...) shows as a pill with its icon and name at the
-  right of the Play row, the same pill as on the game page.
-- **Status bar.** The time, battery (with a bolt while charging, red under 20%) and connection (Wi-Fi, wired or
-  offline) sit in a glass pill at the top-right, near the screen edge. The clock follows Steam's 12/24-hour
-  setting. Next to it, a small dot shows your own online status in the Friends tab's colours: green online (or in a
-  game), blue away, grey invisible or offline. Moving up from the Play row to Steam's own top bar (search,
-  notifications, your profile) fades the bar out; it comes back when focus returns to Home. Without a battery (a
-  desktop) the battery is left out.
+An optional new Home screen, off by default (Quick Access → Game Glance → Spotlight Home).
 
-Quick Access → Game Glance has two toggles:
+- **One game at a time.** The selected game fills the screen with its art, its title (or logo) and when you last played
+  it, chips for play time, achievements and HowLongToBeat's main story, a Play button and the game's buttons. The
+  accent colour follows each game's art. The chips are filled in ahead of time for every game in the row, so they are
+  there the moment you land on a game.
+- **The games row.** Your recent games (up to 20, as many as Steam's own Home), or one of your collections (see Games
+  row below). Games new to your library join the recent games, marked NEW. The selected game opens into a wide card;
+  the row ends in a Library card.
+- **Controls.** Left and Right pick a game, A opens its page, up reaches Play and the buttons. **L1 and R1** pick the
+  previous or next game from anywhere above the tabs and put focus on Play (hold to keep going), so a game starts in two presses. The
+  gear button, or View/Select, opens Steam's own menu for the game.
+- **Steam Cloud.** For games with cloud saves, Steam's and Unifideck's, a cloud button shows the sync state and opens
+  Steam's sync dialog when there is a problem.
+- **Status bar.** The time, battery (a bolt while charging, red under 20%), Wi-Fi or wired, and a dot for your own
+  online status, at the top right, on Home and the game page. It steps aside for Steam's own top bar when you move up
+  to it or open a Steam menu.
+- **Press down for more.** Home itself stays clean; one press down brings up three tabs (L1 and R1 switch between them,
+  with Steam's tab sound):
+  - **What's new:** news for your games, and the games recently updated on this device.
+  - **Friends:** your friends, in game first, then online, away and offline; A on a friend in a game you can join asks,
+    then joins them. Under them, the games popular among your friends, with their pictures.
+  - **Recommended:** Play next from your library, and, with Show wishlist deals on, up to six wishlist games on sale
+    (the new price, then the old one struck through).
+- **Safe.** If anything in Spotlight Home fails, you get Steam's own Home instead of a broken screen.
 
-| Toggle | Default | Does |
+## Settings
+
+Quick Access (…) → Game Glance:
+
+| Setting | Default | What it does |
 |---|---|---|
-| Game Glance page | On | The immersive game page. Off gives Steam's own game page. |
-| Spotlight Home | Off | The new Home, and the details restyle above. Off returns Steam's Home at once. |
+| Game Glance page | On | The full-screen game page. Off gives Steam's own game page. |
+| Clean look | Off | The game page with only the art and one row at the bottom. |
+| Spotlight Home | Off | The new Home, and its look on the game page. Off returns Steam's Home at once. |
+| Status bar | On | The clock, battery, connection and online status at the top right. |
+| Game logo | Off | The game's logo in place of its name, on Home and the game page. A game without a logo keeps its name. Each logo is cropped to its artwork and sized so that wide and compact logos look about equally big. |
+| Games row | Recent Games | What Home's row shows: your recent games, or one of your Steam collections (Favorites, Locally Installed Games and your own). With a collection, **Sort By** offers Last Played, Alphabetical or Date Added to Library, and the line under the title starts with the collection's name. |
+| Show wishlist deals | Off | Wishlist games on sale in the Recommended tab (see Privacy). |
+| Pre-load new games automatically | On | Fetches times and descriptions for new installs, every 30 minutes. |
 
-Any combination works: page on and Spotlight off is the 1.1.1 look; Spotlight on and page off is Spotlight Home
-with Steam's own game page.
+Also in Quick Access:
 
-**Status bar** (on by default) shows the clock, battery, connection and your online status at the top-right of Spotlight Home.
+- **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
+- **Pre-load game info for installed games:** fetches times and descriptions for every installed game, about one per
+  second. A game that does not answer is skipped, and Stop ends it at once.
+- **Clear cached data.**
+- **Updates:** the installed version, **Update to …** when a newer release is out, and **Check for updates**.
 
-**Game logo** (off by default) shows the game's logo in place of its name, on Spotlight Home and the game page. A game
-without a logo (or a custom SteamGridDB one) keeps its name. Logos Steam has not stored on the device yet load from
-Steam's image servers.
+## Your language
 
-**Games row** (Recent games by default) picks what Home's row shows: your recent games, or one of your Steam collections
-(Favorites, Installed and your own; empty ones, Soundtracks and Uncategorized are left out), up to 20 games, without hidden
-ones. With a collection, **Sort by** orders it by Last Played (never-played games after, newest added first), Alphabetical
-or Date Added to Library (Steam's own sort names), and the line above the title starts with the collection's name ("Backlog · Last played · Yesterday").
-If the collection is deleted or empty, Home shows the recent games.
-
-**Language.** The words Game Glance draws follow Steam's: in your Steam language, with Steam's own wording where it has one (for
-example "Última sesión" and "Tiempo de juego" in Spanish). A few have no Steam equivalent and stay in English (see
-`docs/localization.md`).
-
-**Home is clean.** It shows only the selected game, its buttons and the recents row, with the stack sitting lower to fill the
-space. What's new, Friends and Recommended are not on the screen, but they are there: press down from the games and the sheet
-rises with the tabs, which fade in; going back up puts it away again.
-
-**Show wishlist deals** (off by default) adds up to six wishlist games that are on sale (the biggest discounts)
-to the Recommended tab, as a second row. To find them it sends your Steam ID to Steam's web API to read your wishlist, which must
-be public, then checks the prices of the whole wishlist on Steam's store (app IDs only) and looks up the name and
-Steam Deck rating of the deals shown; their header art loads from Steam's image servers. Nothing else leaves the
-device for this; Play next is worked out locally. A private or empty wishlist just hides the shelf.
-
-If anything in Spotlight Home fails, you get Steam's own Home instead of a broken screen.
-
-Known limits: Steam keeps no persistent "last played" game for friends, so Game Glance remembers the last game
-it saw each friend play (while Home is open or Steam reports it) and shows it, with that game's card, once they are away or offline;
-a friend it never saw playing shows their status. Spotlight Home is new and has had less
-testing than the game page; [docs/device-checklist.md](docs/device-checklist.md) lists what is still to be
-checked.
+Game Glance follows Steam's language and uses Steam's own words wherever Steam has them ("Última sesión" and "Tiempo de
+juego" in Spanish, the collection and sort names, the cloud states and more). Unifideck's labels come from Unifideck. A
+few words with no Steam equivalent stay in English: the HowLongToBeat column names and this Quick Access panel (see
+[docs/localization.md](docs/localization.md)).
 
 ## Install
 
@@ -133,47 +114,39 @@ Game Glance is not in the Decky plugin store. Install it from a release:
 
 1. In Game Mode, open Decky → Settings → General and turn on **Developer mode**.
 2. Download `game-glance.zip` from the [latest release](../../releases/latest).
-3. Decky → Settings → Developer → **Install plugin from ZIP** (or **Install plugin from URL** with the
-   release asset's link).
+3. Decky → Settings → Developer → **Install plugin from ZIP** (or **Install plugin from URL** with the release asset's
+   link).
 
-Later versions install from Game Mode: Quick Access → Game Glance → **Updates** shows when a newer release is out, and
-**Update to …** hands it to Decky, which asks to confirm, installs it and reloads Game Glance.
+**Updates install from Game Mode** (from 2.1 on): Game Glance checks for a new release once a day, and Quick Access →
+Game Glance → Updates shows **Update to …**, which hands it to Decky to confirm, install and reload Game Glance.
 
 If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same times on the game page.
 
-## Settings
-
-Quick Access (…) → Game Glance:
-
-- **Game Glance page:** turn it off to get Steam's own game page back.
-- **Clean look** (off by default, with the Game Glance page on): the game's art fills the screen with one row at the
-  bottom: Play, the controller, settings and cloud buttons, and a small card with your play time, achievements and
-  HowLongToBeat's main story; the store pill sits above it at the right, the title above it at the left. The
-  description and HowLongToBeat cards are not shown. It uses the Spotlight Home look of the page (accent Play pill,
-  title), whether Spotlight Home is on or not.
-- **Spotlight Home**, **Status bar**, **Game logo**, **Games row**, **Show wishlist deals:** see above.
-- **HowLongToBeat match:** if a game matches the wrong entry or none, paste its HowLongToBeat link.
-- **Pre-load game info for installed games** and **Pre-load new games automatically.**
-- **Clear cached data.**
-- **Updates:** the installed version, an update button when a newer release is out (see Install), and **Check for updates** to ask again. Game Glance also checks by itself once a day, quietly: a new version shows here.
-
 ## Compatibility
 
-Tested on a ROG Xbox Ally running Bazzite, handheld and docked to a 1080p TV. It should work on a Steam Deck
-and other SteamOS-like devices, but that has not been tested.
+Tested on a ROG Xbox Ally running Bazzite, handheld and docked to a 1080p TV; the layout follows the screen size. It
+should work on a Steam Deck and other SteamOS-like devices, but that has not been tested.
 
-Steam updates can rename the parts of the page the theme styles. When that happens, Game Glance turns its
-layout off and you get Steam's normal page with the cards on it, rather than a broken page.
+Steam updates can rename the parts of the page Game Glance styles. When that happens, it turns its layout off and you
+get Steam's normal page with the cards on it, rather than a broken page.
 [docs/device-checklist.md](docs/device-checklist.md) lists what to check after an update.
+
+Known limits: Steam keeps no "last played" game for friends, so Game Glance remembers the last game it saw each friend
+play and shows it once they are away or offline.
 
 ## Privacy
 
-Game Glance talks to two sites for game data: howlongtobeat.com (times) and store.steampowered.com (descriptions). It sends
-game names and Steam app IDs, nothing about you. The one exception is the optional **Show wishlist deals**
-setting (off by default): it sends your Steam ID to Steam's web API (api.steampowered.com) to read your public
-wishlist, then asks the store for the prices of the wishlist's games by app ID. Spotlight Home's news, friends,
-status bar (battery and connection) and art come from the Steam client itself (news images load from Steam's image servers, as on Steam's own Home, and so does a game's full-screen art when Steam has not loaded it on the device yet). Trending's store art (for games you do not own, when Steam's "store content on Home" is on), the wishlist deal art with Show wishlist deals on, and your friends' avatars also load from Steam's image servers.
-Once a day (when Game Glance loads, reusing an answer under a day old, then every 24 hours while it runs) and when you press Check for updates, the updater asks api.github.com for the latest release's details (version and download link); it sends nothing about you, and an update is only downloaded, by Decky, when you press Update.
+Game Glance talks to two sites for game data: howlongtobeat.com (times) and store.steampowered.com (descriptions). It
+sends game names and Steam app IDs, nothing about you.
+
+- **Show wishlist deals** (off by default) is the one exception: it sends your Steam ID to Steam's web API
+  (api.steampowered.com) to read your public wishlist, then asks the store for the prices of its games by app ID.
+- **Updates:** once a day, and when you press Check for updates, Game Glance asks api.github.com for the latest release's
+  version and download link. It sends nothing about you; an update is only downloaded, by Decky, when you press Update.
+- **From the Steam client:** Spotlight Home's news, friends, status bar and art, and the family owner's name (from your
+  friends list). Art, logos and news images Steam has not stored on the device yet load from Steam's image servers, as
+  on Steam's own Home.
+
 Everything Game Glance stores stays on the device, in Decky's settings folder.
 
 ## Development
@@ -187,23 +160,24 @@ scripts/package.sh                # builds out/game-glance.zip
 ```
 
 A release is a GitHub release tagged `vX.Y.Z` (the version in `package.json`) with `out/game-glance.zip` attached as
-`game-glance.zip`; the built-in updater compares that tag with the installed version.
+`game-glance.zip`; the built-in updater compares that tag with the installed version. Release notes are in
+[docs/release-notes](docs/release-notes).
 
-`scripts/serve.sh` serves the zip on your network for **Install plugin from URL**. The `scripts/cef-*.mjs`
-helpers drive Steam's UI through remote CEF debugging; see the device checklist for the setup.
+`scripts/serve.sh` serves the zip on your network for **Install plugin from URL**. The `scripts/cef-*.mjs` helpers
+drive Steam's UI through remote CEF debugging; see the device checklist for the setup.
 
 ## About this project
 
-This is a personal project, maintained on a best-effort basis. Steam and HowLongToBeat change without
-notice, so expect occasional breakage; issues are welcome.
+This is a personal project, maintained on a best-effort basis. Steam and HowLongToBeat change without notice, so expect
+occasional breakage; issues are welcome.
 
-The code was written with [Claude](https://claude.ai) (Anthropic's AI), directed, reviewed and tested on
-device by the author.
+The code was written with [Claude](https://claude.ai) (Anthropic's AI), directed, reviewed and tested on device by the
+author.
 
 ## Credits
 
-- HowLongToBeat lookup code from [HLTB for Deck](https://github.com/morwy/hltb-for-deck) (MIT), including the
-  fix from its pull request #68 by beallio. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+- HowLongToBeat lookup code from [HLTB for Deck](https://github.com/morwy/hltb-for-deck) (MIT), including the fix from
+  its pull request #68 by beallio. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 - Times from [HowLongToBeat](https://howlongtobeat.com). Store icons from Simple Icons and Font Awesome via
   [react-icons](https://react-icons.github.io/react-icons/).
 - Not affiliated with Valve, HowLongToBeat, ASUS or any store shown.
