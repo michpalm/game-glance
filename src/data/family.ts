@@ -33,7 +33,7 @@ export function familyOwnerName(accountId: number, friends: unknown): string | n
     return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
 }
 
-/** "Family Sharing · Grave" in Steam's words (its Family Sharing feature name), the name left out when unknown. */
+/** "Family Sharing · Lender" in Steam's words (its Family Sharing feature name), the name left out when unknown. */
 export function familyLabel(ownerName: string | null): string {
     return ownerName ? `${tr('familySharing')} · ${ownerName}` : tr('familySharing');
 }

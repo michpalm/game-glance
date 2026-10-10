@@ -310,7 +310,7 @@ export function SpotlightHome() {
     const geometry = useMemo(() => recentsGeometry(scale), [scale]);
     const css = useMemo(() => homeCss(scale), [scale]);
     const game = data.focused;
-    // A game from the family library: "Family Sharing · Grave" beside the store pill (data/family).
+    // A game from the family library: "Family Sharing · Lender" beside the store pill (data/family).
     const family = game ? familyPillLabel(game.appId) : null;
     const contentUp = measuredScale !== null && resolved;
     // Once the content is up: focus what was focused. The game cards or the actions here; the tabs and the feed are

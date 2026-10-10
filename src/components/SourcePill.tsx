@@ -37,7 +37,7 @@ export function SourcePill({ label, className = 'gg-pill', iconClassName = 'gg-p
 }
 
 /**
- * A game from the family library: "Family Sharing · Grave" with a friends icon (data/family), drawn like the store pill and
+ * A game from the family library: "Family Sharing · Lender" with a friends icon (data/family), drawn like the store pill and
  * placed inside it, just to its left (`gg-family` on the game page, `gh-family` on Home).
  */
 export function FamilyPill({ label, className = 'gg-family', iconClassName = 'gg-family-icon' }: { label: string; className?: string; iconClassName?: string }) {

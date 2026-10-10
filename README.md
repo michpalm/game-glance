@@ -26,7 +26,7 @@ came from), and can replace Steam's Home with **Spotlight Home**: your games, on
   buttons, and Steam Cloud as a small icon coloured by its sync state.
 - **Store pill.** Where the game comes from, with the store's icon: Steam, GOG, Epic, Amazon, Battle.net, Ubisoft,
   Xbox Cloud or Heroic. A game borrowed through **Steam Families** gets a second pill with the owner's name
-  ("Family Sharing · Grave").
+  ("Family Sharing · Lender").
 - **Clean look** (optional): only the art and one row at the bottom (Play, the buttons, and a small card with your play
   time, achievements and HowLongToBeat's main story), without the description and HowLongToBeat cards.
 - **Non-Steam games.** Games added by [Heroic](https://heroicgameslauncher.com) or
@@ -157,6 +157,11 @@ A release is a GitHub release tagged `vX.Y.Z` (the version in `package.json`) wi
 
 `scripts/serve.sh` serves the zip on your network for **Install plugin from URL**. The `scripts/cef-*.mjs` helpers
 drive Steam's UI through remote CEF debugging; see the device checklist for the setup.
+
+## Roadmap and progress
+
+Planned work and what is in progress are on the [Game Glance project board](https://github.com/users/michpalm/projects/2).
+Each item links to its issue. To suggest a feature or report a bug, [open an issue](https://github.com/michpalm/game-glance/issues).
 
 ## About this project
 
