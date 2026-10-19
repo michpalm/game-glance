@@ -25,7 +25,6 @@ export const menuStyles = `
 .gg-menu .gg-menu-back{border:0;background:transparent;color:#b5c8d6;justify-content:flex-start;padding-left:0}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 20px}
 .gg-menu h3{font-size:.85em;font-weight:500;color:#b8c5cf;margin:18px 0 8px}
-.gg-menu-setting-status{display:block;font-size:.75em;color:#b8c5cf;padding:0 10px 6px}
 .gg-menu-setting .Panel{background:transparent}
 .gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .gg-menu-switches>div{min-width:0}

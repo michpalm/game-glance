@@ -122,3 +122,11 @@ A real route check caught `Navigator.LibraryTab()` without an ID producing `/lib
 Native settings discovery is isolated in `nativeCore.ts`. It owns lazy audio/display callbacks and polls cheap native store fields every 500 ms; active audio-device discovery refreshes every second while this optional menu session is enabled. Each audio send rechecks the actual active direction/device immediately before setting volume and rejects obsolete or expired preflight. Listener lifetime follows outstanding issued writes through acknowledgement/error/timeout after disposal; no close/unload code restores old settings.
 
 The functional core preview remains enabled on the Ally for controller feel testing. The original frontend backup remains unchanged. Performance and richer game/social/plugin panels still use their native fallbacks at this checkpoint. No Git remote operations or publication occurred.
+
+### Task 6 controller feedback correction — 2026-10-19
+
+User requested removal of “Applying…” beneath volume and four-direction navigation between options. Removed the pending-status copy (including its unused style), preserving authoritative values, native slider editing and error feedback. CSS grids now also own native `Focusable flow-children="grid"` boundaries in Quick Settings, Navigate, More and Configure menu; the existing column parent can move between these groups.
+
+Reproduced on previous Ally frontend: focus Wi-Fi, dispatch native right (12), focus stayed Wi-Fi. Confirmed native Steam layout parser supports grid. After frontend reload, native input dispatcher verified right Wi-Fi → Bluetooth, down Bluetooth → Airplane, right Airplane → Night, left Night → Airplane, up Airplane → Bluetooth. No controls activated and no settings changed during these checks. Quick Settings DOM has no Applying text. These are native-dispatch checks; physical controller feel remains user acceptance.
+
+TypeScript and full suite: 1484 tests passed. ZIP integrity passed; local and installed temporary ZIP SHA256 `6d504246c20d5be6a87b190c74b0af9be175ad2e999583816251404f328a15b6`. Only temporary Ally frontend replaced, original backup retained. Preview left open for user testing. No Git remote operations.
