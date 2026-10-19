@@ -1,5 +1,5 @@
 import { Focusable, type GamepadEvent } from '@decky/ui';
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuBell, LuX } from 'react-icons/lu';
 import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
@@ -10,6 +10,10 @@ import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
+import { NavigatePanel } from './NavigatePanel';
+import { QuickSettingsPanel } from './QuickSettingsPanel';
+import type { createQuickSettings } from '../steam/quickSettings';
+import type { createNotificationBadge } from '../steam/notifications';
 import { MorePanel } from './MorePanel';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
@@ -20,11 +24,14 @@ export interface MenuShellProps {
     close(): void;
     inputActive?(): boolean;
     unreadCount?: number;
+    quickSettings?: ReturnType<typeof createQuickSettings>;
+    notificationBadge?: ReturnType<typeof createNotificationBadge>;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, panels = {} }: MenuShellProps) {
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const [error, setError] = useState('');
+    const badgeCount = useSyncExternalStore(notificationBadge?.subscribe ?? (() => () => {}), notificationBadge?.get ?? (() => unreadCount));
     const active = state.phase === 'custom-open';
     const enterNative = (request: NativeRequest) => { void handoff(request).catch(() => setError('Could not open Steam’s view. Use the menu button to return.')); };
     useLayoutEffect(() => {
@@ -54,6 +61,8 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const color = state.game ? accentMemo.get(state.game.appId) : undefined;
     const accent = color && /^#[\da-f]{6}$/i.test(color) ? color : '#1a9fff';
     let content = panels[state.section];
+    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
+    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} handoff={enterNative} />;
     if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
@@ -64,7 +73,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         if (key) dispatch({ type: 'focus', section: state.section, key });
     }}>
         <style>{menuStyles}</style>
-        <header><span>GAME GLANCE</span><div className="gg-menu-caption-actions"><MenuAction id="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{unreadCount > 0 && <span>{unreadCount}</span>}<LuBell aria-label="Notifications" /></MenuAction><MenuAction id="close" onAction={close}><LuX aria-label="Close menu" /></MenuAction></div></header>
+        <header><span>GAME GLANCE</span><div className="gg-menu-caption-actions"><MenuAction id="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction><MenuAction id="close" onAction={close}><LuX aria-label="Close menu" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
         <Focusable className="gg-menu-panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
         <footer><span>LB / RB · Switch section</span><span>A · Select</span><span>B · {state.stack.length || selectedBarSection(state) !== state.section ? 'Back' : 'Close'}</span></footer>

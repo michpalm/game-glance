@@ -14,6 +14,7 @@ vi.mock('@decky/api', () => ({
 vi.mock('@decky/ui', async () => ({
     afterPatch: (await import('@decky/ui/dist/utils/patcher.js')).afterPatch,
     Focusable: () => null,
+    QuickAccessTab: { Notifications: 0, Friends: 3, Settings: 4, Perf: 5, Help: 6, Music: 7, Decky: 999 },
     Navigation: { Navigate: vi.fn(), NavigateToExternalWeb: vi.fn(), NavigateToSteamWeb: vi.fn() },
 }));
 

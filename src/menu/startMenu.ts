@@ -8,6 +8,9 @@ import { defaultMenuState, reduceMenu, type MenuEvent, type Stop } from './model
 import { createMenuPreferences } from './preferences';
 import { discoverMenuRuntime, type NativeBindings } from './steam/runtime';
 import { menuInputActive, type NativeInputOwner } from './navigation';
+import { createQuickSettings } from './steam/quickSettings';
+import { createNotificationBadge } from './steam/notifications';
+import { discoverQuickSettingsBindings, nativeNotificationBindings } from './steam/nativeCore';
 import { MenuShell } from './components/MenuShell';
 
 export const menuPreferences = createMenuPreferences(backendKv);
@@ -40,6 +43,8 @@ export function startMenu(options?: Partial<Options>): Stop {
     let stopSession: Stop | undefined;
     let controller: ReturnType<typeof createMenuCoordinator> | undefined;
     let releaseHost: Stop | undefined;
+    let quickSettings: ReturnType<typeof createQuickSettings> | undefined;
+    let notificationBadge: ReturnType<typeof createNotificationBadge> | undefined;
     let state = defaultMenuState();
     const listeners = new Set<Stop>();
     const subscribe = (fn: Stop) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
@@ -47,7 +52,8 @@ export function startMenu(options?: Partial<Options>): Stop {
     const recover = () => controller && state.phase !== 'failed' && state.phase !== 'disabled' ? controller.handoff({ kind: 'main-menu' }) : fallback();
     recovery = recover;
     function release() {
-        const steps = [stopSession, releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
+        const quick = quickSettings, badge = notificationBadge; quickSettings = undefined; notificationBadge = undefined;
+        const steps = [stopSession, () => quick?.dispose(), () => badge?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
         for (const stop of steps) { try { stop?.(); } catch (error) { console.warn('[Game Glance] menu release failed', error); } }
     }
     function reconcile() {
@@ -58,11 +64,15 @@ export function startMenu(options?: Partial<Options>): Stop {
             if (!options?.discover) releaseHost = registerDiscoveredMenuHost() ?? undefined;
             const bindings = options?.discover ? options.discover() : discoverMenuRuntime();
             if (!bindings) { release(); return; }
+            if (!options?.discover) {
+                try { quickSettings = createQuickSettings(discoverQuickSettingsBindings()); } catch (error) { console.warn('[Game Glance] custom Quick Settings unavailable', error); }
+                try { notificationBadge = createNotificationBadge(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification badge unavailable', error); }
+            }
             state = reduceMenu(defaultMenuState(), { type: 'enable', value: true });
             dispatch({ type: 'pins', value: [...preferences.get().pins] });
             function ConnectedShell() {
                 const snapshot = useSyncExternalStore(subscribe, () => state);
-                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive });
+                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge });
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();

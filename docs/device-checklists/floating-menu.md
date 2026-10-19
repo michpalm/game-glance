@@ -89,3 +89,36 @@ The preview remains installed and enabled for the pending in-game acceptance che
 - Gate-closing development ZIP SHA-256: `329f698637f4ef68d306e65ac7d79a96fa17928ebd0815fe22fe4c56f40d29d0`; TypeScript and all 1,445 tests passed before copying; ZIP integrity passed.
 
 The checkbox list above remains the reproducible final acceptance procedure. Its earlier unchecked entries do not supersede this categorized first-gate evidence. Task 10 must repeat final acceptance after real panels are wired, including physical keyboard/modal and touch interaction where available.
+
+## Core settings and navigation checkpoint · Task 6
+
+Build: 131 test files / 1,484 tests pass; TypeScript passes. ZIP integrity passes. Latest local ZIP SHA-256: `0382440d60691ac7437ae3d2d4d00e7466636dcabf463d5bfa45dc72fd19f408`. The installed and device-verified core preview is `5f25138051f137b2adebcad7282b9d15509f037b240e43be60c74cb44e44eb55`; the final local build adds an optional-Bluetooth discovery guard. That unsupported-key branch has a regression; the available Ally Bluetooth binding is unchanged.
+
+Live production-adapter readback tests, with each original setting restored:
+
+| Control | Original → test value → restored | Evidence |
+|---|---|---|
+| Output volume, active HDMI 909 / AllOutput=1 | 89.9963% → 87.9959% → 89.9963% | Actual mounted adapter set, native volume callback, pending=false/error=null; exact original-device restoration confirmed. |
+| Microphone, active input 1148 / Input=0 | 100% → 97.9996% → 100% | Separate device/type; same adapter/readback/restoration checks. |
+| Night mode | false → true → false | Native message field readback, adapter completion, restoration confirmed. |
+| Friends DND | false → true → false | Friends-only binding; current-account identity checked for restoration. No chat/messages opened or sent. |
+| Automatic UI scaling | true → false → true | Native display-settings readback; display identity checked before restoration. |
+
+Wi-Fi, Bluetooth and Airplane mode getters/handlers were inspected, and binding/queue behavior tested with injected native contracts. **Their setters were not exercised on the Ally** to preserve the network/controller test path. Their native detail entry remains available. Airplane mode uses the actual subscribable `.Value` field. Before these tests, Wi-Fi/Bluetooth were on and Airplane mode off; none was changed by test code.
+
+Brightness is callback-fed (including the native store's existing callback-fed initial value), but the custom control is omitted on this external display. External-display brightness capability has not been established; use native Quick Settings. Internal-display behavior has adapter tests but still needs a device run in that configuration.
+
+Verified actual menu destinations:
+
+- Library `/library`, Downloads `/library/downloads`, Store `/steamweb`, Settings `/settings`.
+- Current-user Profile resolves Steam's current profile URL and enters the native `/externalweb` route. Online/Friends-ready and native parental feature gates are checked; offline/blocked behavior is tested with injected contracts, not by disconnecting the Ally.
+- Power opens Steam's native dialog; only its explicit Cancel action was selected. No power operation ran.
+- Notifications opens QAM tab 0; with native unviewed=0 and two tray groups, the badge is omitted. The badge source never calls Viewed, read, delete or clear methods. Explicit native viewing retains Steam's normal side effects.
+- Help and Soundtrack enter native QAM tabs 6 and 7 via the public named enum; no playback command was issued.
+- Navigation completes before closing side menus. The UI was returned to `/apprunning`; game 1057090 remains running.
+
+A real route check caught `Navigator.LibraryTab()` without an ID producing `/library/tab/:id`. The implementation now uses the verified native Library root, with a regression and successful device retest.
+
+Native settings discovery is isolated in `nativeCore.ts`. It owns lazy audio/display callbacks and polls cheap native store fields every 500 ms; active audio-device discovery refreshes every second while this optional menu session is enabled. Each audio send rechecks the actual active direction/device immediately before setting volume and rejects obsolete or expired preflight. Listener lifetime follows outstanding issued writes through acknowledgement/error/timeout after disposal; no close/unload code restores old settings.
+
+The functional core preview remains enabled on the Ally for controller feel testing. The original frontend backup remains unchanged. Performance and richer game/social/plugin panels still use their native fallbacks at this checkpoint. No Git remote operations or publication occurred.

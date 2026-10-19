@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Entry, GameContext, Stop } from '../model';
+import { createRoutes } from './routes';
+import { nativeRouteBindings } from './nativeCore';
 import { ownMethod } from './patchOwnership';
 
 export type QamTab = 'notifications' | 'friends' | 'quick-settings' | 'performance' | 'help' | 'soundtrack' | 'decky';
@@ -64,8 +66,6 @@ export function registerNativeRoutes(handler: NonNullable<typeof routeHandler>):
     routeHandler = handler;
     return () => { if (routeHandler === handler) routeHandler = previous; };
 }
-const QAM: Record<QamTab, number> = { notifications: 0, friends: 3, 'quick-settings': 4, performance: 5, help: 6, soundtrack: 7, decky: 999 };
-
 /** Requires a verified host factory; global Steam stores alone cannot prove render compatibility. */
 export function discoverMenuRuntime(): NativeBindings | null {
     const owner = (globalThis as unknown as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: NativeOwner } } }).SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance;
@@ -75,6 +75,11 @@ export function discoverMenuRuntime(): NativeBindings | null {
     if (!menu || ['GetOpenSideMenu', 'GetQuickAccessTab', 'OpenSideMenu', 'CloseSideMenus', 'ToggleSideMenu', 'OpenQuickAccessMenu'].some(k => typeof (menu as unknown as Record<string, unknown>)[k] !== 'function')) return null;
     if (typeof owner.OnHomeButtonPressed !== 'function' || typeof owner.OnQuickAccessButtonPressed !== 'function') return null;
     let bypass = 0;
+    let deactivate: Stop = () => {};
+    const routes = createRoutes(nativeRouteBindings(owner, () => deactivate(), async request => {
+        if (!routeHandler) throw new Error('Native destination is not available');
+        await routeHandler(request, owner);
+    }));
     const native = <T>(action: () => T): T => { bypass++; try { return action(); } finally { bypass--; } };
     return {
         capabilities: new Set(['host', 'native-menu']),
@@ -84,10 +89,7 @@ export function discoverMenuRuntime(): NativeBindings | null {
         async openNative(request) {
             bypass++;
             try {
-                if (request.kind === 'main-menu') { menu.OpenMainMenu ? menu.OpenMainMenu() : menu.OpenSideMenu(1); return; }
-                if (request.kind === 'qam') { menu.OpenQuickAccessMenu(QAM[request.tab]); return; }
-                if (!routeHandler) throw new Error('Native destination is not available');
-                await routeHandler(request, owner);
+                await routes.open(request);
             } finally { bypass--; }
         },
         subscribeGame(listener) {
@@ -105,6 +107,10 @@ export function discoverMenuRuntime(): NativeBindings | null {
         },
         installIntentHandlers(handlers) {
             const stops: Stop[] = [];
+            const previousDeactivate = deactivate;
+            const ownedDeactivate = () => handlers.suspended(true);
+            deactivate = ownedDeactivate;
+            stops.push(() => { if (deactivate === ownedDeactivate) deactivate = previousDeactivate; });
             let intent: { entry: Entry; handled: boolean } | null = null;
             let inToggle = false;
             const eligible = () => !bypass && !owner.IsAnyVRWindow() && !(menu.m_cSuppressRequests && menu.m_cSuppressRequests > 0);

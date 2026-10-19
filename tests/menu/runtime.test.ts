@@ -60,8 +60,8 @@ describe('native menu ownership',()=>{
         const n=native(),b=discoverMenuRuntime()!,suspended=vi.fn(),open=vi.fn();
         stops.push(b.installIntentHandlers({open,closed:vi.fn(),suspended}));
         stops.push(registerNativeRoutes(async()=>{await Promise.resolve();n.menu.OpenSideMenu(2);throw Error('destination failed');}));
-        await expect(b.openNative({kind:'navigate',destination:'profile'})).rejects.toThrow('destination failed');
-        expect(suspended).not.toHaveBeenCalled();n.owner.OnHomeButtonPressed();expect(open).toHaveBeenCalledTimes(1);
+        await expect(b.openNative({kind:'guide-article',appId:1057090,fileId:'123456789012345678'})).rejects.toThrow('destination failed');
+        expect(suspended).toHaveBeenCalledTimes(1);n.owner.OnHomeButtonPressed();expect(open).toHaveBeenCalledTimes(1);
     });
     it('restores native descriptors after stopping, including partial patch installation failure',()=>{
         const n=native(),original=n.owner.OnHomeButtonPressed,b=discoverMenuRuntime()!;
