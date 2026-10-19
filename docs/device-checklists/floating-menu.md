@@ -130,3 +130,12 @@ User requested removal of “Applying…” beneath volume and four-direction na
 Reproduced on previous Ally frontend: focus Wi-Fi, dispatch native right (12), focus stayed Wi-Fi. Confirmed native Steam layout parser supports grid. After frontend reload, native input dispatcher verified right Wi-Fi → Bluetooth, down Bluetooth → Airplane, right Airplane → Night, left Night → Airplane, up Airplane → Bluetooth. No controls activated and no settings changed during these checks. Quick Settings DOM has no Applying text. These are native-dispatch checks; physical controller feel remains user acceptance.
 
 TypeScript and full suite: 1484 tests passed. ZIP integrity passed; local and installed temporary ZIP SHA256 `6d504246c20d5be6a87b190c74b0af9be175ad2e999583816251404f328a15b6`. Only temporary Ally frontend replaced, original backup retained. Preview left open for user testing. No Git remote operations.
+
+### Spatial column entry and toggle focus correction — 2026-10-19
+
+Previous grid-boundary fix permitted four directions but retained each group's last active child. Repeatable native-dispatch regression reproduced wrong-column entry: after Wi-Fi history Night→Up returned Wi-Fi, and after Bluetooth history Airplane→Up returned Bluetooth. Added native `navEntryPreferPosition=MAINTAIN_X` to grid boundaries; all four history/starting-control combinations now pass: Airplane→Wi-Fi and Night→Bluetooth regardless of previous connectivity focus. No settings activated during navigation checks.
+
+Captured the MainMenu browser view before/after and inspected native toggle computed styles. Focus added a thumb border (height ~26px versus ~22px) plus a separate grey pseudo-element halo. The menu now owns a soft rounded row focus treatment, keeps the thumb 22×22 without a border, suppresses the duplicate switch halo and preserves accent-colored checked rails. Native checked state and thumb position remain unchanged. Final screenshot/computed-style check follows below.
+
+TypeScript and all 1484 tests passed; ZIP integrity and matching local/device SHA256 `e1abcbc0bb441b0b8d6d4d36e438749d71371ebd744c6ac7e9eebae04d25c94d`. Temporary frontend only, original backup retained, local Git only.
+Final installed preview recheck: all four spatial/history cases pass; focused Bluetooth remains checked with a ~22×22px thumb, 0px border and pseudo halo content `none`. Preview left open for physical controller acceptance.

@@ -25,7 +25,13 @@ export const menuStyles = `
 .gg-menu .gg-menu-back{border:0;background:transparent;color:#b5c8d6;justify-content:flex-start;padding-left:0}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 20px}
 .gg-menu h3{font-size:.85em;font-weight:500;color:#b8c5cf;margin:18px 0 8px}
-.gg-menu-setting .Panel{background:transparent}
+.gg-menu-setting .Panel{background:transparent;border-radius:14px}
+.gg-menu-setting:has(.gpfocus){border-radius:14px;outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 45%,transparent);outline-offset:2px;background:color-mix(in srgb,var(--gg-menu-accent) 8%,transparent)}
+.gg-menu .gg-menu-setting [role=checkbox]::after{content:none}
+.gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
+.gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;width:22px;height:22px;border:0;outline:0;box-shadow:0 0 5px #0005}
+.gg-menu .gg-menu-setting [role=checkbox][aria-checked=true]>:first-child{background:var(--gg-menu-accent)}
+.gg-menu .gg-menu-setting [role=checkbox][aria-checked=false]>:first-child{background:#ffffff30}
 .gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .gg-menu-switches>div{min-width:0}
 .gg-menu footer{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;padding:14px;color:#a9b9c5;font-size:.85em}
