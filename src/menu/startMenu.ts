@@ -7,6 +7,7 @@ import { registerDiscoveredMenuHost } from './host';
 import { defaultMenuState, reduceMenu, type MenuEvent, type Stop } from './model';
 import { createMenuPreferences } from './preferences';
 import { discoverMenuRuntime, type NativeBindings } from './steam/runtime';
+import { menuInputActive, type NativeInputOwner } from './navigation';
 import { MenuShell } from './components/MenuShell';
 
 export const menuPreferences = createMenuPreferences(backendKv);
@@ -27,11 +28,8 @@ interface Options {
     openNativeMenu?(): Promise<void>;
 }
 function inputActive(): boolean {
-    const owner = globalThis as typeof globalThis & {
-        GetShowingGlobalModal?: () => unknown;
-        VirtualKeyboardManager?: { IsShowingVirtualKeyboard?: { Value?: boolean } };
-    };
-    return !owner.GetShowingGlobalModal?.() && !owner.VirtualKeyboardManager?.IsShowingVirtualKeyboard?.Value;
+    const root = globalThis as typeof globalThis & { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: NativeInputOwner } } };
+    return menuInputActive(root.SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance);
 }
 export function startMenu(options?: Partial<Options>): Stop {
     const service = {}; currentService = service; emitService();

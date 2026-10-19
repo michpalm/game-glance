@@ -1,5 +1,14 @@
 import type { MenuEvent, MenuState } from './model';
 
+export interface NativeInputOwner {
+    GetShowingGlobalModal?(): boolean;
+    ModalManager?: { active_modal?: unknown };
+    VirtualKeyboardManager?: { IsShowingVirtualKeyboard?: { Value?: boolean } };
+}
+export function menuInputActive(owner: NativeInputOwner | undefined): boolean {
+    return !!owner && !owner.GetShowingGlobalModal?.() && !owner.ModalManager?.active_modal && !owner.VirtualKeyboardManager?.IsShowingVirtualKeyboard?.Value;
+}
+
 /** Called only by this menu's native Focusable subtree, never a global controller listener. */
 export function handleMenuButton(detail: { button: number; is_repeat?: boolean }, state: MenuState, dispatch: (event: MenuEvent) => void, inputActive: boolean): boolean {
     if (!inputActive || state.phase !== 'custom-open' || ![2, 5, 6].includes(detail.button)) return false;

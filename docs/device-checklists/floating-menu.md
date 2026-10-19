@@ -1,6 +1,6 @@
 # Floating menu — first device gate
 
-Status: **host repaired; acceptance still in progress**. The custom menu renders and the user reports that controller navigation works quite well. In-game input, keyboard/modal, held-button, and controller-configurator acceptance are not yet confirmed; Tasks 5–9 remain gated.
+Status: **first host/lifecycle gate passed on the Ally**. User controller and in-game checks plus the programmatic native-focus, handoff, cleanup, and restoration checks below permit Task 5. Final release acceptance remains Task 10.
 
 ## Local checkpoint · 2026-10-19
 
@@ -75,3 +75,17 @@ Verified live on the Ally:
 Current test package matches the device copy: SHA-256 `9845b221e5ee8b0cf9d139745fc5d5f3df9c26bee16bae417bd66ff11d15f14c`. TypeScript and 1,444 tests pass; package integrity passes. Native activation failure additionally has a regression for cleanup rejecting an in-flight presentation without an unhandled rejection.
 
 The preview remains installed and enabled for the pending in-game acceptance check. The original frontend backup remains unchanged at `/tmp/gg-floating-task4-original-index.js`. Restore the original frontend and native menus when the acceptance run ends. No Git remote operations or release publication occurred.
+
+
+## First gate closure · 2026-10-19
+
+- User confirmation: “Game check works”, in response to opening with both buttons, LB/RB and A/B, closing, and checking game input returns. Running game during the remaining checks: Ori and the Will of the Wisps, app 1057090.
+- Corrected the supplementary input guard: the actual modal and keyboard state belongs to `SteamUIStore.WindowStore.GamepadUIMainWindowInstance`, not globals. A regression covers owner modal, global-modal and keyboard state.
+- Programmatically opened the full native configurator using the running app's own Navigator entry. Its Home behavior preserved Steam's remembered configurator URL and returned to `/apprunning`; native Back and Quick Access reopening also worked. No layout was edited or saved.
+- Opened a temporary native ConfirmModal with a native TextField. Clicking/focusing it showed the actual native keyboard (`IsShowingVirtualKeyboard.Value === true`), and the real native modal manager reported an active modal. Invoking a retained actual menu callback during this state left the shoulder unconsumed. The native modal can close/suspend the menu, so the retained callback also verifies stale handlers yield correctly. This is a programmatic on-device check, not a physical-controller modal test.
+- Invoked the actual mounted menu shoulder callback with `is_repeat: true`: the In game section remained unchanged and the repeat was consumed. A fresh event advanced to Navigate. This is a programmatic on-device check; the user's earlier controller test supplies the general physical navigation feedback.
+- Removed both disposable focus-probe globals, hid the keyboard, and closed the temporary modal. No text, messages, layouts, or settings were saved by the focus test.
+- Restored native menus after the run: preview setting false, original frontend SHA-256 `9b35dbaba98bfd6a17d7b6c313ce2662a7da0276b3cb0e24cdeccfa235a48503`, original Home/Quick/portal descriptors, no viewport rule, no keyboard/modal. Game 1057090 remained running.
+- Gate-closing development ZIP SHA-256: `329f698637f4ef68d306e65ac7d79a96fa17928ebd0815fe22fe4c56f40d29d0`; TypeScript and all 1,445 tests passed before copying; ZIP integrity passed.
+
+The checkbox list above remains the reproducible final acceptance procedure. Its earlier unchecked entries do not supersede this categorized first-gate evidence. Task 10 must repeat final acceptance after real panels are wired, including physical keyboard/modal and touch interaction where available.

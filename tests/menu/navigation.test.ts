@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive } from '../../src/menu/navigation';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
         let state=reduceMenu(defaultMenuState(),{type:'enable',value:true});state=reduceMenu(state,{type:'open',entry:'home'});
@@ -11,6 +11,16 @@ describe('menu input boundary',()=>{
         handleMenuButton({button:6,is_repeat:true},state,dispatch,true);expect(state.section).toBe('quick-settings');
         handleMenuButton({button:6},state,dispatch,true);expect(state.section).toBe('performance');
         expect(handleMenuButton({button:27},state,dispatch,true)).toBe(false);
+    });
+    it('reads modal and keyboard state from the native owner rather than nonexistent globals', () => {
+        const owner = { GetShowingGlobalModal: () => false, ModalManager: { active_modal: null as unknown }, VirtualKeyboardManager: { IsShowingVirtualKeyboard: { Value: false } } };
+        expect(menuInputActive(owner)).toBe(true);
+        owner.ModalManager.active_modal = {}; expect(menuInputActive(owner)).toBe(false);
+        owner.ModalManager.active_modal = null; owner.VirtualKeyboardManager.IsShowingVirtualKeyboard.Value = true;
+        expect(menuInputActive(owner)).toBe(false);
+        owner.VirtualKeyboardManager.IsShowingVirtualKeyboard.Value = false;
+        owner.GetShowingGlobalModal = () => true; expect(menuInputActive(owner)).toBe(false);
+        expect(menuInputActive(undefined)).toBe(false);
     });
     it('unwinds Configure menu through the same model used by pointer selection',()=>{
         let state=reduceMenu(defaultMenuState(),{type:'enable',value:true});state=reduceMenu(state,{type:'open',entry:'home'});state=reduceMenu(state,{type:'select',section:'more'});state=reduceMenu(state,{type:'push',viewId:'configure-menu'});
