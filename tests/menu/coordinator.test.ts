@@ -4,7 +4,7 @@ import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/mod
 import type { IntentHandlers, NativeBindings } from '../../src/menu/steam/runtime';
 function harness(){
     let state=reduceMenu(defaultMenuState(),{type:'enable',value:true});let handlers!:IntentHandlers;const order:string[]=[];
-    const host={present:vi.fn(async()=>{order.push('present');}),suspend:vi.fn(()=>order.push('suspend')),close:vi.fn(),dispose:vi.fn()};
+    const host:{present:ReturnType<typeof vi.fn>;suspend:ReturnType<typeof vi.fn>;close:ReturnType<typeof vi.fn>;dispose:ReturnType<typeof vi.fn>;onFailure?: (listener:(error:Error)=>void)=>()=>void}={present:vi.fn(async()=>{order.push('present');}),suspend:vi.fn(()=>order.push('suspend')),close:vi.fn(),dispose:vi.fn()};
     const releaseHooks=vi.fn(),releaseGame=vi.fn(),replay=vi.fn();
     const bindings:NativeBindings={capabilities:new Set(['host']),attachHost:()=>host,showMenuHost:vi.fn(),closeMenuHost:vi.fn(),subscribeGame:()=>releaseGame,openNative:vi.fn(async()=>{order.push('native');}),installIntentHandlers:h=>{handlers=h;return releaseHooks;}};
     const c=createMenuCoordinator({bindings,getState:()=>state,dispatch:(e:MenuEvent)=>{state=reduceMenu(state,e);},render:()=>null});
@@ -35,6 +35,11 @@ describe('floating menu coordinator',()=>{
     it('does not revive a stopped session when a native handoff finishes',async()=>{
         const h=harness();let resolve!:()=>void;h.bindings.openNative=()=>new Promise<void>(r=>resolve=r);const stop=h.c.start();await h.c.open('home');
         const pending=h.c.handoff({kind:'main-menu'});stop();resolve();await pending;expect(h.state().phase).toBe('disabled');expect(h.host.dispose).toHaveBeenCalledTimes(1);
+    });
+    it('recovers to native after a late render failure and unregisters its failure listener',async()=>{
+        const h=harness();let fail!:(error:Error)=>void;const unsubscribe=vi.fn();h.host.onFailure=(listener:(e:Error)=>void)=>{fail=listener;return unsubscribe;};
+        const stop=h.c.start();await h.c.open('home');expect(fail).toBeTypeOf('function');fail(Error('render failed'));await vi.waitFor(()=>expect(h.bindings.openNative).toHaveBeenCalledWith({kind:'main-menu'}));
+        expect(h.state().phase).toBe('failed');expect(unsubscribe).toHaveBeenCalledTimes(1);stop();expect(h.host.dispose).toHaveBeenCalledTimes(1);
     });
     it('native close and suspension do not close the newly opened native menu again',async()=>{
         const h=harness();h.c.start();await h.c.open('home');vi.mocked(h.bindings.closeMenuHost).mockClear();

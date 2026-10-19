@@ -1,0 +1,37 @@
+import { createElement, type ReactElement } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, type HostSnapshot } from '../../src/menu/host';
+vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined}));
+function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
+describe('native menu host',()=>{
+    it('preserves native identity and focus callbacks when replacing only owned content',()=>{
+        const tree=nativeTree(),content=createElement('section',{},'Custom menu');
+        expect(renderMenuSlot(tree,{active:false,node:content},vi.fn())).toBe(tree);
+        const changed=renderMenuSlot(tree,{active:true,node:content},vi.fn()) as ReactElement<Record<string,unknown>>;
+        expect(changed.type).toBe(tree.type);expect(changed.props.navTreeRef).toBe(tree.props.navTreeRef);expect(changed.props.onActivated).toBe(tree.props.onActivated);expect(changed.props.onDeactivated).toBe(tree.props.onDeactivated);
+        const provider=changed.props.children as ReactElement<{children:unknown}>;expect(provider.props.children).toBe(content);
+    });
+    it('returns an unknown native tree unchanged and reports compatibility failure',()=>{
+        const tree=createElement('div',{},'Steam'),fail=vi.fn();
+        expect(renderMenuSlot(tree,{active:true,node:'menu'},fail)).toBe(tree);expect(fail).toHaveBeenCalledTimes(1);
+    });
+    it('replaces only the recognized portal container and leaves unrelated portals intact',()=>{
+        function Container(){return createElement('div',{navID:'MainNavMenuContainer'});}
+        const portal={$$typeof:Symbol.for('react.portal'),key:null,children:createElement(Container),containerInfo:{}};
+        const wrap=vi.fn(()=>()=>null);const changed=wrapMenuPortals(portal,wrap) as typeof portal;
+        expect(changed.children.type).not.toBe(Container);expect(changed.containerInfo).toBe(portal.containerInfo);expect(wrap).toHaveBeenCalledTimes(1);
+        const other={...portal,children:createElement('div')};expect(wrapMenuPortals(other,wrap)).toBe(other);
+    });
+    it('suspends, closes and disposes idempotently without disposing the borrowed Steam tree',async()=>{
+        let read!:()=>HostSnapshot;const release=vi.fn();
+        const host=createNativeHost({install:get=>{read=get;return release;}});
+        expect(read().active).toBe(false);await host.present('menu');expect(read()).toMatchObject({active:true,node:'menu'});
+        host.suspend();expect(read().active).toBe(false);await host.present('next');host.close();expect(read().node).toBeNull();
+        host.dispose();host.dispose();expect(release).toHaveBeenCalledTimes(1);await expect(host.present('late')).rejects.toThrow();
+    });
+    it('reports a late React failure and refuses another custom mount',async()=>{
+        let fault!:(e:Error)=>void;const release=vi.fn(),failure=vi.fn();
+        const host=createNativeHost({install:(_get,_subscribe,onFault)=>{fault=onFault;return release;}});host.onFailure!(failure);
+        await host.present('menu');fault(Error('bad render'));expect(failure).toHaveBeenCalledTimes(1);await expect(host.present('retry')).rejects.toThrow('bad render');host.dispose();expect(release).toHaveBeenCalledTimes(1);
+    });
+});

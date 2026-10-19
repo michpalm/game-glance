@@ -16,6 +16,7 @@ export interface HostAttachment {
     suspend(): void;
     close(): void;
     dispose(): void;
+    onFailure?(listener: (error: Error) => void): Stop;
 }
 export interface IntentHandlers {
     open(entry: Entry, replayNative: Stop): void;

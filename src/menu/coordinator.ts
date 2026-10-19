@@ -49,6 +49,12 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
             alive = true;
             try {
                 host = bindings.attachHost(() => render());
+                if (host.onFailure) releases.push(host.onFailure(() => {
+                    if (!alive) return;
+                    const entry = getState().entry;
+                    cleanup(true);
+                    void bindings.openNative(entry === 'home' ? { kind: 'main-menu' } : { kind: 'qam', tab: 'quick-settings' }).catch(error => console.warn('[Game Glance] native menu recovery failed', error));
+                }));
                 releases.push(bindings.subscribeGame(game => dispatch({ type: 'game', value: game })));
                 releases.push(bindings.installIntentHandlers({
                     open(entry, replayNative) { void openWithFallback(entry, replayNative).catch(error => console.warn('[Game Glance] native menu fallback failed', error)); },

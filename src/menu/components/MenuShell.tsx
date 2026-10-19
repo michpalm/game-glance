@@ -1,0 +1,72 @@
+import { Focusable, type GamepadEvent } from '@decky/ui';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { LuBell, LuX } from 'react-icons/lu';
+import { accentMemo } from '../../home/accentMemo';
+import { takeSteamFocus } from '../../home/steamFocus';
+import { selectedBarSection, type MenuEvent, type MenuState, type SectionId } from '../model';
+import { findMenuFocus, handleMenuButton } from '../navigation';
+import type { createMenuPreferences } from '../preferences';
+import type { NativeRequest, QamTab } from '../steam/runtime';
+import { menuStyles } from '../styles';
+import { MenuAction } from './MenuAction';
+import { MenuBar, SECTION_LABELS } from './MenuBar';
+import { MorePanel } from './MorePanel';
+const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
+export interface MenuShellProps {
+    state: MenuState;
+    preferences: ReturnType<typeof createMenuPreferences>;
+    dispatch(event: MenuEvent): void;
+    handoff(request: NativeRequest): Promise<void>;
+    close(): void;
+    inputActive?(): boolean;
+    unreadCount?: number;
+    panels?: Partial<Record<SectionId, ReactNode>>;
+}
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, panels = {} }: MenuShellProps) {
+    const root = useRef<HTMLDivElement>(null);
+    const [error, setError] = useState('');
+    const active = state.phase === 'custom-open';
+    const enterNative = (request: NativeRequest) => { void handoff(request).catch(() => setError('Could not open Steam’s view. Use the menu button to return.')); };
+    useLayoutEffect(() => {
+        const element = root.current;
+        if (!element || !active || !inputActive()) return;
+        const key = state.focus[state.section];
+        const focus = () => {
+            const target = findMenuFocus(element, key);
+            if (target) { target.focus({ preventScroll: true }); takeSteamFocus(target); }
+        };
+        focus();
+        const view = element.ownerDocument.defaultView;
+        const frame = view?.requestAnimationFrame(focus);
+        return () => { if (frame !== undefined) view?.cancelAnimationFrame(frame); };
+    }, [active, state.section, state.stack.length]);
+    if (!active) return null;
+    const onButton = (event: GamepadEvent, cancel = false) => {
+        if (event.detail.button === 2 && !cancel) return;
+        const next: MenuEvent[] = [];
+        if (!handleMenuButton(event.detail, state, value => next.push(value), inputActive())) return;
+        event.preventDefault(); event.stopPropagation();
+        for (const value of next) {
+            if (value.type === 'back' && !state.stack.length && (state.section === 'more' || state.section === 'in-game' || state.pins.includes(state.section))) close();
+            else dispatch(value);
+        }
+    };
+    const color = state.game ? accentMemo.get(state.game.appId) : undefined;
+    const accent = color && /^#[\da-f]{6}$/i.test(color) ? color : '#1a9fff';
+    let content = panels[state.section];
+    if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
+    if (content === undefined) {
+        const tab = NATIVE_TABS[state.section];
+        content = <><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}>Open in Steam</MenuAction></>;
+    }
+    return <Focusable ref={root} className="gg-menu" style={{ '--gg-menu-accent': accent } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
+        const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
+        if (key) dispatch({ type: 'focus', section: state.section, key });
+    }}>
+        <style>{menuStyles}</style>
+        <header><span>GAME GLANCE</span><div className="gg-menu-caption-actions"><MenuAction id="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{unreadCount > 0 && <span>{unreadCount}</span>}<LuBell aria-label="Notifications" /></MenuAction><MenuAction id="close" onAction={close}><LuX aria-label="Close menu" /></MenuAction></div></header>
+        <MenuBar state={state} dispatch={dispatch} />
+        <Focusable className="gg-menu-panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
+        <footer><span>LB / RB · Switch section</span><span>A · Select</span><span>B · {state.stack.length || selectedBarSection(state) !== state.section ? 'Back' : 'Close'}</span></footer>
+    </Focusable>;
+}
