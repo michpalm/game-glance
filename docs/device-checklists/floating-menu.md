@@ -1,6 +1,6 @@
 # Floating menu — first device gate
 
-Status: **not passed**. Tasks 5–9 must wait for a working native host and a new device run, or explicit review of this limitation.
+Status: **host repaired; acceptance still in progress**. The custom menu renders and the user reports that controller navigation works quite well. In-game input, keyboard/modal, held-button, and controller-configurator acceptance are not yet confirmed; Tasks 5–9 remain gated.
 
 ## Local checkpoint · 2026-10-19
 
@@ -28,7 +28,7 @@ Verified through live Steam/Decky state and DOM inspection, not physical control
 
 The remaining host investigation must find an integration that reaches an already-mounted native renderer without modifying React fibers or hiding native roots. Do not mark a renderer export patch as sufficient again. The generic host contract and shell remain reusable.
 
-## Restoration
+## Restoration after the first failed attempt
 
 - Preview toggle explicitly switched off; UI readback `aria-checked="false"`.
 - Original frontend restored from `/tmp/gg-floating-task4-original-index.js` on the Ally and reloaded through Decky.
@@ -52,3 +52,26 @@ Record each result as physical-device verified, programmatically verified, faile
 - [x] Failed presentation restores native opening and removes owned interception (programmatic Home check only).
 - [ ] Re-enable after failure and repeat both entry paths.
 - [ ] Unload/restore original frontend and confirm no custom hooks remain.
+
+
+## Host repair checkpoint · 2026-10-19
+
+The earlier export-mutation failure is resolved. A reversible live probe confirmed Steam calls the shared portal API on native menu renders even when React has cached its memo component. The host now owns a narrowly filtered portal hook: only a recognized `MainNavMenuContainer` function targeting its own `MainMenu` popup is wrapped. Unrelated portals pass through unchanged. Cleanup uses the existing ownership-aware descriptor restoration.
+
+Steam retains the portal target, owner-window providers, native navigation component, activation/deactivation callbacks, and native keyboard/modal routing. The native surface is activated after presentation begins so its first render can occur; presentation still requires layout acknowledgement and falls back on failure. The viewport rule is temporary and targets the uniquely discovered native Main Menu placeholder in its owning Steam window. It does not hide native roots or modify React fibers. Stylesheet discovery uses the module contract, not individual export discovery.
+
+Verified live on the Ally:
+
+- Custom root appears, with the first content action receiving focus.
+- Native viewport expands from 241 × 845 to 1500 × 845 CSS pixels. The floating content bounds were approximately x=195, y=68, width=1111, height=577.
+- The user reports: “Seems to work quite well” after the requested controller navigation test. Treat this as general user feedback, not proof of every acceptance item.
+- The custom Open in Steam action shows Steam's own contents and restores the 241-pixel viewport. Home reopens the custom menu.
+- More → Plugins → Open in Steam enters native Decky (side menu 2, tab 999); the custom viewport rule is removed.
+- Disabling the menu switch during native handoff restores the original Home handler, Quick Access handler, and portal descriptor. Re-enabling reacquires them.
+- Disabling the existing master switch during native handoff likewise restores all three; the original enabled master value was immediately restored.
+- Reload works with the feature enabled. Decky can retain an old active plugin panel after reload. That old menu-settings panel now warns that it must be reopened and disables its stale toggle. Closing/reopening Game Glance shows the active settings with no warning.
+- Existing Home reload remounting navigates after 1.5 seconds, so reload checks reopen the settings only after that transition completes.
+
+Current test package matches the device copy: SHA-256 `9845b221e5ee8b0cf9d139745fc5d5f3df9c26bee16bae417bd66ff11d15f14c`. TypeScript and 1,444 tests pass; package integrity passes. Native activation failure additionally has a regression for cleanup rejecting an in-flight presentation without an unhandled rejection.
+
+The preview remains installed and enabled for the pending in-game acceptance check. The original frontend backup remains unchanged at `/tmp/gg-floating-task4-original-index.js`. Restore the original frontend and native menus when the acceptance run ends. No Git remote operations or release publication occurred.

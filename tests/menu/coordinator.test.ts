@@ -17,6 +17,25 @@ describe('floating menu coordinator',()=>{
         await h.c.handoff({kind:'qam',tab:'decky'});expect(h.order.slice(-2)).toEqual(['suspend','native']);expect(h.state().phase).toBe('native-handoff');
         await h.c.open('home');expect(h.state().phase).toBe('custom-open');await h.c.open('home');expect(h.state().phase).toBe('closed');stop();
     });
+    it('activates the native surface before waiting for its first custom render', async () => {
+        const h = harness(); let confirm!: () => void;
+        h.host.present.mockImplementation(() => new Promise<void>(resolve => { confirm = resolve; }));
+        vi.mocked(h.bindings.showMenuHost).mockImplementation(() => confirm());
+        const stop = h.c.start(); const pending = h.c.open('home');
+        expect(h.bindings.showMenuHost).toHaveBeenCalledTimes(1);
+        await pending; expect(h.state().phase).toBe('custom-open'); stop();
+    });
+    it('handles a native activation exception without leaving presentation rejection unhandled', async () => {
+        const h = harness(); let reject!: (error: Error) => void;
+        h.bindings.attachHost = () => ({ ...h.host,
+            present: () => new Promise<void>((_resolve, fail) => { reject = fail; }),
+            dispose: () => reject(Error('disposed while awaiting render')),
+        });
+        vi.mocked(h.bindings.showMenuHost).mockImplementation(() => { throw Error('native host disappeared'); });
+        h.c.start(); h.handlers().open('home', h.replay);
+        await vi.waitFor(() => expect(h.replay).toHaveBeenCalledTimes(1));
+        expect(h.releaseHooks).toHaveBeenCalledTimes(1); expect(h.state().phase).toBe('failed');
+    });
     it('replays a native open once after rejected mount and leaves no active custom tree',async()=>{
         const h=harness();h.host.present.mockRejectedValue(Error('shape changed'));const stop=h.c.start();
         h.handlers().open('home',h.replay);await vi.waitFor(()=>expect(h.replay).toHaveBeenCalledTimes(1));
@@ -30,7 +49,7 @@ describe('floating menu coordinator',()=>{
         const h=harness();let resolve!:()=>void;h.host.present.mockImplementation(()=>new Promise<void>(r=>resolve=r));
         const stop=h.c.start(),pending=h.c.open('home');h.disable();stop();resolve();await pending;stop();
         expect(h.state().phase).toBe('disabled');expect(h.releaseHooks).toHaveBeenCalledTimes(1);expect(h.releaseGame).toHaveBeenCalledTimes(1);expect(h.host.dispose).toHaveBeenCalledTimes(1);
-        expect(h.bindings.showMenuHost).not.toHaveBeenCalled();
+        expect(h.bindings.showMenuHost).toHaveBeenCalledTimes(1); // opening the native surface precedes async render acknowledgement
     });
     it('does not revive a stopped session when a native handoff finishes',async()=>{
         const h=harness();let resolve!:()=>void;h.bindings.openNative=()=>new Promise<void>(r=>resolve=r);const stop=h.c.start();await h.c.open('home');

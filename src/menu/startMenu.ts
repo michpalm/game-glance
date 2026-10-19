@@ -10,6 +10,11 @@ import { discoverMenuRuntime, type NativeBindings } from './steam/runtime';
 import { MenuShell } from './components/MenuShell';
 
 export const menuPreferences = createMenuPreferences(backendKv);
+let currentService: object | undefined;
+const serviceListeners = new Set<Stop>();
+export const isMenuServiceCurrent = () => currentService !== undefined;
+export function subscribeMenuService(listener: Stop): Stop { serviceListeners.add(listener); return () => { serviceListeners.delete(listener); }; }
+const emitService = () => serviceListeners.forEach(listener => listener());
 const nativeMenu = async () => { Navigation.OpenMainMenu(); };
 let recovery: () => Promise<void> = nativeMenu;
 /** Recovery works even when storage or runtime discovery failed. */
@@ -29,6 +34,7 @@ function inputActive(): boolean {
     return !owner.GetShowingGlobalModal?.() && !owner.VirtualKeyboardManager?.IsShowingVirtualKeyboard?.Value;
 }
 export function startMenu(options?: Partial<Options>): Stop {
+    const service = {}; currentService = service; emitService();
     const masterSettings = options?.masterSettings ?? settings;
     const preferences = options?.preferences ?? menuPreferences;
     const fallback = options?.openNativeMenu ?? nativeMenu;
@@ -70,6 +76,7 @@ export function startMenu(options?: Partial<Options>): Stop {
     return () => {
         if (!alive) return;
         alive = false;
+        if (currentService === service) { currentService = undefined; emitService(); }
         for (const stop of [stopMaster, stopPreferences, release]) { try { stop(); } catch (error) { console.warn('[Game Glance] menu stop failed', error); } }
         listeners.clear();
         if (recovery === recover) recovery = nativeMenu;

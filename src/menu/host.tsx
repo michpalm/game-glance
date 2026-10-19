@@ -1,5 +1,6 @@
-import { findModuleExport } from '@decky/ui';
-import { Component, Fragment, cloneElement, createElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
+import * as ReactDOM from 'react-dom';
+import { findModule, findModuleExport } from '@decky/ui';
+import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory } from './steam/runtime';
@@ -14,6 +15,7 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
     const emit = () => listeners.forEach(listener => listener());
     const release = surface.install(() => state, listener => { listeners.add(listener); return () => { listeners.delete(listener); }; }, error => {
         if (disposed || failure) return;
+        console.warn('[Game Glance] menu host failed', error);
         failure = error; state = { active: false, node: null }; emit();
         failures.forEach(listener => listener(error));
     });
@@ -74,24 +76,49 @@ class MenuBoundary extends Component<{ nativeTree: ReactNode; fault(error: Error
     componentDidCatch(error: Error) { this.props.fault(error); }
     render() { return this.state.failed ? this.props.nativeTree : this.props.children; }
 }
-function stretchPlaceholder(tree: ReactNode): ReactNode {
-    if (!isValidElement(tree)) return tree;
-    const element = tree as Tree;
-    if (element.props.browser && typeof element.props.visible === 'boolean') return cloneElement(element, { className: `${element.props.className ?? ''} gg-menu-native-placeholder` });
-    const children = element.props.children;
-    if (Array.isArray(children)) return cloneElement(element, {}, children.map(child => stretchPlaceholder(child)));
-    return children ? cloneElement(element, {}, stretchPlaceholder(children as ReactNode)) : tree;
+interface PortalAPI { createPortal(...args: unknown[]): unknown }
+/** The live API is called even when React has cached the native memo's inner function. */
+export function installMenuPortalHook(api: PortalAPI, wrap: (native: ComponentType<Record<string, unknown>>) => ComponentType<Record<string, unknown>>): Stop {
+    return ownMethod(api, 'createPortal', next => function(this: unknown, ...args: unknown[]) {
+        const [child, target] = args;
+        if (isValidElement(child) && typeof child.type === 'function' && child.type.toString().includes('MainNavMenuContainer')) {
+            const props = child.props as Record<string, unknown>;
+            const popup = props.popup as Window | undefined;
+            const document = (target as Element | undefined)?.ownerDocument;
+            if (popup && /^MainMenu(?:_|$)/.test(popup.name) && document?.defaultView === popup && typeof props.open === 'boolean') {
+                args[0] = { ...child, type: wrap(child.type as ComponentType<Record<string, unknown>>) };
+            }
+        }
+        return Reflect.apply(next, this, args);
+    });
 }
 
-/** Registered only when the native browser-view memo's source shape is recognized. */
+export function stretchMenuViewport(document: Document, classes: readonly string[]): Stop {
+    const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
+    const placeholder = styles?.ViewPlaceholder;
+    if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
+    const style = document.createElement('style');
+    style.dataset.ggMenuViewport = 'true';
+    style.textContent = `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
+    document.head.appendChild(style);
+    return () => style.remove();
+}
+
+/** Native portal/window/context stay owned by Steam; no mounted React internals are modified. */
 export function registerDiscoveredMenuHost(): Stop | null {
-    let memo: { type: (props: Record<string, unknown>) => ReactNode } | undefined;
     try {
-        memo = findModuleExport(value => typeof value?.type === 'function' && value.type.toString().includes('MainMenuBrowserView') && value.type.toString().includes('createPortal'));
+        const memo = findModuleExport(value => typeof value?.type === 'function' && value.type.toString().includes('MainMenuBrowserView') && value.type.toString().includes('createPortal'));
+        if (!memo || typeof ReactDOM.createPortal !== 'function') return null;
     } catch { return null; }
-    if (!memo) return null;
-    const factory: MenuHostFactory = (owner) => {
+    const factory: MenuHostFactory = owner => {
         if (owner.IsAnyVRWindow()) throw new Error('VR menu host is unsupported');
+        const document = owner.BrowserWindow?.document;
+        if (!document?.head) throw new Error('Steam menu owner window is unavailable');
+        let stopViewport: Stop | undefined;
+        const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
+        function stretchViewport(tree: Tree) {
+            if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/));
+        }
         let read: () => HostSnapshot;
         let confirmed: ReactNode;
         const pending = new Set<{ resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
@@ -100,52 +127,47 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 if (read().active && confirmed === read().node) return Promise.resolve();
                 return new Promise<void>((resolve, reject) => {
                     const request = { resolve, reject, timer: setTimeout(() => {
-                        pending.delete(request);
-                        reject(new Error('Steam menu renderer did not confirm presentation'));
+                        pending.delete(request); reject(new Error('Steam menu renderer did not confirm presentation'));
                     }, 1000) };
                     pending.add(request);
                 });
             },
             install(get, subscribe, fault) {
-            read = get;
-            const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
-            const wrap = (native: ComponentType<Record<string, unknown>>) => {
-                const existing = wrapped.get(native); if (existing) return existing;
-                function Gate({ tree }: { tree: ReactNode }) {
-                    const snapshot = useSyncExternalStore(subscribe, get);
-                    const replaced = renderMenuSlot(tree, snapshot, error => queueMicrotask(() => fault(error)));
-                    useLayoutEffect(() => {
-                        if (!snapshot.active || replaced === tree) { confirmed = undefined; return; }
-                        confirmed = snapshot.node;
-                        for (const request of pending) { clearTimeout(request.timer); request.resolve(); }
-                        pending.clear();
-                    }, [snapshot, replaced, tree]);
-                    return <MenuBoundary nativeTree={tree} fault={fault}>{replaced}</MenuBoundary>;
-                }
-                // The native component's hooks retain their order in this stable wrapper type.
-                const component = function NativeMenuContent(props: Record<string, unknown>) {
-                    const tree = (native as (props: Record<string, unknown>) => ReactNode)(props);
-                    return <Gate tree={tree} />;
+                read = get;
+                const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
+                const wrap = (native: ComponentType<Record<string, unknown>>) => {
+                    const existing = wrapped.get(native); if (existing) return existing;
+                    function Gate({ tree }: { tree: ReactNode }) {
+                        const snapshot = useSyncExternalStore(subscribe, get);
+                        const replaced = renderMenuSlot(tree, snapshot, error => queueMicrotask(() => fault(error)));
+                        useLayoutEffect(() => {
+                            if (!snapshot.active || replaced === tree) { confirmed = undefined; releaseViewport(); return; }
+                            try { stretchViewport(tree as Tree); }
+                            catch (error) { fault(error as Error); return; }
+                            confirmed = snapshot.node;
+                            for (const request of pending) { clearTimeout(request.timer); request.resolve(); }
+                            pending.clear();
+                            return releaseViewport;
+                        }, [snapshot, replaced, tree]);
+                        return <MenuBoundary nativeTree={tree} fault={fault}>{replaced}</MenuBoundary>;
+                    }
+                    const component = function NativeMenuContent(props: Record<string, unknown>) {
+                        const tree = (native as (props: Record<string, unknown>) => ReactNode)(props);
+                        return <Gate tree={tree} />;
+                    };
+                    wrapped.set(native, component); return component;
                 };
-                wrapped.set(native, component); return component;
-            };
-            function BrowserGate({ tree }: { tree: ReactNode }) {
-                const snapshot = useSyncExternalStore(subscribe, get);
-                return <Fragment>{snapshot.active && <style>{'.gg-menu-native-placeholder{width:100vw!important;height:100vh!important;inset:0!important}'}</style>}{snapshot.active ? stretchPlaceholder(tree) : tree}</Fragment>;
-            }
-            const release = ownMethod(memo!, 'type', next => function(props) {
-                const tree = next(props);
-                const transformed = wrapMenuPortals(tree, wrap) as ReactNode;
-                return createElement(BrowserGate, { tree: transformed });
-            });
-            return () => {
-                try { release(); }
-                finally {
-                    for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
-                    pending.clear();
-                }
-            };
-        } });
+                const release = installMenuPortalHook(ReactDOM as unknown as PortalAPI, wrap);
+                return () => {
+                    try { release(); }
+                    finally {
+                        releaseViewport();
+                        for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
+                        pending.clear();
+                    }
+                };
+            },
+        });
     };
     return registerMenuHost(factory);
 }

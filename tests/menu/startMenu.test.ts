@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { memoryKv } from '../../src/data/kv';
 import { createMenuPreferences } from '../../src/menu/preferences';
-import { startMenu } from '../../src/menu/startMenu';
+import { startMenu, isMenuServiceCurrent, subscribeMenuService } from '../../src/menu/startMenu';
 import type { IntentHandlers, NativeBindings } from '../../src/menu/steam/runtime';
 vi.mock('../../src/menu/host', () => ({ registerDiscoveredMenuHost: vi.fn() }));
 vi.mock('../../src/menu/components/MenuShell', () => ({ MenuShell: () => null }));
@@ -48,6 +48,13 @@ describe('floating menu startup', () => {
         if (target === 'master') h.master(false); else await h.preferences.setEnabled(false);
         expect(h.stopNativeHooks).toHaveBeenCalledTimes(1); expect(h.host.dispose).toHaveBeenCalledTimes(1); stop();
         expect(h.host.dispose).toHaveBeenCalledTimes(1);
+    });
+    it('notifies an already-open settings panel when its plugin instance unloads', async () => {
+        const h = harness(), listener = vi.fn();
+        const unsubscribe = subscribeMenuService(listener), stop = startMenu(h);
+        await tick(); expect(isMenuServiceCurrent()).toBe(true);
+        stop(); expect(isMenuServiceCurrent()).toBe(false); expect(listener).toHaveBeenCalledTimes(2);
+        unsubscribe();
     });
     it('late load completion after unload cannot install hooks', async () => {
         const h = harness(); let release!: (value: unknown) => void;

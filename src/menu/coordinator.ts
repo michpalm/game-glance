@@ -34,8 +34,10 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
         dispatch({ type: 'open', entry });
         if (getState().phase !== 'custom-open') { host?.close(); bindings.closeMenuHost(); return; }
         try {
-            await host?.present(render());
-            if (alive && ticket === generation && getState().phase === 'custom-open') bindings.showMenuHost();
+            const presented = host?.present(render());
+            void presented?.catch(() => undefined); // Activation can throw before the await; cleanup may then reject presentation.
+            bindings.showMenuHost(); // Steam must render the native surface before its portal can acknowledge content.
+            await presented;
         } catch {
             if (!alive || ticket !== generation) return;
             cleanup(true);
