@@ -1,6 +1,6 @@
 # Game Glance floating menu: implementation proposal
 
-Date: 2026-10-19. Status: proposed for user review; production implementation has not started.
+Date: 2026-10-19. Status: scope approved for implementation planning; production implementation has not started.
 
 ## Purpose and success criteria
 
