@@ -29,6 +29,19 @@ describe('native menu host',()=>{
         host.suspend();expect(read().active).toBe(false);await host.present('next');host.close();expect(read().node).toBeNull();
         host.dispose();host.dispose();expect(release).toHaveBeenCalledTimes(1);await expect(host.present('late')).rejects.toThrow();
     });
+    it('does not report presentation success before the native render confirms it', async () => {
+        let confirm!: () => void;
+        const verified = new Promise<void>(resolve => { confirm = resolve; });
+        const host = createNativeHost({ install: () => vi.fn(), verifyPresentation: () => verified });
+        let presented = false;
+        const pending = host.present('menu').then(() => { presented = true; });
+        await Promise.resolve(); expect(presented).toBe(false);
+        confirm(); await pending; expect(presented).toBe(true); host.dispose();
+    });
+    it('rejects a mounted export that never reaches the native renderer', async () => {
+        const host = createNativeHost({ install: () => vi.fn(), verifyPresentation: async () => { throw Error('Native render did not confirm'); } });
+        await expect(host.present('menu')).rejects.toThrow('Native render did not confirm'); host.dispose();
+    });
     it('reports a late React failure and refuses another custom mount',async()=>{
         let fault!:(e:Error)=>void;const release=vi.fn(),failure=vi.fn();
         const host=createNativeHost({install:(_get,_subscribe,onFault)=>{fault=onFault;return release;}});host.onFailure!(failure);

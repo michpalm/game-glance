@@ -1,3 +1,4 @@
+import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -313,6 +314,7 @@ export function SettingsPanel() {
                     </ButtonItem>
                 </PanelSectionRow>
             </PanelSection>
+            <MenuPreferences />
             <UpdatesSection />
         </>
     );

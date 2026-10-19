@@ -1,11 +1,11 @@
 import { findModuleExport } from '@decky/ui';
-import { Component, Fragment, cloneElement, createElement, isValidElement, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
+import { Component, Fragment, cloneElement, createElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory } from './steam/runtime';
 
 export interface HostSnapshot { active: boolean; node: ReactNode }
-interface HostSurface { install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
+interface HostSurface { verifyPresentation?(): Promise<void>; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
 export function createNativeHost(surface: HostSurface): HostAttachment {
     let state: HostSnapshot = { active: false, node: null };
     let disposed = false;
@@ -22,6 +22,8 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
             if (disposed) throw new Error('Menu host was disposed');
             if (failure) throw failure;
             state = { active: true, node }; emit();
+            await surface.verifyPresentation?.();
+            if (disposed || failure) throw failure ?? new Error('Menu host was disposed');
         },
         suspend() { if (!disposed) { state = { ...state, active: false }; emit(); } },
         close() { if (!disposed) { state = { active: false, node: null }; emit(); } },
@@ -90,13 +92,34 @@ export function registerDiscoveredMenuHost(): Stop | null {
     if (!memo) return null;
     const factory: MenuHostFactory = (owner) => {
         if (owner.IsAnyVRWindow()) throw new Error('VR menu host is unsupported');
-        return createNativeHost({ install(get, subscribe, fault) {
+        let read: () => HostSnapshot;
+        let confirmed: ReactNode;
+        const pending = new Set<{ resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
+        return createNativeHost({
+            verifyPresentation() {
+                if (read().active && confirmed === read().node) return Promise.resolve();
+                return new Promise<void>((resolve, reject) => {
+                    const request = { resolve, reject, timer: setTimeout(() => {
+                        pending.delete(request);
+                        reject(new Error('Steam menu renderer did not confirm presentation'));
+                    }, 1000) };
+                    pending.add(request);
+                });
+            },
+            install(get, subscribe, fault) {
+            read = get;
             const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
             const wrap = (native: ComponentType<Record<string, unknown>>) => {
                 const existing = wrapped.get(native); if (existing) return existing;
                 function Gate({ tree }: { tree: ReactNode }) {
                     const snapshot = useSyncExternalStore(subscribe, get);
                     const replaced = renderMenuSlot(tree, snapshot, error => queueMicrotask(() => fault(error)));
+                    useLayoutEffect(() => {
+                        if (!snapshot.active || replaced === tree) { confirmed = undefined; return; }
+                        confirmed = snapshot.node;
+                        for (const request of pending) { clearTimeout(request.timer); request.resolve(); }
+                        pending.clear();
+                    }, [snapshot, replaced, tree]);
                     return <MenuBoundary nativeTree={tree} fault={fault}>{replaced}</MenuBoundary>;
                 }
                 // The native component's hooks retain their order in this stable wrapper type.
@@ -110,11 +133,18 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 const snapshot = useSyncExternalStore(subscribe, get);
                 return <Fragment>{snapshot.active && <style>{'.gg-menu-native-placeholder{width:100vw!important;height:100vh!important;inset:0!important}'}</style>}{snapshot.active ? stretchPlaceholder(tree) : tree}</Fragment>;
             }
-            return ownMethod(memo!, 'type', next => function(props) {
+            const release = ownMethod(memo!, 'type', next => function(props) {
                 const tree = next(props);
                 const transformed = wrapMenuPortals(tree, wrap) as ReactNode;
                 return createElement(BrowserGate, { tree: transformed });
             });
+            return () => {
+                try { release(); }
+                finally {
+                    for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
+                    pending.clear();
+                }
+            };
         } });
     };
     return registerMenuHost(factory);

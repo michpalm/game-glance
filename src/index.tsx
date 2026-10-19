@@ -1,3 +1,4 @@
+import { startMenu } from './menu/startMenu';
 import { stopDownloads } from './home/downloadStore';
 import { stopStatus } from './home/statusStore';
 import { definePlugin, routerHook } from '@decky/api';
@@ -17,7 +18,9 @@ import { noteLoad, remountHomeAfterReload } from './home/reloadRemount';
 const SCREENSAVER_COMPONENT = 'GameGlanceScreensaver';
 
 export default definePlugin(() => {
-    settings.load().catch((error) => console.error(`${LOG_PREFIX} failed to load settings`, error));
+    const masterReady = settings.load();
+    masterReady.catch((error) => console.error(`${LOG_PREFIX} failed to load settings`, error));
+    const stopMenu = startMenu({ masterReady });
     void getSteamLanguage(); // resolve early so game pages render in the right locale immediately
     const unpatch = patchGamePage();
     const unpatchHome = patchHomePage(); // never throws; applied after and independent of the game page patch
@@ -34,6 +37,7 @@ export default definePlugin(() => {
         onDismount() {
             // Each step on its own: one that throws must not leave the others applied.
             const steps: [string, () => void][] = [
+                ['floating menu stop', stopMenu],
                 ['game page unpatch', unpatch],
                 ['Home unpatch', unpatchHome],
                 ['Home reopen cancel', cancelRemount],

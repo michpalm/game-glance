@@ -19,6 +19,8 @@ function readPins(raw: Record<string, unknown>): PinnedSectionId[] {
 export function createMenuPreferences(kv: KvBackend) {
     let current = snapshot(false, DEFAULT_PINS);
     let futureSchema = false;
+    let loadState: 'unloaded' | 'loading' | 'ready' | 'failed' = 'unloaded';
+    let loading: Promise<void> | undefined;
     let saves: Promise<void> = Promise.resolve();
     const listeners = new Set<Stop>();
     const emit = () => listeners.forEach(listener => listener());
@@ -31,13 +33,22 @@ export function createMenuPreferences(kv: KvBackend) {
         return pending;
     }
     return {
-        async load(): Promise<void> {
-            const value = await kv.get(KEY);
-            const raw = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-            futureSchema = typeof raw.version === 'number' && raw.version > 1;
-            current = futureSchema ? snapshot(false, DEFAULT_PINS) : snapshot(raw.enabled === true, readPins(raw));
-            emit();
+        load(): Promise<void> {
+            if (loading) return loading;
+            loadState = 'loading'; emit();
+            loading = (async () => {
+                try {
+                    const value = await kv.get(KEY);
+                    const raw = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+                    futureSchema = typeof raw.version === 'number' && raw.version > 1;
+                    current = futureSchema ? snapshot(false, DEFAULT_PINS) : snapshot(raw.enabled === true, readPins(raw));
+                    loadState = 'ready';
+                } catch (error) { loadState = 'failed'; throw error; }
+                finally { loading = undefined; emit(); }
+            })();
+            return loading;
         },
+        loadState: () => loadState,
         get: (): MenuPreferences => current,
         subscribe(listener: Stop): Stop { listeners.add(listener); return () => { listeners.delete(listener); }; },
         setEnabled(enabled: boolean): Promise<void> { return save(snapshot(enabled, current.pins)); },

@@ -1,0 +1,23 @@
+import { expect, it, vi } from 'vitest';
+const h = vi.hoisted(() => ({ menuStop: vi.fn(() => { throw Error('menu cleanup failed'); }), pageStop: vi.fn(), homeStop: vi.fn(), downloadStop: vi.fn() }));
+vi.mock('../../src/menu/startMenu', () => ({ startMenu: vi.fn(() => h.menuStop) }));
+vi.mock('../../src/components/SettingsPanel', () => ({ SettingsPanel: () => null }));
+vi.mock('../../src/patches/gamePage', () => ({ patchGamePage: () => h.pageStop }));
+vi.mock('../../src/patches/homePage', () => ({ patchHomePage: () => h.homeStop }));
+vi.mock('../../src/data/settings', () => ({ settings: { load: async () => {} } }));
+vi.mock('../../src/data/steam', () => ({ getSteamLanguage: async () => {} }));
+vi.mock('../../src/data/autoPreload', () => ({ startAutoPreload: () => vi.fn() }));
+vi.mock('../../src/data/update', () => ({ startUpdateChecks: () => vi.fn() }));
+vi.mock('../../src/home/downloadStore', () => ({ stopDownloads: h.downloadStop }));
+vi.mock('../../src/home/statusStore', () => ({ stopStatus: vi.fn() }));
+vi.mock('../../src/home/reloadRemount', () => ({ noteLoad: vi.fn(), remountHomeAfterReload: () => vi.fn() }));
+vi.mock('../../src/screensaver/ScreensaverView', () => ({ ScreensaverHost: () => null }));
+vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn() } }));
+vi.mock('@decky/ui', () => ({ staticClasses: {} }));
+import plugin from '../../src/index';
+it('continues the other plugin cleanup steps after menu cleanup throws', () => {
+    const instance = (plugin as unknown as () => { onDismount(): void })();
+    instance.onDismount();
+    expect(h.menuStop).toHaveBeenCalledTimes(1);
+    expect(h.pageStop).toHaveBeenCalledTimes(1); expect(h.homeStop).toHaveBeenCalledTimes(1); expect(h.downloadStop).toHaveBeenCalledTimes(1);
+});
