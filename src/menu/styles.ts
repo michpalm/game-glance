@@ -63,7 +63,10 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu h2{font-size:16px;font-weight:700;letter-spacing:-.2px;margin:0 0 18px}
 .gg-menu-native-host .gg-menu h3{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin:14px 0 4px}
 .gg-menu-native-host .gg-menu .gg-menu-setting{padding:10px;min-height:48px;border-radius:12px;font-size:13px}
-.gg-menu-native-host .gg-menu .gg-menu-setting .Panel{padding:0;margin:0;border:0;border-radius:12px;background:transparent;box-shadow:none;font:inherit;min-height:0}
+/* Steam fields carry identity3D transforms and focus animations. Under this scaled
+ * menu, toggle repaints temporarily change every field's text raster scale. Keep
+ * field text in the stable parent plane; native thumb movement remains untouched. */
+.gg-menu-native-host .gg-menu .gg-menu-setting .Panel{padding:0;margin:0;border:0;border-radius:12px;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
 .gg-menu-native-host .gg-menu .gg-menu-setting [id$="_Label"]{font-family:inherit;font-size:13px;line-height:1.3;font-weight:700;color:#fff;text-shadow:0 1px 2px #0009}
 .gg-menu-native-host .gg-menu .gg-menu-setting [id$="_Description_Description"]{font-family:inherit;font-size:11px;color:#d5dce3;line-height:1.4;margin-top:4px}
 .gg-menu-native-host .gg-menu .gg-menu-slider-label{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%}
