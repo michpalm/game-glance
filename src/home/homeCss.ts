@@ -1,3 +1,4 @@
+import { HOME_BUTTON_GLASS } from '../styles/homeGlass';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
 import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
@@ -323,8 +324,8 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
         rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
         rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: var(--gh-r-pill); display: flex; align-items: center; justify-content: center; gap: 12px;
-            font-size: 19px; font-weight: 700; line-height: 1; color: #fff; background: rgba(12,16,22,.4); border: 1px solid rgba(255,255,255,.18);
-            backdrop-filter: blur(12px); box-shadow: none; transform: none; outline: none; cursor: pointer;
+            font-size: 19px; font-weight: ${HOME_BUTTON_GLASS.fontWeight}; line-height: 1; color: ${HOME_BUTTON_GLASS.color}; background: ${HOME_BUTTON_GLASS.background}; border: 1px solid ${HOME_BUTTON_GLASS.borderColor};
+            backdrop-filter: blur(${HOME_BUTTON_GLASS.blurPx}px); box-shadow: none; transform: none; outline: none; cursor: pointer;
             transition: transform 250ms, box-shadow 250ms, background ${ACCENT_MS}ms, border-color ${ACCENT_MS}ms`),
         rule('.gh-btn-circle', 'width: 54px; flex: 0 0 54px; font-size: 22px'),
         // Steam's own controller and gear icons (steamIcons), at the page's size, so the open transition's hand-over changes nothing.

@@ -36,27 +36,32 @@
     "nativeChrome": "Balanced HeaderStore/FooterStore visibility holds while custom menu active; restored on close/handoff/unload.",
     "nativeScrim": "Only the backdrop containing the borrowed viewport is transparent while custom menu active.",
     "backdropBlur": {
-      "requestedCssPx": 4,
+      "requestedCssPx": 12,
       "cssBackdropFilter": "none",
       "renderer": "Steam GamescopeService SetBlurEnabled balanced hold while custom host active",
       "nativeRadius": 32,
       "radiusUnits": "Steam compositor service units, not CSS pixels",
-      "reason": "CEF card filters cannot sample the live game. Clear the native parent dark scrim and borrow Steam compositor blur; preserve native suppression and other holds. Verified with full-composition gamescope captures over Dorfromantik."
+      "reason": "Home uses12px CSS blur. In-game menu retains Steam native conditional blur at radius32 (different units), over an owned full-viewport dimmed backdrop. This frosts the game behind the menu without restoring the native parent dark scrim or broken cross-window CSS filters."
     },
     "scrollbars": "Hidden; native focus scrolling retained.",
     "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds.",
     "cardShadow": "Inset highlight only. Exterior drop shadow removed because its alpha expands the Gamescope blur mask beyond the rounded cards.",
     "outsideDismiss": "Primary mouse click or touch-generated click outside the shell closes the menu; captured and consumed in the borrowed popup document, respects native modal/keyboard ownership.",
     "controlTextWeight": 500,
-    "glassOpacityPercent": 70,
+    "glassOpacityPercent": 40,
     "primaryText": "#f4f6f8",
     "secondaryText": "#d5dce3",
     "focusFill": "14% game-accent tint over transparent; user requested more contrast than mockup8%.",
     "focusOutlinePercent": 55,
     "sliderTrack": "Track width calc(100% - 24px) matches native thumb-center travel at0%/100%; thumb positioning and setting adapters unchanged.",
     "surroundingChrome": "Frosted notification pill with badge left of bell. Removed X, Game Glance caption and footer input hints. Compact \u2039 L1 / R1 \u203a indicators retained at bar ends; tab names retained.",
-    "contrastRationale": "Live game can be much brighter than the mockup backdrop. Stronger glass and loaded Steam font preserve readable labels. This feedback supersedes the original30% native tint and Inter fallback.",
+    "contrastRationale": "User requested Home look instead of the70% menu tint. Match Home40% glass,18% white edge and white700-weight action text; use an owned28% dark backdrop under the floating menu for separation.",
     "focusGlowPx": 8,
-    "focusGeometry": "12px control corners,1px outline,2px offset for setting rows,1px offset for buttons. Native field backgrounds/outlines/shadows remain suppressed; notification retains its glass base while focused."
+    "focusGeometry": "12px control corners,1px outline,2px offset for setting rows,1px offset for buttons. Native field backgrounds/outlines/shadows remain suppressed; notification retains its glass base while focused.",
+    "actionButtonWeight": 700,
+    "actionButtonText": "#fff",
+    "glassBorder": "rgba(255,255,255,.18)",
+    "sharedMaterial": "src/styles/homeGlass.ts HOME_BUTTON_GLASS, consumed by Home and floating menu. Home rendered action-button values remain unchanged.",
+    "ownedBackdrop": "rgba(5,7,10,.28), pseudo-element on custom popup host only, pointer-events:none. Removed with host on close/handoff; native owner backdrop remains clear."
   }
 }
