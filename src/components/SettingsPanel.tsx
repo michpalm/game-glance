@@ -181,7 +181,7 @@ export function SettingsPanel() {
                 <PanelSectionRow>
                     <DropdownItem
                         label="Games row style"
-                        description="Steam: Wide last played and centre focus. Spotlight: Left focus, wide on select."
+                        description="Steam: the first game stays wide and selection moves along the row. Spotlight: the selected game stays wide at the left."
                         menuLabel="Games row style"
                         rgOptions={[{ data: 'steam', label: 'Steam' }, { data: 'spotlight', label: 'Spotlight' }]}
                         selectedOption={homeRowStyle}
