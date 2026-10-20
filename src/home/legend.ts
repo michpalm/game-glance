@@ -20,10 +20,10 @@ export function legendReserve(cssHeight: number | null | undefined, scale: numbe
  * independent: walking up from Home's root, a sibling subtree holds an absolutely positioned, full-width element whose
  * bottom edge is the window's bottom and that does not contain Home. The tallest such element wins.
  */
-export function findLegendHeight(root: HTMLElement): number | null {
+function findLegend(root: HTMLElement): HTMLElement | null {
     try {
         const view = root.ownerDocument?.defaultView;
-        let best: number | null = null;
+        let best: HTMLElement | null = null;
         let climbed: HTMLElement = root;
         for (let depth = 0; depth < 14 && climbed.parentElement; depth++) {
             const parent: HTMLElement = climbed.parentElement;
@@ -36,7 +36,7 @@ export function findLegendHeight(root: HTMLElement): number | null {
                     const box = el.getBoundingClientRect();
                     const h = el.offsetHeight;
                     if (h > 0 && el.offsetWidth >= wide && Math.abs(box.bottom - parentBox.bottom) <= 1.5 && h <= root.offsetHeight * 0.3 && (el.textContent ?? '').trim() !== '') {
-                        if (best === null || h > best) best = h;
+                        if (best === null || h > best.offsetHeight) best = el;
                     }
                 }
             }
@@ -46,4 +46,43 @@ export function findLegendHeight(root: HTMLElement): number | null {
     } catch {
         return null;
     }
+}
+
+
+export function findLegendHeight(root: HTMLElement): number | null {
+    return findLegend(root)?.offsetHeight ?? null;
+}
+
+/** Follow footer removal/remount and size changes, retaining its reserve while a menu hides it. */
+export function watchLegendHeight(root: HTMLElement, changed: (height: number) => void): () => void {
+    const doc = root.ownerDocument, view = doc.defaultView;
+    let stopped = false, frame: number | undefined, footer: HTMLElement | null = null, last: number | undefined;
+    const measure = () => {
+        if (stopped) return;
+        const next = findLegend(root);
+        if (next !== footer) {
+            if (footer) resize?.unobserve(footer);
+            footer = next;
+            if (footer) resize?.observe(footer);
+        }
+        // A temporary hide must not shrink the space needed when Steam restores its footer.
+        const height = footer?.offsetHeight;
+        if (height && height !== last) { last = height; changed(height); }
+    };
+    const schedule = () => {
+        if (stopped || frame !== undefined) return;
+        if (!view?.requestAnimationFrame) { measure(); return; }
+        frame = view.requestAnimationFrame(() => { frame = undefined; measure(); });
+    };
+    const resize = view?.ResizeObserver ? new view.ResizeObserver(schedule) : undefined;
+    const mutation = view?.MutationObserver ? new view.MutationObserver(schedule) : undefined;
+    mutation?.observe(doc.body, { subtree: true, childList: true });
+    view?.addEventListener('resize', schedule);
+    measure();
+    return () => {
+        if (stopped) return;
+        stopped = true;
+        if (frame !== undefined) view?.cancelAnimationFrame(frame);
+        mutation?.disconnect(); resize?.disconnect(); view?.removeEventListener('resize', schedule);
+    };
 }

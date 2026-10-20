@@ -411,3 +411,23 @@ Programmatic Ally UI verification:
 - Display, Scaling and Power & GPU each fit474client/474scroll; per-game header remains visible. Actual compositor screenshots `performance-display-reorganized-2026-10-20.png`, `performance-scaling-reorganized-2026-10-20.png`, and `performance-power-reorganized-2026-10-20.png` in the local task visualization folder inspected. Existing glass, menu scale, icon artwork and status bar retained.
 
 Installed ZIP/local-device SHA256: `5b755dc62c82df248f1cef3de3f15639855b5462bfccbb61d49836fe8a37acba`. Frontend backup `/tmp/gg-menu-before-performance-reorg-20261020.js`. No Git remote operations or publication.
+
+
+### Single status bar and stable Home footer reservation — 2026-10-20
+
+User reported a blurred duplicate status bar behind the custom menu's foreground copy and Home card/footer overlap after the footer returned. Native inspection reproduced both: GameStatusBar passed away=true, but StatusBar's older Quick Access rule deliberately kept its bar visible when the page lost focus. Home's legend hook measured only at mount/size change plus two timers; a measurement while the menu had removed the footer left the fallback46logical-pixel reserve indefinitely after the42CSS-pixel footer returned.
+
+Custom host now owns a scoped, synchronous background-status lease in its owner document: only Game Glance's page `.gg-status-host` copies are hidden (visibility/opacity, no fade); the popup's `.gg-menu-status-host` stays visible. The style is removed on close, handoff, failure or disposal along with the existing balanced native chrome/blur holds. Ordinary native-menu status behavior is unchanged. No screen-wide blur/material changes or native-root hiding were introduced.
+
+Home now observes footer removal/remount with a coalesced owner-document MutationObserver, follows the measured footer with ResizeObserver, and remeasures on window resize. It retains the last real footer height while the footer is absent rather than shrinking to the fallback. A late-mounted footer is detected even if Home first mounted under an open menu. Teardown removes observers/listeners/pending animation frames.
+
+Regression RED3failed/17passed → GREEN31targeted tests. Full TypeScript/1,530tests across136files/package/ZIP integrity/diff checks passed. Tests cover removal/remount, initial missing footer, preserved reservation, callback cleanup and scoped status-style ownership.
+
+Ally verification, through live DOM/native menu handlers and actual mode3 compositor screenshots:
+
+- Closed Home: one visible page status, reserve74logical px and shift29px (previous46/57). Card row bottom412.26279CSSpx; footer top424.52856CSSpx:12.26578px clearance.
+- Three custom-menu open/close cycles: the page status was hidden immediately on opening and remained hidden (visibility:hidden/opacity0); popup contained exactly one foreground status copy. Native footer temporarily absent, but reserve74/shift29/card-row bottom stayed identical throughout. Every close restored one visible page bar, zero popup copies, zero status leases/frost layers and the same12.26578px footer clearance.
+- Native notification handoff opened native menu2 and released custom status/frost resources; closing it retained the same Home reservation and card clearance.
+- Actual screenshots `menu-single-status-2026-10-20.png` and `home-footer-restored-2026-10-20.png` in the task visualization folder inspected: one clean foreground status, no blurred twin, and restored footer below the cards. Left on Home with the menu closed. No setting writes.
+
+Installed local/device ZIP SHA256 `33407c524507e0a634fe2f5de01092827c64c55bc5e2accfc2f831a4682bf2ef`; frontend backup `/tmp/gg-menu-before-home-bars-20261020.js`. All work remains local; no Git remote operations/publication.

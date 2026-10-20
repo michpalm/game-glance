@@ -6,6 +6,16 @@ import { frostMenuSurfaces } from './frosting';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
 
+/** The popup owns the only visible status bar; preserve page layout and restore its copy on release. */
+export function hideBackgroundStatus(document: Document): Stop {
+    const style = document.createElement('style');
+    style.dataset.ggMenuPageStatus = 'true';
+    style.textContent = '.gg-status-host:not(.gg-menu-status-host){visibility:hidden!important;opacity:0!important;transition:none!important}';
+    document.head.appendChild(style);
+    let stopped = false;
+    return () => { if (!stopped) { stopped = true; style.remove(); } };
+}
+
 /** Borrow native visibility holds; never overwrite another view's hide counters. */
 export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'FooterStore'>): Stop {
     const header = owner.HeaderStore;
@@ -166,10 +176,12 @@ export function registerDiscoveredMenuHost(): Stop | null {
         if (!document?.head) throw new Error('Steam menu owner window is unavailable');
         let stopViewport: Stop | undefined;
         let stopChrome: Stop | undefined;
+        let stopPageStatus: Stop | undefined;
         let stopBlur: Stop | undefined;
         const releaseEffects = () => {
-            const blur = stopBlur, chrome = stopChrome; stopBlur = stopChrome = undefined;
-            try { blur?.(); } finally { chrome?.(); }
+            const blur = stopBlur, chrome = stopChrome, pageStatus = stopPageStatus;
+            stopBlur = stopChrome = stopPageStatus = undefined;
+            try { blur?.(); } finally { try { chrome?.(); } finally { pageStatus?.(); } }
         };
         const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
         function stretchViewport(tree: Tree, popup?: Window) {
@@ -195,6 +207,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     try {
                         if (get().active) {
                             stopChrome ??= hideNativeMenuChrome(owner);
+                            stopPageStatus ??= hideBackgroundStatus(document!);
                             stopBlur ??= borrowNativeMenuBlur();
                         } else releaseEffects();
                     } catch (error) { fault(error as Error); }

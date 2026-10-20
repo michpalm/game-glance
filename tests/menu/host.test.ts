@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideNativeMenuChrome, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideBackgroundStatus, hideNativeMenuChrome, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
 const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
@@ -136,4 +136,16 @@ it('refuses the custom surface when the native dark backdrop cannot be safely cl
     const { document } = parseHTML('<html><head></head><body><div class="unknownBackdrop"><div class="nativePlaceholder"></div></div></body></html>');
     expect(() => stretchMenuViewport(document as unknown as Document, ['nativeContainer'])).toThrow('Native menu backdrop shape changed');
     expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
+});
+
+
+it('hides only the background Game Glance status copies for the custom-menu lease',()=>{
+    const {document}=parseHTML('<html><head></head><body><div class="gg-status-host"></div><div class="gg-status-host gg-menu-status-host"></div><div id="unrelated"></div></body></html>');
+    const foreign=document.createElement('style');foreign.textContent='.other{}';document.head.append(foreign);
+    const stop=hideBackgroundStatus(document as unknown as Document);
+    const rule=document.querySelector('[data-gg-menu-page-status]')?.textContent;
+    expect(rule).toContain('.gg-status-host:not(.gg-menu-status-host)');
+    expect(rule).toContain('visibility:hidden!important');expect(rule).toContain('transition:none!important');
+    expect(document.querySelector('#unrelated')?.getAttribute('style')).toBeNull();
+    stop();stop();expect(document.querySelector('[data-gg-menu-page-status]')).toBeNull();expect(foreign.isConnected).toBe(true);
 });

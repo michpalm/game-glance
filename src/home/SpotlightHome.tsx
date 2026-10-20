@@ -19,7 +19,7 @@ import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './mo
 import { steamEnterOffCss } from '../styles/theme';
 import { legibleAccent } from './accent';
 import { solveRaiseDelta } from './raised';
-import { findLegendHeight, legendReserve } from './legend';
+import { watchLegendHeight, legendReserve } from './legend';
 import { FEED_SHEET, homeCss, stackShift } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
@@ -60,21 +60,15 @@ interface Size {
  * keeping the last good size.
  */
 /**
- * Steam's legend height in css px (legend.findLegendHeight), measured when Home's box changes and again shortly after
- * mount (the footer may not be laid out yet); null when it is not found. Layout reads only, no transforms.
+ * Steam's legend height in css px, observed through footer removal/remount and resizing.
+ * Keep the last measured reserve while the menu hides the footer; null until its first layout.
  */
 function useLegendHeight(ref: RefObject<HTMLDivElement | null>, size: Size | null): number | null {
     const [height, setHeight] = useState<number | null>(null);
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return undefined;
-        const measure = () => setHeight((old) => {
-            const next = findLegendHeight(el);
-            return old === next ? old : next;
-        });
-        measure();
-        const later = [setTimeout(measure, 500), setTimeout(measure, 2000)];
-        return () => later.forEach(clearTimeout);
+        return watchLegendHeight(el, next => setHeight(old => old === next ? old : next));
     }, [ref, size?.width, size?.height]);
     return height;
 }
