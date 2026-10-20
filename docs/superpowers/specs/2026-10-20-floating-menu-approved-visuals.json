@@ -32,7 +32,7 @@
     "controlTextPx": 13,
     "headingPx": 16,
     "tabTextPx": 12,
-    "accent": "Actual known game artwork color, Steam blue when unavailable; mock sample color is not forced.",
+    "accent": "Read shared Home memo first; hydrate its persisted artwork-versioned accent cache on menu open/reload. Prefer newer Home values and discard artwork-version races; Steam blue when no known game color.",
     "nativeChrome": "Balanced HeaderStore/FooterStore visibility holds while custom menu active; restored on close/handoff/unload.",
     "nativeScrim": "Only the backdrop containing the borrowed viewport is transparent while custom menu active.",
     "backdropBlur": {
@@ -62,6 +62,10 @@
     "actionButtonText": "#fff",
     "glassBorder": "rgba(255,255,255,.18)",
     "sharedMaterial": "src/styles/homeGlass.ts HOME_BUTTON_GLASS, consumed by Home and floating menu. Home rendered action-button values remain unchanged.",
-    "ownedBackdrop": "rgba(5,7,10,.28), pseudo-element on custom popup host only, pointer-events:none. Removed with host on close/handoff; native owner backdrop remains clear."
+    "ownedBackdrop": "rgba(5,7,10,.28), pseudo-element on custom popup host only, pointer-events:none. Removed with host on close/handoff; native owner backdrop remains clear.",
+    "shoulderIndicators": "Mirrored full-height64px L1/R1 endcaps with inward separators, matching annotated screenshot.",
+    "activeTab": "Darker rgba(7,10,15,.45) glass, white text and accent inset edge, including while focused.",
+    "moreTab": "Ellipsis icon only; accessible name More retained.",
+    "quickSettings": "Icons for all controls;56px equal-height toggle rows, label and switch vertically centred, no Friends & Chat helper text."
   }
 }

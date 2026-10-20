@@ -240,3 +240,14 @@ Replaced the prior heavy70% menu tint with Home40% glass over an owned28% dark f
 Temporary comparison CSS removed before final captures. Actual installed full-composition screenshots `/private/tmp/gg-home-glass-quick-final.png` and `/private/tmp/gg-home-glass-navigate-final.png` show complete readable UI and frosted background, no black panels. Computed40%glass/18%border/28%backdrop verified and QuickSettings content fits. Outside mouse click closes custom menu and releases blur to0; reopened for user review. No settings changed, Dorfromantik1455840 still running.
 
 TypeScript, full1493 tests, ZIP integrity and diff checks passed. Local/deviceSHA256 `fa04246b31d55a380fdee0d88f4cd39367d5ee3d7b286770f0c6c0a35252b2da`; original frontend retained `/tmp/gg-menu-before-home-glass-20261020.js`. Physical visual acceptance remains user feedback; local Git only.
+
+
+### 2026-10-20: annotated screenshot feedback
+
+Applied user annotations: mirrored full-height L1/R1 bar endcaps with inward dividers; darker selected tab even when focused; ellipsis-only More with accessible name retained; icons beside every quick control;56px equal-height toggle rows with vertically centred label/switch; removed Friends & Chat helper copy. Native direct-toggle behavior, checked state, thumb anchors, errors and controller navigation retained.
+
+Accent reuse now reads Home's existing persisted cache, not only its session memo. `resolveMenuAccent` reads the current artwork-version key and hydrates the shared memo, never resamples/writes persistent artwork data, and rejects a cache result when artwork changes during the read. A newer Home memo result wins. MenuShell drops async results after close/game changes; unavailable color still uses Steam blue. Seven regression cases RED→GREEN cover warm reuse/no storage read, reload hydration/version key, malformed/null/missing data, artwork race, fresher Home result and cache errors.
+
+Actual Ally after plugin reload with Ori1057090: menu accent#3d33cd matches Home's persisted current artwork-version1792218248 entry. Older cached versions contain#554fc1 and were not selected. All6 toggle rows measured36.396CSSpx after the existing transform (56logicalpx), with text/switch centres matching row centre within.00003CSSpx. Each has one icon and no helper text. Active tab computedrgba(7,10,15,.45); More visual text empty/accessibility label More. More click opens its Configure menu view; all tabs and panel content fit. Final full compositor capture `/private/tmp/gg-annotations-final.png` visually checked. No setting writes; user volume61% and microphone100% left as found.
+
+TypeScript, full1500 tests, ZIP integrity and diff checks passed. Local/deviceSHA256 `9fb9511cffd304600e4eab4058fb6d55b2d2bf8a1b3e6d13ba1b40e7a25ed11a`. Frontend backup `/tmp/gg-menu-before-annotations-20261020.js` retained. Physical feedback remains user acceptance; no Git remote operations.

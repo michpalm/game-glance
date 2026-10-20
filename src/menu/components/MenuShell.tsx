@@ -1,6 +1,7 @@
 import { Focusable, type GamepadEvent } from '@decky/ui';
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuBell } from 'react-icons/lu';
+import { resolveMenuAccent } from '../accent';
 import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
@@ -31,8 +32,16 @@ export interface MenuShellProps {
 export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const [error, setError] = useState('');
+    const [cachedAccent, setCachedAccent] = useState<{ appId: number; color: string | undefined }>();
     const badgeCount = useSyncExternalStore(notificationBadge?.subscribe ?? (() => () => {}), notificationBadge?.get ?? (() => unreadCount));
     const active = state.phase === 'custom-open';
+    const appId = state.game?.appId;
+    useEffect(() => {
+        if (!active || !appId) return;
+        let alive = true;
+        void resolveMenuAccent(appId).then(color => { if (alive) setCachedAccent({ appId, color }); });
+        return () => { alive = false; };
+    }, [active, appId]);
     const enterNative = (request: NativeRequest) => { void handoff(request).catch(() => setError('Could not open Steam’s view. Use the menu button to return.')); };
     useLayoutEffect(() => {
         const element = root.current;
@@ -73,7 +82,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
             else dispatch(value);
         }
     };
-    const color = state.game ? accentMemo.get(state.game.appId) : undefined;
+    const color = appId ? accentMemo.get(appId) ?? (cachedAccent?.appId === appId ? cachedAccent.color : undefined) : undefined;
     const accent = color && /^#[\da-f]{6}$/i.test(color) ? color : '#1a9fff';
     let content = panels[state.section];
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;

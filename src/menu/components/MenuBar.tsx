@@ -10,7 +10,7 @@ export function MenuBar({ state, dispatch }: { state: MenuState; dispatch(event:
         <span className="gg-menu-shoulder" aria-hidden="true">‹ L1</span>
         <div className="gg-menu-tabs">{visibleSections(state).map(section => {
             const Icon = ICONS[section];
-            return <MenuAction key={section} id={`section:${section}`} selected={active === section} className="gg-menu-tab" onAction={() => dispatch({ type: 'select', section })}><Icon aria-hidden="true" /><span>{SECTION_LABELS[section]}</span></MenuAction>;
+            return <MenuAction key={section} id={`section:${section}`} selected={active === section} className="gg-menu-tab" ariaLabel={section === 'more' ? 'More' : undefined} onAction={() => dispatch({ type: 'select', section })}><Icon aria-hidden="true" />{section !== 'more' && <span>{SECTION_LABELS[section]}</span>}</MenuAction>;
         })}</div>
         <span className="gg-menu-shoulder" aria-hidden="true">R1 ›</span>
     </Focusable>;

@@ -54,7 +54,7 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-bar{padding:10px;gap:8px}
 .gg-menu-native-host .gg-menu .gg-menu-tabs{gap:3px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#d5dce3;font-size:12px;box-shadow:none}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:color-mix(in srgb,var(--gg-menu-accent) 16%,transparent);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:rgba(7,10,15,.45);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:1px;background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent);box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{flex-direction:column;justify-content:center;min-height:112px;padding:13px 14px;gap:14px;border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:16px;background:${HOME_BUTTON_GLASS.background}}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:23px;height:23px;color:#d5dce3}
@@ -73,4 +73,16 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu>header,.gg-menu-native-host .gg-menu footer{text-shadow:0 1px 2px #000c}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:10px;border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:26px;background:${HOME_BUTTON_GLASS.background};color:#f4f6f8;box-shadow:inset 0 1px #ffffff09}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.gg-menu-notifications.DialogButton.gpfocus{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);background:linear-gradient(color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent),color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent)),${HOME_BUTTON_GLASS.background}}
+/* Full-height shoulder endcaps and one centred height for direct toggles. */
+.gg-menu-native-host .gg-menu .gg-menu-bar{padding:0;gap:0;align-items:stretch}
+.gg-menu-native-host .gg-menu .gg-menu-tabs{padding:10px 8px;align-items:center}
+.gg-menu-native-host .gg-menu .gg-menu-shoulder{display:flex;align-items:center;justify-content:center;align-self:stretch;min-width:64px;padding:10px;border:0;border-radius:0;background:#ffffff06}
+.gg-menu-native-host .gg-menu .gg-menu-shoulder:first-child{border-right:1px solid #ffffff25}
+.gg-menu-native-host .gg-menu .gg-menu-shoulder:last-child{border-left:1px solid #ffffff25}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true].gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]:focus-visible{background:rgba(7,10,15,.45)}
+.gg-menu-native-host .gg-menu .gg-menu-setting-label{display:inline-flex;align-items:center;gap:9px;min-width:0}
+.gg-menu-native-host .gg-menu .gg-menu-setting-label svg{width:17px;height:17px;flex:none;color:#d5dce3}
+.gg-menu-native-host .gg-menu .gg-menu-switches{grid-auto-rows:56px}
+.gg-menu-native-host .gg-menu .gg-menu-setting-toggle{height:56px;display:flex;align-items:center}
+.gg-menu-native-host .gg-menu .gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}
 `;
