@@ -45,6 +45,8 @@ export interface NativeMenu {
     OpenMainMenu?(): void;
 }
 export interface NativeOwner {
+    HeaderStore?: { IncrementHideHeader(): void; DecrementHideHeader(): void };
+    FooterStore?: { HideFooter(): { unhide(): void } };
     MenuStore: NativeMenu;
     BrowserWindow?: Window;
     MainRunningApp?: { appid?: number; gameid?: unknown; display_name?: string };

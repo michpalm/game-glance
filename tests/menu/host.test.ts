@@ -1,8 +1,8 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, type HostSnapshot } from '../../src/menu/host';
-const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull' }));
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
+const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
 describe('native menu host',()=>{
@@ -84,4 +84,32 @@ it('finds the stylesheet module and restores only the owned viewport rule', () =
     expect(document.querySelector('.nativePlaceholder')).not.toBeNull();
     const foreign = document.createElement('style'); foreign.textContent = '.other{}'; document.head.append(foreign);
     stop(); stop(); expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull(); expect(foreign.isConnected).toBe(true);
+});
+
+describe('borrowed native menu chrome', () => {
+    it('balances only its own header/footer holds and releases once on handoff or close', () => {
+        let header = 2, footer = 3;
+        const owner = { HeaderStore: { IncrementHideHeader: () => { header++; }, DecrementHideHeader: () => { header--; } }, FooterStore: { HideFooter: () => { footer++; return { unhide: () => { footer--; } }; } } };
+        const stop = hideNativeMenuChrome(owner);
+        expect([header, footer]).toEqual([3, 4]); stop(); stop();
+        expect([header, footer]).toEqual([2, 3]);
+    });
+    it('releases an acquired header hold if footer acquisition fails', () => {
+        let header = 0;
+        const owner = { HeaderStore: { IncrementHideHeader: () => { header++; }, DecrementHideHeader: () => { header--; } }, FooterStore: { HideFooter: () => { throw Error('unavailable'); } } };
+        expect(() => hideNativeMenuChrome(owner)).toThrow('unavailable'); expect(header).toBe(0);
+    });
+    it('leaves unsupported stores unchanged', () => {
+        expect(() => hideNativeMenuChrome({})()).not.toThrow();
+    });
+});
+
+it('removes only the backdrop surrounding the borrowed menu viewport and restores it with the viewport lease', () => {
+    const { document } = parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div><div class="nativeBackdrop other-native-menu"></div></body></html>');
+    const stop = stretchMenuViewport(document as unknown as Document, ['nativeContainer']);
+    const rule = document.querySelector('[data-gg-menu-viewport]')!.textContent;
+    expect(rule).toContain('.nativeBackdrop:has(.nativePlaceholder)');
+    expect(rule).toContain('backdrop-filter:none!important');
+    expect(document.querySelector('.other-native-menu')?.getAttribute('style')).toBeNull();
+    stop(); expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
 });

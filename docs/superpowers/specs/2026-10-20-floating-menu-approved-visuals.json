@@ -21,24 +21,26 @@
     "internalDisplay": false
   },
   "nativeMapping": {
-    "workbenchBaselineWidth": 790,
-    "workbenchBaselineTop": 104,
-    "nativeBaselineWidthVw": 74.0625,
-    "nativeBaselineWidthMaxPx": 1185,
-    "nativeBaselineTopVh": 8,
-    "nativeWidthVw": 69.375,
-    "nativeWidthMaxPx": 1110,
-    "nativeTopVh": 7.6923,
-    "accent": "Use actual game artwork accent; Steam blue when unavailable. Sample accent is not forced on the device.",
-    "capabilities": "Running game and display brightness follow real native state, not mockup switches.",
-    "handheld": {
-      "maxViewportWidthPx": 900,
-      "controlScale": 0.65,
-      "visualMenuWidthVw": 60,
-      "cssWidthVw": 92.307692,
-      "cssTopVh": 11.8343,
-      "scrollbars": "Hidden; native focus scrolling retained",
-      "reason": "User explicitly requested a narrower, smaller Ally layout after device preview."
-    }
+    "layout": "One normalized canvas for Home and in-game; no context-dependent media breakpoints.",
+    "referenceViewportWidthCssPx": 829,
+    "referenceScale": 0.65,
+    "scaleFormula": "innerWidth * 0.65 / 829",
+    "visualMenuWidthVw": 60,
+    "visualMenuHeightVh": 84,
+    "visualTopVh": 7.6923,
+    "fontFamily": "Inter, Segoe UI, sans-serif",
+    "controlTextPx": 13,
+    "headingPx": 16,
+    "tabTextPx": 12,
+    "accent": "Actual known game artwork color, Steam blue when unavailable; mock sample color is not forced.",
+    "nativeChrome": "Balanced HeaderStore/FooterStore visibility holds while custom menu active; restored on close/handoff/unload.",
+    "nativeScrim": "Only the backdrop containing the borrowed viewport is transparent while custom menu active.",
+    "backdropBlur": {
+      "requestedPx": 4,
+      "appliedPx": 0,
+      "reason": "Both nested and native backdrop-filter paths produce black/missing regions in Steam in-game transparent rendering. Keep 30% glass, border, shadow and complete mockup skin; live backdrop blur remains unresolved."
+    },
+    "scrollbars": "Hidden; native focus scrolling retained.",
+    "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds."
   }
 }

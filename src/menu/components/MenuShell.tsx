@@ -47,6 +47,16 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const frame = view?.requestAnimationFrame(focus);
         return () => { if (frame !== undefined) view?.cancelAnimationFrame(frame); };
     }, [active, state.section, state.stack.length]);
+    useLayoutEffect(() => {
+        const element = root.current;
+        const view = element?.ownerDocument.defaultView;
+        if (!element || !view || !active) return;
+        // Steam changes CSS viewport/DPR between Home and the in-game overlay.
+        // Normalize against the approved 829px handheld viewport instead of switching layouts.
+        const resize = () => element.style.setProperty('--gg-menu-scale', String(view.innerWidth * .65 / 829));
+        resize(); view.addEventListener('resize', resize);
+        return () => view.removeEventListener('resize', resize);
+    }, [active]);
     if (!active) return null;
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (event.detail.button === 2 && !cancel) return;

@@ -12,7 +12,7 @@ function Control({id,adapter}:{id:string;adapter:SettingAdapter<number|boolean>}
     const numeric=typeof state.value==='number';
     const command=(value:number|boolean)=>{void adapter.set(value).catch(()=>{/* The authoritative snapshot owns visible error/pending state. */});};
     return <div className="gg-menu-setting" data-gg-focus={`quick:${id}`}>
-        {numeric?<SliderField label={`${LABELS[id]} · ${Math.round(state.value as number)}%`} value={draft??state.value as number} min={state.min} max={state.max} step={state.step??1} showValue={false} onChange={value=>{setDraft(value);command(value);}}/>:
+        {numeric?<SliderField highlightOnFocus={false} label={<span className="gg-menu-slider-label"><span>{LABELS[id]}</span><output>{Math.round(state.value as number)}%</output></span>} value={draft??state.value as number} min={state.min} max={state.max} step={state.step??1} showValue={false} onChange={value=>{setDraft(value);command(value);}}/>:
             <ToggleField highlightOnFocus={false} label={LABELS[id]??id} description={id==='friends-dnd'?'Friends & Chat only':undefined} checked={state.value as boolean} disabled={state.pending} onChange={command}/>}
         {state.error&&<p className="gg-menu-error" role="alert">{state.error}</p>}
     </div>;

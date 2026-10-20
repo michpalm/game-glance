@@ -3,7 +3,30 @@ import { findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { ownMethod } from './steam/patchOwnership';
-import { registerMenuHost, type HostAttachment, type MenuHostFactory } from './steam/runtime';
+import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
+
+/** Borrow native visibility holds; never overwrite another view's hide counters. */
+export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'FooterStore'>): Stop {
+    const header = owner.HeaderStore;
+    let heldHeader = false;
+    let footer: { unhide(): void } | undefined;
+    try {
+        if (typeof header?.IncrementHideHeader === 'function' && typeof header.DecrementHideHeader === 'function') {
+            header.IncrementHideHeader(); heldHeader = true;
+        }
+        if (typeof owner.FooterStore?.HideFooter === 'function') footer = owner.FooterStore.HideFooter();
+    } catch (error) {
+        if (heldHeader) header!.DecrementHideHeader();
+        throw error;
+    }
+    let stopped = false;
+    return () => {
+        if (stopped) return;
+        stopped = true;
+        try { footer?.unhide(); }
+        finally { if (heldHeader) header!.DecrementHideHeader(); }
+    };
+}
 
 export interface HostSnapshot { active: boolean; node: ReactNode }
 interface HostSurface { verifyPresentation?(): Promise<void>; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
@@ -100,6 +123,14 @@ export function stretchMenuViewport(document: Document, classes: readonly string
     const style = document.createElement('style');
     style.dataset.ggMenuViewport = 'true';
     style.textContent = `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
+    // Steam's MainMenuBrowserView adds a separate 70%-black/8px-blur scrim.
+    // Both backdrop-filter paths black out regions in the in-game transparent renderer.
+    // Keep the approved translucent skin; native Steam menus regain their original scrim on release.
+    const backdropStyles = findModule(value => typeof value?.BackgroundGlass === 'string' && typeof value.DrawBackground === 'string' && typeof value.Blur === 'string');
+    const backdrop = backdropStyles?.BackgroundGlass;
+    if (typeof backdrop === 'string' && /^[-_a-zA-Z0-9]+$/.test(backdrop) && document.getElementsByClassName(placeholder)[0]?.closest(`.${backdrop}`)) {
+        style.textContent += `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}`;
+    }
     document.head.appendChild(style);
     return () => style.remove();
 }
@@ -115,6 +146,8 @@ export function registerDiscoveredMenuHost(): Stop | null {
         const document = owner.BrowserWindow?.document;
         if (!document?.head) throw new Error('Steam menu owner window is unavailable');
         let stopViewport: Stop | undefined;
+        let stopChrome: Stop | undefined;
+        const releaseChrome = () => { stopChrome?.(); stopChrome = undefined; };
         const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
         function stretchViewport(tree: Tree) {
             if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/));
@@ -134,6 +167,12 @@ export function registerDiscoveredMenuHost(): Stop | null {
             },
             install(get, subscribe, fault) {
                 read = get;
+                const releaseChromeSubscription = subscribe(() => {
+                    try {
+                        if (get().active) stopChrome ??= hideNativeMenuChrome(owner);
+                        else releaseChrome();
+                    } catch (error) { fault(error as Error); }
+                });
                 const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
                 const wrap = (native: ComponentType<Record<string, unknown>>) => {
                     const existing = wrapped.get(native); if (existing) return existing;
@@ -162,6 +201,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     try { release(); }
                     finally {
                         releaseViewport();
+                        releaseChromeSubscription(); releaseChrome();
                         for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
                         pending.clear();
                     }
