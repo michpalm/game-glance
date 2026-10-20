@@ -29,7 +29,7 @@ export const menuStyles = `
 .gg-menu-setting:has(.gpfocus){border-radius:14px;outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 45%,transparent);outline-offset:2px;background:color-mix(in srgb,var(--gg-menu-accent) 8%,transparent)}
 .gg-menu .gg-menu-setting [role=checkbox]::after{content:none}
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
-.gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;width:22px;height:22px;border:0;outline:0;box-shadow:0 0 5px #0005}
+.gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;box-shadow:0 0 5px #0005}
 .gg-menu .gg-menu-setting [role=checkbox][aria-checked=true]>:first-child{background:var(--gg-menu-accent)}
 .gg-menu .gg-menu-setting [role=checkbox][aria-checked=false]>:first-child{background:#ffffff30}
 .gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

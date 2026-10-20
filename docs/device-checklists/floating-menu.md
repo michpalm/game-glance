@@ -139,3 +139,11 @@ Captured the MainMenu browser view before/after and inspected native toggle comp
 
 TypeScript and all 1484 tests passed; ZIP integrity and matching local/device SHA256 `e1abcbc0bb441b0b8d6d4d36e438749d71371ebd744c6ac7e9eebae04d25c94d`. Temporary frontend only, original backup retained, local Git only.
 Final installed preview recheck: all four spatial/history cases pass; focused Bluetooth remains checked with a ~22×22px thumb, 0px border and pseudo halo content `none`. Preview left open for physical controller acceptance.
+
+### Thumb origin correction and editable mockup — 2026-10-20
+
+User's final screenshot still showed the focused Bluetooth thumb above its track; prior computed-size/halo checks were insufficient for visual acceptance. The local rule now explicitly anchors the thumb with position:absolute, top:0, left:0, right/bottom:auto and margin:0, while retaining the native checked-state horizontal transform. This addresses inherited focus offsets rather than only diameter/border. **Device visual acceptance remains pending:** Ally SSH 192.168.1.14 is unreachable this session. This build has not been installed on the Ally and is not claimed visually fixed there.
+
+TypeScript and all 1484 tests passed, package ZIP integrity passed. Local ZIP SHA256 `3958c0220b8efb41554e250a70052fc7ef5ad40203e84fcaebf3e7dcf7884dad`. Last installed Ally preview remains `e1abcbc0bb441b0b8d6d4d36e438749d71371ebd744c6ac7e9eebae04d25c94d`.
+
+Updated the existing interactive mockup at `/Users/micpaal/.codex/visualizations/2026/10/19/01a15441-2ef2-7790-8927-16328698603a/glance-home-menu.html`: current Quick Settings controls, invariant on/off thumb alignment, local arrow navigation and 18 host Tweak bindings grouped as Menu layout, Glass and focus, Game context. Design choices persist in widget model state and restore on subsequent host state events. DOM execution checks passed initial rendering, all bound numeric ranges/repaints, save/restore, tabs, Configure menu, brightness capability and accent context. Browser visual verification unavailable in this session; no rendered-device claim. Existing More/Performance/Social/running-game/plugin mockups retained. No Git remote operations.
