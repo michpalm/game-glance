@@ -33,7 +33,7 @@ import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
 import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
-import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
+import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
 import { memoPlaytime, memoSpaceRequired, noteDetails, withKnownAchievements } from './detailsMemo';
@@ -97,11 +97,15 @@ export interface HomeData {
     deals: DealCard[];
 }
 
-type AnyApp = RawApp & { installed?: boolean; m_gameid?: string; appid: number };
+type AnyApp = RawApp & SteamHomeApp & { installed?: boolean; m_gameid?: string; appid: number };
+/** One of Steam's collections: all its apps, and those it shows (`visibleApps`: without hidden games). */
+type SteamCollection = { allApps?: AnyApp[]; visibleApps?: AnyApp[] };
 type StoreGlobals = {
     collectionStore?: {
-        recentAppsCollection?: { allApps?: AnyApp[] };
-        localGamesCollection?: { allApps?: AnyApp[] };
+        recentAppsCollection?: SteamCollection;
+        localGamesCollection?: SteamCollection;
+        localPlayedGamesCollection?: SteamCollection;
+        recentPurchasedGamesCollection?: SteamCollection;
         userCollections?: Array<{ id?: unknown; displayName?: unknown; allApps?: AnyApp[] } | null | undefined>;
         BIsHidden?(appId: number): boolean;
     };
@@ -151,26 +155,47 @@ function appName(appId: number): string {
     return typeof name === 'string' ? name : '';
 }
 
-/** Logged once per session: where the recents came from (Steam's recent list, the rest of the library). */
+/** Logged once per session: where the recents came from (Steam's Home lists, or the 3.4.0 fallback). */
 let recentsSourcesLogged = false;
 
+/** The four lists Steam's own Home row is built from (their `visibleApps`); null when this Steam has not all of them. */
+function readSteamHomeLists(): { recent: AnyApp[]; localPlayed: AnyApp[]; recentPurchased: AnyApp[]; localGames: AnyApp[] } | null {
+    const store = steam.collectionStore;
+    const recent = store?.recentAppsCollection?.visibleApps;
+    const localPlayed = store?.localPlayedGamesCollection?.visibleApps;
+    const recentPurchased = store?.recentPurchasedGamesCollection?.visibleApps;
+    const localGames = store?.localGamesCollection?.visibleApps;
+    if (!Array.isArray(recent) || !Array.isArray(localPlayed) || !Array.isArray(recentPurchased) || !Array.isArray(localGames)) return null;
+    return { recent, localPlayed, recentPurchased, localGames };
+}
+
 /**
- * `collectionStore.recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
- * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
- * on the Ally it gave 10 while Steam's Home shows more).
+ * The recent games in the order Steam's own Home shows them (recents.pickSteamHomeRecents: games played and installed
+ * on this device first, games played only elsewhere from the 16th place; Reddit, 3.4). A Steam without those lists
+ * gets 3.4.0's row: `recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
+ * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources).
  */
 function readRecentGames(): HomeGame[] {
     return guarded('recents', () => {
+        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
+        const lists = guarded('Steam Home lists', readSteamHomeLists, null);
+        if (lists) {
+            const picked = pickSteamHomeRecents({ ...lists, isHidden, includeNew: true });
+            if (!recentsSourcesLogged && picked.length > 0) {
+                recentsSourcesLogged = true;
+                console.log(`${LOG_PREFIX} Home: recents in Steam's Home order: played here ${lists.localPlayed.length}, bought ${lists.recentPurchased.length}, installed ${lists.localGames.length}, recent ${lists.recent.length}; row ${picked.length}`);
+            }
+            if (picked.length > 0) return withLaunchInfo(picked, [...lists.localGames, ...lists.recentPurchased, ...lists.localPlayed, ...lists.recent]);
+        }
         const recent = steam.collectionStore?.recentAppsCollection?.allApps;
         if (!Array.isArray(recent)) return [];
         const listed = guarded('library apps', () => steam.appStore?.allApps, undefined);
         const all = Array.isArray(listed) ? listed : [];
-        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
         const picked = pickHomeRecents({ recent, all, isHidden, includeNew: true });
         if (!recentsSourcesLogged && recent.length > 0) {
             recentsSourcesLogged = true;
             const merged = pickRecents(mergeRecentSources(recent, all, isHidden)).length;
-            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
+            console.log(`${LOG_PREFIX} Home: recents (3.4.0 order) from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
         }
         // Steam's recent list wins for its own games (`installed`, `m_gameid` as Steam keeps them there).
         return withLaunchInfo(picked, [...all, ...recent]);
