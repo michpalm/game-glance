@@ -649,7 +649,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     const accent = useAccent(appId, resting);
 
     // Steam's own play time: a shortcut's is only in its details (memoPlaytime, kept as useAppDetailsVersion loads them; #52).
-    const steamMinutes = focused ? playedMinutesOf(focused.playedMinutes, memoPlaytime(focused.appId)) : 0;
+    const steamMinutes = focused ? playedMinutesOf(focused.playedMinutes, memoPlaytime(focused.appId), focused.shortcut) : 0;
     const playedMinutes = focused ? mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, unifideck).minutes : 0;
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {

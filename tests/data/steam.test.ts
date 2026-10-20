@@ -23,12 +23,20 @@ describe('readGameInfo', () => {
         const info = readGameInfo({ appid: 4203820957, display_name: 'EmulationStationDE', minutes_playtime_forever: 0, app_type: 1073741824 }, { nPlaytimeForever: 21 });
         expect(info.playedMinutes).toBe(21);
     });
-    it('playedMinutesOf: the larger of the overview and the details, ignoring junk', () => {
-        expect(playedMinutesOf(0, 21)).toBe(21);
+    it("a Steam game's play time is the overview's, as before 3.4.0, even when its details say more (RDR2: 200+ h for ~40)", () => {
+        expect(readGameInfo({ appid: 1174180, app_type: 1, minutes_playtime_forever: 2400 }, { nPlaytimeForever: 12000 }).playedMinutes).toBe(2400);
+        expect(playedMinutesOf(0, 21)).toBe(0);
+        expect(playedMinutesOf(undefined, 21)).toBe(0);
         expect(playedMinutesOf('2406', 2400)).toBe(2406);
-        expect(playedMinutesOf(undefined, undefined)).toBe(0);
-        expect(playedMinutesOf(-3, 'x')).toBe(0);
         expect(playedMinutesOf(30, NaN)).toBe(30);
+    });
+    it("a shortcut's play time is the larger of the overview's and the details' (3.4.0, #52), ignoring junk", () => {
+        expect(playedMinutesOf(0, 21, true)).toBe(21);
+        expect(playedMinutesOf(30, 0, true)).toBe(30);
+        expect(playedMinutesOf(30, undefined, true)).toBe(30);
+        expect(playedMinutesOf('2406', 2400, true)).toBe(2406);
+        expect(playedMinutesOf(undefined, undefined, true)).toBe(0);
+        expect(playedMinutesOf(-3, 'x', true)).toBe(0);
     });
     it('reads the Heroic link of a shortcut Heroic added', () => {
         const info = readGameInfo(

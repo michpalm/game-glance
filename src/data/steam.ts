@@ -19,24 +19,31 @@ const FIRST_SHORTCUT_APP_ID = 0x80000000;
 type AnyRecord = Record<string, unknown> | undefined | null;
 
 /**
- * Minutes played: the larger of the app overview's (`minutes_playtime_forever`, Steam's servers' count) and the app
- * details' (`nPlaytimeForever`). A non-Steam shortcut's play time is only ever local (localconfig.vdf's Playtime under its
- * signed app id), which Steam loads into its details; its overview's stays 0 (#52: EmulationStationDE on the Deck read 0
- * here and 21 on Steam's own page). Junk counts as 0. Pure.
+ * Minutes played. A Steam game: the app overview's (`minutes_playtime_forever`, Steam's servers' count), as every
+ * version before 3.4.0 read it; the details' `nPlaytimeForever` can be far larger for a Steam game (Reddit, 3.4.0:
+ * Red Dead Redemption 2 read 200+ h for about 40), so it is not taken for Steam games. A non-Steam shortcut: the larger
+ * of the two, as 3.4.0 did; its play time is only ever local (localconfig.vdf's Playtime under its signed app id),
+ * which Steam loads into its details, while its overview's stays 0 (#52: EmulationStationDE on the Deck read 0 here
+ * and 21 on Steam's own page). Junk counts as 0. Pure.
  */
-export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknown): number {
+export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknown, isShortcut = false): number {
     const minutes = (v: unknown) => {
         const n = Number(v ?? 0);
         return Number.isFinite(n) && n > 0 ? n : 0;
     };
-    return Math.max(minutes(overviewMinutes), minutes(detailsMinutes));
+    return isShortcut ? Math.max(minutes(overviewMinutes), minutes(detailsMinutes)) : minutes(overviewMinutes);
+}
+
+/** A non-Steam shortcut: its app type, or an app id in the shortcuts' range. Pure. */
+export function isShortcutApp(appId: number, appType: unknown): boolean {
+    return appType === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
 }
 
 export function readGameInfo(overview: unknown, details: unknown): GameInfo {
     const o = overview as AnyRecord;
     const d = details as AnyRecord;
     const appId = Number(o?.appid ?? 0) || 0;
-    const isShortcut = o?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
+    const isShortcut = isShortcutApp(appId, o?.app_type);
     const a = d?.achievements as AnyRecord;
     const total = Number(a?.nTotal ?? 0);
     const achievements = !isShortcut && Number.isFinite(total) && total > 0
@@ -46,7 +53,7 @@ export function readGameInfo(overview: unknown, details: unknown): GameInfo {
         appId,
         name: typeof o?.display_name === 'string' ? o.display_name : '',
         isShortcut,
-        playedMinutes: playedMinutesOf(o?.minutes_playtime_forever, d?.nPlaytimeForever),
+        playedMinutes: playedMinutesOf(o?.minutes_playtime_forever, d?.nPlaytimeForever, isShortcut),
         achievements,
         heroic: isShortcut ? parseHeroicLaunch(d?.strShortcutLaunchOptions as string | undefined) : null,
     };

@@ -5,7 +5,7 @@ import { attempt } from '../data/attempt';
 import { cache, overrides } from '../data/cache';
 import { hltbCacheKey, HltbResult } from '../data/hltb';
 import { settings, useSettings } from '../data/settings';
-import { peekSteamLanguage, playedMinutesOf } from '../data/steam';
+import { isShortcutApp, peekSteamLanguage, playedMinutesOf } from '../data/steam';
 import { Art, resolveArt } from '../home/HeroBackground';
 import { statusCss } from '../home/homeCss';
 import { StatusBar } from '../home/StatusBar';
@@ -38,7 +38,7 @@ function useWindowSize(win: Window | null): { width: number; height: number } {
     return size;
 }
 
-interface AppOverview { display_name?: string; minutes_playtime_forever?: number | string }
+interface AppOverview { display_name?: string; minutes_playtime_forever?: number | string; app_type?: number }
 const appStore = () => (globalThis as unknown as { appStore?: { GetAppOverviewByAppID?(id: number): AppOverview | null } }).appStore;
 
 /** Steam's local play time from its details store, when it has the game's details loaded (no request); else undefined. */
@@ -83,7 +83,8 @@ function StatsCard({ appId, locale, scale }: { appId: number; locale: string; sc
     }, [appId]);
     if (!known) return null;
     // A shortcut's play time is only in its details (#52): the ones Home kept, or Steam's store when it has them loaded.
-    const played = playedMinutesOf(overviewOf(appId)?.minutes_playtime_forever, memoPlaytime(appId) ?? detailsPlaytime(appId));
+    const overview = overviewOf(appId);
+    const played = playedMinutesOf(overview?.minutes_playtime_forever, memoPlaytime(appId) ?? detailsPlaytime(appId), isShortcutApp(appId, overview?.app_type));
     const stats = screensaverStats(known.times, played, known.achievements, locale);
     return (
         <div className="ggs-card" style={{ '--ggs-card-k': String(cardScale(scale)) } as CSSProperties}>
