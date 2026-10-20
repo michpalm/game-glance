@@ -283,3 +283,10 @@ Reproduced Do not disturb true→false→true on the Ally. DOM trace showed no r
 Production scoped `.gg-menu-setting .Panel` now sets transform/transition/animation:none!important. Temporary CSS/DOM observers removed before production verification. Installed CEF17-frame toggle+restore capture `/private/tmp/gg-toggle-production/`: all sampled untouched title/Volume/Wi-Fi/Night/tab crops pixel-identical across every frame; DND restoredtrue. Before capture `/private/tmp/gg-toggle-before/` reproduced Volume/Wi-Fi pixel changes. Final actual gamescope mode3 capture `/private/tmp/gg-toggle-flicker-final.png` inspected for complete layout/glass. This addresses measured field raster flicker; physical user feedback remains final acceptance.
 
 TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `fb054604069dc30e8f7b4eaf39a4e9c1fc8e8a7ad687b336fb1cc94332fef6b3`; backup `/tmp/gg-menu-before-toggle-flicker-20261020.js`. Only DND toggled for reproduction and restored; other settings untouched. No Git remote operations.
+
+
+### 2026-10-20: Fuller focus glow
+
+User requested improved glow. Focus halo8→12px, faint10%raw accent→26% of a70%accent/30%white mix so dark game accents remain visible, plus10px inset12%accent glow. Navigate grid retains its bright rounded ring with this shared halo. Menu panel/bar exterior shadows unchanged. Installed mode3 screenshot `/private/tmp/gg-focus-glow-final.png` inspected: soft focused Volume edge, no broad menu/background blur. Stable field transform fix retained.
+
+TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `c148d7ee02068d2c3db075b3c94c079eebe0f04e5bf17970e2f52a5d4b17a877`; backup `/tmp/gg-menu-before-focus-glow-20261020.js`. No setting writes or Git remote operations; user visual acceptance pending.
