@@ -56,6 +56,9 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:rgba(7,10,15,.45);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:1px;background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent);box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{flex-direction:column;justify-content:center;min-height:112px;padding:13px 14px;gap:14px;border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:16px;background:${HOME_BUTTON_GLASS.background}}
+/* Grid glass is more specific than the generic button focus rule: retain its material,
+ * then add a neutral lift and a bright rounded ring that survives dark game accents. */
+.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:focus-visible{background:linear-gradient(#ffffff24,#ffffff24),${HOME_BUTTON_GLASS.background};outline:2px solid color-mix(in srgb,#fff 80%,var(--gg-menu-accent));outline-offset:1px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:23px;height:23px;color:#fff}
 .gg-menu-native-host .gg-menu h2{font-size:16px;font-weight:700;letter-spacing:-.2px;margin:0 0 18px}
 .gg-menu-native-host .gg-menu h3{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin:14px 0 4px}

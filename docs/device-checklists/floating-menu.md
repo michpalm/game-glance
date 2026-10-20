@@ -267,3 +267,10 @@ Three regressions cover scoped geometry/no whole-screen filter, movement/cleanup
 User accepted menu-only frosting and reported weak text/icon readability. On the bright Ori1057090 scene, the existing13px medium500 labels and muted2-unit SVG strokes were too slight at the0.65 menu scale. Labels/headings/values now use loaded MotivaSans700 and white, with a subtle0 1px 2px #0009 text shadow; inactive tabs/setting/grid icons white. Setting icons17→18px, SVG currentColor stroke2→2.4; no icon rasterization or blur filters introduced. Menu scale/frosting remain unchanged.
 
 Installed full-compositor before/after captures `/private/tmp/gg-legibility-before.png` and `/private/tmp/gg-legibility-after.png` inspected against the same bright scene: clearer lettering/strokes, all controls visible. TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device SHA256 `06a9477a38e4cc49669394342230a70568db2e3e240f210111c8e41038eaf05c`; backup `/tmp/gg-menu-before-legibility-20261020.js`. Left installed for physical user feedback. No settings changed, local Git only.
+
+
+### 2026-10-20: Navigate focus visibility
+
+Actual Ally screenshot and computed styles reproduced focused Library with the same resting40%glass background as its neighbors. The grid resting selector outweighed the generic focus fill, leaving a thin55% dark-purple outline as the only cue. Added an explicit grid-focused selector for both controller gpfocus and keyboard focus-visible:14%white overlay over retained Home glass,2px rounded80%white/20%accent ring and inset accent edge. No exterior blur/glow or geometry changes.
+
+Installed mode3 capture `/private/tmp/gg-navigate-focus-after.png` inspected over bright Ori1057090: Library has a distinct bright rounded ring and lighter fill; neighbors retain resting styling. Native navigation code unchanged; physical controller feel remains user feedback. TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `06ffb0652fc5819043759a98c2fa64a7cacc4049ff1ef23e25527447c90bce5d`; backup `/tmp/gg-menu-before-grid-focus-20261020.js`. No settings changed or Git remote operations.

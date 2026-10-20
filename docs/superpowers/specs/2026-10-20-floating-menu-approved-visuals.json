@@ -67,6 +67,7 @@
     "activeTab": "Darker rgba(7,10,15,.45) glass, white text and accent inset edge, including while focused.",
     "moreTab": "Ellipsis icon only; accessible name More retained.",
     "quickSettings": "Icons for all controls;56px equal-height toggle rows, label and switch vertically centred, no Friends & Chat helper text.",
-    "legibility": "Bold white labels/headings/values with subtle0 1px 2px #0009 text shadow. Inactive tabs and setting/grid icons white; SVG currentColor stroke2.4, setting icons18px. Menu scale and frosting unchanged."
+    "legibility": "Bold white labels/headings/values with subtle0 1px 2px #0009 text shadow. Inactive tabs and setting/grid icons white; SVG currentColor stroke2.4, setting icons18px. Menu scale and frosting unchanged.",
+    "gridFocus": "Explicit grid-specific focus rule overrides the resting grid glass:14% white lift over Home glass,2px rounded outline mixed80%white/20%accent,1px offset and inset1px55%accent edge. No exterior glow; applies to gpfocus and focus-visible."
   }
 }
