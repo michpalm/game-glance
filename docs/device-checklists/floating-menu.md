@@ -335,3 +335,12 @@ Local/device ZIP SHA256 `f73e6aeaf5298df432d6c3bcbb24c40c10d81d44a84f9a52c4e8547
 
 
 2026-10-20 notification/status spacing: actual Ally screenshot showed bell directly touching the status pill vertically. Align menu header notification pill to the left, retaining menu/panel/status geometry. Installed mode3 `/private/tmp/gg-status-bell-final.png` inspected: bell above left edge, status top-right,386.07CSSpx horizontal gap; no clash. TypeScript/full1507 tests/ZIP integrity/diff checks pass. Local/device ZIP SHA256 `7b35d43766798c6334ddb1f2f86dd3e55d7e051093c381fa3cf00fd8cc70abc3`; backup `/tmp/gg-menu-before-status-bell-20261020.js`. No setting writes or Git remote operations.
+
+
+### 2026-10-20: L1/R1 stale In Game focus
+
+Actual Ally DOM reproduced Quick settings aria-pressedtrue with In game gpfocus/DOMfocus. Steam native `FocusNavController.DispatchVirtualButtonClick(5/6)` reproduced Navigate→Quick restoring section:in-game. Global tab/notification focus had been saved as the current panel's focus key. Reducer now excludes those shell targets from per-panel history. Restoration repairs stale section:* keys to the selected tab; when section switching originates in the bar, layout effect captures that intent and synchronously/next-frame moves both DOM and Steam focus to the active tab. Panel-origin switching retains panel restoration.
+
+Two regressions RED→GREEN cover global-focus history and stale/selected-tab resolution. TypeScript/full1509 tests across133 files/ZIP integrity/diff checks passed. Installed native L1 from panel→Navigate/Home, R1→Quick/Brightness: no In Game tab focus. From bar R1→Performance and L1→Quick aligned selection/focus; full six-tab R1 wraparound aligned exactly one gpfocus tab with aria-pressedtrue at every step. D-pad up can still move focus to an unselected tab before activation (separate focus/selection); shoulder step realigns to newly selected tab. Actual mode3 `/private/tmp/gg-single-tab-focus-final.png` inspected: only Quick settings highlighted. Temporary focus observer removed; no setting writes.
+
+Local/device ZIP SHA256 `727cca9d17d9ce40a393474811a39de39e4c15a0df93634530060cb904bbae0b`; frontend backup `/tmp/gg-menu-before-tab-focus-20261020.js`. No Git remote operations.

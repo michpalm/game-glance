@@ -48,8 +48,9 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const element = root.current;
         if (!element || !active || !inputActive()) return;
         const key = state.focus[state.section];
+        const preferBar = !!element.ownerDocument.activeElement?.closest('.gg-menu-bar');
         const focus = () => {
-            const target = findMenuFocus(element, key);
+            const target = findMenuFocus(element, key, preferBar);
             if (target) { target.focus({ preventScroll: true }); takeSteamFocus(target); }
         };
         focus();

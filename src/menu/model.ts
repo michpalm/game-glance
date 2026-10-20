@@ -79,7 +79,8 @@ export function reduceMenu(state: MenuState, event: MenuEvent): MenuState {
             return { ...state, section: bar[(index + event.direction + bar.length) % bar.length], stack: [] };
         }
         case 'push': return event.viewId ? { ...state, stack: [...state.stack, event.viewId] } : state;
-        case 'focus': return { ...state, focus: { ...state.focus, [event.section]: event.key } };
+        // Tabs and Notifications belong to the global shell, never a panel's restoration history.
+        case 'focus': return event.key.startsWith('section:') || event.key === 'notifications' ? state : { ...state, focus: { ...state.focus, [event.section]: event.key } };
         case 'back':
             if (state.stack.length) return { ...state, stack: state.stack.slice(0, -1) };
             if (!visibleSections(state).includes(state.section)) return { ...state, section: 'more' };

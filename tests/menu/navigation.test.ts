@@ -30,6 +30,13 @@ describe('menu input boundary',()=>{
         const {document}=parseHTML('<main><button data-gg-focus="fallback">Fallback</button><div data-gg-focus="toggle"><button role="switch">Wi-Fi</button></div><div data-gg-focus="disabled"><button disabled>No</button></div></main>');
         const root=document.querySelector('main')!;expect(findMenuFocus(root,'toggle')?.tagName).toBe('BUTTON');expect(findMenuFocus(root,'disabled')?.textContent).toBe('Fallback');
     });
+    it('keeps shoulder focus on the selected tab and repairs a stale global-tab key', () => {
+        const {document}=parseHTML('<main><div class="gg-menu-bar"><button class="gg-menu-tab" data-gg-focus="section:in-game" aria-pressed="false">In game</button><button class="gg-menu-tab" data-gg-focus="section:quick-settings" aria-pressed="true">Quick settings</button></div><div class="gg-menu-panel"><button data-gg-focus="quick:brightness">Brightness</button></div></main>');
+        const root=document.querySelector('main')!;
+        expect(findMenuFocus(root,'section:in-game')?.textContent).toBe('Quick settings');
+        expect(findMenuFocus(root,'quick:brightness',true)?.textContent).toBe('Quick settings');
+        expect(findMenuFocus(root,'quick:brightness')?.textContent).toBe('Brightness');
+    });
     it('restores a valid stable focus key and skips unavailable or hidden controls',()=>{
         const {document}=parseHTML('<main><button data-gg-focus="first">First</button><button data-gg-focus="saved" disabled>Disabled</button><div hidden><button data-gg-focus="hidden">Hidden</button></div><button data-gg-focus="last">Last</button></main>');
         const root=document.querySelector('main')!;

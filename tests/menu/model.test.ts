@@ -40,6 +40,13 @@ describe('floating menu transitions', () => {
         expect(state.focus['in-game']).toBe('resume');
         expect(reduceMenu(state,{type:'select',section:'social'}).section).toBe('social');
     });
+    it('does not save global tab/notification focus as a panel restoration target', () => {
+        const before=events({type:'open',entry:'quick-access'},{type:'focus',section:'quick-settings',key:'quick:brightness'});
+        for(const key of ['section:in-game','section:quick-settings','notifications']) {
+            expect(reduceMenu(before,{type:'focus',section:'quick-settings',key})).toBe(before);
+        }
+        expect(before.focus['quick-settings']).toBe('quick:brightness');
+    });
     it.each([null,{...game,appId:42,gameId:'42',name:'Other'}])('drops old game details and focus on game replacement %j', next => {
         const before=events({type:'game',value:game},{type:'open',entry:'home'},{type:'push',viewId:'achievements'},{type:'focus',section:'in-game',key:'achievement:8'});
         const after=reduceMenu(before,{type:'game',value:next});

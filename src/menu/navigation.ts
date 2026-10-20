@@ -15,12 +15,16 @@ export function handleMenuButton(detail: { button: number; is_repeat?: boolean }
     if (!detail.is_repeat) dispatch(detail.button === 2 ? { type: 'back' } : { type: 'step', direction: detail.button === 5 ? -1 : 1 });
     return true;
 }
-export function findMenuFocus(root: ParentNode, key?: string): HTMLElement | null {
+export function findMenuFocus(root: ParentNode, key?: string, preferBar = false): HTMLElement | null {
     const selector = 'button,input,select,textarea,a[href],.Focusable,[tabindex]';
     const elements = Array.from(root.querySelectorAll<HTMLElement>('[data-gg-focus]')).map(wrapper => ({
         key: wrapper.dataset.ggFocus,
         element: wrapper.matches(selector) ? wrapper : wrapper.querySelector<HTMLElement>(selector),
     })).filter((item): item is { key: string | undefined; element: HTMLElement } => !!item.element && !item.element.closest('[hidden],[disabled],[aria-disabled="true"]'));
+    if (preferBar || key?.startsWith('section:')) {
+        const selected = elements.find(item => item.element.matches('.gg-menu-tab[aria-pressed="true"]'))?.element;
+        if (selected) return selected;
+    }
     const saved = elements.find(item => item.key === key)?.element;
     return saved ?? elements.find(item => item.element.closest('.gg-menu-panel'))?.element ?? elements[0]?.element ?? null;
 }
