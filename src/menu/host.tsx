@@ -28,6 +28,21 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
     };
 }
 
+interface NativeBlurService { SetBlurEnabled(enabled: boolean): void }
+/** Steam owns the compositor, blur radius and suppression policy; borrow one balanced hold. */
+export function borrowNativeMenuBlur(service: NativeBlurService | undefined = findModuleExport(value =>
+    typeof value?.SetBlurEnabled === 'function' && typeof value.SetForceSuppressBlur === 'function' && typeof value.ApplyBlurState === 'function',
+)): Stop {
+    if (!service) return () => {};
+    service.SetBlurEnabled(true);
+    let stopped = false;
+    return () => {
+        if (stopped) return;
+        stopped = true;
+        service.SetBlurEnabled(false);
+    };
+}
+
 export interface HostSnapshot { active: boolean; node: ReactNode }
 interface HostSurface { verifyPresentation?(): Promise<void>; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
 export function createNativeHost(surface: HostSurface): HostAttachment {
@@ -124,13 +139,13 @@ export function stretchMenuViewport(document: Document, classes: readonly string
     style.dataset.ggMenuViewport = 'true';
     style.textContent = `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
     // Steam's MainMenuBrowserView adds a separate 70%-black/8px-blur scrim.
-    // Both backdrop-filter paths black out regions in the in-game transparent renderer.
-    // Keep the approved translucent skin; native Steam menus regain their original scrim on release.
+    // The parent scrim composites the translucent child BrowserView as opaque black in-game.
+    // Clear it and let Steam's gamescope blur service blur the actual game, not a CEF window.
+    // Native Steam menus regain their original scrim on release.
     const backdropStyles = findModule(value => typeof value?.BackgroundGlass === 'string' && typeof value.DrawBackground === 'string' && typeof value.Blur === 'string');
     const backdrop = backdropStyles?.BackgroundGlass;
-    if (typeof backdrop === 'string' && /^[-_a-zA-Z0-9]+$/.test(backdrop) && document.getElementsByClassName(placeholder)[0]?.closest(`.${backdrop}`)) {
-        style.textContent += `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}`;
-    }
+    if (typeof backdrop !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(backdrop) || !document.getElementsByClassName(placeholder)[0]?.closest(`.${backdrop}`)) throw new Error('Native menu backdrop shape changed');
+    style.textContent += `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}`;
     document.head.appendChild(style);
     return () => style.remove();
 }
@@ -147,7 +162,11 @@ export function registerDiscoveredMenuHost(): Stop | null {
         if (!document?.head) throw new Error('Steam menu owner window is unavailable');
         let stopViewport: Stop | undefined;
         let stopChrome: Stop | undefined;
-        const releaseChrome = () => { stopChrome?.(); stopChrome = undefined; };
+        let stopBlur: Stop | undefined;
+        const releaseEffects = () => {
+            const blur = stopBlur, chrome = stopChrome; stopBlur = stopChrome = undefined;
+            try { blur?.(); } finally { chrome?.(); }
+        };
         const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
         function stretchViewport(tree: Tree) {
             if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/));
@@ -169,8 +188,10 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 read = get;
                 const releaseChromeSubscription = subscribe(() => {
                     try {
-                        if (get().active) stopChrome ??= hideNativeMenuChrome(owner);
-                        else releaseChrome();
+                        if (get().active) {
+                            stopChrome ??= hideNativeMenuChrome(owner);
+                            stopBlur ??= borrowNativeMenuBlur();
+                        } else releaseEffects();
                     } catch (error) { fault(error as Error); }
                 });
                 const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
@@ -201,7 +222,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     try { release(); }
                     finally {
                         releaseViewport();
-                        releaseChromeSubscription(); releaseChrome();
+                        releaseChromeSubscription(); releaseEffects();
                         for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
                         pending.clear();
                     }

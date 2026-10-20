@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideNativeMenuChrome, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
 const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
@@ -78,7 +78,7 @@ describe('mounted Steam portal interception', () => {
 });
 
 it('finds the stylesheet module and restores only the owned viewport rule', () => {
-    const { document } = parseHTML('<html><head></head><body><div class="nativePlaceholder"></div></body></html>');
+    const { document } = parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div></body></html>');
     const stop = stretchMenuViewport(document as unknown as Document, ['BasicUI', 'nativeContainer']);
     expect(document.querySelector('[data-gg-menu-viewport]')?.textContent).toContain('.nativePlaceholder');
     expect(document.querySelector('.nativePlaceholder')).not.toBeNull();
@@ -112,4 +112,28 @@ it('removes only the backdrop surrounding the borrowed menu viewport and restore
     expect(rule).toContain('backdrop-filter:none!important');
     expect(document.querySelector('.other-native-menu')?.getAttribute('style')).toBeNull();
     stop(); expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
+});
+
+
+describe('borrowed native compositor blur', () => {
+    it('releases only its own hold and never suppresses another Steam view', () => {
+        let holds = 2;
+        const service = { SetBlurEnabled: vi.fn((enabled: boolean) => { holds += enabled ? 1 : -1; }), SetForceSuppressBlur: vi.fn() };
+        const stop = borrowNativeMenuBlur(service);
+        expect(holds).toBe(3);
+        stop(); stop();
+        expect(holds).toBe(2);
+        expect(service.SetBlurEnabled.mock.calls).toEqual([[true], [false]]);
+        expect(service.SetForceSuppressBlur).not.toHaveBeenCalled();
+    });
+    it('leaves unsupported compositor services untouched', () => {
+        expect(() => borrowNativeMenuBlur(undefined)()).not.toThrow();
+    });
+});
+
+
+it('refuses the custom surface when the native dark backdrop cannot be safely cleared', () => {
+    const { document } = parseHTML('<html><head></head><body><div class="unknownBackdrop"><div class="nativePlaceholder"></div></div></body></html>');
+    expect(() => stretchMenuViewport(document as unknown as Document, ['nativeContainer'])).toThrow('Native menu backdrop shape changed');
+    expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
 });

@@ -175,3 +175,24 @@ Native MainMenuBrowserView's separate BackgroundGlass darkblur adds70%-black and
 Final actual installed screenshot `/private/tmp/gg-installed-mockup-final.png` shows complete Quick Settings, all6tabs in one row, no visible scrollbars, and all controls within the taller panel. Dorfromantik1455840 remained running; no native setting writes/reset were issued by the styling checks. Physical Home/in-game acceptance remains user feedback.
 
 TypeScript, all1488 tests, diff check and ZIP integrity passed. Final local/device ZIP SHA256 `b743dc4a3e90db6e5664681ec5485f751338291f9c2c560b0c97fc4d815b9c87`. Frontend only installed; original/pre-design backups retained; no remote Git operations.
+
+
+### 2026-10-20: black rendering isolated with full compositor captures
+
+Supersedes the prior inference that missing regions in `Page.captureScreenshot` proved actual device rendering failure. Those captures show an isolated transparent CEF BrowserView and can omit composited regions. For the actual game + Steam UI, gamescope's screenshot mode 3 (`full_composition`) is required; SIGUSR2 captures the base game alone on this device. Verified against Valve's [screenshot protocol](https://github.com/ValveSoftware/gamescope/blob/master/protocol/gamescope-control.xml).
+
+One-frame capture (no recording, no changes to existing capture streams):
+
+```sh
+ssh ally 'DISPLAY=:0 xprop -root -f GAMESCOPECTRL_DEBUG_REQUEST_SCREENSHOT 32c -set GAMESCOPECTRL_DEBUG_REQUEST_SCREENSHOT 3'
+# Wait for /tmp/gamescope.png to update, then copy it.
+scp ally:/tmp/gamescope.png /tmp/ally-menu.png
+```
+
+Actual compositor A/B tests reproduced the reported symptom: restoring the native parent BackgroundGlass dark scrim produced solid black bar/body cards while the caption actions stayed transparent. Removing only its dark background cleared the black cards, with native CSS blur retained; removing only blur left the black cards. Card-level CSS blur did not blur the underlying game. Thus black-card diagnosis points to the native parent/child BrowserView compositing interaction, not the menu's requested 30% card fill.
+
+Steam's discovered GamescopeService exposes `SetBlurEnabled`, `SetForceSuppressBlur`, and `ApplyBlurState`. Its implementation reference-counts blur, honors native force suppression, and sets conditional compositor blur with native radius32/fade300ms. A borrowed hold produced real game blur beneath the translucent overlay. Production now acquires exactly one hold per active host and releases on close, native handoff, failure or unload; it neither resets native counters nor changes suppression/radius/persistent settings. CSS backdrop filters remain off. Native radius32 is not a claim of matching the mockup's 4 CSS pixels.
+
+Regression tests RED→GREEN verify balanced ownership with two existing holds, idempotent release, unchanged suppression, and unavailable-service fallback. A further RED→GREEN guard rejects an unknown native backdrop shape before installing custom viewport CSS, returning to the native Steam menu rather than retaining a black scrim. TypeScript, all1491 tests, ZIP integrity and diff checks passed. Final installed local/device ZIP SHA256 `1eda7e891ddca93fb782ac7a5eac5bc77560b0b122759bc8b1ff5889b44c205e`. Frontend backup `/tmp/gg-menu-before-compositor-blur-20261020.js` retained.
+
+On Ally with Dorfromantik1455840 running: three close/open cycles each returned blur holds0→1; native Quick Settings handoff returned0 and removed the owned viewport/scrim style; returning to custom restored1 and the style. Full compositor captures of Quick Settings and Navigate show live blur and translucent cards with no opaque black panels. Original screenshot before the fix diagnostic: `/private/tmp/gg-composite-scrim.png`; final installed capture: `/private/tmp/gg-installed-compositor-final.png`; Navigate: `/private/tmp/gg-installed-compositor-navigate.png`. Physical controller acceptance remains user feedback. No setting controls were changed, game stayed running, and no Git remote operations occurred.

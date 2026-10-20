@@ -36,9 +36,12 @@
     "nativeChrome": "Balanced HeaderStore/FooterStore visibility holds while custom menu active; restored on close/handoff/unload.",
     "nativeScrim": "Only the backdrop containing the borrowed viewport is transparent while custom menu active.",
     "backdropBlur": {
-      "requestedPx": 4,
-      "appliedPx": 0,
-      "reason": "Both nested and native backdrop-filter paths produce black/missing regions in Steam in-game transparent rendering. Keep 30% glass, border, shadow and complete mockup skin; live backdrop blur remains unresolved."
+      "requestedCssPx": 4,
+      "cssBackdropFilter": "none",
+      "renderer": "Steam GamescopeService SetBlurEnabled balanced hold while custom host active",
+      "nativeRadius": 32,
+      "radiusUnits": "Steam compositor service units, not CSS pixels",
+      "reason": "CEF card filters cannot sample the live game. Clear the native parent dark scrim and borrow Steam compositor blur; preserve native suppression and other holds. Verified with full-composition gamescope captures over Dorfromantik."
     },
     "scrollbars": "Hidden; native focus scrolling retained.",
     "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds."
