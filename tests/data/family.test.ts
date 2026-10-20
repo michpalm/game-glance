@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountIdOf, familyLabel, familyOwnerId, familyOwnerName } from '../../src/data/family';
+import { accountIdOf, familyLabel, familyOwnerId, familyOwnerName, selfFamilyLabel } from '../../src/data/family';
 
 describe('family library (Steam Families)', () => {
     // Probed on the Ally: a game from the family's library carries owner_account_id (an example id, a friend
@@ -27,5 +27,17 @@ describe('family library (Steam Families)', () => {
     it("Steam's own words, with the owner's name when known", () => {
         expect(familyLabel('Lender')).toBe('Family Sharing · Lender');
         expect(familyLabel(null)).toBe('Family Sharing');
+    });
+});
+
+describe('selected own family copy', () => {
+    it('uses the signed-in display name, without replacing borrowed owners', () => {
+        expect(selfFamilyLabel({ friendStore: { m_FriendsUIFriendStore: { self: { display_name: ' Player ' } } } })).toBe('Family Sharing · Player');
+        expect(selfFamilyLabel({ friendStore: { self: { persona: { m_strPlayerName: 'Persona' } } } })).toBe('Family Sharing · Persona');
+        expect(familyLabel('Lender')).toBe('Family Sharing · Lender');
+    });
+    it('keeps a generic family label while the user name is unavailable', () => {
+        expect(selfFamilyLabel({})).toBe('Family Sharing');
+        expect(selfFamilyLabel({ friendStore: { self: { display_name: '  ' } } })).toBe('Family Sharing');
     });
 });

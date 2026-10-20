@@ -4,8 +4,9 @@
  * in DOM order.
  */
 
-/** True when stepping in DOM order would not follow the picture (some button sits left of one that comes before it). */
-export function needsVisualNav(xs: number[]): boolean {
+/** Also step across native focus groups: Steam will otherwise stop at that group's edge. */
+export function needsVisualNav(xs: number[], crossesGroups = false): boolean {
+    if (crossesGroups && xs.length > 1) return true;
     for (let i = 1; i < xs.length; i++) if (xs[i] < xs[i - 1]) return true;
     return false;
 }
@@ -33,4 +34,20 @@ export function focusRingClass(cssText: string): string | null {
         }
     }
     return null;
+}
+
+/** Visible Steam status controls can refuse focus; continue in the same direction to the next usable control. */
+export function focusVisualNeighbour(xs: number[], from: number, dir: 'left' | 'right', take: (index: number) => boolean): number | null {
+    let next = visualNeighbour(xs, from, dir);
+    while (next !== null) {
+        if (take(next)) return next;
+        next = visualNeighbour(xs, next, dir);
+    }
+    return null;
+}
+
+/** React can leave the previous gpfocus class in place during a burst; the event's own target wins. */
+export function rowFocusIndex<T>(items: T[], target: T | null, highlighted: T | null, contains: (item: T, target: T) => boolean): number {
+    const at = target === null ? -1 : items.findIndex((item) => contains(item, target));
+    return at >= 0 ? at : highlighted === null ? -1 : items.findIndex((item) => contains(item, highlighted));
 }

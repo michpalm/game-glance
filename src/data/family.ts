@@ -54,3 +54,19 @@ export function familyPillLabel(appId: number): string | null {
         return null;
     }
 }
+
+/** The selected own copy uses the signed-in Steam display name, like a borrowed copy's owner. */
+export function selfFamilyLabel(globals: unknown = globalThis): string {
+    try {
+        type Self = { display_name?: unknown; persona?: { m_strPlayerName?: unknown } };
+        type Ui = { self?: Self; m_self?: Self };
+        const store = (globals as { friendStore?: Ui & { m_FriendsUIFriendStore?: Ui } } | null)?.friendStore;
+        const ui = store?.m_FriendsUIFriendStore;
+        const self = ui?.self ?? ui?.m_self ?? store?.self ?? store?.m_self;
+        const name = [self?.display_name, self?.persona?.m_strPlayerName]
+            .find((value): value is string => typeof value === 'string' && value.trim() !== '');
+        return familyLabel(name?.trim() ?? null);
+    } catch {
+        return familyLabel(null);
+    }
+}

@@ -56,19 +56,18 @@ describe('buildThemeCss full-screen layout', () => {
         expect(css).toContain('.gg-hero { z-index: 2; pointer-events: none; }');
         expect(css).toContain('.gg-hero .gg-card-tap { pointer-events: auto; }');
     });
-    it('gives an in-flow row between Play and the tabs the same inset on every side, without stacking the spacer', () => {
+    it('puts populated feedback below the cards with equal insets and no duplicate spacer', () => {
         const css = buildThemeCss(full);
         const band = 'calc(100vh - var(--gg-play-top) - var(--gg-row-h))';
-        const gap = '.rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs)';
+        const gap = '.rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs)';
         const row = ruleFor(css, `${gap} {`);
-        expect(row).toContain('margin-top: 0 !important');
+        expect(row).toContain(`margin-top: ${band} !important`);
         expect(row).toContain('padding: calc(var(--gg-side) / 2) !important');
-        expect(row).not.toContain(`margin-top: ${band}`);
         const card = ruleFor(css, `${gap} > .Panel {`);
         expect(card).toContain('margin: 0');
         expect(card).toContain('rgba(12, 16, 22, 0.38)');
         expect(card).toContain('border-radius: calc(16 * var(--gg-d, 1))');
-        expect(ruleFor(css, `${gap} ~ *:not(.ps_Cloud):not(.rt_Tabs) {`)).toContain('margin-top: 0');
+        expect(ruleFor(css, `${gap} ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) {`)).toContain('margin-top: 0');
         expect(ruleFor(css, `${gap} ~ .rt_Tabs {`)).toContain('margin-top: 0');
         // No such row: the tabs still clear the band themselves.
         expect(ruleFor(css, '.rt_Tabs {')).toContain(`margin-top: ${band}`);
@@ -425,10 +424,10 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .ov_Backdrop { display: none !important; }
           .rt_Root { background: transparent !important; }
           .rt_Tabs { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; background: rgba(14, 20, 27, 0.9) !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs) { margin-top: 0 !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background: rgba(12, 16, 22, 0.38) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; backdrop-filter: blur(calc(16 * var(--gg-d, 1))) !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs) ~ *:not(.ps_Cloud):not(.rt_Tabs) { margin-top: 0 !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs) ~ .rt_Tabs { margin-top: 0 !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background: rgba(12, 16, 22, 0.38) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; backdrop-filter: blur(calc(16 * var(--gg-d, 1))) !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: 0 !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ .rt_Tabs { margin-top: 0 !important; }
           .ad_Inner > .gg-hero { position: absolute !important; top: calc(var(--gg-play-top) + var(--gg-row-h)) !important;
                           left: var(--gg-side) !important; right: var(--gg-side) !important; height: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important;
                           margin: 0 !important; }"
@@ -493,14 +492,13 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     };
     const restyled = buildThemeCss(steam, { restyle: true });
 
-    it('preferred version: the link is the circle before settings, and only then do settings and cloud shift right', () => {
+    it('preferred version: the family pill replaces the native link without shifting cloud', () => {
         const withShared = buildThemeCss({ ...steam, shared: { SharedLibrary: 'sl_Shared', Row: 'sl_Row' } }, { restyle: true });
-        expect(withShared).toContain('.sl_Shared { display: block !important;');
-        expect(withShared).not.toContain('.sl_Shared { display: none');
-        expect(withShared).toContain('left: calc(var(--gg-side) + var(--gg-play-w) + var(--gg-gap) + 1 * (var(--gg-icon) + var(--gg-gap)))');
-        expect(withShared).toContain('.rt_Play:has(.sl_Shared a[role="button"]) .rt_Buttons > :nth-child(2) { margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; }');
-        expect(withShared).toContain('.rt_Play:has(.sl_Shared a[role="button"]) ~ .ps_Cloud { left: calc(var(--gg-side) + var(--gg-play-w) + var(--gg-gap) + (var(--gg-buttons, 2) + 1) * (var(--gg-icon) + var(--gg-gap))) !important; }');
-        expect(withShared.match(/\.rt_Buttons > :nth-child\(2\) \{ margin-left:/g)).toHaveLength(1);
+        expect(withShared).toContain('.sl_Shared { display: none !important;');
+        expect(withShared).toContain('overflow: hidden !important;');
+        expect(withShared).toContain('.sl_Shared a[role="button"] { display: none !important; }');
+        expect(withShared).not.toContain('(var(--gg-buttons, 2) + 1)');
+        expect(withShared).toContain('.gg-copy-plus');
         expect(restyled).not.toContain('sl_Shared');
         expect(restyled).toMatch(/\.gg-family \{ position: absolute; right: calc\(100% \+ calc\(10 \* var\(--gg-d\)\)\); top: 50%; transform: translateY\(-50%\);/);
         expect(rulesFor(restyled, '.gg-family')).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
@@ -517,14 +515,14 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     it('only appends rules after the 1.1.1 output', () => {
         expect(restyled.startsWith(`${buildThemeCss(steam)}\n`)).toBe(true);
     });
-    it('restyle: the cloud status is the same dark circle as the others, with the re-tuned state colours and a white focus', () => {
+    it('restyle: the cloud status is the same dark circle as the others, with the re-tuned state colours and Home’s focus ring', () => {
         const cloud = rulesFor(restyled, '.ps_Cloud');
         expect(cloud).toContain('background: rgba(12, 16, 22, 0.4) !important;');
         expect(cloud).toContain('border: 1px solid rgba(255, 255, 255, 0.18) !important;');
         expect(cloud).toContain('backdrop-filter: blur(calc(12 * var(--gg-d))) !important;');
         expect(cloud).toContain('--gg-ok: #5cf2b4; --gg-warn: #ffd84d; --gg-bad: #ff8585; --gg-off: #c4c9d1;');
         expect(rulesFor(restyled, '.ps_Cloud svg')).toContain('drop-shadow');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('background: #ffffff !important; color: #b3261e !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
         // The menu circles' fill is the same.
         expect(rulesFor(restyled, '.ps_Menu')).toContain('background: rgba(12, 16, 22, 0.4) !important;');
         // Not in the 1.1.1 output.
@@ -558,8 +556,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         const focusRules = (restyled.match(/[^{}]*\{[^}]*\}/g) ?? []).map((r) => r.slice(0, r.indexOf('{')).trim())
             .filter((s) => /\.(rt_PlayBtn|ps_Menu|ps_Cloud)/.test(s) && /(\.gpfocus|:focus)(?![\w-])/.test(s) && !s.split(gate).join('').includes(':not(') && !s.startsWith('html[data-gg-mouse]'));
         expect(focusRules.length).toBeGreaterThanOrEqual(8);
-        for (const sel of focusRules) for (const part of sel.split(',')) expect(part.trim(), sel).toMatch(/^:where\(html:not\(\[data-gg-mouse\]\)\)/);
-        expect(rulesFor(restyled, `${gate} .ps_Menu.gpfocus`)).toContain('background: #ffffff !important;');
+        for (const sel of focusRules) for (const part of sel.split(/,\s*(?=:where)/)) expect(part.trim(), sel).toMatch(/^:where\(html:not\(\[data-gg-mouse\]\)\)/);
+        expect(rulesFor(restyled, `${gate} .ps_Menu.gpfocus`)).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
         // Steam's own focus rule darkens a focused circle's icon (meant for its white focus look): in mouse mode it stays
         // the white of a circle at rest, or it showed black on the dark glass after coming back to the page.
         // (Steam darkens the icon's svg, whose paths fill with currentColor: the button and its svg both.)
@@ -585,8 +583,15 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(look).toContain('transform: translateY(calc(-4 * var(--gg-d)))');
         expect(buildThemeCss(steam)).not.toContain('gg-card-focus');
     });
+    it('hides the temporary launch-option tip and marker only in the restyled page', () => {
+        const classes = { ...full, play: { ...full.play, LaunchOptionCallout: 'ps_LaunchTip', LaunchOptionCalloutMessageContainer: 'ps_LaunchMessage' } };
+        const css = buildThemeCss(classes, { restyle: true });
+        expect(ruleFor(css, '.ps_LaunchTip {')).toContain('display: none !important');
+        expect(ruleFor(css, '.ps_LaunchMessage {')).toContain('display: none !important');
+        expect(buildThemeCss(classes)).not.toContain('.ps_LaunchMessage');
+    });
     it("playRowSelector: Steam's Play row (the pill and its arrow, the circles, the cloud); null without its classes", () => {
-        expect(playRowSelector(full)).toBe('.rt_PlayBtn, .ps_Menu, .ps_Cloud');
+        expect(playRowSelector(full)).toBe('.rt_PlayBtn, .ps_Menu, .ps_Cloud, .gg-copy-pill, .gg-store-choice');
         expect(playRowSelector({ ...full, root: {}, play: {} })).toBeNull();
     });
     it("PAGE_TYPE drives the page's own text rules", () => {
@@ -679,8 +684,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(ring).toContain('var(--glance-accent)');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"]:focus')).toContain('background: transparent !important');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"] + [role="button"]:focus')).toContain('background: rgba(255, 255, 255, 0.28) !important');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Menu:focus')).toContain('background: #ffffff !important');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud:focus')).toContain('background: #ffffff !important; color: #b3261e !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Menu:focus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud:focus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
     });
     it('the "Play from" arrow focused: the pill shows its focus and the arrow\'s segment is tinted, as on Home (Michael: Neva)', () => {
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"] + [role="button"].gpfocus')).toContain('background: rgba(255, 255, 255, 0.28) !important');
@@ -804,13 +809,13 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(Math.ceil(466 * 1.7)).toBe(793);
     });
     it('restyle rules do nothing when their Steam classes are missing and never touch layout', () => {
-        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length);
+        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length).replace(/\.gg-native-store-switcher \{[^}]*\}/, '');
 
         // No Steam classes at all: only our own elements and variables, no broken selectors.
         const none = extra({ header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined });
         expect(none).not.toContain('undefined');
         expect(none).not.toMatch(/(^|[\s,])\.(\s|\{|,)/m);
-        expect(none).not.toContain('visibility: hidden');
+        expect(none.replace(/\.gg-native-store-switcher \{[^}]*\}/, '')).not.toContain('visibility: hidden');
         expect(none).not.toContain('::after');
         expect(none).not.toContain('--gg-side:');
         // (our own family pill is positioned inside our own store pill; nothing of Steam's is)

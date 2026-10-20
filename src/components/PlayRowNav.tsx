@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { focusElement } from '../home/homeNav';
-import { focusRingClass, needsVisualNav, visualNeighbour } from '../logic/rowNav';
-import { playRowControlSelector, versionLinkSelector } from '../styles/theme';
+import { takeSteamFocus } from '../home/steamFocus';
+import { rowFocusIndex, focusRingClass, needsVisualNav, focusVisualNeighbour } from '../logic/rowNav';
+import { playRowControlSelector } from '../styles/theme';
 
 const LEFT = 11;
 const RIGHT = 12;
 
-/**
- * Left/Right on the Play row follow the circles' positions. The preferred-version link sits before settings, but
- * Steam steps a row in DOM order (the link is still inside the library line, after settings and before cloud), so
- * Right from the controller would skip it. Only takes over when the picture and the DOM order disagree.
- */
+/** Step between Steam's controls and the library selection pill in their visible order. */
 export function PlayRowNav() {
     const marker = useRef<HTMLSpanElement>(null);
     const [doc, setDoc] = useState<Document | null>(null);
@@ -20,22 +17,27 @@ export function PlayRowNav() {
         if (!doc) return undefined;
         const onDirection = (event: Event) => {
             try {
+                if (event.defaultPrevented) return;
                 const button = Number((event as CustomEvent<{ button?: unknown }>).detail?.button);
                 if (button !== LEFT && button !== RIGHT) return;
                 const selector = playRowControlSelector();
                 if (!selector) return;
                 const items = [...doc.querySelectorAll<HTMLElement>(selector)].filter((el) => el.getBoundingClientRect().width > 0);
                 const xs = items.map((el) => el.getBoundingClientRect().x);
-                if (!needsVisualNav(xs)) return;
-                const target = event.target as Element | null;
-                const gp = doc.querySelector('.gpfocus');
-                const from = items.findIndex((el) => el === target || el.contains(target) || el === gp || (gp !== null && el.contains(gp)));
+                const crossesGroups = items.some((el) => el.matches('.gg-copy-pill, .gg-store-choice'));
+                if (!needsVisualNav(xs, crossesGroups)) return;
+                const target = event.target as HTMLElement | null;
+                const gp = doc.querySelector<HTMLElement>('.gpfocus');
+                const from = rowFocusIndex(items, target, gp, (el, focus) => el === focus || el.contains(focus));
                 if (from < 0) return;
-                const next = visualNeighbour(xs, from, button === RIGHT ? 'right' : 'left');
+                const next = focusVisualNeighbour(xs, from, button === RIGHT ? 'right' : 'left', (index) => {
+                    if (!takeSteamFocus(items[index])) return false;
+                    focusElement(items[index], 'play row control');
+                    return true;
+                });
                 if (next === null) return;
                 event.stopPropagation();
                 event.preventDefault();
-                focusElement(items[next], 'play row control');
             } catch (error) {
                 console.warn(`${LOG_PREFIX} play row navigation failed`, error);
             }
@@ -45,8 +47,7 @@ export function PlayRowNav() {
     }, [doc]);
     useEffect(() => {
         if (!doc) return undefined;
-        const link = versionLinkSelector();
-        if (!link) return undefined;
+        const link = ':is(.gg-copy-pill, .gg-store-choice)';
         let ring = '';
         for (const sheet of doc.styleSheets) {
             let rules: CSSRuleList;

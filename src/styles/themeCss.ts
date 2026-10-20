@@ -1,7 +1,7 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
-import { CLOUD_COLOURS, CLOUD_FOCUS_BAD } from '../home/cloud';
+import { CLOUD_COLOURS } from '../home/cloud';
 import { homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -50,22 +50,20 @@ const present = (list: Array<string | null>) => list.filter((s): s is string => 
 const CARD_BAND = 'calc(100vh - var(--gg-play-top) - var(--gg-row-h))';
 /**
  * Steam inserts in-flow rows between the Play section and the tabs (Deck compatibility feedback).
- * The overview is pulled up onto the art and only the tabs are pushed down, so those rows land on
- * the cards and, in a z-index 1 column, paint over them. The cloud row is absolute, so it is not
- * one of them. The Play section already ends below that band, so the inserted row must not add the
- * band again as margin-top: that made its top gap larger than the left, right and bottom insets.
- * Every side is half the Play inset. Later rows and the tabs follow it, without a second spacer.
- * That row is then a Glance card. Nothing is emitted when the cloud class is unknown: that absolute
- * row would match `*` and cancel the tabs' spacer.
+ * Only a wrapper containing a populated Panel before the tabs counts as feedback. Steam also
+ * mounts empty Panel placeholders there; styling those would remove the tabs' cards-band spacer
+ * even when there is no feedback. Transfer that spacer to the first real row, then let later
+ * rows and the tabs follow without a second spacer. Each feedback card has the same inset on
+ * every side. The absolutely positioned cloud row is excluded.
  */
 function cardBandClearance(playSection: string | null, tabs: string | null, cloud: string | null): string[] {
     if (!playSection || !tabs || !cloud) return [];
-    const gap = `${playSection} ~ *:not(${cloud}):not(${tabs})`;
+    const gap = `${playSection} ~ *:not(${cloud}):not(${tabs}):has(> .Panel:not(:empty)):has(~ ${tabs})`;
     const card = `${gap} > .Panel`;
     return [
-        rule(gap, ` margin-top: 0 !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; `),
+        rule(gap, ` margin-top: ${CARD_BAND} !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; `),
         rule(card, ` margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background: rgba(12, 16, 22, 0.38) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; backdrop-filter: blur(calc(16 * var(--gg-d, 1))) !important; `),
-        rule(`${gap} ~ *:not(${cloud}):not(${tabs})`, ` margin-top: 0 !important; `),
+        rule(`${gap} ~ *:not(${cloud}):not(${tabs}):has(> .Panel:not(:empty)):has(~ ${tabs})`, ` margin-top: 0 !important; `),
         rule(`${gap} ~ ${tabs}`, ` margin-top: 0 !important; `),
     ];
 }
@@ -453,6 +451,9 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         // Its cloud button's in-sync check badge at Unifideck's proportion to the 24 glyph (the circles' rule sizes every svg 24).
         options.restyle ? rule('.unifideck-icon-btn svg.unifideck-cloud-badge', ` width: ${d(13)} !important; height: ${d(13)} !important; `) : '',
         options.restyle ? rule(primary.map((p) => `${p} svg`), ` width: ${d(PAGE_LAYOUT.pill.icon)} !important; height: ${d(PAGE_LAYOUT.pill.icon)} !important; margin: 0 ${d(PAGE_LAYOUT.pill.iconGap)} 0 0 !important; flex: 0 0 auto !important; `) : '',
+        options.restyle ? rule(`${UNIFIDECK_PAGE} .unifideck-icon-btn`, ` ${actionTransition} `) : '',
+        options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:is(.gpfocus, :focus)`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `) : '',
+        options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:not(.gg-uni-cloud):is(.gpfocus, :focus) svg`, ` color: #ffffff !important; fill: currentColor !important; `) : '',
         options.restyle ? rule(focused, ` box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--gg-accent) !important; transform: scale(${PILL_FOCUS.x}, ${PILL_FOCUS.y}) !important; `) : '',
     ].filter((r) => r.length > 0).join('\n');
 }
@@ -551,9 +552,13 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
 }
 
 /** Steam's Play row on the game page (the Play pill with its arrow, the circles, the cloud): logic/cardNav's `play`; null without its classes. */
-export function playRowSelector({ root, play }: ThemeClasses): string | null {
+export function playRowSelector({ root, play, shared }: ThemeClasses): string | null {
     const list = [cls(root, 'ActionButtonAndStatusPanel'), cls(play, 'MenuButton'), cls(play, 'CloudStatusRow')];
-    return list.some((s) => s === null) ? null : list.join(', ');
+    if (list.some((s) => s === null)) return null;
+    const library = cls(shared, 'SharedLibrary');
+    if (library) list.push(`${library} a[role="button"]`);
+    list.push('.gg-copy-pill', '.gg-store-choice');
+    return list.join(', ');
 }
 
 /**
@@ -596,8 +601,9 @@ export function buildLaunchCss(classes: ThemeClasses): string {
  * The eyebrow/title block is shown only with the full-screen layout, where the logo was; otherwise (a renamed Steam
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
-/** Stacked pages for the preferred-version control. Same filled weight as Steam's circle icons; a branch mark turned to mush at this size. */
-const VERSION_ICON = `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'><path fill='black' fill-rule='evenodd' d='M13 7h15a2 2 0 0 1 2 2v13h-4V11H13V7zm-6 6h15a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V15a2 2 0 0 1 2-2z'/></svg>")}")`;
+const actionFocusShadow = `box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--glance-accent) !important;`;
+const actionFocused = `${actionFocusShadow} transform: scale(${PAGE_LAYOUT.focusScale}) !important;`;
+const actionTransition = 'transition: transform 250ms, box-shadow 250ms !important;';
 
 function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean): string[] {
     // Play focused, as Home's: a white ring and accent glow, grown by the focus scale (by the controller or DOM focus).
@@ -611,11 +617,13 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
     const menuButton = cls(play, 'MenuButton');
     const cloud = cls(play, 'CloudStatusRow');
     const cloudIcon = cls(play, 'CloudStatusIcon');
-    const appButtons = cls(root, 'AppButtons');
     const versionRow = cls(shared, 'SharedLibrary');
     const versionLink = versionRow && `${versionRow} a[role="button"]`;
 
     const rules: string[] = [
+        // Steam's temporary saved-launch-option tip is positioned for its stock layout and clips over our hero.
+        rule(cls(play, 'LaunchOptionCallout'), ` display: none !important; `),
+        rule(cls(play, 'LaunchOptionCalloutMessageContainer'), ` display: none !important; `),
         // Steam's thin download bar under the Play pill is never shown (the pill itself fills, buildDownloadCss), so it
         // cannot flash before the progress is known.
         rule(playButton && `${playButton} [role="progressbar"]`, ` display: none !important; `),
@@ -652,25 +660,26 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Its ring is Home's: 1 d unit (1 canvas px on Home), never 1 px, which is drawn on whole device px (2 at the Ally's
         // 2.32) and read brighter than Home's as the open transition handed over (Michael on the Ally). Not the cloud: placed
         // at a fractional position, its 1 px is drawn soft like Home's already. Its colour is Home's, as bright as Home's (ringBoost).
-        rule(menuButton, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; backdrop-filter: blur(${d(12)}) !important; `),
-        rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: #ffffff !important; `),
+        rule(menuButton, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; backdrop-filter: blur(${d(12)}) !important; ${actionTransition} `),
+        rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `),
         // (Each focus look here also under DOM focus: after a tap or a click Steam keeps focus but drops gpfocus, and a page
         // opened that way has its Play focused without it, which the open transition lands on.)
-        rule(menuButton && `${NOT_MOUSE} ${menuButton}:focus`, ` background: #ffffff !important; `),
+        rule(menuButton && `${NOT_MOUSE} ${menuButton}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `),
+        rule(menuButton && `${NOT_MOUSE} ${menuButton}:is(.gpfocus, :focus) svg`, ` color: #ffffff !important; `),
         rule(menuButton && `${menuButton} svg`, ` width: ${d(PAGE_LAYOUT.circleIcon)} !important; height: ${d(PAGE_LAYOUT.circleIcon)} !important; `),
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
-        // Home) with a dark halo for bright art. It only takes focus on a sync problem: white like the others, dark red icon.
+        // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring and glow.
         rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important;
-            backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important;
+            backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
         rule(cloud && `${cloud} svg`, ` width: ${d(PAGE_LAYOUT.cloudIcon)} !important; height: ${d(PAGE_LAYOUT.cloudIcon)} !important; `),
         // Centred as Home's: Steam's icon box (16 u in the 1.1.1 theme) as tall as the icon, which hung out of its bottom
         // and sat low in the circle after the open transition (1.65 px docked, Michael on the Ally).
         rule(cloudIcon, ` height: ${d(PAGE_LAYOUT.cloudIcon)} !important; `),
-        rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: #ffffff !important; color: ${CLOUD_FOCUS_BAD} !important; `),
-        rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: #ffffff !important; color: ${CLOUD_FOCUS_BAD} !important; `),
+        rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
+        rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
 
         // Play: white words and glyph on the accent pill, as on Home. Focused as Home's Play: the fill stays the accent (no
         // lighter overlay), a white ring and accent glow, and it grows by the focus scale.
@@ -758,22 +767,19 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         `.gg-more { display: none; }`,
         `.gg-pill { top: calc(-1 * ${d(PAGE_LAYOUT.storePillTop)}); ${sourcePillLook(d)} }`,
         `.gg-pill-icon { ${sourcePillIcon(d)} }`,
-        // "From your Steam library" has no room under Play. When its "change preferred version" link is on the page,
-        // the sentence collapses and the link becomes the circle just before settings (controller, this, settings, then
-        // cloud). A game without that link keeps settings and cloud in their own slots. display:none would leave the
-        // link in the controller focus order at 0,0. Steam still steps the row in DOM order, so PlayRowNav moves
-        // Left/Right by the circles' positions.
-        rule(versionRow, ` display: block !important; position: static !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; font-size: 0 !important; line-height: 0 !important; pointer-events: none !important; `),
-        rule(versionLink, ` position: absolute !important; z-index: 2 !important; top: 0 !important; pointer-events: auto !important;
-            left: calc(var(--gg-side) + var(--gg-play-w) + var(--gg-gap) + 1 * (var(--gg-icon) + var(--gg-gap))) !important;
-            width: var(--gg-icon) !important; height: var(--gg-icon) !important; margin: 0 !important; padding: 0 !important; box-sizing: border-box !important;
-            display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 50% !important;
-            font-size: 0 !important; color: #fff !important; background: rgba(12, 16, 22, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important;
-            backdrop-filter: blur(${d(12)}) !important; `),
-        rule(versionLink && `${versionLink}::before`, ` content: '' !important; width: ${d(PAGE_LAYOUT.circleIcon)} !important; height: ${d(PAGE_LAYOUT.circleIcon)} !important; background: currentColor !important; -webkit-mask: ${VERSION_ICON} center / contain no-repeat !important; mask: ${VERSION_ICON} center / contain no-repeat !important; `),
-        rule(versionLink && `${versionLink}.gpfocus`, ` background: #ffffff !important; color: #0b0f14 !important; `),
-        rule(playSection && appButtons && versionLink && `${playSection}:has(${versionLink}) ${appButtons} > :nth-child(2)`, ` margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; `),
-        rule(playSection && cloud && versionLink && `${playSection}:has(${versionLink}) ~ ${cloud}`, ` left: calc(var(--gg-side) + var(--gg-play-w) + var(--gg-gap) + (var(--gg-buttons, 2) + 1) * (var(--gg-icon) + var(--gg-gap))) !important; `),
+        // The native copy chooser is activated by the family pill; its stock row and circle stay hidden.
+        rule(versionRow, ` display: none !important; position: static !important; height: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; font-size: 0 !important; line-height: 0 !important; pointer-events: none !important; `),
+        rule(versionLink, ` display: none !important; `),
+        `.gg-copy-pill { cursor: pointer; pointer-events: auto; ${actionTransition} }`,
+        `.gg-native-store-switcher { visibility: hidden !important; pointer-events: none !important; }`,
+        `.gg-native-store-switcher > [role="combobox"] { width: 100% !important; min-width: 0 !important; height: 100% !important; }`,
+        `.gg-pill.gg-store-selectable { padding: 0; border: 0; background: transparent; backdrop-filter: none; }`,
+        `.gg-store-choice { display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; cursor: pointer; pointer-events: auto; color: #fff; ${sourcePillLook(d)} ${actionTransition} }`,
+        `${NOT_MOUSE} .gg-store-choice:is(.gpfocus, .gg-store-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocused} }`,
+        `${HOVER} .gg-store-choice:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
+        `.gg-copy-plus { flex: 0 0 auto; display: block; margin-left: ${d(8)}; width: ${d(12)}; height: ${d(12)}; }`,
+        `${NOT_MOUSE} .gg-copy-pill:is(.gpfocus, .gg-copy-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocusShadow} transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale}) !important; }`,
+        `${HOVER} .gg-copy-pill:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
         `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
         `.gg-family-icon { flex: 0 0 auto; ${sourcePillIcon(d)} }`,

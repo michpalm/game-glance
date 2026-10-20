@@ -42,8 +42,8 @@ import { PlayRowNav } from './PlayRowNav';
 import { UnifideckCloud } from './UnifideckCloud';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
-import { FamilyPill, SourcePill } from './SourcePill';
-import { familyPillLabel } from '../data/family';
+import { GameSourcePill } from './GameSourcePill';
+import { LibraryPill } from './LibraryPill';
 import { GameTitle } from './GameTitle';
 import { hltbUrl, openGameInfoTab, openHltbPage } from './cardActions';
 
@@ -162,7 +162,6 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
     const ringStyle = pageDoc?.defaultView ? ringCss(pageDoc.defaultView) : '';
-    const family = restyle ? familyPillLabel(game.appId) : null;
     const eyebrow = restyle ? openedFrom?.eyebrow ?? lastPlayedEyebrow(overview, locale, unifideck?.lastPlayed ?? null) : null;
     return (
         <>
@@ -190,10 +189,10 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {fillCss && <style>{fillCss}</style>}
                 {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
                 {source && (
-                    <SourcePill label={source}>
+                    <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle}>
                         {/* A game from the family library (Steam's line under Play is hidden): with the restyled look only. */}
-                        {restyle && family && <FamilyPill label={family} />}
-                    </SourcePill>
+                        {restyle && <LibraryPill doc={pageDoc} appId={game.appId} />}
+                    </GameSourcePill>
                 )}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
                 <CardsRow selectable={restyle}>

@@ -98,18 +98,34 @@ export function playRow(): string | null {
     return playRowSelector(themeClasses());
 }
 
+/** Steam's compatibility/feedback prompt and its focusable confirmation after answering. */
+export function pageFeedbackSelector(): string | null {
+    const root = themeClasses().root;
+    const classes = [root?.DeckVerifiedFeedbackContainer, root?.DeckVerifiedFeedbackConfirmationContainer].filter((name): name is string => !!name);
+    return classes.length ? classes.map((name) => `.${name}`).join(', ') : null;
+}
+
+/** Steam aligns the submenu's container below its own header padding. */
+export function pageTabsSection(): { selector: string; inset: number } | null {
+    const root = themeClasses().root;
+    if (!root?.AppDetailsContainer) return null;
+    const inset = Number.parseFloat(root.headerPadding ?? '');
+    return { selector: `.${root.AppDetailsContainer}`, inset: Number.isFinite(inset) && inset >= 0 ? inset : 0 };
+}
+
 /** Each open-transition text twin's counterpart on the page (themeCss.twinTargets). */
 export function pageTwinTargets(look: 'spotlight' | 'clean' | 'steam'): Record<string, string> {
     return twinTargets(themeClasses(), look);
 }
 
-/** Play, its circles, the cloud button, and the preferred-version link. Steam steps these in DOM order. */
+/** Play, its circles, the cloud button, and the library selection pill. */
 export function playRowControlSelector(): string | null {
     const t = themeClasses();
     const parts = [
         t.root?.PlaySection ? `.${t.root.PlaySection} [role="button"]` : '',
         t.play?.CloudStatusRow ? `.${t.play.CloudStatusRow}` : '',
-        t.shared?.SharedLibrary ? `.${t.shared.SharedLibrary} a[role="button"]` : '',
+        '.gg-copy-pill, .gg-store-choice',
+        '.unifideck-hide-native-play :is(.unifideck-play-btn, .unifideck-install-btn, .unifideck-resume-btn, .unifideck-update-btn, .unifideck-icon-btn)',
     ].filter((s) => s.length > 0);
     return parts.length > 0 ? parts.join(', ') : null;
 }

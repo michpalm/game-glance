@@ -3,6 +3,7 @@ import { LOG_PREFIX } from '../constants';
 import { browserStores, heroUrls } from './artwork';
 import { markLeaving } from './homeMemory';
 import { playNavSound } from './navSound';
+import { listenOpenCancel } from './openCancel';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
 import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleTwins, viewportSize } from './openHome';
@@ -224,6 +225,7 @@ function whenReady(c: OpenContext, cb: () => void): () => void {
 function controller(): OpenTransition {
     transition ??= createOpenTransition({
         navigate: (path) => Navigation.Navigate(path),
+        listenForCancel: (cancel) => active?.root ? listenOpenCancel(active.root.ownerDocument, cancel) : () => undefined,
         startHome: () => {
             active = next;
             next = null;
