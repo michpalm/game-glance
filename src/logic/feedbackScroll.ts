@@ -1,6 +1,6 @@
 import { LOG_PREFIX } from '../constants';
 import { CARD_NAV } from './cardNav';
-
+import { playRow } from '../styles/theme';
 type ScrollOwner = { Element?: unknown; ScrollTo?(top: number, behavior: 'auto'): void };
 type Fiber = { stateNode?: ScrollOwner; return?: Fiber | null };
 
@@ -38,9 +38,11 @@ export function centerFeedbackPanel(panel: HTMLElement): void {
     if (!nativeScroll(port, top)) port.scrollTop = top;
 }
 
-/** The cards belong to the hero screen; return there without changing the selected card. */
-function showPageTop(card: HTMLElement): void {
-    const port = scrollPort(card);
+/** The hero screen: Play and the Family Sharing pill. Scroll the page port to the top. */
+export function scrollPageToTop(anchor: HTMLElement): void {
+    const playSel = playRow();
+    const play = playSel ? anchor.ownerDocument.querySelector<HTMLElement>(playSel) : null;
+    const port = scrollPort(anchor) ?? (play ? scrollPort(play) : null);
     if (port && !nativeScroll(port, 0)) port.scrollTop = 0;
 }
 
@@ -69,17 +71,18 @@ export function installPageFocusScrolling(doc: Document, selector: string | null
         cancel();
         const target = event.target as Element | null;
         const card = typeof target?.closest === 'function' ? target.closest<HTMLElement>(`.${CARD_NAV}`) : null;
+        const family = typeof target?.closest === 'function' ? target.closest<HTMLElement>('.gg-family') : null;
         const feedback = selector && typeof target?.closest === 'function' ? target.closest<HTMLElement>(selector) : null;
         const tab = tabs && typeof target?.closest === 'function' ? target.closest<HTMLElement>('[role="tab"]') : null;
         const section = tab && tabs ? tab.closest<HTMLElement>(tabs.selector) : null;
-        const scope = card ?? feedback ?? (section ? tab : null);
+        const scope = card ?? family ?? feedback ?? (section ? tab : null);
         if (!scope) return;
         pending = win.requestAnimationFrame(() => {
             pending = win.requestAnimationFrame(() => {
                 pending = null;
-                if (!scope.isConnected || !(scope.contains(doc.activeElement) || scope.querySelector('.gpfocus'))) return;
+                if (!scope.isConnected || !(scope.contains(doc.activeElement) || scope.querySelector('.gpfocus') || scope.classList.contains('gpfocus'))) return;
                 try {
-                    if (card) showPageTop(card);
+                    if (card || family) scrollPageToTop(scope);
                     else if (feedback) centerFeedbackPanel(feedback);
                     else if (section && tabs) showMenus(section, tabs.inset);
                 } catch (error) {

@@ -3,7 +3,7 @@ import { LOG_PREFIX } from '../constants';
 import { focusElement } from '../home/homeNav';
 import { asElement, cardBelowControl, controlAboveCard, CARD_NAV, cardNavTarget, cardZoneOf, CardZone, firstFeedbackControl, landingFor, selectableCards } from '../logic/cardNav';
 import { takeSteamFocus } from '../home/steamFocus';
-import { installPageFocusScrolling } from '../logic/feedbackScroll';
+import { installPageFocusScrolling, scrollPageToTop } from '../logic/feedbackScroll';
 import { pageFeedbackSelector, pageTabsSection, playRow, playRowControlSelector } from '../styles/theme';
 
 /** The page's tabs (Steam's What's New, Game Info, ...): where Down from Play goes (probed on the Ally). */
@@ -72,7 +72,8 @@ export function useCardNav(doc: Document | null, active: boolean) {
                 // And Steam's focus tree takes it every time, so its rows remember where focus is (focusElement hands it
                 // over only when the highlight did not follow).
                 takeSteamFocus(el);
-                if (to === 'play' || (to === 'tabs' && !tabsLayout)) reveal(el);
+                if (to === 'play') scrollPageToTop(el);
+                else if (to === 'tabs' && !tabsLayout) reveal(el);
             } catch (error) {
                 console.warn(`${LOG_PREFIX} game page: card navigation failed`, error);
             }

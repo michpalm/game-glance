@@ -199,13 +199,17 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                     </GameSourcePill>
                 )}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
-                <CardsRow selectable={restyle}>
-                    {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
-                        restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
-                        controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
-                    <InfoCard game={game} locale={locale} description={description} size={size} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
-                    <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
-                </CardsRow>
+                {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
+                    Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
+                {!clean && (
+                    <CardsRow selectable={restyle}>
+                        {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
+                            restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
+                            controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
+                        <InfoCard game={game} locale={locale} description={description} size={size} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
+                        <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
+                    </CardsRow>
+                )}
                 <div className="gg-more" aria-hidden="true">⌄</div>
             </div>
         </>
