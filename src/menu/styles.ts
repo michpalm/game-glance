@@ -48,7 +48,7 @@ export const menuStyles = `
  * Home's shared glass material uses scoped owner-document frosting over Steam pages,
  * and native compositor blur in-game. The area outside the menu stays clear. */
 .gg-menu-native-host .gg-menu{font-family:"Motiva Sans",Arial,sans-serif;font-size:13px;line-height:1.3;font-weight:700;color:#fff;text-shadow:0 1px 2px #0009}
-.gg-menu-native-host .gg-menu>header{padding:0 16px 12px;font-size:11px;letter-spacing:2px;font-weight:500;color:#edf0f2}
+.gg-menu-native-host .gg-menu>header{justify-content:flex-start;padding:0 16px 12px;font-size:11px;letter-spacing:2px;font-weight:500;color:#edf0f2}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.DialogButton{min-width:32px;min-height:32px;padding:8px;border:0;background:transparent;color:#edf0f2;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton{font-family:inherit;font-size:13px;font-weight:${HOME_BUTTON_GLASS.fontWeight};line-height:1.3;background:${HOME_BUTTON_GLASS.background};border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:12px;color:${HOME_BUTTON_GLASS.color}}
 .gg-menu-native-host .gg-menu .gg-menu-bar{padding:10px;gap:8px}
