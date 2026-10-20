@@ -83,6 +83,7 @@
         "Power"
       ]
     ],
-    "topBarLegibility": "13px700 white tab text with explicit0 1px 2px #0009 text shadow (Steam button resets inherited shadow);18px SVGs/stroke2.4;12px700 shoulder labels. All tabs fit without clipping."
+    "topBarLegibility": "13px700 white tab text with explicit0 1px 2px #0009 text shadow (Steam button resets inherited shadow);18px SVGs/stroke2.4;12px700 shoulder labels. All tabs fit without clipping.",
+    "statusBar": "Existing GameStatusBar/StatusBar live Home component rendered in popup-body portal while custom menu is active, same Home canvas/placement/settings/data. Foreground menu copy stays visible despite native menu store; unmounts on close/handoff. Its rounded pill gets scoped owner-document frosting; native header remains hidden."
   }
 }

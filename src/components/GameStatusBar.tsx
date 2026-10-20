@@ -75,7 +75,7 @@ const STATUS_Z = 5000;
  * the page; the plugin's own `document` is a different window), so the page's transforms and scrolling never move it.
  * `hidden` fades only our bar (Steam's stays covered), for when the page itself runs up under the bar (Home's feed sheet).
  */
-export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
+export function GameStatusBar({ hidden = false, menuOverlay = false }: { hidden?: boolean; menuOverlay?: boolean }) {
     const [doc, setDoc] = useState<Document | null>(null);
     // A callback ref: the window is known the moment the marker is in the page, with no extra effect pass.
     const marker = useCallback((el: HTMLSpanElement | null) => {
@@ -86,7 +86,8 @@ export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
     // Away (ours fades, Steam's top bar shows): focus is in Steam's top bar, or a menu is open over the page.
     const focusInBar = useFocusInTopBar(doc);
     const menuShown = useMenuOpen(doc);
-    const away = focusInBar || menuShown;
+    // A bar inside our custom menu is the foreground copy, not the page copy stepping aside.
+    const away = !menuOverlay && (focusInBar || menuShown);
     const canvas = homeCanvas(width, height);
     return (
         <>
@@ -94,7 +95,7 @@ export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
             {doc &&
                 createPortal(
                     <div
-                        className="gg-status-host"
+                        className={`gg-status-host${menuOverlay ? ' gg-menu-status-host' : ''}`}
                         style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none', opacity: hidden ? 0 : 1, transition: 'opacity 200ms' }}
                     >
                         <style>{statusCss()}</style>

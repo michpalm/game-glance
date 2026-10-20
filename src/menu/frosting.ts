@@ -17,7 +17,7 @@ export function frostMenuSurfaces(owner: Document, source: Document, viewport: H
         const bounds = viewport.getBoundingClientRect();
         const sx = bounds.width / view.innerWidth, sy = bounds.height / view.innerHeight;
         if (!(sx > 0 && sy > 0)) return;
-        const surfaces = Array.from(root.querySelectorAll<HTMLElement>(SURFACES));
+        const surfaces = [...root.querySelectorAll<HTMLElement>(SURFACES), ...source.querySelectorAll<HTMLElement>('.gg-menu-status-host .gh-status-pill')];
         for (const [element, pane] of panes) if (!surfaces.includes(element)) {
             resize?.unobserve(element); pane.remove(); panes.delete(element);
         }
@@ -50,7 +50,8 @@ export function frostMenuSurfaces(owner: Document, source: Document, viewport: H
     try {
         viewport.parentElement.prepend(layer);
         sync(); resize?.observe(root); resize?.observe(viewport);
-        changes?.observe(root, { childList: true, subtree: true });
+        // The status bar portals to the popup body, outside the transformed menu root.
+        changes?.observe(source.body, { childList: true, subtree: true });
         view.addEventListener('resize', schedule); ownerView?.addEventListener('resize', schedule);
     } catch (error) { release(); throw error; }
     return release;

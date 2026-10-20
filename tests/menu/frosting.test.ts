@@ -38,6 +38,20 @@ describe('menu-only Steam-page frosting', () => {
         expect(f.owner.document.querySelector('[data-gg-menu-frost]')).toBeNull();
         expect(f.owner.document.querySelector('#foreign')).not.toBeNull();
     });
+    it('frosts the menu status pill when its portal mounts outside the menu root, then removes it', async () => {
+        const f = fixture(), stop = frostMenuSurfaces(f.owner.document as unknown as Document, f.source.document as unknown as Document, f.viewport as unknown as HTMLElement);
+        const host = f.source.document.createElement('div'); host.className = 'gg-status-host gg-menu-status-host';
+        const pill = f.source.document.createElement('div'); pill.className = 'gh-status-pill';
+        pill.getBoundingClientRect = () => ({ left: 700, top: 10, width: 250, height: 32 } as DOMRect);
+        host.append(pill); f.source.document.body.append(host);
+        await new Promise<void>(resolve => queueMicrotask(resolve));
+        const layer = f.owner.document.querySelector('[data-gg-menu-frost]')!;
+        expect(layer.children.length).toBe(4);
+        const pane = layer.lastElementChild as HTMLElement;
+        expect(pane.style.left).toBe('580px'); expect(pane.style.width).toBe('200px');
+        host.remove(); await new Promise<void>(resolve => queueMicrotask(resolve));
+        expect(layer.children.length).toBe(3); stop();
+    });
     it('does not leave frosting behind if geometry acquisition fails', () => {
         const f = fixture(); f.viewport.getBoundingClientRect = () => { throw Error('view disappeared'); };
         expect(() => frostMenuSurfaces(f.owner.document as unknown as Document, f.source.document as unknown as Document, f.viewport as unknown as HTMLElement)).toThrow('view disappeared');
