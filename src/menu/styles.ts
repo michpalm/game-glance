@@ -6,7 +6,6 @@ import { HOME_BUTTON_GLASS } from '../styles/homeGlass';
  */
 export const menuStyles = `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:#edf0f2;overflow:hidden;transform:translateZ(0)}
-.gg-menu-native-host::before{content:"";position:absolute;inset:0;background:rgba(5,7,10,.28);pointer-events:none}
 .gg-menu{--gg-menu-accent:#1a9fff;--gg-menu-focus-fill:14%;--gg-menu-focus-outline:55%;--gg-menu-focus-glow:8px;--gg-menu-control-radius:12px;position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:#edf0f2;font-size:14px}
 .gg-menu *{box-sizing:border-box}
 .gg-menu header{flex:none;display:flex;justify-content:flex-end;align-items:center;padding:0 18px 12px;gap:10px;font-size:.8em;letter-spacing:.12em}
@@ -45,8 +44,8 @@ export const menuStyles = `
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu .gg-menu-tabs::-webkit-scrollbar,.gg-menu .gg-menu-bar::-webkit-scrollbar{display:none}
 .gg-menu .gg-menu-bar{overflow-x:hidden;scrollbar-width:none}
 /* Mockup skin. Native controls retain input/readback ownership; Steam field chrome is scoped out.
- * Home's shared glass material sits over our own dimmed backdrop. The native parent
- * stays clear; Steam's compositor supplies live game blur instead of CSS cross-window filters. */
+ * Home's shared glass material uses scoped owner-document frosting over Steam pages,
+ * and native compositor blur in-game. The area outside the menu stays clear. */
 .gg-menu-native-host .gg-menu{font-family:"Motiva Sans",Arial,sans-serif;font-size:13px;line-height:1.3;font-weight:500;color:#f4f6f8}
 .gg-menu-native-host .gg-menu>header{padding:0 16px 12px;font-size:11px;letter-spacing:2px;font-weight:500;color:#edf0f2}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.DialogButton{min-width:32px;min-height:32px;padding:8px;border:0;background:transparent;color:#edf0f2;box-shadow:none}

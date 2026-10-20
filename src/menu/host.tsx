@@ -2,6 +2,7 @@ import * as ReactDOM from 'react-dom';
 import { findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
+import { frostMenuSurfaces } from './frosting';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
 
@@ -131,7 +132,7 @@ export function installMenuPortalHook(api: PortalAPI, wrap: (native: ComponentTy
     });
 }
 
-export function stretchMenuViewport(document: Document, classes: readonly string[]): Stop {
+export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document): Stop {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
@@ -147,7 +148,10 @@ export function stretchMenuViewport(document: Document, classes: readonly string
     if (typeof backdrop !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(backdrop) || !document.getElementsByClassName(placeholder)[0]?.closest(`.${backdrop}`)) throw new Error('Native menu backdrop shape changed');
     style.textContent += `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}`;
     document.head.appendChild(style);
-    return () => style.remove();
+    try {
+        const releaseFrost = source ? frostMenuSurfaces(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement) : undefined;
+        return () => { try { releaseFrost?.(); } finally { style.remove(); } };
+    } catch (error) { style.remove(); throw error; }
 }
 
 /** Native portal/window/context stay owned by Steam; no mounted React internals are modified. */
@@ -168,8 +172,9 @@ export function registerDiscoveredMenuHost(): Stop | null {
             try { blur?.(); } finally { chrome?.(); }
         };
         const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
-        function stretchViewport(tree: Tree) {
-            if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/));
+        function stretchViewport(tree: Tree, popup?: Window) {
+            if (!popup?.document) throw new Error('Native menu popup is unavailable');
+            if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document);
         }
         let read: () => HostSnapshot;
         let confirmed: ReactNode;
@@ -197,23 +202,23 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
                 const wrap = (native: ComponentType<Record<string, unknown>>) => {
                     const existing = wrapped.get(native); if (existing) return existing;
-                    function Gate({ tree }: { tree: ReactNode }) {
+                    function Gate({ tree, popup }: { tree: ReactNode; popup?: Window }) {
                         const snapshot = useSyncExternalStore(subscribe, get);
                         const replaced = renderMenuSlot(tree, snapshot, error => queueMicrotask(() => fault(error)));
                         useLayoutEffect(() => {
                             if (!snapshot.active || replaced === tree) { confirmed = undefined; releaseViewport(); return; }
-                            try { stretchViewport(tree as Tree); }
+                            try { stretchViewport(tree as Tree, popup); }
                             catch (error) { fault(error as Error); return; }
                             confirmed = snapshot.node;
                             for (const request of pending) { clearTimeout(request.timer); request.resolve(); }
                             pending.clear();
                             return releaseViewport;
-                        }, [snapshot, replaced, tree]);
+                        }, [snapshot, replaced, tree, popup]);
                         return <MenuBoundary nativeTree={tree} fault={fault}>{replaced}</MenuBoundary>;
                     }
                     const component = function NativeMenuContent(props: Record<string, unknown>) {
                         const tree = (native as (props: Record<string, unknown>) => ReactNode)(props);
-                        return <Gate tree={tree} />;
+                        return <Gate tree={tree} popup={props.popup as Window | undefined} />;
                     };
                     wrapped.set(native, component); return component;
                 };
