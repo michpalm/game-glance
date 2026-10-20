@@ -47,9 +47,9 @@
     "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds.",
     "cardShadow": "Inset highlight only. Exterior drop shadow removed because its alpha expands the Gamescope blur mask beyond the rounded cards.",
     "outsideDismiss": "Primary mouse click or touch-generated click outside the shell closes the menu; captured and consumed in the borrowed popup document, respects native modal/keyboard ownership.",
-    "controlTextWeight": 500,
+    "controlTextWeight": 700,
     "glassOpacityPercent": 40,
-    "primaryText": "#f4f6f8",
+    "primaryText": "#fff",
     "secondaryText": "#d5dce3",
     "focusFill": "14% game-accent tint over transparent; user requested more contrast than mockup8%.",
     "focusOutlinePercent": 55,
@@ -66,6 +66,7 @@
     "shoulderIndicators": "Mirrored full-height64px L1/R1 endcaps with inward separators, matching annotated screenshot.",
     "activeTab": "Darker rgba(7,10,15,.45) glass, white text and accent inset edge, including while focused.",
     "moreTab": "Ellipsis icon only; accessible name More retained.",
-    "quickSettings": "Icons for all controls;56px equal-height toggle rows, label and switch vertically centred, no Friends & Chat helper text."
+    "quickSettings": "Icons for all controls;56px equal-height toggle rows, label and switch vertically centred, no Friends & Chat helper text.",
+    "legibility": "Bold white labels/headings/values with subtle0 1px 2px #0009 text shadow. Inactive tabs and setting/grid icons white; SVG currentColor stroke2.4, setting icons18px. Menu scale and frosting unchanged."
   }
 }

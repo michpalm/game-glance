@@ -46,25 +46,25 @@ export const menuStyles = `
 /* Mockup skin. Native controls retain input/readback ownership; Steam field chrome is scoped out.
  * Home's shared glass material uses scoped owner-document frosting over Steam pages,
  * and native compositor blur in-game. The area outside the menu stays clear. */
-.gg-menu-native-host .gg-menu{font-family:"Motiva Sans",Arial,sans-serif;font-size:13px;line-height:1.3;font-weight:500;color:#f4f6f8}
+.gg-menu-native-host .gg-menu{font-family:"Motiva Sans",Arial,sans-serif;font-size:13px;line-height:1.3;font-weight:700;color:#fff;text-shadow:0 1px 2px #0009}
 .gg-menu-native-host .gg-menu>header{padding:0 16px 12px;font-size:11px;letter-spacing:2px;font-weight:500;color:#edf0f2}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.DialogButton{min-width:32px;min-height:32px;padding:8px;border:0;background:transparent;color:#edf0f2;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton{font-family:inherit;font-size:13px;font-weight:${HOME_BUTTON_GLASS.fontWeight};line-height:1.3;background:${HOME_BUTTON_GLASS.background};border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:12px;color:${HOME_BUTTON_GLASS.color}}
 .gg-menu-native-host .gg-menu .gg-menu-bar{padding:10px;gap:8px}
 .gg-menu-native-host .gg-menu .gg-menu-tabs{gap:3px}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#d5dce3;font-size:12px;box-shadow:none}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#fff;font-size:12px;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:rgba(7,10,15,.45);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:1px;background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent);box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{flex-direction:column;justify-content:center;min-height:112px;padding:13px 14px;gap:14px;border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:16px;background:${HOME_BUTTON_GLASS.background}}
-.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:23px;height:23px;color:#d5dce3}
-.gg-menu-native-host .gg-menu h2{font-size:16px;font-weight:500;letter-spacing:-.2px;margin:0 0 18px}
-.gg-menu-native-host .gg-menu h3{font-size:12px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:#d5dce3;margin:14px 0 4px}
+.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:23px;height:23px;color:#fff}
+.gg-menu-native-host .gg-menu h2{font-size:16px;font-weight:700;letter-spacing:-.2px;margin:0 0 18px}
+.gg-menu-native-host .gg-menu h3{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin:14px 0 4px}
 .gg-menu-native-host .gg-menu .gg-menu-setting{padding:10px;min-height:48px;border-radius:12px;font-size:13px}
 .gg-menu-native-host .gg-menu .gg-menu-setting .Panel{padding:0;margin:0;border:0;border-radius:12px;background:transparent;box-shadow:none;font:inherit;min-height:0}
-.gg-menu-native-host .gg-menu .gg-menu-setting [id$="_Label"]{font-family:inherit;font-size:13px;line-height:1.3;font-weight:500;color:#f4f6f8}
+.gg-menu-native-host .gg-menu .gg-menu-setting [id$="_Label"]{font-family:inherit;font-size:13px;line-height:1.3;font-weight:700;color:#fff;text-shadow:0 1px 2px #0009}
 .gg-menu-native-host .gg-menu .gg-menu-setting [id$="_Description_Description"]{font-family:inherit;font-size:11px;color:#d5dce3;line-height:1.4;margin-top:4px}
 .gg-menu-native-host .gg-menu .gg-menu-slider-label{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%}
-.gg-menu-native-host .gg-menu .gg-menu-slider-label output{font:inherit;font-size:12px;color:#d5dce3;font-variant-numeric:tabular-nums}
+.gg-menu-native-host .gg-menu .gg-menu-slider-label output{font:inherit;font-size:12px;color:#fff;font-variant-numeric:tabular-nums}
 .gg-menu-native-host .gg-menu .gg-menu-setting .SliderTrack{width:calc(100% - 24px);height:4px;border-radius:20px;background:#ffffff26}
 .gg-menu-native-host .gg-menu .gg-menu-setting .SliderTrack::before{height:100%;background:var(--gg-menu-accent);border-radius:20px}
 .gg-menu-native-host .gg-menu .gg-menu-setting .SliderHandle{width:18px;height:18px;top:3px;right:3px;left:auto;bottom:auto;margin:0;border:0;border-radius:50%;background:#fff}
@@ -80,7 +80,10 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-shoulder:last-child{border-left:1px solid #ffffff25}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true].gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]:focus-visible{background:rgba(7,10,15,.45)}
 .gg-menu-native-host .gg-menu .gg-menu-setting-label{display:inline-flex;align-items:center;gap:9px;min-width:0}
-.gg-menu-native-host .gg-menu .gg-menu-setting-label svg{width:17px;height:17px;flex:none;color:#d5dce3}
+.gg-menu-native-host .gg-menu .gg-menu-setting-label svg{width:18px;height:18px;flex:none;color:#fff}
+/* Vector strokes remain SVG geometry; avoid blur/drop-shadow filters on icons. */
+.gg-menu-native-host .gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
+.gg-menu-native-host .gg-menu .gg-menu-shoulder{color:#fff;font-weight:700}
 .gg-menu-native-host .gg-menu .gg-menu-switches{grid-auto-rows:56px}
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle{height:56px;display:flex;align-items:center}
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}
