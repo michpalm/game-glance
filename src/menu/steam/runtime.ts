@@ -5,7 +5,7 @@ import { nativeRouteBindings } from './nativeCore';
 import { ownMethod } from './patchOwnership';
 
 export type QamTab = 'notifications' | 'friends' | 'quick-settings' | 'performance' | 'help' | 'soundtrack' | 'decky';
-export type NavigateDestination = 'library' | 'store' | 'downloads' | 'settings' | 'profile' | 'power';
+export type NavigateDestination = 'home' | 'library' | 'store' | 'downloads' | 'settings' | 'profile' | 'power';
 export type NativeRequest =
     | { kind: 'main-menu' }
     | { kind: 'qam'; tab: QamTab }

@@ -70,6 +70,18 @@
     "legibility": "Bold white labels/headings/values with subtle0 1px 2px #0009 text shadow. Inactive tabs and setting/grid icons white; SVG currentColor stroke2.4, setting icons18px. Menu scale and frosting unchanged.",
     "gridFocus": "Same shared Home card focus as settings/action buttons; resting Home glass retained, white edge30%, no separate bright ring/lightened fill.",
     "fieldRendering": "Scoped .gg-menu-setting .Panel transform/transition/animation:none!important prevents Steam identity3D/focus animations from changing all field text raster scale during toggle updates. Root scale, native toggle thumb movement and settings lifecycle unchanged.",
-    "focusGlow": "Shared homeCardFocusShadow from src/styles/homeGlass.ts. Exact Home information-card shadow, game-accent edge plus diffused lower glow; Home generated shadow unchanged."
+    "focusGlow": "Shared homeCardFocusShadow from src/styles/homeGlass.ts. Exact Home information-card shadow, game-accent edge plus diffused lower glow; Home generated shadow unchanged.",
+    "navigateGrid": [
+      [
+        "Home",
+        "Library",
+        "Store"
+      ],
+      [
+        "Downloads",
+        "Settings",
+        "Power"
+      ]
+    ]
   }
 }

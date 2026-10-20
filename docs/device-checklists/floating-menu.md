@@ -297,3 +297,10 @@ TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Loca
 User rejected the Navigate ring as inconsistent with Game Glance. Actual Ally capture `/private/tmp/gg-ring-review.png` shows the white-mixed offset outline plus inset edge. Compared Home's actual `.gh-card.gh-card-focus` shadow in home/homeCss.ts:1px game-accent edge and0 16px 40px -12px accent glow. Extracted that exact string to `homeCardFocusShadow` in styles/homeGlass.ts; Home continues generating identical shadow values. Menu actions/settings/grid now consume it, removing white-mixed outlines, inner rings and separate focus-fill overlays. Active tab dark fill retained; no focus transforms introduced, stable field rendering preserved.
 
 Installed actual mode3 screenshot `/private/tmp/gg-home-card-focus-final.png` inspected: single accent edge and soft glow beneath Library, no double pale outline. No change to menu size/frosting or settings. TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `53f9433bd1fe02fbaac03d06487361c84d1e5fb51efd9543b410e48885c6e34a`; frontend backup `/tmp/gg-menu-before-home-card-focus-20261020.js`. User visual acceptance pending; local Git only.
+
+
+### 2026-10-20: Requested Navigate destinations
+
+Navigate now shows Home/Library/Store on the first row and Downloads/Settings/Power on the second. Profile removed from the grid. New Home action routes to the existing shared HOME_ROUTE `/library/home`; internal native Profile routing left available to existing callers. Home route regression RED→GREEN. TypeScript/full1504 tests across133 files/ZIP integrity/diff checks passed.
+
+Installed grid DOM/order and actual mode3 screenshot `/private/tmp/gg-navigate-home-grid.png` verified. Activated Home: route `/library/home`, Game Glance `.gh-root` present, menu closed. Returned to the running-game view and reopened Navigate. Local/device ZIP SHA256 `5cd9b1f4f8b58e50b42e300e8a84283d2556ed7c7080bec173d224e88ce6a07a`; frontend backup `/tmp/gg-menu-before-home-tile-20261020.js`. No setting changes or Git remote operations.

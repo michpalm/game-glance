@@ -1,3 +1,4 @@
+import { HOME_ROUTE } from '../../home/guard';
 import type { NativeRequest, QamTab } from './runtime';
 export interface NativeTabs { Notifications:number; Friends:number; Settings:number; Perf:number; Help:number; Music:number; Decky:number }
 export interface RouteBindings {
@@ -18,6 +19,7 @@ export function createRoutes(bindings:RouteBindings) {
         }
         if(request.kind==='navigate'){
             switch(request.destination){
+                case 'home':bindings.navigate(HOME_ROUTE);break;
                 case 'library':bindings.library();break;
                 case 'store':bindings.navigate('/steamweb');break;
                 case 'downloads':bindings.navigate('/library/downloads');break;
