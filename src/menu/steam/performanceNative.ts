@@ -11,7 +11,7 @@ interface PerfStore {
     nCurrentGameID?:string|number;nActiveProfileGameID?:string|number;
     msgLimits?:Record<string,unknown>;msgSettingsPerApp?:Record<string,unknown>;msgSettingsGlobal?:Record<string,unknown>;
     SetVRREnabled?(value:boolean):unknown;SetSplitScalingScaler?(value:number):unknown;SetSplitScalingFilter?(value:number):unknown;
-    SetPerfOverlayLevel?(value:number):unknown;SetShowPerfOverlayOverSteamEnabled?(value:boolean):unknown;SetGameSpecificProfileEnabled?(value:boolean):unknown;
+    SetFSRSharpness?(value:number):unknown;SetPerfOverlayLevel?(value:number):unknown;SetShowPerfOverlayOverSteamEnabled?(value:boolean):unknown;SetGameSpecificProfileEnabled?(value:boolean):unknown;
 }
 interface NativeRoot {
     SystemPerfStore?:PerfStore;
@@ -21,12 +21,12 @@ interface NativeRoot {
     g_FriendsUIApp?:{FriendStore?:{m_self?:{m_unAccountID?:number}}};
 }
 interface Environment {root:NativeRoot;platform?:Service;gamescope?:Service}
-const METHODS=['SetVRREnabled','SetSplitScalingScaler','SetSplitScalingFilter','SetPerfOverlayLevel','SetShowPerfOverlayOverSteamEnabled','SetGameSpecificProfileEnabled'] as const;
+const METHODS=['SetFSRSharpness','SetVRREnabled','SetSplitScalingScaler','SetSplitScalingFilter','SetPerfOverlayLevel','SetShowPerfOverlayOverSteamEnabled','SetGameSpecificProfileEnabled'] as const;
 const CLIENT_KEYS=[...Object.values(PERFORMANCE_CLIENT_KEYS),'gamescope_enable_app_target_framerate'];
 const release=(r:Registration)=>{r?.unregister?.();r?.Unregister?.();};
 const pick=(record:Record<string,unknown>|undefined,keys:readonly string[])=>Object.fromEntries(keys.map(key=>[key,record?.[key]]));
-const LIMIT_KEYS=['is_vrr_supported','split_scaling_scalers_available','split_scaling_filters_available'];
-const APP_KEYS=['is_vrr_enabled','split_scaling_scaler','split_scaling_filter'];
+const LIMIT_KEYS=['fsr_sharpness_min','fsr_sharpness_max','is_vrr_supported','split_scaling_scalers_available','split_scaling_filters_available'];
+const APP_KEYS=['fsr_sharpness','is_vrr_enabled','split_scaling_scaler','split_scaling_filter'];
 const GLOBAL_KEYS=['perf_overlay_service_state','perf_overlay_level','is_show_perf_overlay_over_steam_enabled'];
 /** One shared read source; no native reset, profile save, or setting restoration on disposal. */
 export function createNativePerformanceBindings({root,platform:platformApi,gamescope:gamescopeApi}:Environment):PerformanceBindings {

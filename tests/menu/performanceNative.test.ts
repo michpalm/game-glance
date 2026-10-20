@@ -17,3 +17,10 @@ it('checks live game/profile identity immediately before a native write',async()
     active='42';await expect(bindings.writeLegacy('SetVRREnabled',true,'769')).rejects.toThrow('profile');
     current='42';await expect(bindings.setGameSpecific(true,'1057090')).rejects.toThrow('game');expect(set).not.toHaveBeenCalled();
 });
+
+it('reads native sharpness bounds/value and dispatches the profile-aware setter',async()=>{
+    const setter=vi.fn();const bindings=createNativePerformanceBindings({root:{SystemPerfStore:{nCurrentGameID:'1057090',nActiveProfileGameID:'769',msgLimits:{fsr_sharpness_min:0,fsr_sharpness_max:5},msgSettingsPerApp:{fsr_sharpness:3,split_scaling_filter:3},SetFSRSharpness:setter}}});
+    expect(bindings.read().legacy.limits).toMatchObject({fsr_sharpness_min:0,fsr_sharpness_max:5});
+    expect(bindings.read().legacy.perApp.fsr_sharpness).toBe(3);
+    await bindings.writeLegacy('SetFSRSharpness',4,'769');expect(setter).toHaveBeenCalledWith(4);
+});

@@ -386,3 +386,28 @@ User requested more separation between profile pill and Use per-game profile, re
 Reproduced the touch issue with CEF Input.dispatchTouchEvent and requestAnimationFrame sampling: section-button computed borderRadius changed12px→2px→12px without inline style changes during activation. A scoped important12px radius on Performance section buttons prevents Steam's transient pressed shape from overriding our rounded tabs. Final production build sampled all four tabs through touchStart/touchEnd: radii stayed12px throughout and each correct section activated. Diagnostic style removed; no input hooks retained.
 
 Ally final readback:12px logical profile margin (7.80CSSpx after menu transform), both footer action elements absent, panel474client/474scroll. Actual compositor screenshot `performance-spacing-2026-10-20.png` inspected. No setting writes in this pass; live user profile/FPS selections left as found. TypeScript/full1523 tests across135files/package/ZIP integrity/diff checks pass. Local/device ZIP SHA256 `0d1dd81905583b3b581b468756b452ed08bd5953942863f7285492f700b2a293`. Backup `/tmp/gg-menu-before-performance-spacing-20261020.js`. Local Git only.
+
+
+### Performance organization and native behavior corrections — 2026-10-20
+
+Requested sections are now Display (previous General), Scaling (previous Display), Power & GPU, Overlay. Performance profile pill moved to Power & GPU. Per-game profile remains outside the subsection content in the top-right header, opposite Performance and battery and its live battery summary. Removed the standalone refresh slider from Scaling. Display has one frame-control slot: native FPS target normally, native Hz control when Disable limit is on and refresh switching is available. FPS and refresh preferences remain independent; swapping the slot does not overwrite either. Refresh commands now match native700ms coalescing.
+
+Scaling uses native notched sliders with the same labels and order as Steam: Auto/Integer/Fit/Stretch/Fill and Linear/Pixel/Sharp on this Ally. Sharp (native filter3) reveals Sharpness. Its native profile-aware SetFSRSharpness binding uses live fsr_sharpness_min/max (0–5 on Ally),100ms coalescing, authoritative readback and filter-change invalidation. Unsupported sharpness is omitted. Scaling labels align at identical left187.21649CSSpx; no refresh or platform profile selector appears here.
+
+Root causes verified on native Steam and the candidate:
+
+- Touch activation temporarily applied16px/20px typography instead of13px/16.9px, increasing tab height despite the preceding corner fix. Pin scoped section-button font size, line height and height. Real touchStart/touchEnd with frame sampling across all four sections now keeps font13px, line16.9px, corners12px and identical width/height within each press. No diagnostic hooks or styles remain.
+- Native overlay notches are **Off/1/2/3/4 → enum0/4/1/2/3**, not consecutive enum order. Native React props were inspected read-only to verify that mapping; production never reads or mutates fibers. The adapter options and visible labels now use the verified order. This corrects the preceding Task7 assumption that raw1 meant visible1.
+
+New regressions ran RED (4failed/14passed) then GREEN (18/18 targeted): overlay label order and dispatch, Sharpness bounds/setter and pending-write cancellation on filter change, native sharpness collection, and700ms Hz writes. Full TypeScript/1,527tests across135files/package/ZIP/diff checks passed.
+
+Programmatic Ally UI verification:
+
+- FPS60 → Disable limit on → Hz120;119→120Hz; Disable limit off returnsFPS60. FPS61→60 readback confirmed. No duplicate frame slider.
+- Scaling Auto1→Stretch5→Auto1; filter Linear1→Pixel2 (no Sharpness)→Sharp3 (Sharpness appears at3); Sharpness3→4→3; filter restoredLinear1.
+- Overlay visible1/2/3/4/Off produced native4/1/2/3/0. Hidden native QAM selector independently reported matching visible notch1/2/3/4/0 for every selection.
+- Final exact client/legacy/native profile comparison matches the captured starting values. No per-game profile was created/toggled by these checks.
+- Native D-pad/A traversed sections and Down entered FPS, scaling mode, profile pill and overlay respectively. Returned to Display with native focus aligned. Physical feel remains user acceptance.
+- Display, Scaling and Power & GPU each fit474client/474scroll; per-game header remains visible. Actual compositor screenshots `performance-display-reorganized-2026-10-20.png`, `performance-scaling-reorganized-2026-10-20.png`, and `performance-power-reorganized-2026-10-20.png` in the local task visualization folder inspected. Existing glass, menu scale, icon artwork and status bar retained.
+
+Installed ZIP/local-device SHA256: `5b755dc62c82df248f1cef3de3f15639855b5462bfccbb61d49836fe8a37acba`. Frontend backup `/tmp/gg-menu-before-performance-reorg-20261020.js`. No Git remote operations or publication.

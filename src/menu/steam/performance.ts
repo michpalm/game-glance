@@ -27,7 +27,9 @@ export const PERFORMANCE_CLIENT_KEYS = {
     refreshRate:'gamescope_display_refresh_rate',hdr:'gamescope_hdr_enabled',tearing:'gamescope_allow_tearing',halfRate:'steamos_vrs_enabled',
     tdpEnabled:'steamos_tdp_limit_enabled',tdp:'steamos_tdp_limit',gpuClockEnabled:'steamos_manual_gpu_clock_enabled',gpuClock:'steamos_manual_gpu_clock_hz',
 } as const;
-const LEGACY = {vrr:'SetVRREnabled',scalingMode:'SetSplitScalingScaler',scalingFilter:'SetSplitScalingFilter',overlayLevel:'SetPerfOverlayLevel',overlaySteam:'SetShowPerfOverlayOverSteamEnabled'} as const;
+/** Steam's visible overlay levels Off/1/2/3/4 use a non-sequential native enum. */
+export const PERFORMANCE_OVERLAY_LEVELS = [{value:0,label:'Off'},{value:4,label:'1'},{value:1,label:'2'},{value:2,label:'3'},{value:3,label:'4'}] as const;
+const LEGACY = {sharpness:'SetFSRSharpness',vrr:'SetVRREnabled',scalingMode:'SetSplitScalingScaler',scalingFilter:'SetSplitScalingFilter',overlayLevel:'SetPerfOverlayLevel',overlaySteam:'SetShowPerfOverlayOverSteamEnabled'} as const;
 const IDS = [...Object.keys(PERFORMANCE_CLIENT_KEYS), ...Object.keys(LEGACY), 'perGame'];
 const UNKNOWN:SettingScope={kind:'unknown'};
 type NativeSnapshot=Omit<SettingSnapshot<PerformanceValue>,'pending'|'error'>;
@@ -67,7 +69,8 @@ function describe(id:string,s:PerformanceState):NativeSnapshot {
         case 'vrr':value=s.legacy.perApp.is_vrr_enabled;available=gamescope&&d?.is_vrr_capable===true&&s.legacy.limits.is_vrr_supported===true;break;
         case 'scalingMode':value=s.legacy.perApp.split_scaling_scaler;result.options=[1,2,3,5,4].filter(v=>numbers(s.legacy.limits.split_scaling_scalers_available).includes(v));available=!!result.options.length;break;
         case 'scalingFilter':value=s.legacy.perApp.split_scaling_filter;result.options=[1,2,3,4].filter(v=>numbers(s.legacy.limits.split_scaling_filters_available).includes(v));available=!!result.options.length;break;
-        case 'overlayLevel':value=s.legacy.global.perf_overlay_level;result.options=[0,1,2,3,4];available=typeof s.legacy.global.perf_overlay_service_state==='number'&&s.legacy.global.perf_overlay_service_state!==0;break;
+        case 'sharpness':value=s.legacy.perApp.fsr_sharpness;available=range(s.legacy.limits.fsr_sharpness_min,s.legacy.limits.fsr_sharpness_max,1);disabled ||= ![3,4].includes(s.legacy.perApp.split_scaling_filter as number);break;
+        case 'overlayLevel':value=s.legacy.global.perf_overlay_level;result.options=PERFORMANCE_OVERLAY_LEVELS.map(level=>level.value);available=typeof s.legacy.global.perf_overlay_service_state==='number'&&s.legacy.global.perf_overlay_service_state!==0;break;
         case 'overlaySteam':value=s.legacy.global.is_show_perf_overlay_over_steam_enabled;available=typeof s.legacy.global.perf_overlay_service_state==='number'&&s.legacy.global.perf_overlay_service_state!==0;break;
         case 'perGame':value=!!s.currentGameId&&s.currentGameId===s.activeProfileId;available=/^[1-9]\d*$/.test(s.currentGameId)&&!!s.activeProfileId;break;
     }
@@ -108,7 +111,7 @@ export function createPerformance(bindings:PerformanceBindings) {
             return JSON.stringify([s.accountId,s.currentGameId,clientKey?'client':s.activeProfileId,s.gamescope?.active_display_info?.connector_name,meta.available,meta.disabled,meta.min,meta.max,meta.options]);
         };
         controls[id]=createSettingAdapter<PerformanceValue>({read:()=>describe(id,bindings.read()),subscribe:bindings.subscribe,contextKey,validate,
-            coalesceMs:id==='frameLimit'?700:id==='gpuClock'?200:['tdp','refreshRate','overlayLevel'].includes(id)?100:0,
+            coalesceMs:['frameLimit','refreshRate'].includes(id)?700:id==='gpuClock'?200:['tdp','sharpness','overlayLevel'].includes(id)?100:0,
             async write(value,key){
                 if(contextKey()!==key)throw Error('Performance context changed');
                 if(clientKey)await bindings.writeClient(clientKey,value);

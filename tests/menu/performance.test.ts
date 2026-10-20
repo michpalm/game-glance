@@ -8,7 +8,7 @@ function fixture() {
         platform:{is_service_available:true,is_tdp_limit_available:true,tdp_limit_min:4,tdp_limit_max:20,is_manual_gpu_clock_available:true,manual_gpu_clock_min:200,manual_gpu_clock_max:1800,platform_performance_profiles_available:['low-power','balanced','performance'],is_vrs_available:true},
         gamescope:{is_service_available:true,is_app_refresh_rate_supported:true,is_refresh_rate_switching_supported:true,is_refresh_rate_switching_restricted:false,active_display_info:{connector_name:'eDP-1',is_external:false,is_hdr_capable:false,is_vrr_capable:true,supported_frame_rates:[23.976,29.97,59.94],supported_refresh_rates:[59.94,119.88]}},
         client:{steamos_platform_performance_profile:'performance',steamos_tdp_limit_enabled:false,steamos_tdp_limit:20,steamos_manual_gpu_clock_enabled:true,steamos_manual_gpu_clock_hz:1800,gamescope_enable_app_target_framerate:true,gamescope_app_target_framerate:59.94,gamescope_disable_framelimit:false,gamescope_display_refresh_rate:119.88,gamescope_allow_tearing:false,steamos_vrs_enabled:false,gamescope_hdr_enabled:false},
-        legacy:{limits:{tdp_limit_min:3,tdp_limit_max:15,is_vrr_supported:true,split_scaling_scalers_available:[1,2,3,4,5],split_scaling_filters_available:[3,2,1]},perApp:{is_vrr_enabled:true,split_scaling_scaler:1,split_scaling_filter:1},global:{perf_overlay_service_state:1,perf_overlay_level:0,is_show_perf_overlay_over_steam_enabled:true}},deferred:[],
+        legacy:{limits:{tdp_limit_min:3,tdp_limit_max:15,fsr_sharpness_min:0,fsr_sharpness_max:5,is_vrr_supported:true,split_scaling_scalers_available:[1,2,3,4,5],split_scaling_filters_available:[3,2,1]},perApp:{fsr_sharpness:3,is_vrr_enabled:true,split_scaling_scaler:1,split_scaling_filter:1},global:{perf_overlay_service_state:1,perf_overlay_level:0,is_show_perf_overlay_over_steam_enabled:true}},deferred:[],
     };
     const writeClient=vi.fn(async()=>{}),writeLegacy=vi.fn(async()=>{}),setGameSpecific=vi.fn(async()=>{});
     const bindings:PerformanceBindings={read:()=>state,subscribe:fn=>{listeners.add(fn);return()=>{listeners.delete(fn);};},writeClient,writeLegacy,setGameSpecific};
@@ -85,4 +85,34 @@ it('treats zero game IDs as default scope rather than a running game',()=>{
     expect(h.perf.getProfile()).toMatchObject({isGameSpecific:false,label:'Using default profile'});
     expect(h.perf.controls.vrr.get().scope).toEqual({kind:'global'});
     expect(h.perf.controls.perGame.get().available).toBe(false);h.perf.dispose();
+});
+
+
+it('uses Steam overlay notch order rather than equating the visible level with the native enum',async()=>{
+    const h=fixture(),c=h.perf.controls.overlayLevel;
+    expect(c.get().options).toEqual([0,4,1,2,3]);
+    const levelOne=c.get().options![1];const p=c.set(levelOne);await vi.advanceTimersByTimeAsync(100);
+    expect(h.writeLegacy).toHaveBeenCalledWith('SetPerfOverlayLevel',4,'769');
+    h.state.legacy.global.perf_overlay_level=4;h.emit();await p;
+    expect(c.get().value).toBe(4);h.perf.dispose();
+});
+it('uses native sharpness bounds and cancels a pending adjustment when the filter changes',async()=>{
+    const h=fixture(),c=h.perf.controls.sharpness;
+    expect(c?.get()).toMatchObject({min:0,max:5,disabled:true});
+    h.state.legacy.perApp.split_scaling_filter=3;h.emit();
+    expect(c.get()).toMatchObject({value:3,disabled:false});
+    const p=c.set(4);await vi.advanceTimersByTimeAsync(100);
+    expect(h.writeLegacy).toHaveBeenCalledWith('SetFSRSharpness',4,'769');
+    h.state.legacy.perApp.fsr_sharpness=4;h.emit();await p;
+    h.writeLegacy.mockClear();const pending=c.set(5).catch(e=>e.message);
+    h.state.legacy.perApp.split_scaling_filter=1;h.emit();await vi.advanceTimersByTimeAsync(100);
+    expect(await pending).toContain('context');expect(h.writeLegacy).not.toHaveBeenCalled();h.perf.dispose();
+});
+it('writes Hz choices to native refresh settings at the same700ms delay as Steam',async()=>{
+    const h=fixture(),c=h.perf.controls.refreshRate;h.state.client.gamescope_disable_framelimit=true;h.emit();
+    expect(c.get()).toMatchObject({available:true,disabled:false,options:[59.94,119.88]});
+    const p=c.set(59.94);await vi.advanceTimersByTimeAsync(699);expect(h.writeClient).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);expect(h.writeClient).toHaveBeenCalledWith('gamescope_display_refresh_rate',59.94);
+    h.state.client.gamescope_display_refresh_rate=59.94;h.emit();await p;
+    expect(h.state.client.gamescope_app_target_framerate).toBe(59.94);h.perf.dispose();
 });
