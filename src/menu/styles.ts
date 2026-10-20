@@ -4,7 +4,7 @@
  */
 export const menuStyles = `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:#edf0f2;overflow:hidden;transform:translateZ(0)}
-.gg-menu{--gg-menu-accent:#1a9fff;--gg-menu-focus-fill:8%;--gg-menu-focus-outline:43%;--gg-menu-focus-glow:8px;--gg-menu-control-radius:12px;position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:#edf0f2;font-size:14px}
+.gg-menu{--gg-menu-accent:#1a9fff;--gg-menu-focus-fill:14%;--gg-menu-focus-outline:55%;--gg-menu-focus-glow:8px;--gg-menu-control-radius:12px;position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:#edf0f2;font-size:14px}
 .gg-menu *{box-sizing:border-box}
 .gg-menu header{flex:none;display:flex;justify-content:flex-end;align-items:center;padding:0 18px 12px;gap:10px;font-size:.8em;letter-spacing:.12em}
 .gg-menu-caption-actions{display:flex;align-items:center;gap:8px}
