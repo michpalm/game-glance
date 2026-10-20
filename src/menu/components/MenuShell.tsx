@@ -1,9 +1,9 @@
 import { Focusable, type GamepadEvent } from '@decky/ui';
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
-import { LuBell, LuX } from 'react-icons/lu';
+import { LuBell } from 'react-icons/lu';
 import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
-import { selectedBarSection, type MenuEvent, type MenuState, type SectionId } from '../model';
+import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { findMenuFocus, handleMenuButton, installOutsideMenuClick } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
@@ -88,9 +88,8 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         if (key) dispatch({ type: 'focus', section: state.section, key });
     }}>
         <style>{menuStyles}</style>
-        <header><span>GAME GLANCE</span><div className="gg-menu-caption-actions"><MenuAction id="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction><MenuAction id="close" onAction={close}><LuX aria-label="Close menu" /></MenuAction></div></header>
+        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
         <Focusable className="gg-menu-panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
-        <footer><span>LB / RB · Switch section</span><span>A · Select</span><span>B · {state.stack.length || selectedBarSection(state) !== state.section ? 'Back' : 'Close'}</span></footer>
     </Focusable>;
 }

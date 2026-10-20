@@ -28,7 +28,7 @@
     "visualMenuWidthVw": 60,
     "visualMenuHeightVh": 84,
     "visualTopVh": 7.6923,
-    "fontFamily": "Inter, Segoe UI, sans-serif",
+    "fontFamily": "Motiva Sans, Arial, sans-serif (Steam-provided loaded font; Inter/Segoe not bundled)",
     "controlTextPx": 13,
     "headingPx": 16,
     "tabTextPx": 12,
@@ -46,6 +46,15 @@
     "scrollbars": "Hidden; native focus scrolling retained.",
     "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds.",
     "cardShadow": "Inset highlight only. Exterior drop shadow removed because its alpha expands the Gamescope blur mask beyond the rounded cards.",
-    "outsideDismiss": "Primary mouse click or touch-generated click outside the shell closes the menu; captured and consumed in the borrowed popup document, respects native modal/keyboard ownership."
+    "outsideDismiss": "Primary mouse click or touch-generated click outside the shell closes the menu; captured and consumed in the borrowed popup document, respects native modal/keyboard ownership.",
+    "controlTextWeight": 500,
+    "glassOpacityPercent": 70,
+    "primaryText": "#f4f6f8",
+    "secondaryText": "#d5dce3",
+    "focusFill": "Neutral rgba(255,255,255,.06); user rejected22% accent/dark fill as too blue and dark.",
+    "focusOutlinePercent": 43,
+    "sliderTrack": "Track width calc(100% - 24px) matches native thumb-center travel at0%/100%; thumb positioning and setting adapters unchanged.",
+    "surroundingChrome": "Frosted notification pill with badge left of bell. Removed X, Game Glance caption and footer input hints. Compact \u2039 L1 / R1 \u203a indicators retained at bar ends; tab names retained.",
+    "contrastRationale": "Live game can be much brighter than the mockup backdrop. Stronger glass and loaded Steam font preserve readable labels. This feedback supersedes the original30% native tint and Inter fallback."
   }
 }

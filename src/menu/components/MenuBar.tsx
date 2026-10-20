@@ -7,11 +7,11 @@ const ICONS = { navigate: LuCompass, 'quick-settings': LuSlidersHorizontal, perf
 export function MenuBar({ state, dispatch }: { state: MenuState; dispatch(event: MenuEvent): void }) {
     const active = selectedBarSection(state);
     return <Focusable className="gg-menu-bar" flow-children="row" aria-label="Menu sections">
-        <span className="gg-menu-shoulder" aria-hidden="true">LB</span>
+        <span className="gg-menu-shoulder" aria-hidden="true">‹ L1</span>
         <div className="gg-menu-tabs">{visibleSections(state).map(section => {
             const Icon = ICONS[section];
             return <MenuAction key={section} id={`section:${section}`} selected={active === section} className="gg-menu-tab" onAction={() => dispatch({ type: 'select', section })}><Icon aria-hidden="true" /><span>{SECTION_LABELS[section]}</span></MenuAction>;
         })}</div>
-        <span className="gg-menu-shoulder" aria-hidden="true">RB</span>
+        <span className="gg-menu-shoulder" aria-hidden="true">R1 ›</span>
     </Focusable>;
 }
