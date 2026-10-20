@@ -4,13 +4,13 @@
  */
 export const menuStyles = `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:#edf0f2;overflow:hidden;transform:translateZ(0)}
-.gg-menu{--gg-menu-accent:#1a9fff;position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:#edf0f2;font-size:14px}
+.gg-menu{--gg-menu-accent:#1a9fff;--gg-menu-focus-fill:8%;--gg-menu-focus-outline:43%;--gg-menu-focus-glow:8px;--gg-menu-control-radius:12px;position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:#edf0f2;font-size:14px}
 .gg-menu *{box-sizing:border-box}
 .gg-menu header{flex:none;display:flex;justify-content:flex-end;align-items:center;padding:0 18px 12px;gap:10px;font-size:.8em;letter-spacing:.12em}
 .gg-menu-caption-actions{display:flex;align-items:center;gap:8px}
 .gg-menu button.gg-menu-action.DialogButton{width:auto;min-width:0;min-height:44px;border:1px solid #ffffff18;border-radius:12px;background:#ffffff05;color:inherit;box-shadow:none;text-transform:none;font:inherit;font-weight:400;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:9px;white-space:normal;line-height:1.3}
 .gg-menu button.gg-menu-action.DialogButton svg{width:1.2em;height:1.2em;flex-shrink:0}
-.gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 43%,transparent);outline-offset:1px;box-shadow:0 0 8px color-mix(in srgb,var(--gg-menu-accent) 10%,transparent);background:rgba(255,255,255,.06)}
+.gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:1px;box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent);background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent)}
 .gg-menu button.gg-menu-action.DialogButton[aria-pressed=true]{background:color-mix(in srgb,var(--gg-menu-accent) 12%,transparent);color:var(--gg-menu-accent)}
 .gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:rgba(12,16,22,.70);backdrop-filter:none;border:1px solid #ffffff26;border-radius:26px;box-shadow:inset 0 1px #ffffff09}
 .gg-menu .gg-menu-bar{flex:none;display:flex;gap:10px;align-items:center;padding:10px 12px}
@@ -29,7 +29,7 @@ export const menuStyles = `
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .gg-menu h3{font-size:.85em;font-weight:500;color:#b8c5cf;margin:18px 0 8px}
 .gg-menu-setting .Panel{background:transparent;border-radius:12px}
-.gg-menu-setting:has(.gpfocus){border-radius:12px;outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 43%,transparent);outline-offset:2px;box-shadow:0 0 8px color-mix(in srgb,var(--gg-menu-accent) 10%,transparent);background:rgba(255,255,255,.06)}
+.gg-menu-setting:has(.gpfocus){border-radius:var(--gg-menu-control-radius);outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:2px;box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent);background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent)}
 .gg-menu .gg-menu-setting [role=checkbox]::after{content:none}
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
 .gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;box-shadow:0 0 5px #0005}
@@ -52,7 +52,7 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-tabs{gap:3px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#d5dce3;font-size:12px;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:color-mix(in srgb,var(--gg-menu-accent) 16%,transparent);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
-.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 43%,transparent);outline-offset:1px;background:rgba(255,255,255,.06);box-shadow:0 0 8px color-mix(in srgb,var(--gg-menu-accent) 10%,transparent)}
+.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);outline-offset:1px;background:color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent);box-shadow:0 0 var(--gg-menu-focus-glow) color-mix(in srgb,var(--gg-menu-accent) 10%,transparent)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{flex-direction:column;justify-content:center;min-height:112px;padding:13px 14px;gap:14px;border:1px solid #ffffff16;border-radius:16px;background:#ffffff0b}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:23px;height:23px;color:#d5dce3}
 .gg-menu-native-host .gg-menu h2{font-size:16px;font-weight:500;letter-spacing:-.2px;margin:0 0 18px}
@@ -69,5 +69,5 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu footer{font-size:12px;font-weight:500;gap:20px;padding:17px 4px;color:#d5dce3}
 .gg-menu-native-host .gg-menu>header,.gg-menu-native-host .gg-menu footer{text-shadow:0 1px 2px #000c}
 .gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:10px;border:1px solid #ffffff26;border-radius:26px;background:rgba(12,16,22,.70);color:#f4f6f8;box-shadow:inset 0 1px #ffffff09}
-.gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.gg-menu-notifications.DialogButton.gpfocus{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 43%,transparent);background:rgba(255,255,255,.06)}
+.gg-menu-native-host .gg-menu .gg-menu-caption-actions button.gg-menu-action.gg-menu-notifications.DialogButton.gpfocus{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-outline),transparent);background:linear-gradient(color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent),color-mix(in srgb,var(--gg-menu-accent) var(--gg-menu-focus-fill),transparent)),rgba(12,16,22,.70)}
 `;

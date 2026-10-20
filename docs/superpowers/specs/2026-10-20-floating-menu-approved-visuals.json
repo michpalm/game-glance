@@ -51,10 +51,12 @@
     "glassOpacityPercent": 70,
     "primaryText": "#f4f6f8",
     "secondaryText": "#d5dce3",
-    "focusFill": "Neutral rgba(255,255,255,.06); user rejected22% accent/dark fill as too blue and dark.",
+    "focusFill": "Exact mockup: color-mix(in srgb, game accent8%, transparent); replaces neutral white6%.",
     "focusOutlinePercent": 43,
     "sliderTrack": "Track width calc(100% - 24px) matches native thumb-center travel at0%/100%; thumb positioning and setting adapters unchanged.",
     "surroundingChrome": "Frosted notification pill with badge left of bell. Removed X, Game Glance caption and footer input hints. Compact \u2039 L1 / R1 \u203a indicators retained at bar ends; tab names retained.",
-    "contrastRationale": "Live game can be much brighter than the mockup backdrop. Stronger glass and loaded Steam font preserve readable labels. This feedback supersedes the original30% native tint and Inter fallback."
+    "contrastRationale": "Live game can be much brighter than the mockup backdrop. Stronger glass and loaded Steam font preserve readable labels. This feedback supersedes the original30% native tint and Inter fallback.",
+    "focusGlowPx": 8,
+    "focusGeometry": "12px control corners,1px outline,2px offset for setting rows,1px offset for buttons. Native field backgrounds/outlines/shadows remain suppressed; notification retains its glass base while focused."
   }
 }

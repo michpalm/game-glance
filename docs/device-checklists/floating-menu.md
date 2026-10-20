@@ -220,3 +220,10 @@ Notifications now has its own70% glass pill/border/inset edge, badge still left 
 TypeScript, full1493 tests, ZIP integrity and diff checks passed. Final local/device SHA256 `c43e81d8bebf869830ee5a69f3952d00022d909daa133f31cd7a267c9ae48a7d`. Frontend backups `/tmp/gg-menu-before-contrast-20261020.js` and `/tmp/gg-menu-before-clean-chrome-20261020.js` retained. Final full compositor screenshot `/private/tmp/gg-readable-soft-focus-hints.png` taken from the installed build with all temporary diagnostic styles removed. Dorfromantik1455840 remains running; settings unchanged and no Git remote operations.
 
 Final follow-up verification: neutral focus computed rgba(255,255,255,.06), ‹L1/R1› hints present, all6 tabs fit horizontally and QuickSettings fits vertically. No additional slider/setting writes. Native color/focus controller logic unchanged.
+
+
+### 2026-10-20: use the mockup focus treatment directly
+
+User preferred the actual mockup highlight to further approximations. Compared `glance-home-menu.html` rules283–284: accent8%/transparent fill, accent43% outline at current saved state,8px glow with10% accent,12px corners,2px setting-row outline offset. Live version's neutral6%white fill was the remaining mismatch. Production now uses the same values as explicit focus tokens. Verified no additional native field background/outline/shadow competed with the owned focus treatment. Notification focus layers the tint over its existing glass so focus cannot remove its frosted base.
+
+TypeScript, full1493 tests and ZIP integrity passed. Final local/device SHA256 `3f9b3872f094b6fe0e350fa6f0c2ccc8f6c1fd3deb92072964699fb251f37051`. Installed Ally reports8%accent fill,43%accent outline,~2px offset,8px glow/10%accent and12px radius. Actual full-composition screenshot `/private/tmp/gg-mockup-focus-final.png` visually checked; original pre-focus frontend retained at `/tmp/gg-menu-before-mock-focus-20261020.js`. Readability tint/font, L1/R1 hints, slider alignment and notification glass retained. Physical visual acceptance remains user feedback; no setting writes or remote Git operations.
