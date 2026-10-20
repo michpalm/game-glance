@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asElement, controlAboveCard, cardBelowControl, CARD_NAV, cardNavTarget, cardZoneOf, DPAD_DOWN, DPAD_UP, firstFeedbackControl, landingFor } from '../../src/logic/cardNav';
+import { asElement, controlAboveCard, cardBelowControl, CARD_NAV, cardNavTarget, cardZoneOf, DPAD_DOWN, DPAD_UP, firstFeedbackControl, landingFor, pageNavParts, selectableCards } from '../../src/logic/cardNav';
 import { parseHTML } from 'linkedom';
 import { playRowSelector } from '../../src/styles/themeCss';
 
@@ -22,14 +22,23 @@ describe('cardNavTarget', () => {
         expect(cardNavTarget('feedback', 11, true, true)).toBeNull();
         expect(cardNavTarget('feedback', 12, true, true)).toBeNull();
     });
-    it("everything else is Steam's own: other buttons, other places, or no card to go to", () => {
+    it("everything else is Steam's own: other buttons or other places", () => {
         expect(cardNavTarget('play', DPAD_UP, true)).toBeNull();
         expect(cardNavTarget('tabs', DPAD_DOWN, true)).toBeNull();
         expect(cardNavTarget('cards', 11, true)).toBeNull();
         expect(cardNavTarget('cards', 12, true)).toBeNull();
         expect(cardNavTarget(null, DPAD_DOWN, true)).toBeNull();
-        expect(cardNavTarget('play', DPAD_DOWN, false)).toBeNull();
-        expect(cardNavTarget('tabs', DPAD_UP, false)).toBeNull();
+        expect(cardNavTarget('play', DPAD_UP, false)).toBeNull();
+        expect(cardNavTarget('tabs', DPAD_DOWN, false)).toBeNull();
+        expect(cardNavTarget('play', 11, false)).toBeNull();
+    });
+    it('without cards (Clean), Play, the feedback row and the tabs follow each other: hidden Play-row controls are no stop', () => {
+        expect(cardNavTarget('play', DPAD_DOWN, false)).toBe('tabs');
+        expect(cardNavTarget('play', DPAD_DOWN, false, true)).toBe('feedback');
+        expect(cardNavTarget('feedback', DPAD_UP, false, true)).toBe('play');
+        expect(cardNavTarget('feedback', DPAD_DOWN, false, true)).toBe('tabs');
+        expect(cardNavTarget('tabs', DPAD_UP, false)).toBe('play');
+        expect(cardNavTarget('tabs', DPAD_UP, false, true)).toBe('feedback');
     });
 });
 
@@ -148,5 +157,24 @@ describe('card and button alignment', () => {
         expect(cardBelowControl(play, cards)).toBe(description);
         expect(cardBelowControl(family, cards)).toBe(hltb);
         expect(controlAboveCard(hltb, cards, controls, family)).toBe(family);
+    });
+});
+
+describe('pageNavParts', () => {
+    it('routes the D-pad and scrolls on focus in both restyled looks, Clean too', () => {
+        expect(pageNavParts(true, true)).toEqual({ dpad: true, scrolling: true });
+        expect(pageNavParts(true, false)).toEqual({ dpad: true, scrolling: true });
+    });
+    it("leaves Steam's own page alone", () => {
+        expect(pageNavParts(false, false)).toEqual({ dpad: false, scrolling: false });
+        expect(pageNavParts(false, true)).toEqual({ dpad: false, scrolling: false });
+    });
+});
+
+describe('selectableCards', () => {
+    it("counts only the cards on screen: Clean's hidden cards are no D-pad stop", () => {
+        const { document } = parseHTML(`<div class="${CARD_NAV}" id="a"></div><div class="${CARD_NAV}" id="b"></div>`);
+        for (const el of document.querySelectorAll(`.${CARD_NAV}`)) el.getBoundingClientRect = () => ({ width: el.id === 'a' ? 0 : 120 }) as DOMRect;
+        expect(selectableCards(document as unknown as Document).map((el) => el.id)).toEqual(['b']);
     });
 });

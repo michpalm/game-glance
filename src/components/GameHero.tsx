@@ -33,7 +33,8 @@ import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '.
 import { accentMemo, knownAccent } from '../home/accentMemo';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { installMouseMode } from '../home/mouseMode';
-import { useCardNav } from '../hooks/useCardNav';
+import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
+import { pageNavParts } from '../logic/cardNav';
 import { CleanInfo } from './CleanInfo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { GameStatusBar } from './GameStatusBar';
@@ -133,7 +134,10 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Hover looks follow a mouse (home/mouseMode), here as on Home.
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
-    useCardNav(pageDoc, restyle && !clean);
+    const navParts = pageNavParts(restyle, clean);
+    useCardNav(pageDoc, navParts.dpad);
+    // Focus moves the page as in the restyled look, Clean too: the feedback row centred, the tabs below Steam's header.
+    usePageFocusScrolling(pageDoc, navParts.scrolling);
     // B and the D-pad go to Steam's gamepad focus, which can land on a hidden tab of Steam's own page on a Unifideck page (logic/gamepadFocus).
     useUnifideckGamepadFocus(pageDoc, game.isShortcut);
     const nativeSizeLabel = useUnifideckSizeLabel(pageDoc, game.appId, uniInstalled, restyle && game.isShortcut);

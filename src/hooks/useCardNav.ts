@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { focusElement } from '../home/homeNav';
-import { asElement, cardBelowControl, controlAboveCard, CARD_NAV, cardNavTarget, cardZoneOf, CardZone, firstFeedbackControl, landingFor } from '../logic/cardNav';
+import { asElement, cardBelowControl, controlAboveCard, CARD_NAV, cardNavTarget, cardZoneOf, CardZone, firstFeedbackControl, landingFor, selectableCards } from '../logic/cardNav';
 import { takeSteamFocus } from '../home/steamFocus';
 import { installPageFocusScrolling } from '../logic/feedbackScroll';
 import { pageFeedbackSelector, pageTabsSection, playRow, playRowControlSelector } from '../styles/theme';
@@ -11,7 +11,7 @@ const TABS = '[role="tab"]';
 
 /** Each zone's first landing: the first card, the Play pill, the selected tab (or the first). */
 function firstIn(doc: Document, to: CardZone, play: string, feedback: string | null): HTMLElement | null {
-    if (to === 'cards') return doc.querySelector<HTMLElement>(`.${CARD_NAV}`);
+    if (to === 'cards') return selectableCards(doc)[0] ?? null;
     if (to === 'play') return doc.querySelector<HTMLElement>(`${play.split(', ')[0]} [role="button"]`);
     if (to === 'feedback') return firstFeedbackControl(doc, feedback);
     return doc.querySelector<HTMLElement>(`${TABS}[aria-selected="true"]`) ?? doc.querySelector<HTMLElement>(TABS);
@@ -31,7 +31,7 @@ function reveal(el: HTMLElement) {
 /**
  * The controller between the game page's Play row, its cards and its tabs, in the screen's order (logic/cardNav): Steam's
  * own Up and Down ran the wrong way there. Listens for Steam's controller events (vgp_onbuttondown) on the page's
- * document while `active` (the restyled page with a selectable card); a press it routes is not Steam's (preventDefault).
+ * document while `active` (the restyled page, both looks; without cards: Play, feedback, tabs); a press it routes is not Steam's (preventDefault).
  */
 export function useCardNav(doc: Document | null, active: boolean) {
     useEffect(() => {
@@ -39,7 +39,6 @@ export function useCardNav(doc: Document | null, active: boolean) {
         const feedback = pageFeedbackSelector();
         const tabsLayout = pageTabsSection();
         if (!doc || !active || !play) return undefined;
-        const stopFocusScrolling = installPageFocusScrolling(doc, feedback, tabsLayout);
         const memory: { row: HTMLElement | null; card: HTMLElement | null; feedback: HTMLElement | null } = { row: null, card: null, feedback: null };
         const onFocus = (e: Event) => {
             const card = (e.target as Element | null)?.closest?.(`.${CARD_NAV}`);
@@ -50,11 +49,11 @@ export function useCardNav(doc: Document | null, active: boolean) {
         const onButton = (e: Event) => {
             try {
                 const button = Number((e as CustomEvent<{ button?: number }>).detail?.button);
-                const hasCards = !!doc.querySelector(`.${CARD_NAV}`);
+                const cards = selectableCards(doc);
+                const hasCards = cards.length > 0;
                 const from = cardZoneOf(e.target as Element | null, { play, tabs: TABS, feedback });
                 const to = cardNavTarget(from, button, hasCards, firstFeedbackControl(doc, feedback) !== null);
                 if (!to) return;
-                const cards = [...doc.querySelectorAll<HTMLElement>(`.${CARD_NAV}`)];
                 const source = asElement(e.target);
                 const controls = [...doc.querySelectorAll<HTMLElement>(playRowControlSelector() ?? '[data-gg-no-controls]')]
                     .filter((x) => x.getBoundingClientRect().width > 0 && !x.matches('[disabled], [aria-disabled="true"], [role="img"]'));
@@ -81,9 +80,13 @@ export function useCardNav(doc: Document | null, active: boolean) {
         doc.addEventListener('focusin', onFocus, true);
         doc.addEventListener('vgp_onbuttondown', onButton, true);
         return () => {
-            stopFocusScrolling();
             doc.removeEventListener('focusin', onFocus, true);
             doc.removeEventListener('vgp_onbuttondown', onButton, true);
         };
     }, [doc, active]);
+}
+
+/** The page's focus scrolling (logic/feedbackScroll): the hero for a card, the feedback row centred, the tabs below Steam's header; in both looks. */
+export function usePageFocusScrolling(doc: Document | null, active: boolean) {
+    useEffect(() => (doc && active ? installPageFocusScrolling(doc, pageFeedbackSelector(), pageTabsSection()) : undefined), [doc, active]);
 }

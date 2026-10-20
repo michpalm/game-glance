@@ -15,9 +15,23 @@ export const CARD_NAV = 'gg-card-nav';
 /** Where focus is, for these presses: the Play row (Play, its arrow, the circles, the cloud), a card, the page's tabs. */
 export type CardZone = 'play' | 'cards' | 'feedback' | 'tabs';
 
-/** Where `button` pressed in `zone` goes; null: Steam's own move (also when no card can be selected). */
+/**
+ * The game page's controller parts, the same in both restyled looks: the D-pad routing between Play, the cards, the
+ * feedback row and the tabs (in Clean, without cards, it keeps Down off Play-row controls we hide, such as Steam's
+ * preferred-copy link), and the focus scrolling (feedback centred, tabs below the header). Clean takes part.
+ */
+export function pageNavParts(restyle: boolean, _clean: boolean): { dpad: boolean; scrolling: boolean } {
+    return { dpad: restyle, scrolling: restyle };
+}
+
+/** Where `button` pressed in `zone` goes; null: Steam's own move. Without cards (Clean), Play, feedback and tabs follow each other. */
 export function cardNavTarget(zone: CardZone | null, button: number, hasCards: boolean, hasFeedback = false): CardZone | null {
-    if (!hasCards) return null;
+    if (!hasCards) {
+        if (zone === 'play' && button === DPAD_DOWN) return hasFeedback ? 'feedback' : 'tabs';
+        if (zone === 'feedback') return button === DPAD_UP ? 'play' : button === DPAD_DOWN ? 'tabs' : null;
+        if (zone === 'tabs' && button === DPAD_UP) return hasFeedback ? 'feedback' : 'play';
+        return null;
+    }
     if (zone === 'play' && button === DPAD_DOWN) return 'cards';
     if (zone === 'cards') return button === DPAD_UP ? 'play' : button === DPAD_DOWN ? (hasFeedback ? 'feedback' : 'tabs') : null;
     if (zone === 'feedback') return button === DPAD_UP ? 'cards' : button === DPAD_DOWN ? 'tabs' : null;
@@ -56,6 +70,11 @@ export function firstFeedbackControl(doc: Document, selector: string | null): HT
         }
     }
     return null;
+}
+
+/** The page's cards that are on screen (Clean keeps them in the page, hidden): the D-pad's card stops. */
+export function selectableCards(doc: Document): HTMLElement[] {
+    return [...doc.querySelectorAll<HTMLElement>(`.${CARD_NAV}`)].filter((el) => el.getBoundingClientRect().width > 0);
 }
 
 /**
