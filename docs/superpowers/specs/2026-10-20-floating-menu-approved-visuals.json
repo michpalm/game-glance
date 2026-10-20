@@ -51,13 +51,13 @@
     "glassOpacityPercent": 40,
     "primaryText": "#fff",
     "secondaryText": "#d5dce3",
-    "focusFill": "14% game-accent tint over transparent; user requested more contrast than mockup8%.",
-    "focusOutlinePercent": 55,
+    "focusFill": "Home40%glass while focused; removed separate accent/white focus overlays.",
+    "focusOutlinePercent": null,
     "sliderTrack": "Track width calc(100% - 24px) matches native thumb-center travel at0%/100%; thumb positioning and setting adapters unchanged.",
     "surroundingChrome": "Frosted notification pill with badge left of bell. Removed X, Game Glance caption and footer input hints. Compact \u2039 L1 / R1 \u203a indicators retained at bar ends; tab names retained.",
     "contrastRationale": "Home40% glass,18% white edge and white700-weight action text, with stronger frosting confined to the menu surfaces.",
-    "focusGlowPx": 12,
-    "focusGeometry": "12px control corners,1px outline,2px offset for setting rows,1px offset for buttons. Native field backgrounds/outlines/shadows remain suppressed; notification retains its glass base while focused.",
+    "focusGlowPx": 40,
+    "focusGeometry": "No offset outline or double ring. Shared Home information-card shadow:0 0 0 1px accent,0 16px 40px -12px accent. Existing rounded geometry retained; no focus transform.",
     "actionButtonWeight": 700,
     "actionButtonText": "#fff",
     "glassBorder": "rgba(255,255,255,.18)",
@@ -68,8 +68,8 @@
     "moreTab": "Ellipsis icon only; accessible name More retained.",
     "quickSettings": "Icons for all controls;56px equal-height toggle rows, label and switch vertically centred, no Friends & Chat helper text.",
     "legibility": "Bold white labels/headings/values with subtle0 1px 2px #0009 text shadow. Inactive tabs and setting/grid icons white; SVG currentColor stroke2.4, setting icons18px. Menu scale and frosting unchanged.",
-    "gridFocus": "Explicit grid-specific focus rule overrides the resting grid glass:14% white lift over Home glass,2px rounded outline mixed80%white/20%accent,1px offset and inset1px55%accent edge. No exterior glow; applies to gpfocus and focus-visible.",
+    "gridFocus": "Same shared Home card focus as settings/action buttons; resting Home glass retained, white edge30%, no separate bright ring/lightened fill.",
     "fieldRendering": "Scoped .gg-menu-setting .Panel transform/transition/animation:none!important prevents Steam identity3D/focus animations from changing all field text raster scale during toggle updates. Root scale, native toggle thumb movement and settings lifecycle unchanged.",
-    "focusGlow": "12px soft halo at26%opacity with70%gameaccent/30%white color mix, plus10px inset12%accent glow. Grid retains bright rounded ring and inset accent edge; panel/bar shadows unchanged."
+    "focusGlow": "Shared homeCardFocusShadow from src/styles/homeGlass.ts. Exact Home information-card shadow, game-accent edge plus diffused lower glow; Home generated shadow unchanged."
   }
 }

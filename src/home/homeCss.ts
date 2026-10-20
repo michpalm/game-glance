@@ -1,4 +1,4 @@
-import { HOME_BUTTON_GLASS } from '../styles/homeGlass';
+import { HOME_BUTTON_GLASS, homeCardFocusShadow } from '../styles/homeGlass';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
 import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
@@ -54,7 +54,7 @@ export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-family', '.
 const HOVER = `html[${MOUSE_ATTR}]`;
 const GLASS = 'background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(14px)';
 const SCRIM = '5,7,10';
-const GLOW = '0 0 0 1px var(--glance-accent), 0 16px 40px -12px var(--glance-accent)';
+const GLOW = homeCardFocusShadow('var(--glance-accent)');
 
 /**
  * Title block metrics (handoff), in logical px from the screen top; the CSS below uses them. The title's slot is

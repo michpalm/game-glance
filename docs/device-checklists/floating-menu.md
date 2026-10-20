@@ -290,3 +290,10 @@ TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Loca
 User requested improved glow. Focus halo8→12px, faint10%raw accent→26% of a70%accent/30%white mix so dark game accents remain visible, plus10px inset12%accent glow. Navigate grid retains its bright rounded ring with this shared halo. Menu panel/bar exterior shadows unchanged. Installed mode3 screenshot `/private/tmp/gg-focus-glow-final.png` inspected: soft focused Volume edge, no broad menu/background blur. Stable field transform fix retained.
 
 TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `c148d7ee02068d2c3db075b3c94c079eebe0f04e5bf17970e2f52a5d4b17a877`; backup `/tmp/gg-menu-before-focus-glow-20261020.js`. No setting writes or Git remote operations; user visual acceptance pending.
+
+
+### 2026-10-20: Match Home information-card focus
+
+User rejected the Navigate ring as inconsistent with Game Glance. Actual Ally capture `/private/tmp/gg-ring-review.png` shows the white-mixed offset outline plus inset edge. Compared Home's actual `.gh-card.gh-card-focus` shadow in home/homeCss.ts:1px game-accent edge and0 16px 40px -12px accent glow. Extracted that exact string to `homeCardFocusShadow` in styles/homeGlass.ts; Home continues generating identical shadow values. Menu actions/settings/grid now consume it, removing white-mixed outlines, inner rings and separate focus-fill overlays. Active tab dark fill retained; no focus transforms introduced, stable field rendering preserved.
+
+Installed actual mode3 screenshot `/private/tmp/gg-home-card-focus-final.png` inspected: single accent edge and soft glow beneath Library, no double pale outline. No change to menu size/frosting or settings. TypeScript/full1503 tests across133 files/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `53f9433bd1fe02fbaac03d06487361c84d1e5fb51efd9543b410e48885c6e34a`; frontend backup `/tmp/gg-menu-before-home-card-focus-20261020.js`. User visual acceptance pending; local Git only.

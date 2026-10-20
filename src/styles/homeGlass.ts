@@ -6,3 +6,8 @@ export const HOME_BUTTON_GLASS = {
     color: '#fff',
     fontWeight: 700,
 } as const;
+
+/** Home information-card focus: a single accent edge and a soft glow below it. */
+export function homeCardFocusShadow(accent: string): string {
+    return `0 0 0 1px ${accent}, 0 16px 40px -12px ${accent}`;
+}
