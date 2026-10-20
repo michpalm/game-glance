@@ -95,6 +95,8 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle{height:56px;display:flex;align-items:center}
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}
 
+.gg-menu-native-host .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}
+
 /* Performance uses the same native controls, glass and focus treatment as Quick settings. */
 .gg-menu-native-host .gg-menu .gg-menu-performance h2{margin-bottom:12px}
 .gg-menu-native-host .gg-menu .gg-menu-performance .gg-menu-profile-context .gg-menu-setting{height:40px;min-height:40px}

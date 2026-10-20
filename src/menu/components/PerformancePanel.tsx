@@ -1,6 +1,6 @@
 import { Focusable, NavEntryPositionPreferences, SliderField, ToggleField } from '@decky/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { LuGauge, LuMonitor, LuZap, LuCpu, LuLayers, LuMaximize } from 'react-icons/lu';
+import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import type { createPerformance, PerformanceValue } from '../steam/performance';
 import type { NativeRequest } from '../steam/runtime';
@@ -15,8 +15,8 @@ function Control({id,adapter}:{id:string;adapter:SettingAdapter<PerformanceValue
     const s=useSyncExternalStore(adapter.subscribe,adapter.get),[draft,setDraft]=useState<number|null>(null);
     useEffect(()=>{if(!s.pending)setDraft(null);},[s.pending,s.value,s.error]);
     if(!s.available||s.value===null)return null;
-    const Icon=id.startsWith('tdp')?LuZap:id.startsWith('gpu')?LuCpu:id.startsWith('overlay')?LuLayers:id.startsWith('scaling')?LuMaximize:id==='frameLimit'?LuGauge:LuMonitor;
-    const label=<span className="gg-menu-setting-label"><Icon aria-hidden="true"/><span>{LABELS[id]}</span></span>;
+    const Icon=steamPerformanceIcon(id);
+    const label=<span className="gg-menu-setting-label">{Icon&&<span aria-hidden="true" className="gg-menu-native-icon"><Icon/></span>}<span>{LABELS[id]}</span></span>;
     const set=(v:PerformanceValue)=>{void adapter.set(v).catch(()=>{/* Native snapshot owns error/readback. */});};
     const disabled=s.disabled||s.pending&&typeof s.value==='boolean';
     let field;
