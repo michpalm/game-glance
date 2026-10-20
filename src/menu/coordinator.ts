@@ -59,7 +59,10 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
                 }));
                 releases.push(bindings.subscribeGame(game => dispatch({ type: 'game', value: game })));
                 releases.push(bindings.installIntentHandlers({
-                    open(entry, replayNative) { void openWithFallback(entry, replayNative).catch(error => console.warn('[Game Glance] native menu fallback failed', error)); },
+                    open(entry, replayNative) {
+                        if (getState().phase === 'custom-open') { close(); return; }
+                        void openWithFallback(entry, replayNative).catch(error => console.warn('[Game Glance] native menu fallback failed', error));
+                    },
                     closed() { if (alive) { generation++; dispatch({ type: 'close' }); host?.close(); } },
                     suspended(value) { if (alive && value) { generation++; dispatch({ type: 'handoff' }); host?.suspend(); } },
                 }));

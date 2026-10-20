@@ -433,7 +433,7 @@ Ally verification, through live DOM/native menu handlers and actual mode3 compos
 Installed local/device ZIP SHA256 `33407c524507e0a634fe2f5de01092827c64c55bc5e2accfc2f831a4682bf2ef`; frontend backup `/tmp/gg-menu-before-home-bars-20261020.js`. All work remains local; no Git remote operations/publication.
 
 
-### Transition optimization and in-game glass consistency — 2026-10-20 (final device check pending)
+### Transition optimization and in-game glass consistency — 2026-10-20
 
 Home flicker investigation traced the custom menu acquiring/releasing a Gamescope blur hold while native suppression was false:0→1→0, invoking Steam's radius32/300ms compositor transition. Steam pages already have scoped owner-document20px CSS frosting, so this was redundant. Native BIsOverlayPath is now the authority: Steam pages do not acquire compositor blur even when a game is running; older clients fall back to MainRunningAppID. The viewport/frosting lease effect now depends on active/window identity rather than fresh native React trees. A separate layout effect acknowledges each newly presented node, preserving recovery and entry switching.
 
@@ -448,3 +448,17 @@ Final implementation borrows one game-only blur hold and owns a scoped ApplyBlur
 TypeScript/full**1,533tests across136files**/package/ZIP/diff checks pass. Final ZIP e710b3aac90d7730ab4c2d16e3de7ac27d8d74c33527f46739dbc22b496181b9 copied to the Ally with matching hash; frontend backup `/tmp/gg-menu-before-game-conditional-glass-20261020.js`.
 
 **Pending final device activation/acceptance:** the final Decky reload's debugger response stalled. Both page-level and browser-attached Runtime.evaluate('1+1') timed out, including a device-local standard-library WebSocket test; HTTP target listing/activation and SSH remained responsive. All temporary debugger clients were closed and paused-debugger connections detached. The game continued normally in one-shot screenshots; Steam/game were not restarted. A physical Steam/Home-menu check was requested asynchronously. Do not label the final e710 build's in-game lifecycle verified until the menu opens and a fresh compositor screenshot/native open/close readback confirms it. The successful screenshot above is the reversible native probe, not proof of final candidate activation. No Git remote operations/publication.
+
+
+Final device verification resumed after the user confirmed the physical menu opens. The debugger recovered without restarting Steam or the game. Final e710 candidate is active: actual compositor screenshot `menu-game-glass-final-2026-10-20.png` inspected over Ori, with frosting beneath the menu and a recognizable, clear surrounding game. Native route /apprunning, overlay=true, game1057090, refs1, suppression=true, compositor mode1. Closing restored refs0, mode0 and the original unwrapped ApplyBlurState while leaving suppression=true. Reopening returned mode1.
+
+With Ori still running, navigated Home (/library/home, overlay=false): menu open retained refs0/mode0, confirming no redundant global compositor transition. Four Home/Quick Access entry switches retained identical viewport/frost nodes and all4panes. Three open/close cycles and notification handoff passed status/footer cleanup checks: one foreground status while open, page status restored after close, zero leaked frost/status leases. At the current docked geometry reserve41px/shift63px/card-row bottom782.26724CSSpx remained constant, with20.51596CSSpx footer clearance after every close. Actual Home screenshot `menu-home-glass-final-2026-10-20.png` inspected. Returned to /apprunning with Quick settings open. No settings writes, Steam/game restarts, scale changes or Git remote operations. These checks verify lifecycle and scoped frosting; perceived transition smoothness remains user acceptance.
+
+
+### Controller menu buttons close the open menu — 2026-10-20
+
+Hardware intent now closes any custom-open menu through the coordinator close path, irrespective of the opening button or selected tab. A subsequent press opens the normal entry section. Programmatic section switching and native handoffs retain their existing behavior.
+
+Regression tests first failed for cross-entry presses, then passed for both buttons/opening entries and reopening. TypeScript, all1,535tests, package/ZIP integrity and diff checks passed. Local/device ZIP SHA256 `0f3c89cdaa5511e22953f586afb9d000d7d1166b7d28470fb686e75732ac3086`; frontend backup `/tmp/gg-menu-before-button-toggle-20261020.js`.
+
+Live Ally native-handler verification over running Ori covered Home→Home, Home→Quick Access, Quick Access→Home and Quick Access→Quick Access. Each opened menu was first moved to Performance; the next button closed it rather than selecting another tab. Every close returned native menu0, blur refs0 and zero owner frosting/status leases; suppression remained true. Final Home press reopened In game normally. This exercises Steam's actual controller entry handlers programmatically; physical button feel remains user acceptance. Steam and the game were not restarted. No remote Git operations.

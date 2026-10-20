@@ -17,6 +17,22 @@ describe('floating menu coordinator',()=>{
         await h.c.handoff({kind:'qam',tab:'decky'});expect(h.order.slice(-2)).toEqual(['suspend','native']);expect(h.state().phase).toBe('native-handoff');
         await h.c.open('home');expect(h.state().phase).toBe('custom-open');await h.c.open('home');expect(h.state().phase).toBe('closed');stop();
     });
+    it.each(['home', 'quick-access'] as const)('closes an open custom menu on the %s hardware button regardless of its opening entry', async entry => {
+        for (const initial of ['home', 'quick-access'] as const) {
+            const h = harness(), stop = h.c.start();
+            await h.c.open(initial);
+            h.handlers().open(entry, h.replay);
+            expect(h.state().phase).toBe('closed');
+            expect(h.host.close).toHaveBeenCalledTimes(1);
+            expect(h.bindings.closeMenuHost).toHaveBeenCalledTimes(1);
+            expect(h.host.present).toHaveBeenCalledTimes(1);
+            expect(h.replay).not.toHaveBeenCalled();
+            h.handlers().open(entry, h.replay);
+            expect(h.state().phase).toBe('custom-open');
+            expect(h.state().section).toBe(entry === 'home' ? 'navigate' : 'quick-settings');
+            stop();
+        }
+    });
     it('activates the native surface before waiting for its first custom render', async () => {
         const h = harness(); let confirm!: () => void;
         h.host.present.mockImplementation(() => new Promise<void>(resolve => { confirm = resolve; }));
