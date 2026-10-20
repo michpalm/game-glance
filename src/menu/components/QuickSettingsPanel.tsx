@@ -2,8 +2,6 @@ import { Focusable, NavEntryPositionPreferences, SliderField, ToggleField } from
 import { LuWifi, LuBluetooth, LuPlane, LuMoon, LuMonitor, LuBellOff, LuVolume2, LuMic, LuSun } from 'react-icons/lu';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { SettingAdapter } from '../steam/setting';
-import type { NativeRequest } from '../steam/runtime';
-import { MenuAction } from './MenuAction';
 const LABELS:Record<string,string>={volume:'Volume',microphone:'Microphone',brightness:'Brightness',wifi:'Wi-Fi',bluetooth:'Bluetooth',airplane:'Airplane mode',night:'Night mode','ui-scale':'Automatically scale UI','friends-dnd':'Do not disturb'};
 const ICONS: Record<string, typeof LuWifi> = { volume: LuVolume2, microphone: LuMic, brightness: LuSun, wifi: LuWifi, bluetooth: LuBluetooth, airplane: LuPlane, night: LuMoon, 'ui-scale': LuMonitor, 'friends-dnd': LuBellOff };
 function Control({id,adapter}:{id:string;adapter:SettingAdapter<number|boolean>}) {
@@ -21,10 +19,10 @@ function Control({id,adapter}:{id:string;adapter:SettingAdapter<number|boolean>}
         {state.error&&<p className="gg-menu-error" role="alert">{state.error}</p>}
     </div>;
 }
-export function QuickSettingsPanel({controls,handoff}:{controls:Record<string,SettingAdapter<number|boolean>>;handoff(request:NativeRequest):void}) {
+export function QuickSettingsPanel({controls}:{controls:Record<string,SettingAdapter<number|boolean>>}) {
     const rows=(ids:string[])=>ids.filter(id=>controls[id]).map(id=><Control key={id} id={id} adapter={controls[id]}/>);
-    return <><h2>Quick settings</h2><Focusable className="gg-menu-quick-sliders" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{rows(['volume','microphone','brightness'])}</Focusable>
+    return <><h2>Quick settings</h2><Focusable className="gg-menu-quick-sliders" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{rows(['brightness','volume','microphone'])}</Focusable>
         <h3>Connectivity</h3><Focusable className="gg-menu-switches" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{rows(['wifi','bluetooth'])}</Focusable>
         <h3>Other</h3><Focusable className="gg-menu-switches" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{rows(['airplane','night','ui-scale','friends-dnd'])}</Focusable>
-        <div className="gg-menu-secondary"><MenuAction id="quick:native" onAction={()=>handoff({kind:'qam',tab:'quick-settings'})}>Open Steam Quick Settings</MenuAction></div></>;
+        </>;
 }

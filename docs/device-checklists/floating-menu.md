@@ -314,3 +314,12 @@ Installed grid DOM/order and actual mode3 screenshot `/private/tmp/gg-navigate-h
 Ally computed styles confirmed tab weight700 but shadow:none (native button reset),12px text and14.4px icons, unlike the improved setting labels. Tabs now explicitly use13px700 white text/0 1px 2px #0009 shadow and18px icons; shoulder text11→12px700. Preview removed before production check. Actual mode3 `/private/tmp/gg-top-readability-final.png` inspected; all six tabs fit without clipping, bar764client/764scroll. Menu scale/frosting unchanged.
 
 TypeScript/full1504 tests/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `735dc05eb99723e543822689cabb7550e599d2e2344869e01690f1133f8e08ac`; frontend backup `/tmp/gg-menu-before-top-legibility-20261020.js`. No setting writes or remote Git operations.
+
+
+### 2026-10-20: Live Brightness and requested Quick settings layout
+
+Brightness was hidden because the native value is a subscribable `{Value:1}` and Steam labels the Ally windowed session external despite `is_display_brightness_available:true`. Seed from numeric or wrapped Value; use explicit native brightness capability when present, falling back to existing internal-display metadata only when the capability is absent. Include capability in polling fingerprint so availability changes reach adapters. Existing native callback/setter and write-confirmation lifecycle retained. Two discovery regressions RED→GREEN cover wrapped/windowed live readback/write confirmation and explicit unsupported capability.
+
+Final requested layout: full-width Brightness first, Volume/Microphone side by side beneath; remove Open Steam Quick Settings button and unused handoff prop. Initial three-column comparison discarded after user steering. Installed DOM confirms sliderorder/widths467.87/230.69/230.69CSSpx and audio samey209.69; panel474client/474scroll, no quick:native button. Actual gamescope mode3 screenshot `/private/tmp/gg-brightness-layout-final.png` inspected; all content fits. Live slider test on preceding discovery-equivalent candidate changed100→89%, native value0.8899999857 and visible89% confirmed, then restored100%; final native readback1 and visible100%. Volume61%/Microphone100% untouched.
+
+TypeScript/full1506 tests across133 files/ZIP integrity/diff checks passed. Final local/device ZIP SHA256 `a6b47abfad9b405b5882609fe756c3ac154bf47cacef0a0827465ee4835e7209`; original pre-brightness backup `/tmp/gg-menu-before-brightness-20261020.js`, pre-layout backup `/tmp/gg-menu-before-brightness-layout-20261020.js`. No Git remote operations.

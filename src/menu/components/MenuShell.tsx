@@ -86,7 +86,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const accent = color && /^#[\da-f]{6}$/i.test(color) ? color : '#1a9fff';
     let content = panels[state.section];
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
-    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} handoff={enterNative} />;
+    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
     if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];

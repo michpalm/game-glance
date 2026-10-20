@@ -29,6 +29,7 @@ export const menuStyles = `
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .gg-menu button.gg-menu-action.gg-menu-back.DialogButton{border:0;background:transparent;color:#d5dce3;justify-content:flex-start;padding-left:0}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gg-menu-quick-sliders>[data-gg-focus="quick:brightness"]{grid-column:1/-1}
 .gg-menu h3{font-size:.85em;font-weight:500;color:#b8c5cf;margin:18px 0 8px}
 .gg-menu-setting .Panel{background:transparent;border-radius:12px}
 .gg-menu-setting:has(.gpfocus){border-radius:var(--gg-menu-control-radius);outline:none;box-shadow:var(--gg-menu-focus-shadow);background:${HOME_BUTTON_GLASS.background}}

@@ -95,3 +95,26 @@ it('omits an unsupported Bluetooth client setting without losing other controls'
     vi.stubGlobal('SystemNetworkStore',{hasWirelessDevice:true,isWifiEnabled:true,SetWifiEnabled:vi.fn()});
     const bindings=discoverQuickSettingsBindings();expect(bindings.toggles?.bluetooth).toBeUndefined();expect(bindings.toggles?.wifi.read()).toBe(true);
 });
+
+
+it('seeds brightness from Steam’s wrapped value and trusts its capability in a windowed session', async () => {
+    vi.useFakeTimers();nativeMetadata.settings.bDisplayIsExternal=true;
+    const value={Value:0.72};let callback!:(state:{flBrightness:number})=>void;
+    const unregister=vi.fn(),write=vi.fn();
+    vi.stubGlobal('SteamClient',{System:{Display:{RegisterForBrightnessChanges:(fn:typeof callback)=>{callback=fn;return {unregister};}}}});
+    vi.stubGlobal('SystemStoragStore',{DisplayBrightness:value,msgSettings:{is_display_brightness_available:true},SetDisplayBrightness:write});
+    const settings=createQuickSettings(discoverQuickSettingsBindings());
+    expect(settings.controls.brightness.get()).toMatchObject({available:true,value:72});
+    const pending=settings.controls.brightness.set(65);await vi.advanceTimersByTimeAsync(100);
+    expect(write).toHaveBeenCalledWith(0.65);expect(settings.controls.brightness.get().pending).toBe(true);
+    value.Value=0.65;callback({flBrightness:0.65});await pending;
+    expect(settings.controls.brightness.get()).toMatchObject({value:65,pending:false});
+    settings.dispose();expect(unregister).toHaveBeenCalledTimes(1);nativeMetadata.settings.bDisplayIsExternal=false;
+});
+it('hides brightness when Steam explicitly reports no controllable backlight', () => {
+    nativeMetadata.settings.bDisplayIsExternal=false;
+    vi.stubGlobal('SteamClient',{System:{Display:{RegisterForBrightnessChanges:()=>({unregister:vi.fn()})}}});
+    vi.stubGlobal('SystemStoragStore',{DisplayBrightness:0.5,msgSettings:{is_display_brightness_available:false},SetDisplayBrightness:vi.fn()});
+    const settings=createQuickSettings(discoverQuickSettingsBindings());
+    expect(settings.controls.brightness.get().available).toBe(false);settings.dispose();
+});

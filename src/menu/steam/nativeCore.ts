@@ -9,7 +9,7 @@ interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
 interface CoreGlobals {
     SteamClient?: { System?:{Audio?:Audio;Display?:Display};Window?:{SetGamepadUIAutoDisplayScale?(value:boolean):void};WebChat?:{ShowFriendChatDialog?(id:string):void} };
-    SystemStoragStore?: { DisplayBrightness?:number;AirplaneModeEnabled?:boolean|{Value?:boolean};msgSettings?:{display_nightmode_enabled?:boolean};SetDisplayBrightness?(value:number):void;SetAirplaneMode?(value:boolean):void;SetNightModeEnabled?(value:boolean):void };
+    SystemStoragStore?: { DisplayBrightness?:number|{Value?:number};AirplaneModeEnabled?:boolean|{Value?:boolean};msgSettings?:{display_nightmode_enabled?:boolean;is_display_brightness_available?:boolean};SetDisplayBrightness?(value:number):void;SetAirplaneMode?(value:boolean):void;SetNightModeEnabled?(value:boolean):void };
     SystemNetworkStore?:{hasWirelessDevice?:boolean;isWifiEnabled?:boolean;SetWifiEnabled?(value:boolean):void};
     settingsStore?:{GetClientSetting(key:string):[unknown,((value:unknown)=>unknown)?]};
     NotificationStore?:{m_nUnviewedNotifications?:number;m_cbkNotificationTray?:{Register(callback:Stop):Registration}};
@@ -45,7 +45,8 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
 /** One lazy source per enabled menu session; callbacks remain alive for unsettled issued writes. */
 export function discoverQuickSettingsBindings():QuickSettingsBindings {
     const root=globals(),audio=root.SteamClient?.System?.Audio,display=root.SteamClient?.System?.Display;
-    let devices:AudioState|null=null,brightness:number|null=typeof root.SystemStoragStore?.DisplayBrightness==='number'?root.SystemStoragStore.DisplayBrightness:null,alive=false,generation=0,scanning=false,fingerprint='';
+    const initialBrightness=root.SystemStoragStore?.DisplayBrightness;
+    let devices:AudioState|null=null,brightness:number|null=(typeof initialBrightness==='number'?initialBrightness:initialBrightness?.Value)??null,alive=false,generation=0,scanning=false,fingerprint='';
     let interval:ReturnType<typeof setInterval>|undefined;
     const listeners=new Set<Stop>(),registrations:Registration[]=[];
     const account=()=>String(root.g_FriendsUIApp?.FriendStore?.m_self?.m_unAccountID??'unknown');
@@ -65,7 +66,7 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     add('friends-dnd',()=>{const friend=getFriend();return friendsOnline(root)&&parentalAllowed(4)&&typeof friend?.GetUserDoNotDisturb==='function'?friend.GetUserDoNotDisturb():null;},typeof getFriend()?.SetUserDoNotDisturb==='function'?value=>{const friend=getFriend();if(!friendsOnline(root)||!parentalAllowed(4)||!friend?.SetUserDoNotDisturb)throw Error('Friends settings are unavailable');friend.SetUserDoNotDisturb(value);}:undefined,()=>`friends:${account()}`);
     function emit(){
         if(!alive)return;
-        const next=JSON.stringify({devices,brightness,display:displayKey(),toggles:Object.fromEntries(Object.entries(toggles).map(([id,binding])=>[id,[binding.contextKey(),binding.read()]]))});
+        const next=JSON.stringify({devices,brightness,brightnessAvailable:store?.msgSettings?.is_display_brightness_available,display:displayKey(),toggles:Object.fromEntries(Object.entries(toggles).map(([id,binding])=>[id,[binding.contextKey(),binding.read()]]))});
         if(next===fingerprint)return;fingerprint=next;listeners.forEach(listener=>listener());
     }
     async function scan(){
@@ -89,7 +90,7 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     function stop(){alive=false;generation++;scanning=false;if(interval!==undefined)clearInterval(interval);interval=undefined;for(const r of registrations.splice(0)){try{release(r);}catch{}}}
     const bindings:QuickSettingsBindings={subscribe(listener){listeners.add(listener);if(listeners.size===1)start();return()=>{listeners.delete(listener);if(!listeners.size)stop();};},toggles};
     if(audio?.GetDevices&&audio?.SetDeviceVolume)bindings.audio={read:()=>devices,async write(id,type,value){const ticket=generation,requestedAt=Date.now();const current=await audio.GetDevices();if(!alive||ticket!==generation||Date.now()-requestedAt>=3000)throw Error('Audio device confirmation expired. Try again.');devices=current;emit();if((type===1?current.activeOutputDeviceId:current.activeInputDeviceId)!==id)throw Error('Active audio device changed. Try again.');const result=await audio.SetDeviceVolume(id,type,value);if(result&&result.result!==1)throw Error(result.message||'Steam rejected the volume change');}};
-    if(display?.RegisterForBrightnessChanges&&typeof store?.SetDisplayBrightness==='function')bindings.brightness={read:()=>brightness,contextKey:displayKey,available:()=>displaySettings()?.bDisplayIsExternal===false,write:value=>store.SetDisplayBrightness!(value)};
+    if(display?.RegisterForBrightnessChanges&&typeof store?.SetDisplayBrightness==='function')bindings.brightness={read:()=>brightness,contextKey:displayKey,available:()=>store.msgSettings?.is_display_brightness_available??displaySettings()?.bDisplayIsExternal===false,write:value=>store.SetDisplayBrightness!(value)};
     return bindings;
 }
 export function nativeNotificationBindings(){
