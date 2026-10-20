@@ -92,7 +92,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     let content = panels[state.section];
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
-    if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} handoff={enterNative} />;
+    if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
     if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];

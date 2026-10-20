@@ -3,7 +3,6 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import type { createPerformance, PerformanceValue } from '../steam/performance';
-import type { NativeRequest } from '../steam/runtime';
 import { MenuAction } from './MenuAction';
 type Performance=ReturnType<typeof createPerformance>;
 const SECTIONS=['General','Display','Power & GPU','Overlay'] as const;
@@ -41,7 +40,7 @@ function PowerControls({performance}:{performance:Performance}) {
     const tdp=useSyncExternalStore(c.tdpEnabled.subscribe,c.tdpEnabled.get),gpu=useSyncExternalStore(c.gpuClockEnabled.subscribe,c.gpuClockEnabled.get);
     return <Focusable className="gg-menu-perf-power" flow-children="column"><Focusable className="gg-menu-switches" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}><Control id="tdpEnabled" adapter={c.tdpEnabled}/><Control id="gpuClockEnabled" adapter={c.gpuClockEnabled}/></Focusable><Focusable className="gg-menu-quick-sliders" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{tdp.value===true&&<Control id="tdp" adapter={c.tdp}/>} {gpu.value===true&&<Control id="gpuClock" adapter={c.gpuClock}/>}</Focusable></Focusable>;
 }
-export function PerformancePanel({performance,handoff}:{performance:Performance;handoff(request:NativeRequest):void}) {
+export function PerformancePanel({performance}:{performance:Performance}) {
     const [section,setSection]=useState<typeof SECTIONS[number]>('General');
     const profile=useSyncExternalStore(performance.subscribeProfile,performance.getProfile),c=performance.controls;
     const controls=(ids:string[])=>ids.map(id=><Control key={id} id={id} adapter={c[id]}/>);
@@ -51,6 +50,5 @@ export function PerformancePanel({performance,handoff}:{performance:Performance;
         {section==='Display'&&<Focusable className="gg-menu-perf-display" flow-children="column">{controls(['refreshRate','scalingMode','scalingFilter'])}</Focusable>}
         {section==='Power & GPU'&&<PowerControls performance={performance}/>}
         {section==='Overlay'&&<Focusable flow-children="column">{controls(['overlayLevel','overlaySteam'])}</Focusable>}
-        <div className="gg-menu-perf-actions"><MenuAction id="performance:native" onAction={()=>handoff({kind:'qam',tab:'performance'})}>Open Steam Performance</MenuAction><MenuAction id="performance:reset" onAction={()=>handoff({kind:'qam',tab:'performance'})}>Reset in Steam</MenuAction></div>
     </div>;
 }

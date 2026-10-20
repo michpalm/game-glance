@@ -104,15 +104,14 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-performance .gg-menu-switches .gg-menu-setting-toggle{height:48px;min-height:48px}
 .gg-menu-native-host .gg-menu .gg-menu-performance-power{margin:-10px 0 12px;color:#fff;font-size:12px}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs{display:flex;gap:6px;margin-bottom:8px}
-.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{flex:1;min-height:36px;padding:8px 10px;background:transparent;text-shadow:0 1px 2px #0009}
+/* Steam's pressed state temporarily sets 2px corners. Keep this tab strip rounded during touch. */
+.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{border-radius:12px!important;flex:1;min-height:36px;padding:8px 10px;background:transparent;text-shadow:0 1px 2px #0009}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true],.gg-menu-native-host .gg-menu .gg-menu-profile-pill button.gg-menu-action.DialogButton[aria-pressed=true]{background:rgba(7,10,15,.45);border-color:var(--gg-menu-accent);color:#fff}
 .gg-menu-native-host .gg-menu .gg-menu-performance-profile h3{margin:0 0 8px}
 .gg-menu-native-host .gg-menu .gg-menu-profile-pill{display:flex;padding:4px;gap:4px;border-radius:999px;background:${HOME_BUTTON_GLASS.background};border:1px solid ${HOME_BUTTON_GLASS.borderColor}}
 .gg-menu-native-host .gg-menu .gg-menu-profile-pill button.gg-menu-action.DialogButton{flex:1;border-radius:999px;min-height:36px;padding:8px 12px;background:transparent;border-color:transparent;text-shadow:0 1px 2px #0009}
-.gg-menu-native-host .gg-menu .gg-menu-profile-context{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:12px}
+.gg-menu-native-host .gg-menu .gg-menu-profile-context{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:12px}
 .gg-menu-native-host .gg-menu .gg-menu-profile-context>.gg-menu-setting{flex:0 1 52%;min-width:0}
-.gg-menu-native-host .gg-menu .gg-menu-perf-actions{display:flex;gap:10px;margin-top:8px}
-.gg-menu-native-host .gg-menu .gg-menu-perf-actions button.gg-menu-action.DialogButton{min-height:36px;padding:10px 14px;text-shadow:0 1px 2px #0009}
 .gg-menu-native-host .gg-menu .gg-menu-performance .gg-menu-setting-disabled{opacity:.6}
 .gg-menu-native-host .gg-menu .gg-menu-performance-choice{width:100%}
 .gg-menu-native-host .gg-menu .gg-menu-choice-options{display:flex;gap:6px;margin-top:10px}
