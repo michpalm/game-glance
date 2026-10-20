@@ -14,6 +14,8 @@ import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
 import { NavigatePanel } from './NavigatePanel';
 import { QuickSettingsPanel } from './QuickSettingsPanel';
+import { PerformancePanel } from './PerformancePanel';
+import type { createPerformance } from '../steam/performance';
 import type { createQuickSettings } from '../steam/quickSettings';
 import type { createNotificationBadge } from '../steam/notifications';
 import { MorePanel } from './MorePanel';
@@ -28,9 +30,10 @@ export interface MenuShellProps {
     unreadCount?: number;
     quickSettings?: ReturnType<typeof createQuickSettings>;
     notificationBadge?: ReturnType<typeof createNotificationBadge>;
+    performance?: ReturnType<typeof createPerformance>;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, panels = {} }: MenuShellProps) {
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, performance, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const [error, setError] = useState('');
     const [cachedAccent, setCachedAccent] = useState<{ appId: number; color: string | undefined }>();
@@ -89,6 +92,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     let content = panels[state.section];
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
+    if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} handoff={enterNative} />;
     if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];

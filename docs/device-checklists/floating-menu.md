@@ -344,3 +344,29 @@ Actual Ally DOM reproduced Quick settings aria-pressedtrue with In game gpfocus/
 Two regressions RED→GREEN cover global-focus history and stale/selected-tab resolution. TypeScript/full1509 tests across133 files/ZIP integrity/diff checks passed. Installed native L1 from panel→Navigate/Home, R1→Quick/Brightness: no In Game tab focus. From bar R1→Performance and L1→Quick aligned selection/focus; full six-tab R1 wraparound aligned exactly one gpfocus tab with aria-pressedtrue at every step. D-pad up can still move focus to an unselected tab before activation (separate focus/selection); shoulder step realigns to newly selected tab. Actual mode3 `/private/tmp/gg-single-tab-focus-final.png` inspected: only Quick settings highlighted. Temporary focus observer removed; no setting writes.
 
 Local/device ZIP SHA256 `727cca9d17d9ce40a393474811a39de39e4c15a0df93634530060cb904bbae0b`; frontend backup `/tmp/gg-menu-before-tab-focus-20261020.js`. No Git remote operations.
+
+
+### Capability-aware Performance — 2026-10-20
+
+Implemented Task 7 in the local floating-menu worktree. General, Display, Power & GPU, and Overlay use the existing menu glass/readability/focus styling. General retains the three-part Performance profile pill and adjacent Disable limit/VRR toggles. The General and Display panels each fit the Ally's 474px panel with no scroll overflow; all top-bar items fit its 764px width.
+
+Native bindings are intentionally split: SteamOSManager/Gamescope capability services and `settingsStore` client settings supply platform controls, while `SystemPerfStore` owns legacy scaling/VRR/overlay and per-game profile selection. Platform limits win over stale legacy limits: this Ally reports 4–20 W and 200–1800 MHz, with Low power/Balanced/Performance choices. Unsupported HDR is omitted even though the saved HDR preference is true. Frame/refresh choices come from the active Gamescope connector; fractional native values are preserved. Client-setting scope remains unknown rather than being labelled per-game. Queued writes invalidate on game/account/display/capability changes. FPS/GPU commands coalesce at 700/200ms; other continuous controls at 100ms. Normal close/unload never saves, resets or restores user settings.
+
+Programmatic device checks used the real UI controls and authoritative native readback, not mocked state:
+
+- Profile: Performance → Balanced → Low power → Performance.
+- Disable limit: true → false → true; frame target: 60 → 61 → 60 FPS while limit was enabled.
+- VRR: true → false → true; tearing and half-rate shading: false → true → false.
+- Refresh: 120 → 119 → 120 Hz.
+- Scaling: Auto=1 → Stretch=5 → Fill=4 → Auto=1. Filter: Linear=1 → Pixel=2 → Linear=1.
+- TDP: enabled, 20 → 19 → 20 W, then disabled. GPU: enabled, 1800 → 1700 → 1800 MHz, then disabled.
+- Overlay: 0 → 1 → 0; Show overlay in Steam: true → false → true.
+- Final client/legacy value comparison exactly matches the captured starting values. Native current game 1057090/active profile 769 remained unchanged. These are stored-value checks; effective gameplay/frame timing was not measured.
+- Steam native virtual D-pad/A dispatch traversed all four subsections, entered their controls, and moved left/right across the section row. Physical controller feel remains user acceptance.
+- Both Open Steam Performance and Reset in Steam opened native QAM tab5. Custom menu/status content cleaned up; neither action reset settings. Reopened successfully and left on General.
+
+The first native dropdown experiment moved focus into Steam's separate popup and lost the custom menu after selection. Scaling selectors now render native MenuAction choices inside the panel; final device checks confirm selection/readback without leaving the menu. No global input or native popup behavior was patched.
+
+Per-game profile dispatch, scope transitions and cleanup are covered by tests. Creating a previously unused profile and cross-game persistence were deliberately not device-tested; no native SaveGameProfile or custom profile storage is introduced. Custom Reset remains deferred to Steam's own workflow. Physical AC/display changes were not induced; notification-driven capability refresh and queued-write cancellation are covered by tests.
+
+TypeScript, all **1,523 tests across 135 files**, packaging, ZIP integrity and diff checks passed. Final ZIP SHA256: `4771aa6d31ddf8c666f18b743b5208355ee511d529906ecfd2d161c8a3a1d833`; device hash matches. Only the frontend was installed. Backups: `/tmp/gg-menu-before-performance-20261020.js` and `/tmp/gg-menu-before-performance-final-20261020.js`. Temporary layout probe removed. Screenshots: `performance-general-2026-10-20.png` and `performance-display-2026-10-20.png` in the task's local visualization folder. No Git remote operations or publication.

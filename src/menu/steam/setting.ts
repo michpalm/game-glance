@@ -3,7 +3,7 @@ import { createWriteQueue, WriteCancelledError } from './writeQueue';
 export type SettingScope = { kind: 'global' } | { kind: 'game'; gameId: string } | { kind: 'unknown' };
 export interface SettingSnapshot<T> {
     available: boolean; value: T | null; pending: boolean; scope: SettingScope; error: string | null;
-    min?: number; max?: number; step?: number; options?: readonly T[];
+    min?: number; max?: number; step?: number; options?: readonly T[]; disabled?: boolean; reason?: string;
 }
 export interface SettingAdapter<T> {
     get(): SettingSnapshot<T>; subscribe(listener: Stop): Stop; set(value: T): Promise<void>; dispose(): void;
