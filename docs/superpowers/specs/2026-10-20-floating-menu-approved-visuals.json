@@ -1,0 +1,44 @@
+{
+  "source": "User-approved menu-design-workbench state, 2026-10-20",
+  "design": {
+    "width": 740,
+    "top": 100,
+    "typeScale": 100,
+    "padding": 22,
+    "gap": 10,
+    "tabPadding": 12,
+    "toggleHeight": 22,
+    "radius": 26,
+    "controlRadius": 12,
+    "blur": 4,
+    "opacity": 30,
+    "focusFill": 8,
+    "focusOutline": 43,
+    "focusGlow": 8,
+    "context": "Game artwork",
+    "accent": "#75cbdc",
+    "running": true,
+    "internalDisplay": false
+  },
+  "nativeMapping": {
+    "workbenchBaselineWidth": 790,
+    "workbenchBaselineTop": 104,
+    "nativeBaselineWidthVw": 74.0625,
+    "nativeBaselineWidthMaxPx": 1185,
+    "nativeBaselineTopVh": 8,
+    "nativeWidthVw": 69.375,
+    "nativeWidthMaxPx": 1110,
+    "nativeTopVh": 7.6923,
+    "accent": "Use actual game artwork accent; Steam blue when unavailable. Sample accent is not forced on the device.",
+    "capabilities": "Running game and display brightness follow real native state, not mockup switches.",
+    "handheld": {
+      "maxViewportWidthPx": 900,
+      "controlScale": 0.65,
+      "visualMenuWidthVw": 60,
+      "cssWidthVw": 92.307692,
+      "cssTopVh": 11.8343,
+      "scrollbars": "Hidden; native focus scrolling retained",
+      "reason": "User explicitly requested a narrower, smaller Ally layout after device preview."
+    }
+  }
+}
