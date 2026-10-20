@@ -1,9 +1,9 @@
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
-import { LuHouse, LuLibrary, LuStore, LuDownload, LuSettings, LuPower } from 'react-icons/lu';
+import { LuHouse, LuLibrary, LuShoppingBag, LuDownload, LuSettings, LuPower } from 'react-icons/lu';
 import type { NativeRequest, NavigateDestination } from '../steam/runtime';
 import { MenuAction } from './MenuAction';
 const DESTINATIONS = [
-    ['home','Home',LuHouse],['library','Library',LuLibrary],['store','Store',LuStore],
+    ['home','Home',LuHouse],['library','Library',LuLibrary],['store','Store',LuShoppingBag],
     ['downloads','Downloads',LuDownload],['settings','Settings',LuSettings],['power','Power',LuPower],
 ] as const;
 export function NavigatePanel({handoff}:{handoff(request:NativeRequest):void}) {
