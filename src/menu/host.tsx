@@ -39,17 +39,55 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
     };
 }
 
-interface NativeBlurService { SetBlurEnabled(enabled: boolean): void }
-/** Steam owns the compositor, blur radius and suppression policy; borrow one balanced hold. */
+/** Steam pages use our scoped CSS glass; only actual game overlays need compositor frosting. */
+export function needsNativeMenuBlur(owner: Pick<NativeOwner, 'BIsOverlayPath' | 'MainRunningAppID'>): boolean {
+    try {
+        if (typeof owner.BIsOverlayPath === 'function') return owner.BIsOverlayPath();
+    } catch { /* Older clients may not expose the route classifier. */ }
+    return Number.isFinite(owner.MainRunningAppID) && Number(owner.MainRunningAppID) > 0;
+}
+
+interface NativeBlurService { SetBlurEnabled(enabled: boolean): void; ApplyBlurState?(): void }
+interface BlurReply { BSuccess?(): boolean; GetEResult?(): number }
+interface NativeBlurAPI { SetBlurParams(params: { mode: number; radius: number; fade_duration_ms: number }): Promise<BlurReply> | void }
+/** Borrow one game-only conditional blur hold; leave Steam's counters and suppression policy intact. */
 export function borrowNativeMenuBlur(service: NativeBlurService | undefined = findModuleExport(value =>
     typeof value?.SetBlurEnabled === 'function' && typeof value.SetForceSuppressBlur === 'function' && typeof value.ApplyBlurState === 'function',
-)): Stop {
+), api: NativeBlurAPI | undefined = findModuleExport(value => typeof value?.SetBlurParams === 'function' &&
+    value.SetBlurParams.toString().includes('Gamescope.SetBlurParams#1'))): Stop {
     if (!service) return () => {};
-    service.SetBlurEnabled(true);
-    let stopped = false;
+    let stopped = false, conditional = true;
+    let releaseApply: Stop | undefined;
+    if (api && typeof service.ApplyBlurState === 'function') {
+        try {
+            releaseApply = ownMethod(service, 'ApplyBlurState', next => function(this: NativeBlurService) {
+                if (stopped || !conditional) return next?.call(this);
+                const fallback = (error: unknown) => {
+                    if (conditional) {
+                        conditional = false;
+                        console.warn('[Game Glance] conditional menu blur unavailable', error);
+                    }
+                    service.ApplyBlurState?.();
+                };
+                try {
+                    // Gamescope conditional mode blurs only under non-transparent overlay pixels.
+                    // No 300ms whole-scene transition, and no mutation of Steam's suppression flag.
+                    void Promise.resolve(api.SetBlurParams({ mode: 1, radius: 32, fade_duration_ms: 0 })).then(reply => {
+                        if (reply?.BSuccess?.() === false || reply?.GetEResult && reply.GetEResult() !== 1) throw Error('Gamescope rejected menu blur');
+                        // A late IPC response must not leave game blur enabled after our menu closed.
+                        if (stopped) service.ApplyBlurState?.();
+                    }).catch(fallback);
+                } catch (error) { fallback(error); }
+            });
+        } catch (error) { console.warn('[Game Glance] native blur hook unavailable', error); }
+    }
+    try { service.SetBlurEnabled(true); }
+    catch (error) { stopped = true; releaseApply?.(); throw error; }
     return () => {
         if (stopped) return;
         stopped = true;
+        // Restore the current native implementation first, including later third-party patches.
+        releaseApply?.();
         service.SetBlurEnabled(false);
     };
 }
@@ -208,7 +246,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                         if (get().active) {
                             stopChrome ??= hideNativeMenuChrome(owner);
                             stopPageStatus ??= hideBackgroundStatus(document!);
-                            stopBlur ??= borrowNativeMenuBlur();
+                            if (needsNativeMenuBlur(owner)) stopBlur ??= borrowNativeMenuBlur();
                         } else releaseEffects();
                     } catch (error) { fault(error as Error); }
                 });
@@ -218,15 +256,22 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     function Gate({ tree, popup }: { tree: ReactNode; popup?: Window }) {
                         const snapshot = useSyncExternalStore(subscribe, get);
                         const replaced = renderMenuSlot(tree, snapshot, error => queueMicrotask(() => fault(error)));
+                        const usingCustomSlot = replaced !== tree;
+                        // Native focus/store updates create fresh React trees. They must not tear down
+                        // and recreate the owner-document glass/backdrop lease every time.
                         useLayoutEffect(() => {
-                            if (!snapshot.active || replaced === tree) { confirmed = undefined; releaseViewport(); return; }
+                            if (!snapshot.active || !usingCustomSlot) { releaseViewport(); return; }
                             try { stretchViewport(tree as Tree, popup); }
                             catch (error) { fault(error as Error); return; }
+                            return releaseViewport;
+                        }, [snapshot.active, usingCustomSlot, popup]);
+                        // A newly presented node still needs acknowledgement even when its viewport is reused.
+                        useLayoutEffect(() => {
+                            if (!snapshot.active || !usingCustomSlot || !stopViewport) { confirmed = undefined; return; }
                             confirmed = snapshot.node;
                             for (const request of pending) { clearTimeout(request.timer); request.resolve(); }
                             pending.clear();
-                            return releaseViewport;
-                        }, [snapshot, replaced, tree, popup]);
+                        }, [snapshot.active, snapshot.node, usingCustomSlot, popup]);
                         return <MenuBoundary nativeTree={tree} fault={fault}>{replaced}</MenuBoundary>;
                     }
                     const component = function NativeMenuContent(props: Record<string, unknown>) {

@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideBackgroundStatus, hideNativeMenuChrome, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideBackgroundStatus, hideNativeMenuChrome, needsNativeMenuBlur, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
 const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
@@ -148,4 +148,35 @@ it('hides only the background Game Glance status copies for the custom-menu leas
     expect(rule).toContain('visibility:hidden!important');expect(rule).toContain('transition:none!important');
     expect(document.querySelector('#unrelated')?.getAttribute('style')).toBeNull();
     stop();stop();expect(document.querySelector('[data-gg-menu-page-status]')).toBeNull();expect(foreign.isConnected).toBe(true);
+});
+
+
+it('uses compositor blur only for the native game overlay, never Steam pages even with a game running',()=>{
+    expect(needsNativeMenuBlur({BIsOverlayPath:()=>false,MainRunningAppID:1057090})).toBe(false);
+    expect(needsNativeMenuBlur({BIsOverlayPath:()=>true,MainRunningAppID:1057090})).toBe(true);
+    expect(needsNativeMenuBlur({})).toBe(false);
+    expect(needsNativeMenuBlur({MainRunningAppID:1057090})).toBe(true);
+    expect(needsNativeMenuBlur({BIsOverlayPath:()=>{throw Error('unavailable');},MainRunningAppID:1057090})).toBe(true);
+});
+
+it('uses conditional game blur without changing native suppression or taking other holds', async()=>{
+    let holds=2;const nativeApply=vi.fn();
+    const service={m_bForceSuppressBlur:true,SetForceSuppressBlur:vi.fn(),ApplyBlurState:nativeApply,
+        SetBlurEnabled(enabled:boolean){holds+=enabled?1:-1;this.ApplyBlurState();}};
+    const api={SetBlurParams:vi.fn(async()=>({BSuccess:()=>true}))};
+    const stop=borrowNativeMenuBlur(service,api);
+    expect(holds).toBe(3);expect(api.SetBlurParams).toHaveBeenCalledWith({mode:1,radius:32,fade_duration_ms:0});
+    expect(nativeApply).not.toHaveBeenCalled();expect(service.m_bForceSuppressBlur).toBe(true);
+    await Promise.resolve();await Promise.resolve();
+    const owned=service.ApplyBlurState;const later=vi.fn(()=>owned());service.ApplyBlurState=later;
+    stop();stop();expect(holds).toBe(2);expect(service.ApplyBlurState).toBe(later);
+    expect(nativeApply).toHaveBeenCalled();expect(service.SetForceSuppressBlur).not.toHaveBeenCalled();
+});
+it('reapplies current native blur state if a conditional request finishes after close', async()=>{
+    let finish!:(value:{BSuccess():boolean})=>void;
+    const service={ApplyBlurState:vi.fn(),SetBlurEnabled:vi.fn(function(this:{ApplyBlurState():void}){this.ApplyBlurState();})};
+    const api={SetBlurParams:vi.fn(()=>new Promise<{BSuccess():boolean}>(resolve=>{finish=resolve;}))};
+    const nativeApply=service.ApplyBlurState,stop=borrowNativeMenuBlur(service,api);stop();nativeApply.mockClear();
+    finish({BSuccess:()=>true});await Promise.resolve();await Promise.resolve();
+    expect(nativeApply).toHaveBeenCalled();expect(api.SetBlurParams).toHaveBeenCalledTimes(1);
 });

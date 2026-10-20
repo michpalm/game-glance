@@ -51,6 +51,7 @@ export interface NativeOwner {
     BrowserWindow?: Window;
     MainRunningApp?: { appid?: number; gameid?: unknown; display_name?: string };
     MainRunningAppID?: number;
+    BIsOverlayPath?(): boolean;
     IsAnyVRWindow(): boolean;
     OnHomeButtonPressed(): void;
     OnQuickAccessButtonPressed(): void;
