@@ -52,7 +52,8 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton{font-family:inherit;font-size:13px;font-weight:${HOME_BUTTON_GLASS.fontWeight};line-height:1.3;background:${HOME_BUTTON_GLASS.background};border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:12px;color:${HOME_BUTTON_GLASS.color}}
 .gg-menu-native-host .gg-menu .gg-menu-bar{padding:10px;gap:8px}
 .gg-menu-native-host .gg-menu .gg-menu-tabs{gap:3px}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#fff;font-size:12px;box-shadow:none}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{min-height:0;padding:12px 7px;gap:5px;border:0;border-radius:13px;background:transparent;color:#fff;font-size:13px;text-shadow:0 1px 2px #0009;box-shadow:none}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton svg{width:18px;height:18px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton[aria-pressed=true]{background:rgba(7,10,15,.45);color:#faf9f7;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gg-menu-accent) 55%,transparent)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:none;background:${HOME_BUTTON_GLASS.background};box-shadow:var(--gg-menu-focus-shadow)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{flex-direction:column;justify-content:center;min-height:112px;padding:13px 14px;gap:14px;border:1px solid ${HOME_BUTTON_GLASS.borderColor};border-radius:16px;background:${HOME_BUTTON_GLASS.background}}
@@ -88,7 +89,7 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu .gg-menu-setting-label svg{width:18px;height:18px;flex:none;color:#fff}
 /* Vector strokes remain SVG geometry; avoid blur/drop-shadow filters on icons. */
 .gg-menu-native-host .gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
-.gg-menu-native-host .gg-menu .gg-menu-shoulder{color:#fff;font-weight:700}
+.gg-menu-native-host .gg-menu .gg-menu-shoulder{color:#fff;font-weight:700;font-size:12px}
 .gg-menu-native-host .gg-menu .gg-menu-switches{grid-auto-rows:56px}
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle{height:56px;display:flex;align-items:center}
 .gg-menu-native-host .gg-menu .gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}

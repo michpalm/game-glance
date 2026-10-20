@@ -31,7 +31,7 @@
     "fontFamily": "Motiva Sans, Arial, sans-serif (Steam-provided loaded font; Inter/Segoe not bundled)",
     "controlTextPx": 13,
     "headingPx": 16,
-    "tabTextPx": 12,
+    "tabTextPx": 13,
     "accent": "Read shared Home memo first; hydrate its persisted artwork-versioned accent cache on menu open/reload. Prefer newer Home values and discard artwork-version races; Steam blue when no known game color.",
     "nativeChrome": "Balanced HeaderStore/FooterStore visibility holds while custom menu active; restored on close/handoff/unload.",
     "nativeScrim": "Only the backdrop containing the borrowed viewport is transparent while custom menu active.",
@@ -82,6 +82,7 @@
         "Settings",
         "Power"
       ]
-    ]
+    ],
+    "topBarLegibility": "13px700 white tab text with explicit0 1px 2px #0009 text shadow (Steam button resets inherited shadow);18px SVGs/stroke2.4;12px700 shoulder labels. All tabs fit without clipping."
   }
 }

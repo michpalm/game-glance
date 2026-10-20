@@ -307,3 +307,10 @@ Installed grid DOM/order and actual mode3 screenshot `/private/tmp/gg-navigate-h
 
 
 2026-10-20 Store icon: replaced LuStore storefront with LuShoppingBag, retaining the existing23px/2.4stroke white vector styling. Installed actual mode3 screenshot `/private/tmp/gg-store-bag-final.png` inspected. TypeScript/full1504 tests/ZIP integrity/diff checks pass. Local/device ZIP SHA256 `4dd07f2281492af6e9a233a8d9f96f7037f891d4a9373da2a313140b16ebd9e7`; frontend backup `/tmp/gg-menu-before-store-bag-20261020.js`. No settings or route changes, local Git only.
+
+
+### 2026-10-20: Top-bar readability parity
+
+Ally computed styles confirmed tab weight700 but shadow:none (native button reset),12px text and14.4px icons, unlike the improved setting labels. Tabs now explicitly use13px700 white text/0 1px 2px #0009 shadow and18px icons; shoulder text11→12px700. Preview removed before production check. Actual mode3 `/private/tmp/gg-top-readability-final.png` inspected; all six tabs fit without clipping, bar764client/764scroll. Menu scale/frosting unchanged.
+
+TypeScript/full1504 tests/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `735dc05eb99723e543822689cabb7550e599d2e2344869e01690f1133f8e08ac`; frontend backup `/tmp/gg-menu-before-top-legibility-20261020.js`. No setting writes or remote Git operations.
