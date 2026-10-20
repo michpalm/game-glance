@@ -20,7 +20,7 @@ interface NativeRoot {
     SteamClient?:{System?:{Perf?:{RegisterForStateChanges?(callback:()=>void):Registration};DisplayManager?:{RegisterForStateChanges?(callback:()=>void):Registration};RegisterForBatteryStateChanges?(callback:()=>void):Registration}};
     g_FriendsUIApp?:{FriendStore?:{m_self?:{m_unAccountID?:number}}};
 }
-interface Environment {root:NativeRoot;platform?:Service;gamescope?:Service}
+interface Environment {root:NativeRoot;store?:PerfStore;platform?:Service;gamescope?:Service}
 const METHODS=['SetFSRSharpness','SetVRREnabled','SetSplitScalingScaler','SetSplitScalingFilter','SetPerfOverlayLevel','SetShowPerfOverlayOverSteamEnabled','SetGameSpecificProfileEnabled'] as const;
 const CLIENT_KEYS=[...Object.values(PERFORMANCE_CLIENT_KEYS),'gamescope_enable_app_target_framerate'];
 const release=(r:Registration)=>{r?.unregister?.();r?.Unregister?.();};
@@ -29,14 +29,14 @@ const LIMIT_KEYS=['fsr_sharpness_min','fsr_sharpness_max','is_vrr_supported','sp
 const APP_KEYS=['fsr_sharpness','is_vrr_enabled','split_scaling_scaler','split_scaling_filter'];
 const GLOBAL_KEYS=['perf_overlay_service_state','perf_overlay_level','is_show_perf_overlay_over_steam_enabled'];
 /** One shared read source; no native reset, profile save, or setting restoration on disposal. */
-export function createNativePerformanceBindings({root,platform:platformApi,gamescope:gamescopeApi}:Environment):PerformanceBindings {
+export function createNativePerformanceBindings({root,store:discoveredStore,platform:platformApi,gamescope:gamescopeApi}:Environment):PerformanceBindings {
     let platform:PlatformCapabilities|null=null,gamescope:GamescopeCapabilities|null=null;
     let alive=false,generation=0,timer:ReturnType<typeof setInterval>|undefined,fingerprint='';
     const listeners=new Set<Stop>(),registrations:Registration[]=[];
     const warned=new Set<string>();
     const warn=(key:string,error:unknown)=>{if(warned.has(key))return;warned.add(key);console.warn(`[Game Glance] Performance ${key} unavailable`,error);};
     function collect():PerformanceState {
-        const store=root.SystemPerfStore,client:PerformanceState['client']={};
+        const store=root.SystemPerfStore??discoveredStore,client:PerformanceState['client']={};
         for(const key of CLIENT_KEYS){try{const [value,setter]=root.settingsStore?.GetClientSetting(key)??[];if(typeof setter==='function'&&(typeof value==='boolean'||typeof value==='string'||typeof value==='number'&&Number.isFinite(value)))client[key]=value;}catch{/* Unsupported setting is omitted. */}}
         const limits=pick(store?.msgLimits,LIMIT_KEYS);
         for(const key of ['split_scaling_scalers_available','split_scaling_filters_available']){
@@ -98,13 +98,13 @@ export function createNativePerformanceBindings({root,platform:platformApi,games
             if(key==='steamos_platform_performance_profile')void refreshService(platformApi,'platform');
         },
         async writeLegacy(method,value,profileId){
-            const store=root.SystemPerfStore;if(String(store?.nActiveProfileGameID??'')!==profileId)throw Error('Native performance profile changed');
+            const store=root.SystemPerfStore??discoveredStore;if(String(store?.nActiveProfileGameID??'')!==profileId)throw Error('Native performance profile changed');
             if(!METHODS.includes(method as typeof METHODS[number])||method==='SetGameSpecificProfileEnabled')throw Error('Unknown performance action');
             const fn=store?.[method as keyof PerfStore];if(typeof fn!=='function')throw Error('Performance control is unavailable');
             await (fn as (value:PerformanceValue)=>unknown).call(store,value);emit();
         },
         async setGameSpecific(enabled,currentGameId){
-            const store=root.SystemPerfStore;if(!/^[1-9]\d*$/.test(currentGameId)||String(store?.nCurrentGameID??'')!==currentGameId)throw Error('Current game changed');
+            const store=root.SystemPerfStore??discoveredStore;if(!/^[1-9]\d*$/.test(currentGameId)||String(store?.nCurrentGameID??'')!==currentGameId)throw Error('Current game changed');
             if(typeof store?.SetGameSpecificProfileEnabled!=='function')throw Error('Native game profile control is unavailable');
             await store.SetGameSpecificProfileEnabled(enabled);emit();
         },
@@ -112,6 +112,19 @@ export function createNativePerformanceBindings({root,platform:platformApi,games
 }
 /** Discover verified service names, not numeric webpack module IDs or guessed setting keys. */
 export function discoverPerformanceBindings():PerformanceBindings {
+    const root=globalThis as unknown as NativeRoot;
+    // Steam normally initializes this singleton on the first native Performance render.
+    // Our replacement can be the first consumer, so use Steam's accessor before reading it.
+    let store=root.SystemPerfStore;
+    if(!store){
+        try{
+            const storeClass=findModuleExport(value=>typeof value?.Get==='function'&&
+                typeof value.prototype?.SetSplitScalingScaler==='function'&&
+                typeof value.prototype?.SetPerfOverlayLevel==='function'&&
+                typeof value.prototype?.SetGameSpecificProfileEnabled==='function') as {Get():PerfStore}|undefined;
+            store=storeClass?.Get();
+        }catch(error){console.warn('[Game Glance] native Performance store unavailable',error);}
+    }
     const service=(name:string)=>findModuleExport(value=>typeof value?.GetState==='function'&&typeof value.RegisterForNotifyStateChanged==='function'&&value.GetState.toString().includes(`${name}.GetState#1`)) as Service|undefined;
-    return createNativePerformanceBindings({root:globalThis as unknown as NativeRoot,platform:service('SteamOSManager'),gamescope:service('Gamescope')});
+    return createNativePerformanceBindings({root,store,platform:service('SteamOSManager'),gamescope:service('Gamescope')});
 }
