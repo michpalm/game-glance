@@ -480,3 +480,8 @@ Small menu-only styling pass: resting action borders18%→30% white; focused gri
 TypeScript/all1,539tests/package/ZIP integrity/diff checks passed. Installed local/device ZIP SHA256 `de80629912a87c5e48c00a1949fc63018fdfe3ab44a98ec751f5b19a85242a1b`; backup `/tmp/gg-menu-before-contrast-20261020.js`. Actual compositor screenshots `menu-control-contrast-2026-10-20.png` (Performance Display, both toggle states) and `menu-button-edges-2026-10-20.png` (Navigate) inspected over running Ori. Computed styles confirm intended tracks/edges and unchanged white thumb. No settings changed; left Navigate open, no restart or remote Git operations.
 
 HDR icon inquiry: native Steam Performance Enable HDR label/row on this Ally contains no SVG or icon wrapper, unlike adjacent VRR, Disable Frame Limit and Allow Tearing rows. Kept HDR text-only to match the observed native control.
+
+
+### HDR mountain-and-sun icon — 2026-10-20
+
+Added the existing Lucide Image (LuImage) mountain/sun artwork beside HDR, using the menu's shared18px white icon styling; native Steam icons remain on other Performance controls. No new dependency or setting behavior. TypeScript/all1,539tests/package/ZIP integrity/diff checks passed. Local/device ZIP SHA256 `0b947bea212888d069aee84bd7f70b99efd8440086ea1bf58c37b32f13667388`; frontend backup `/tmp/gg-menu-before-hdr-icon-20261020.js`. Actual Ally screenshot `performance-hdr-landscape-icon-2026-10-20.png` inspected: icon renders and aligns with neighboring labels. Left Performance Display open over Ori. No setting writes, game restart or remote Git operations.

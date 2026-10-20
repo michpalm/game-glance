@@ -1,5 +1,6 @@
 import { Focusable, NavEntryPositionPreferences, SliderField, ToggleField } from '@decky/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { LuImage } from 'react-icons/lu';
 import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import { PERFORMANCE_OVERLAY_LEVELS, type createPerformance, type PerformanceValue } from '../steam/performance';
@@ -28,7 +29,7 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
     const [draft, setDraft] = useState<number | null>(null);
     useEffect(() => { if (!s.pending) setDraft(null); }, [s.pending, s.value, s.error]);
     if (!s.available || s.value === null) return null;
-    const Icon = steamPerformanceIcon(id);
+    const Icon = id === 'hdr' ? LuImage : steamPerformanceIcon(id);
     const label = <span className="gg-menu-setting-label">
         {Icon && <span aria-hidden="true" className="gg-menu-native-icon"><Icon /></span>}
         <span>{LABELS[id]}</span>
