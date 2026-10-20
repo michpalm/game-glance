@@ -24,3 +24,16 @@ export function findMenuFocus(root: ParentNode, key?: string): HTMLElement | nul
     const saved = elements.find(item => item.key === key)?.element;
     return saved ?? elements.find(item => item.element.closest('.gg-menu-panel'))?.element ?? elements[0]?.element ?? null;
 }
+
+
+/** A click covers mouse and touch activation; consume it before dismissing the popup. */
+export function installOutsideMenuClick(root: HTMLElement, close: () => void, inputActive: () => boolean): () => void {
+    const document = root.ownerDocument;
+    const onClick = (event: MouseEvent) => {
+        if (event.button > 0 || !inputActive() || !event.target || root.contains(event.target as Node)) return;
+        event.preventDefault(); event.stopImmediatePropagation();
+        close();
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+}

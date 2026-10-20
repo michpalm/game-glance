@@ -44,6 +44,8 @@
       "reason": "CEF card filters cannot sample the live game. Clear the native parent dark scrim and borrow Steam compositor blur; preserve native suppression and other holds. Verified with full-composition gamescope captures over Dorfromantik."
     },
     "scrollbars": "Hidden; native focus scrolling retained.",
-    "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds."
+    "positioning": "Absolute centered canvas with transform scaling; no CSS zoom because Steam misreports its render bounds.",
+    "cardShadow": "Inset highlight only. Exterior drop shadow removed because its alpha expands the Gamescope blur mask beyond the rounded cards.",
+    "outsideDismiss": "Primary mouse click or touch-generated click outside the shell closes the menu; captured and consumed in the borrowed popup document, respects native modal/keyboard ownership."
   }
 }

@@ -12,7 +12,7 @@ export const menuStyles = `
 .gg-menu button.gg-menu-action.DialogButton svg{width:1.2em;height:1.2em;flex-shrink:0}
 .gg-menu button.gg-menu-action.DialogButton.gpfocus,.gg-menu button.gg-menu-action.DialogButton:focus-visible{outline:1px solid color-mix(in srgb,var(--gg-menu-accent) 43%,transparent);outline-offset:1px;box-shadow:0 0 8px color-mix(in srgb,var(--gg-menu-accent) 10%,transparent);background:color-mix(in srgb,var(--gg-menu-accent) 8%,transparent)}
 .gg-menu button.gg-menu-action.DialogButton[aria-pressed=true]{background:color-mix(in srgb,var(--gg-menu-accent) 12%,transparent);color:var(--gg-menu-accent)}
-.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:rgba(12,16,22,.30);backdrop-filter:none;border:1px solid #ffffff26;border-radius:26px;box-shadow:inset 0 1px #ffffff09,0 16px 48px #0003}
+.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:rgba(12,16,22,.30);backdrop-filter:none;border:1px solid #ffffff26;border-radius:26px;box-shadow:inset 0 1px #ffffff09}
 .gg-menu .gg-menu-bar{flex:none;display:flex;gap:10px;align-items:center;padding:10px 12px}
 .gg-menu-tabs{scrollbar-width:none;display:flex;justify-content:center;gap:4px;flex:1;min-width:0}
 .gg-menu button.gg-menu-action.gg-menu-tab.DialogButton{font-size:.86em;padding:12px 10px;border-color:transparent;min-height:48px}

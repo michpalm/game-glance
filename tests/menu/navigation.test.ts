@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick } from '../../src/menu/navigation';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
         let state=reduceMenu(defaultMenuState(),{type:'enable',value:true});state=reduceMenu(state,{type:'open',entry:'home'});
@@ -34,5 +34,27 @@ describe('menu input boundary',()=>{
         const {document}=parseHTML('<main><button data-gg-focus="first">First</button><button data-gg-focus="saved" disabled>Disabled</button><div hidden><button data-gg-focus="hidden">Hidden</button></div><button data-gg-focus="last">Last</button></main>');
         const root=document.querySelector('main')!;
         expect(findMenuFocus(root,'last')?.textContent).toBe('Last');expect(findMenuFocus(root,'saved')?.textContent).toBe('First');expect(findMenuFocus(root,'hidden')?.textContent).toBe('First');
+    });
+});
+
+
+describe('outside menu dismissal', () => {
+    function setup() {
+        const { document, window } = parseHTML('<html><body><div id="host"><div id="menu"><button id="inside">Control</button></div><div id="outside"></div></div></body></html>');
+        const close = vi.fn(), active = vi.fn(() => true);
+        const stop = installOutsideMenuClick(document.querySelector('#menu')! as unknown as HTMLElement, close, active);
+        const click = (id: string) => { const event = new window.Event('click', { bubbles: true, cancelable: true }); document.querySelector(id)!.dispatchEvent(event); return event; };
+        return { close, active, stop, click };
+    }
+    it('consumes an outside activation, leaves menu controls alone, and removes the listener on release', () => {
+        const { close, stop, click } = setup();
+        expect(click('#inside').defaultPrevented).toBe(false); expect(close).not.toHaveBeenCalled();
+        expect(click('#outside').defaultPrevented).toBe(true); expect(close).toHaveBeenCalledTimes(1);
+        stop(); stop(); click('#outside'); expect(close).toHaveBeenCalledTimes(1);
+    });
+    it('respects native modal/keyboard ownership', () => {
+        const { close, active, stop, click } = setup();
+        active.mockReturnValue(false);
+        expect(click('#outside').defaultPrevented).toBe(false); expect(close).not.toHaveBeenCalled(); stop();
     });
 });

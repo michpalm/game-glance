@@ -4,7 +4,7 @@ import { LuBell, LuX } from 'react-icons/lu';
 import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { selectedBarSection, type MenuEvent, type MenuState, type SectionId } from '../model';
-import { findMenuFocus, handleMenuButton } from '../navigation';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -57,6 +57,11 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         resize(); view.addEventListener('resize', resize);
         return () => view.removeEventListener('resize', resize);
     }, [active]);
+    useLayoutEffect(() => {
+        const element = root.current;
+        if (!element || !active) return;
+        return installOutsideMenuClick(element, close, inputActive);
+    }, [active, close, inputActive]);
     if (!active) return null;
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (event.detail.button === 2 && !cancel) return;
