@@ -1,5 +1,6 @@
 import { fetchNoCors } from '@decky/api';
 import { HeroicRef, parseHeroicLaunch } from '../logic/heroic';
+import { LutrisRef, parseLutrisLaunch } from '../logic/lutris';
 import { htmlToText } from '../logic/text';
 import { attempt } from './attempt';
 import { Cache, cache as defaultCache, TTL } from './cache';
@@ -11,6 +12,7 @@ export interface GameInfo {
     playedMinutes: number;
     achievements: { achieved: number; total: number } | null;
     heroic: HeroicRef | null; // set when Heroic Games Launcher added this shortcut
+    lutris: LutrisRef | null; // set when Lutris added this shortcut
 }
 
 const SHORTCUT_APP_TYPE = 1073741824;
@@ -56,6 +58,7 @@ export function readGameInfo(overview: unknown, details: unknown): GameInfo {
         playedMinutes: playedMinutesOf(o?.minutes_playtime_forever, d?.nPlaytimeForever, isShortcut),
         achievements,
         heroic: isShortcut ? parseHeroicLaunch(d?.strShortcutLaunchOptions as string | undefined) : null,
+        lutris: isShortcut ? parseLutrisLaunch(d?.strShortcutLaunchOptions as string | undefined) : null,
     };
 }
 

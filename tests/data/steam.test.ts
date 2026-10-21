@@ -11,7 +11,7 @@ describe('readGameInfo', () => {
         );
         expect(info).toEqual({
             appId: 292030, name: 'The Witcher 3: Wild Hunt', isShortcut: false, playedMinutes: 2406,
-            achievements: { achieved: 13, total: 78 }, heroic: null,
+            achievements: { achieved: 13, total: 78 }, heroic: null, lutris: null,
         });
     });
     it('detects shortcuts and hides achievements', () => {
@@ -49,8 +49,13 @@ describe('readGameInfo', () => {
         const info = readGameInfo({ appid: 5, app_type: 1 }, { strShortcutLaunchOptions: 'heroic://launch/gog/1' });
         expect(info.heroic).toBeNull();
     });
+    it('a Lutris shortcut carries its Lutris game (for Lutris\'s own play time)', () => {
+        const info = readGameInfo({ appid: 3083593838, display_name: 'GG Playtime Test', app_type: 1073741824 }, { strShortcutLaunchOptions: 'run net.lutris.Lutris lutris:rungameid/1' });
+        expect(info.lutris).toEqual({ gameId: 1, flatpak: true });
+        expect(readGameInfo({ appid: 10, app_type: 1 }, { strShortcutLaunchOptions: 'lutris:rungameid/1' }).lutris).toBeNull();
+    });
     it('tolerates missing data', () => {
-        expect(readGameInfo(undefined, undefined)).toEqual({ appId: 0, name: '', isShortcut: false, playedMinutes: 0, achievements: null, heroic: null });
+        expect(readGameInfo(undefined, undefined)).toEqual({ appId: 0, name: '', isShortcut: false, playedMinutes: 0, achievements: null, heroic: null, lutris: null });
         expect(readGameInfo({ appid: 1, minutes_playtime_forever: 'x' }, { achievements: { nAchieved: 0, nTotal: 0 } }).achievements).toBeNull();
     });
 });
