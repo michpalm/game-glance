@@ -275,7 +275,10 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
 1. On the device: Decky → Settings → Developer → **Allow Remote CEF Debugging** on, and `sudo systemctl enable --now sshd`.
 2. On the Mac: `ssh -N -L 18080:127.0.0.1:8080 <device>`, then `node scripts/cef-eval.mjs '<js>'`,
    `node scripts/cef-shot.mjs out.png`, `node scripts/cef-css.mjs file.css` (try CSS live) or
-   `node scripts/cef-viewport.mjs out 1500x844@1.28` (preview another screen size).
+   `node scripts/cef-viewport.mjs out 1500x844@1.28` (preview another screen size),
+   `node scripts/cef-open-probe.mjs out/probe none t1200` (record an open from Home, and one with B 1.2 s after A: timeline and frames) or
+   `python3 -I scripts/frame-bands.py out/probe/trial-0-none` (brightness bands per frame, to find a blink).
+   The probe sends A and B through Steam's own controller path (FocusNavController.DispatchVirtualButtonClick), as a physical press would.
 3. Backend log on the device: `~/homebrew/logs/game-glance/`.
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.
