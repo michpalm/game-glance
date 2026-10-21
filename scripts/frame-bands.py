@@ -17,6 +17,9 @@ def mean(im, box):
     return ImageStat.Stat(im.crop(box)).mean[0]
 
 
+NAMES = ['y0-8', 'y8-20', 'y20-40', 'y40-70', 'left', 'right']
+# Thresholds per column: the first three top bands, then the corners; y 40-70 is the page itself and moves with it.
+LIMITS = [TOP_JUMP, TOP_JUMP, TOP_JUMP, None, CORNER_JUMP, CORNER_JUMP]
 prev = None
 jumps = []
 print('    ms    y0-8  y8-20 y20-40 y40-70   left  right')
@@ -29,10 +32,9 @@ for name in sorted(f for f in os.listdir(d) if f.endswith('.jpg')):
     vals = top + corners
     print(name[:-4].rjust(6), ' '.join(f'{v:6.1f}' for v in vals))
     if prev is not None:
-        # The first three top bands and the two corners; y 40-70 is the page itself and moves with it.
-        moved = any(abs(top[j] - prev[j]) > TOP_JUMP for j in range(3)) or any(abs(corners[j] - prev[4 + j]) > CORNER_JUMP for j in range(2))
+        moved = [f'{NAMES[j]} {prev[j]:.1f}->{vals[j]:.1f}' for j in range(6) if LIMITS[j] is not None and abs(vals[j] - prev[j]) > LIMITS[j]]
         if moved:
-            jumps.append(f'{name[:-4].rjust(6)} ' + ' '.join(f'{p:5.1f}->{v:5.1f}' for p, v in zip(prev, vals) if abs(p - v) > 0))
+            jumps.append(f'{name[:-4].rjust(6)}  ' + '  '.join(moved))
     prev = vals
 print('jumps:', 'none' if not jumps else '')
 for line in jumps:
