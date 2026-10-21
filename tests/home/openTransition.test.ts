@@ -88,6 +88,16 @@ describe('openTransition', () => {
         expect(log).toContain('remove@950');
     });
 
+    it('a page that reports ready during navigation does not wait for the timeout', () => {
+        const { t, deps, fireReady, bridge } = setup();
+        vi.mocked(deps.navigate).mockImplementation(() => fireReady());
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(bridge.fadeOut).toHaveBeenCalledTimes(1);
+        vi.advanceTimersByTime(300);
+        expect(bridge.remove).toHaveBeenCalledTimes(1);
+    });
+
     it("once the bridge is gone Home's opening state is undone (Steam may keep Home, or bring it back on B: it was left mid-open)", () => {
         const { t, undo, fireReady } = setup();
         t.open(620, 'morph');
@@ -162,10 +172,18 @@ describe('openTransition', () => {
     });
 
     it('a bridge that cannot be mounted still lets the page open at the hand-over', () => {
-        const { t, log } = setup({ mountBridge: vi.fn(() => { throw new Error('no body'); }) });
+        const { t, log, undo } = setup({ mountBridge: vi.fn(() => { throw new Error('no body'); }) });
         t.open(620, 'morph');
         vi.advanceTimersByTime(450);
         expect(log).toContain('navigate /library/app/620@450');
+        expect(undo).toHaveBeenCalledTimes(1);
+    });
+
+    it('a missing bridge restores Home so returning cannot leave its metadata hidden', () => {
+        const { t, undo } = setup({ mountBridge: () => null });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(450);
+        expect(undo).toHaveBeenCalledTimes(1);
     });
 
     it('a second open while one runs is ignored', () => {

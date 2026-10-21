@@ -148,13 +148,17 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
 
     const openPage = (path: string) => {
         safely('could not mark the open', () => deps.markOpen());
-        if (!navigate(path)) return finish(true);
-        if (!bridge) return finish(false);
-        try {
-            stopReady = deps.onReady(() => leave(true));
-        } catch (error) {
-            warn('could not listen for the page', error);
+        // Subscribe before navigation: a warm page can report ready during Navigate itself.
+        if (bridge) {
+            try {
+                stopReady = deps.onReady(() => leave(true));
+            } catch (error) {
+                warn('could not listen for the page', error);
+            }
         }
+        if (!navigate(path)) return finish(true);
+        // A missing bridge is a fallback, not a reason to leave Home's text and chips mid-morph.
+        if (!bridge) return finish(true);
         if (!later(() => leave(false), OPEN_TIMINGS.readyCap)) leave(false);
     };
 

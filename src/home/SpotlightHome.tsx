@@ -50,6 +50,8 @@ import { FaTrash } from 'react-icons/fa';
 const DIM_REST = 0;
 const DIM_SHEET = 0.45;
 
+/** Two activations closer than this are one press (A and a touch both arriving); see onRecentsActivate. */
+const SAME_PRESS_MS = 300;
 interface Size {
     width: number;
     height: number;
@@ -272,11 +274,12 @@ export function SpotlightHome() {
         else setTimeout(run, 50);
     };
     // A on the cards: the selected game's page (expanding from its card), or the Library on the Library card. One
-    // action per press (A and a touch can both arrive).
+    // action per press (A and a touch can both arrive, a frame apart; openGame also ignores another open while one
+    // runs). Short, so A right after B cancelled an open (homeNav, openCancel) opens again (3.4.0's 1 s lock swallowed it).
     const lastOpen = useRef(0);
     const onRecentsActivate = () => {
         const now = Date.now();
-        if (now - lastOpen.current < 1000) return;
+        if (now - lastOpen.current < SAME_PRESS_MS) return;
         lastOpen.current = now;
         try {
             if (onLibrary || !data.focused) return openLibrary();
