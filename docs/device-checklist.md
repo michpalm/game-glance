@@ -257,6 +257,8 @@ Result per item: PASS, FAIL (with a note), or "not checked yet". Handheld unless
 | 161 | Opening a game with the status bar off | Quick Access → Game Glance → Spotlight Home → Status bar off. Open a game from Home: Steam's top bar stays on screen the whole time, with no blink | PASS on the Ally, 3 of 3 opens (2026-10-21): Steam's top bar stays on screen through the open. One remaining step from Home's darker top band to the page's lighter one as the page arrives; no blink |
 | 162 | Opening a game with the Game Glance page off | Steam's own page. Our status bar hands over to Steam's top bar with no moment without any bar | PASS on the Ally, 7 of 7 opens (5 plain, 2 with B at 1.2 s, 2026-10-21): no frame without a top bar, after fix 74c631e |
 | 163 | Home's play time matches the page | For a few games (a Steam game, a non-Steam shortcut, the Lutris test game), Home's Play time chip shows the same hours as the game page's | Lutris test game PASS on the Ally (test build e583df9, 2026-10-21): 12.5 h on Home and the page (Michael). A Steam game and a non-Lutris shortcut: not yet |
+| 164 | One sound for Play | On Home, Play on an installed game: only Steam's launch sound plays (not also the game-page sound); the game starts as before | not yet |
+| 165 | News card opens the article | What's new → A on a news card: the article opens alone (no game page under it), scrolls with the stick/D-pad, and B returns to Home | not yet |
 
 ### Screensaver (3.2.0)
 
