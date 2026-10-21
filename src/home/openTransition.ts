@@ -33,6 +33,8 @@ export interface OpenDeps {
     onReady(cb: () => void): () => void;
     /** Controller Back while Home is animating; removed before navigation. */
     listenForCancel?(cancel: () => void): () => void;
+    /** B cancelled the open (listenForCancel's callback only, never another finish): Home's return look and sound. */
+    onCancelled?(): void;
     setTimer(fn: () => void, ms: number): unknown;
     clearTimer(id: unknown): void;
     /** Optional diagnostics; the controller never throws. */
@@ -180,7 +182,12 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
                 navigate(path);
                 return;
             }
-            safely('could not listen for Back', () => { stopCancel = deps.listenForCancel?.(() => finish(true)) ?? null; });
+            safely('could not listen for Back', () => {
+                stopCancel = deps.listenForCancel?.(() => {
+                    finish(true);
+                    safely('could not show the cancel', () => deps.onCancelled?.());
+                }) ?? null;
+            });
             if (!later(() => handOver(path, bridgeInFor(variant)), handOverAt(variant))) {
                 finish(true);
                 navigate(path);

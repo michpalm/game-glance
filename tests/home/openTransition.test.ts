@@ -227,4 +227,47 @@ describe('openTransition', () => {
         vi.advanceTimersByTime(2000);
         expect(deps.navigate).toHaveBeenCalledTimes(2);
     });
+
+    it('a cancel by B tells Home once (its return look and sound), after Home is restored', () => {
+        let back: (() => void) | null = null;
+        const onCancelled = vi.fn();
+        const { t, undo } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(200);
+        back!();
+        expect(undo).toHaveBeenCalledOnce();
+        expect(onCancelled).toHaveBeenCalledOnce();
+        expect(undo.mock.invocationCallOrder[0]).toBeLessThan(onCancelled.mock.invocationCallOrder[0]);
+    });
+    it('no cancel hook for an open that runs to the page, or for cancel() from elsewhere', () => {
+        const onCancelled = vi.fn();
+        const { t, fireReady } = setup({ listenForCancel: () => () => undefined, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        fireReady();
+        vi.advanceTimersByTime(2000);
+        t.open(700, 'morph');
+        t.cancel();
+        expect(onCancelled).not.toHaveBeenCalled();
+    });
+    it("no cancel hook once the page has opened (the listener is gone; B is Steam's)", () => {
+        let back: (() => void) | null = null;
+        const onCancelled = vi.fn();
+        const { t } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(back).toBeNull();
+        expect(onCancelled).not.toHaveBeenCalled();
+    });
+    it('a throwing cancel hook still leaves Home restored and the controller usable', () => {
+        let back: (() => void) | null = null;
+        const { t, undo, deps } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled: () => { throw new Error('x'); } });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(100);
+        expect(() => back!()).not.toThrow();
+        expect(undo).toHaveBeenCalledOnce();
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(deps.navigate).toHaveBeenCalledWith('/library/app/620');
+    });
 });

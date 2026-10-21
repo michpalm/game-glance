@@ -12,6 +12,7 @@ import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, ST
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
+import { RETURN_ATTR } from './openCancel';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -452,8 +453,9 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // as one layer: a parent fading (opacity under 1) cuts the glass inside it off from the art, which showed unblurred
         // until the fade ended (Michael on the Ally). The glass fades itself, and around it the largest parts that hold no
         // glass, each once; from transparent to its own opacity (what rests hidden stays hidden). Not in the open's copy.
+        // A cancelled open (B during the opening animation) uses the same fade.
         `@keyframes gh-return-in { from { opacity: 0; } }`,
-        rule(`.gh-root.gh-back:not(.gh-bridge) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root.gh-back:not(.gh-bridge) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
+        rule(`.gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
             `animation: gh-return-in ${RETURN_TIMINGS.fade}ms ease backwards`),
         rule('.gh-recents-snap .gh-cap', `transition: left ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, width ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, opacity ${CAP_STATE_MS}ms, filter ${CAP_STATE_MS}ms`),
         // "View more in your Library" card.

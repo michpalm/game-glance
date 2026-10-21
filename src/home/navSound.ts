@@ -3,9 +3,10 @@ import { memoLookup } from './moduleLookup';
 
 /**
  * Steam's navigation sound names used here (its enum, probed on the Ally: ChangeTabs for L1/R1 tabs, FailedNav at an
- * end, BasicNav for a d-pad move).
+ * end, BasicNav for a d-pad move). OutOfGameDetail is its "back out of a game page" sound (enum 14, probed 2026-10-21),
+ * played when B cancels an open.
  */
-export type NavSoundName = 'ChangeTabs' | 'FailedNav' | 'BasicNav' | 'IntoGameDetail' | 'LaunchGame';
+export type NavSoundName = 'ChangeTabs' | 'FailedNav' | 'BasicNav' | 'IntoGameDetail' | 'OutOfGameDetail' | 'LaunchGame';
 
 interface NavSoundParts {
     player: { PlayNavSound(sound: number): void };

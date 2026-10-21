@@ -4,7 +4,7 @@ import { gameStepSound, navSoundParts, shoulderSound } from '../../src/home/navS
 // Steam's sound player and its sound names, as the in-page module exports them (numbers from Steam's enum, probed).
 const navPlayer = vi.hoisted(() => ({ PlayNavSound: vi.fn() }));
 vi.mock('@decky/ui', () => {
-    const names = { LaunchGame: 0, IntoGameDetail: 13, ChangeTabs: 20, BasicNav: 24, FailedNav: 25 };
+    const names = { LaunchGame: 0, IntoGameDetail: 13, OutOfGameDetail: 14, ChangeTabs: 20, BasicNav: 24, FailedNav: 25 };
     const module = { player: navPlayer, names };
     return { findModule: (test: (m: unknown) => boolean) => (test(module) ? module : undefined) };
 });
@@ -54,5 +54,11 @@ describe('playNavSound (the game-page open and the game start)', () => {
         playNavSound('LaunchGame');
         expect(navPlayer.PlayNavSound).toHaveBeenNthCalledWith(1, 13);
         expect(navPlayer.PlayNavSound).toHaveBeenNthCalledWith(2, 0);
+    });
+    it("plays Steam's OutOfGameDetail when B cancels an open", async () => {
+        const { playNavSound } = await import('../../src/home/navSound');
+        navPlayer.PlayNavSound.mockClear();
+        playNavSound('OutOfGameDetail');
+        expect(navPlayer.PlayNavSound).toHaveBeenCalledWith(14);
     });
 });
