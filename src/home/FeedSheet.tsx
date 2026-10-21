@@ -180,7 +180,8 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
             const place = rowPosition(rows[0].length, rows[1].length, step.card);
             select(place.row, place.index);
         }
-        if (tab !== 0 || step !== 'tab') setEntered(true);
+        // Restoring a hidden tab/card does not enter the sheet. The raised effect above claims
+        // preferred focus only after focus actually moves into the tabs or feed.
         if (restore.zone === 'feed' && raised) {
             if (step === 'tab') focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
             else focusElement(cardRefs.current[step.card], `feed card ${step.card}`);

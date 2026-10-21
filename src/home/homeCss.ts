@@ -48,7 +48,7 @@ function rule(selector: string, body: string): string {
  * Home's parts with a backdrop blur (the glass), inside .gh-safe: the chips, the buttons, the store pill and the family
  * pill inside it, the Library card's body, the feed cards.
  */
-export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-family', '.gh-lib-body', '.gh-card'];
+export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-store-choice', '.gh-family', '.gh-lib-body', '.gh-card'];
 /** Hover looks apply only in mouse mode (mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
 const GLASS = 'background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(14px)';
@@ -318,6 +318,14 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-family', `position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(px)}`),
         rule('.gh-family-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
+        rule('.gh-copy-choice, .gh-store-choice', 'pointer-events: auto; cursor: pointer; transition: transform 250ms, box-shadow 250ms'),
+        rule('.gh-copy-plus', 'display: block; flex: 0 0 auto; width: 12px; height: 12px; margin-left: 8px'),
+        rule('.gh-source.gh-source-selectable', 'padding: 0; border: 0; background: transparent; backdrop-filter: none'),
+        rule('.gh-store-choice', `display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; color: #fff; ${sourcePillLook(px)}`),
+        rule(':where(html:not([data-gg-mouse])) .gh-copy-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-copy-choice:focus, :where(html:not([data-gg-mouse])) .gh-store-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-store-choice:focus', 'box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 14px 40px -8px var(--glance-accent)'),
+        rule(`${NOT_MOUSE} .gh-copy-choice.gh-pill-focus, ${NOT_MOUSE} .gh-copy-choice:focus`, `transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`),
+        rule(`${NOT_MOUSE} .gh-store-choice.gh-pill-focus, ${NOT_MOUSE} .gh-store-choice:focus`, `transform: scale(${PAGE_LAYOUT.focusScale})`),
+        rule('html[data-gg-mouse] .gh-copy-choice:hover, html[data-gg-mouse] .gh-store-choice:hover', 'box-shadow: 0 0 0 2px rgba(255,255,255,.45)'),
         ...statusRules(),
         ...openingRules(),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
@@ -771,6 +779,7 @@ export function openingRules(): string[] {
         rule(`${X} .gh-x-family`, `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule(`${X} .gh-x-family-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
+        rule(`${X} .gh-x-copy-plus`, `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
         // A new game's Play time column (Home shows its Added chip instead), as the page draws it, at its place.
         rule(`${X} .gh-x-played`, `display: none; position: absolute; ${inCard('played')}; flex-direction: column; gap: ${dd(L.stats.rowGap)}`),
         rule('.gh-root[data-gh-extras~="played"] .gh-x-played', 'display: flex'),

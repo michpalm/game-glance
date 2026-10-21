@@ -31,6 +31,8 @@ export interface OpenDeps {
     markOpen(): void;
     /** Hears when the page is ready (data/openIntent.onOpenReady for this game); returns the unsubscribe. */
     onReady(cb: () => void): () => void;
+    /** Controller Back while Home is animating; removed before navigation. */
+    listenForCancel?(cancel: () => void): () => void;
     setTimer(fn: () => void, ms: number): unknown;
     clearTimer(id: unknown): void;
     /** Optional diagnostics; the controller never throws. */
@@ -56,6 +58,7 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
     let running = false;
     let undoHome: (() => void) | null = null;
     let bridge: OpenBridge | null = null;
+    let stopCancel: (() => void) | null = null;
     let stopReady: (() => void) | null = null;
     let timers: unknown[] = [];
 
@@ -83,8 +86,15 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
         }
     };
 
+    const clearCancel = () => {
+        const stop = stopCancel;
+        stopCancel = null;
+        if (stop) safely('could not stop listening for Back', stop);
+    };
+
     /** Clears every timer and listener and takes the bridge down; Home is usable again. */
     const finish = (undo: boolean) => {
+        clearCancel();
         for (const id of timers) safely('could not clear a transition timer', () => deps.clearTimer(id));
         timers = [];
         const stop = stopReady;
@@ -101,6 +111,7 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
 
     const navigate = (path: string): boolean => {
         try {
+            clearCancel();
             deps.navigate(path);
             return true;
         } catch (error) {
@@ -165,6 +176,7 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
                 navigate(path);
                 return;
             }
+            safely('could not listen for Back', () => { stopCancel = deps.listenForCancel?.(() => finish(true)) ?? null; });
             if (!later(() => handOver(path, bridgeInFor(variant)), handOverAt(variant))) {
                 finish(true);
                 navigate(path);

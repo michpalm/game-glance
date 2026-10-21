@@ -35,6 +35,24 @@ describe('openTransition', () => {
         vi.useRealTimers();
     });
 
+    it('wires controller cancellation until navigation, cancels every pending timer, and can open again', () => {
+        let back: (() => void) | null = null;
+        const stop = vi.fn(() => { back = null; });
+        const { t, deps, undo } = setup({ listenForCancel: (cancel) => { back = cancel; return stop; } });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(120);
+        expect(back).not.toBeNull();
+        back!();
+        vi.advanceTimersByTime(2000);
+        expect(deps.navigate).not.toHaveBeenCalled();
+        expect(undo).toHaveBeenCalledOnce();
+        expect(stop).toHaveBeenCalledOnce();
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(deps.navigate).toHaveBeenCalledWith('/library/app/620');
+        expect(back).toBeNull(); // once the page opens, B belongs to Steam again
+    });
+
     it('morph: Home moves at once; at 450 the bridge fades in over it (150 ms), then the intent is marked and the page opens', () => {
         // Live Home's moved text and logo are drawn soft (raster of an animated layer); the copy is drawn crisp: it fades in
         // over Home instead of replacing it in one frame (Michael: a pop at the end of the open).

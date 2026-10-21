@@ -26,6 +26,17 @@ function selectors(css: string): string[] {
 }
 
 describe('homeCss', () => {
+    it('matches the action buttons’ focus ring and glow on both selector pills', () => {
+        const css = homeCss();
+        expect(/!important\s+!important/.test(css)).toBe(false);
+        const focus = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-copy-choice.gh-pill-focus'));
+        expect(focus?.[1]).toContain('.gh-store-choice.gh-pill-focus');
+        const button = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-btn.gh-focus'));
+        const shadow = (body: string) => /box-shadow:\s*([^;]+)/.exec(body)?.[1];
+        expect(shadow(focus?.[2] ?? '')).toBe(shadow(button?.[2] ?? ''));
+        expect(focus?.[2]).not.toContain('background:');
+        expect(css).toContain(`transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`);
+    });
     it('homeCss prefixes every class with gh-', () => {
         const css = homeCss();
         const list = selectors(css);

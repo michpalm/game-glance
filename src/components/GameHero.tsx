@@ -33,16 +33,18 @@ import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '.
 import { accentMemo, knownAccent } from '../home/accentMemo';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { installMouseMode } from '../home/mouseMode';
-import { useCardNav } from '../hooks/useCardNav';
+import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
+import { pageNavParts } from '../logic/cardNav';
 import { CleanInfo } from './CleanInfo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { GameStatusBar } from './GameStatusBar';
 import { UnifideckRowNav } from './UnifideckRowNav';
+import { PlayRowNav } from './PlayRowNav';
 import { UnifideckCloud } from './UnifideckCloud';
 import { HltbCard } from './HltbCard';
 import { InfoCard } from './InfoCard';
-import { FamilyPill, SourcePill } from './SourcePill';
-import { familyPillLabel } from '../data/family';
+import { GameSourcePill } from './GameSourcePill';
+import { LibraryPill } from './LibraryPill';
 import { GameTitle } from './GameTitle';
 import { hltbUrl, openGameInfoTab, openHltbPage } from './cardActions';
 
@@ -132,7 +134,10 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Hover looks follow a mouse (home/mouseMode), here as on Home.
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
-    useCardNav(pageDoc, restyle && !clean);
+    const navParts = pageNavParts(restyle, clean);
+    useCardNav(pageDoc, navParts.dpad);
+    // Focus moves the page as in the restyled look, Clean too: the feedback row centred, the tabs below Steam's header.
+    usePageFocusScrolling(pageDoc, navParts.scrolling);
     // B and the D-pad go to Steam's gamepad focus, which can land on a hidden tab of Steam's own page on a Unifideck page (logic/gamepadFocus).
     useUnifideckGamepadFocus(pageDoc, game.isShortcut);
     const nativeSizeLabel = useUnifideckSizeLabel(pageDoc, game.appId, uniInstalled, restyle && game.isShortcut);
@@ -161,7 +166,6 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
     const ringStyle = pageDoc?.defaultView ? ringCss(pageDoc.defaultView) : '';
-    const family = restyle ? familyPillLabel(game.appId) : null;
     const eyebrow = restyle ? openedFrom?.eyebrow ?? lastPlayedEyebrow(overview, locale, unifideck?.lastPlayed ?? null) : null;
     return (
         <>
@@ -169,6 +173,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {restyle && statusBar && !launching && <GameStatusBar />}
             {/* A Unifideck game's circle buttons are reordered by CSS; the D-pad then steps by position. */}
             {game.isShortcut && <UnifideckRowNav />}
+            {restyle && <PlayRowNav />}
             {restyle && game.isShortcut && <UnifideckCloud appId={game.appId} installed={uniInstalled} />}
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
@@ -188,19 +193,23 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {fillCss && <style>{fillCss}</style>}
                 {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
                 {source && (
-                    <SourcePill label={source}>
+                    <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle}>
                         {/* A game from the family library (Steam's line under Play is hidden): with the restyled look only. */}
-                        {restyle && family && <FamilyPill label={family} />}
-                    </SourcePill>
+                        {restyle && <LibraryPill doc={pageDoc} appId={game.appId} />}
+                    </GameSourcePill>
                 )}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
-                <CardsRow selectable={restyle}>
-                    {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
-                        restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
-                        controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
-                    <InfoCard game={game} locale={locale} description={description} size={size} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
-                    <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
-                </CardsRow>
+                {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
+                    Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
+                {!cleanStyle && (
+                    <CardsRow selectable={restyle}>
+                        {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
+                            restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
+                            controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
+                        <InfoCard game={game} locale={locale} description={description} size={size} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
+                        <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
+                    </CardsRow>
+                )}
                 <div className="gg-more" aria-hidden="true">⌄</div>
             </div>
         </>

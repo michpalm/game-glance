@@ -92,14 +92,15 @@ const DIR_RIGHT = 12;
 /**
  * What a button does on the game card row: Left/Right select the previous / next game (`{ select }`, the same step as
  * L1/R1: through the Library card, wrapping on a press, stopping at the ends while held); L1/R1 are 'bumper' (focus goes to Play and the action row's bumper selection takes over); View/Menu are
- * 'menu' (the selected game's menu). null: anything else, left to Steam (A, B, up and down). No games: null.
+ * 'menu' (the selected game's menu). null: anything else, left to Steam (A, B and down); Up enters the action row explicitly. No games: null.
  */
-export function recentsButton(button: number, index: number, count: number, isRepeat = false): { select: number } | 'bumper' | 'menu' | null {
+export function recentsButton(button: number, index: number, count: number, isRepeat = false): { select: number } | 'bumper' | 'menu' | 'actions' | null {
     if (!Number.isFinite(count) || count < 1) return null;
     if (button === DIR_LEFT || button === DIR_RIGHT) {
         const next = stepSelection(index, button === DIR_LEFT ? -1 : 1, count, isRepeat);
         return next === null ? null : { select: next };
     }
+    if (button === 9) return 'actions';
     if (button === BUMPER_LEFT || button === BUMPER_RIGHT) return 'bumper';
     if (opensGameMenu(button)) return 'menu';
     return null;

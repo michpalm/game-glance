@@ -23,8 +23,10 @@ import { findLegendHeight, legendReserve } from './legend';
 import { FEED_SHEET, homeCss, stackShift } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
-import { FamilyPill, SourcePill } from '../components/SourcePill';
-import { familyPillLabel } from '../data/family';
+import { HomePills } from './HomePills';
+import { useFamilyCopies } from '../hooks/useFamilyCopies';
+import { loadStoreVersions } from '../data/storeVersions';
+import { useAsync } from '../hooks/useAsync';
 import { GameStatusBar } from '../components/GameStatusBar';
 import { RecentsRow } from './RecentsRow';
 import { CARD_SCALE_HANDHELD, cardScaleFor, clampFocus, heroIndex, isLibraryFocus, recentsGeometry } from './recentsLayout';
@@ -211,7 +213,7 @@ export function SpotlightHome() {
         focusElement(lastAction.current, 'the last action');
     });
     const actionsRef = useRef<HTMLElement>(null);
-    const actionButtons = () => [...(rootRef.current?.querySelectorAll<HTMLElement>('.gh-actions .gh-btn') ?? [])];
+    const actionButtons = () => [...(rootRef.current?.querySelectorAll<HTMLElement>('.gh-actions .gh-btn, .gh-copy-choice, .gh-store-choice') ?? [])];
     // The game card row (one focusable, RecentsRow). B from the tabs and from the action row returns to it; on the cards
     // Home leaves B to Steam (focusZones.onBack).
     const recentsRef = useRef<HTMLDivElement | null>(null);
@@ -236,6 +238,13 @@ export function SpotlightHome() {
             const isRepeat = Boolean(evt?.detail?.is_repeat);
             const what = recentsButton(Number(evt?.detail?.button), focusIndex, data.games.length, isRepeat);
             if (what === null) return;
+            if (what === 'actions') {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                directions.stop();
+                focusElement(actionButtons()[0], 'the Play pill');
+                return;
+            }
             if (what === 'bumper') {
                 directions.stop();
                 focusElement(actionButtons()[0], 'the Play pill');
@@ -287,6 +296,12 @@ export function SpotlightHome() {
     const actionRowButtons = {
         onButtonDown: (evt: GamepadEvent) => {
             try {
+                if (Number(evt?.detail?.button) === 10) {
+                    evt.preventDefault?.();
+                    evt.stopPropagation?.();
+                    focusGames();
+                    return;
+                }
                 if (selectionForButton(focusIndex, Number(evt?.detail?.button), data.games.length) !== null) focusElement(actionButtons()[0], 'the Play pill');
             } catch (error) {
                 console.warn(`${LOG_PREFIX} Home: focusing Play for L1/R1 failed`, error);
@@ -419,7 +434,9 @@ export function SpotlightHome() {
     const css = useMemo(() => homeCss(scale), [scale]);
     const game = data.focused;
     // A game from the family library: "Family Sharing · Lender" beside the store pill (data/family).
-    const family = game ? familyPillLabel(game.appId) : null;
+    const copies = useFamilyCopies(game?.appId ?? 0, !onLibrary && !cycle.holding);
+    const family = copies.label;
+    const versions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId)) ?? [];
     const contentUp = measuredScale !== null && resolved;
     // A Unifideck game's size, as its page shows it right after Played (not during a fast run): the open draws that column
     // (OpenExtras), in Unifideck's own word once a page has shown it, so nothing shifts or pops in at the hand-over.
@@ -505,9 +522,7 @@ export function SpotlightHome() {
                                 </section>
                                 {/* The selected game's store, as the game page's pill; not on the Library card. */}
                                 {!onLibrary && data.source && (
-                                    <SourcePill label={data.source} className="gh-source" iconClassName="gh-source-icon">
-                                        {family && <FamilyPill label={family} className="gh-family" iconClassName="gh-family-icon" />}
-                                    </SourcePill>
+                                    <HomePills appId={game.appId} source={data.source} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} />
                                 )}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
                                 <FeedSheet
@@ -533,7 +548,7 @@ export function SpotlightHome() {
                 </div>
             </div>
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
-            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
+            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
         </div>
     );
 }
