@@ -6,7 +6,7 @@ import { UnifideckPlaytime } from './unifideckPlaytime';
 /**
  * Play time as Lutris itself keeps it, for the games it added to Steam. Lutris counts the game's own run time (a
  * monotonic clock: the device's sleep is not counted); Steam counts the shortcut's (R3APER: Steam 200+ h, Lutris about
- * 40 h for Red Dead Redemption 2). So a Lutris game shows Lutris's, as Unifideck's games show Unifideck's.
+ * 40 h for the same game). So a Lutris game shows Lutris's, as Unifideck's games show Unifideck's.
  * Read by the backend from Lutris's pga.db (hours, last played in Unix seconds).
  */
 const getPlaytime = callable<[gameId: number, flatpak: boolean], unknown>('get_lutris_playtime');
