@@ -276,9 +276,11 @@ function controller(): OpenTransition {
  * the selected game's Home morphs into its page over the steady hero; a feed card's game gets its hero faded in over
  * Home; with fallback art or Steam's own page Home's UI fades. `source` is the pressed element (inside Home). The
  * single entry point for every A that opens a game from Home. Anything that cannot be set up still opens the page,
- * without motion; a press while a transition runs is ignored.
+ * without motion; a press while a transition runs is ignored (before its sound, so a second A does not play it twice).
  */
 export function openGame(appId: number, source?: HTMLElement | null) {
+    // The controller would drop this open anyway; the sound, the leaving mark and the pending open must not happen first.
+    if (transition?.isRunning()) return;
     // Steam's own sound for going into a game's page (every open from Home: a card, the info button, a feed card).
     playNavSound('IntoGameDetail');
     markLeaving();

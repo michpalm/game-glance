@@ -35,6 +35,21 @@ describe('openTransition', () => {
         vi.useRealTimers();
     });
 
+    it('isRunning is false before an open, true right after it, false once the open finishes, and false after cancel()', () => {
+        const { t } = setup();
+        expect(t.isRunning()).toBe(false);
+        t.open(620, 'morph');
+        expect(t.isRunning()).toBe(true);
+        vi.advanceTimersByTime(449);
+        expect(t.isRunning()).toBe(true);
+        t.cancel();
+        expect(t.isRunning()).toBe(false);
+        t.open(620, 'morph');
+        expect(t.isRunning()).toBe(true);
+        vi.advanceTimersByTime(10_000);
+        expect(t.isRunning()).toBe(false);
+    });
+
     it('wires controller cancellation until navigation, cancels every pending timer, and can open again', () => {
         let back: (() => void) | null = null;
         const stop = vi.fn(() => { back = null; });

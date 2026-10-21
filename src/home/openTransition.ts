@@ -44,6 +44,8 @@ export interface OpenDeps {
 export interface OpenTransition {
     open(appId: number, variant: OpenVariant): void;
     cancel(): void;
+    /** True from open() until the open ends (finished, cancelled or failed): a press then is ignored. */
+    isRunning(): boolean;
 }
 
 /** How long the copy fades in over live Home before the page opens: the morph's (its moved text is drawn soft live). */
@@ -195,6 +197,9 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
         },
         cancel() {
             finish(true);
+        },
+        isRunning() {
+            return running;
         },
     };
 }

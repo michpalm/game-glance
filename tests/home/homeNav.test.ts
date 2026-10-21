@@ -1,6 +1,9 @@
 import { Navigation } from '@decky/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { focusElement, newsWebUrl, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { cancelOpen, focusElement, newsWebUrl, openGame, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { playNavSound } from '../../src/home/navSound';
+
+vi.mock('../../src/home/navSound', () => ({ playNavSound: vi.fn() }));
 
 const nav = vi.mocked(Navigation);
 
@@ -129,5 +132,41 @@ describe('focusElement', () => {
         const steam = vi.fn(() => true);
         focusElement(null, 'test', steam);
         expect(steam).not.toHaveBeenCalled();
+    });
+});
+
+describe('openGame', () => {
+    // A Home root just real enough for the open's fade: openGame measures nothing off it for a plain fade.
+    const home = () => {
+        const doc = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const root = {
+            ownerDocument: doc,
+            style: { setProperty: vi.fn(), removeProperty: vi.fn() },
+            setAttribute: vi.fn(),
+            removeAttribute: vi.fn(),
+            hasAttribute: () => false,
+            querySelector: () => null,
+        };
+        return { closest: () => root } as unknown as HTMLElement;
+    };
+    const intoGame = () => vi.mocked(playNavSound).mock.calls.filter(([name]) => name === 'IntoGameDetail').length;
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+        cancelOpen();
+        vi.useRealTimers();
+    });
+
+    it('a second A while the first open runs plays the sound once in total', () => {
+        const source = home();
+        openGame(620, source);
+        openGame(620, source);
+        expect(intoGame()).toBe(1);
+    });
+    it('A after B cancelled the open opens again, with its sound', () => {
+        const source = home();
+        openGame(620, source);
+        cancelOpen();
+        openGame(620, source);
+        expect(intoGame()).toBe(2);
     });
 });
