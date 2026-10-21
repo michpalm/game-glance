@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/recents.json';
-import { addedTime, formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RECENTS_LIMIT, steamHomeTime } from '../../src/home/recents';
+import ally from './fixtures/steam-home-ally.json';
+import { addedTime, formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, isRowApp, pickSteamHomeRecents, RECENTS_LIMIT, steamHomeTime } from '../../src/home/recents';
 
 const DAY = 86400;
 
@@ -204,5 +205,15 @@ describe("pickSteamHomeRecents: Steam's own Home row order (SteamOS 3.8.28, its 
     it('keeps games, demos and shortcuts only; a throwing hidden check keeps the game', () => {
         const localGames = [installed(1, 90), installed(2, 80, { app_type: 8 }), installed(3, 70, { app_type: 1073741824 }), installed(4, 60, { app_type: 2048 })];
         expect(pickSteamHomeRecents({ ...empty, localGames, isHidden: () => { throw new Error('x'); }, includeNew: true }).map((g) => g.appId)).toEqual([1, 2, 3]);
+    });
+});
+
+// The Deck matched Steam's own order 20/20 on 2026-10-20 (docs/superpowers/plans/2026-10-20-reddit-3.4-feedback.md).
+describe("pickSteamHomeRecents on real devices: Steam's own Home order, place for place (scripts/cef-home-order.mjs)", () => {
+    it.each([['Ally', ally]])('%s', (_name, f) => {
+        const ours = pickSteamHomeRecents({ ...f.lists, isHidden: () => false, includeNew: true }).map((g) => g.appId);
+        const steam = f.steam.filter((a) => isRowApp({ appid: a.appid, display_name: '', app_type: a.app_type })).map((a) => a.appid);
+        expect(f.steamHomeCode).toBe('unchanged');
+        expect(ours).toEqual(steam);
     });
 });

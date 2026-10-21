@@ -279,6 +279,8 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
    `node scripts/cef-open-probe.mjs out/probe none t1200` (record an open from Home, and one with B 1.2 s after A: timeline and frames) or
    `python3 -I scripts/frame-bands.py out/probe/trial-0-none` (brightness bands per frame, to find a blink).
    The probe sends A and B through Steam's own controller path (FocusNavController.DispatchVirtualButtonClick), as a physical press would.
+   `node scripts/cef-home-order.mjs <out.json>`: Steam's own Home order and its four lists, anonymized; used for the recents fixtures.
+   `node scripts/cef-playtime.mjs`: Steam's two playtime counters side by side.
 3. Backend log on the device: `~/homebrew/logs/game-glance/`.
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.
