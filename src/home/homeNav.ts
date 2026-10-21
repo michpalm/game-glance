@@ -10,14 +10,15 @@ import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, Op
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
 import { pageTargets, PageLook } from './openTargets';
-import { mountOpenBridge } from './openBridge';
+import { mountOpenBridge, topBarCopy, withSteamBarBack } from './openBridge';
 import { heroArtFor, heroShownApp } from './HeroBackground';
 import { homeMode } from './mode';
 import { settings } from '../data/settings';
 import { clearOpen, markOpen, onOpenReady, OpenIntent } from '../data/openIntent';
 import { pageArrivalSelectors, pageTwinTargets, steamEnterOffCss, steamFooter } from '../styles/theme';
 import { MOUSE_ATTR } from './mouseMode';
-import { clearSteamBarCover } from './useHideSteamBar';
+import { findTopBar } from './topBar';
+import { clearSteamBarCover, COVERED } from './useHideSteamBar';
 
 /** Opens a game's page directly, without the transition (Play pill fallbacks, Steam call fallbacks). */
 export function openPage(appId: number) {
@@ -242,14 +243,22 @@ function controller(): OpenTransition {
             // Our status bar lives outside Home's root; its copy also keeps Steam's top bar hidden until the page's own takes over.
             // Steam's footer is one element over every page: the copy would cover it, so it carries a copy of it too.
             const footer = steamFooter();
-            const extras = [...doc.querySelectorAll('.gg-status-host'), ...(footer ? [...doc.querySelectorAll(footer)] : [])];
+            const extras: Element[] = [...doc.querySelectorAll('.gg-status-host'), ...(footer ? [...doc.querySelectorAll(footer)] : [])];
+            // With our status bar off, Steam's own top bar is what Home shows at the top: the copy carries it, pinned where it is.
+            // (Never SharedJSContext's window for the width: it is 1x1.) A failure here means no bar copy, never no bridge.
+            try {
+                const bar = findTopBar(doc, doc.defaultView?.innerWidth ?? 0);
+                if (bar && !bar.hasAttribute(COVERED)) extras.push(topBarCopy(bar, bar.getBoundingClientRect(), doc));
+            } catch {
+                // the open goes on without the bar copy
+            }
             // Home's game row, tabs and feed have left (or faded with the rest) by the hand-over: the copy goes without them.
             // At the page's ready the copy's text twins glide onto the page's text as measured (openHome.settleTwins).
             const look = c.intent.look;
             const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => settleTwins(copy, doc, pageTwinTargets(look)));
             if (c.intent.look !== 'steam') return bridge;
-            // Steam's own page draws no status bar of ours: give Steam's top bar back once the bridge is gone.
-            return { fadeIn: (ms: number) => bridge.fadeIn(ms), fadeOut: (ms: number) => bridge.fadeOut(ms), remove: () => { bridge.remove(); clearSteamBarCover(doc); } };
+            // Steam's own page draws no status bar of ours: Steam's top bar is given back as the copy starts to fade (it fades in under it).
+            return withSteamBarBack(bridge, () => clearSteamBarCover(doc));
         },
         markOpen: () => {
             if (active) markOpen(active.appId, active.intent);
