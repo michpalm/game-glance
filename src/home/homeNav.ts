@@ -18,7 +18,7 @@ import { clearOpen, markOpen, onOpenReady, OpenIntent } from '../data/openIntent
 import { pageArrivalSelectors, pageTwinTargets, steamEnterOffCss, steamFooter } from '../styles/theme';
 import { MOUSE_ATTR } from './mouseMode';
 import { findTopBar } from './topBar';
-import { clearSteamBarCover, COVERED } from './useHideSteamBar';
+import { COVERED, handBarBack } from './useHideSteamBar';
 
 /** Opens a game's page directly, without the transition (Play pill fallbacks, Steam call fallbacks). */
 export function openPage(appId: number) {
@@ -258,7 +258,7 @@ function controller(): OpenTransition {
             const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => settleTwins(copy, doc, pageTwinTargets(look)));
             if (c.intent.look !== 'steam') return bridge;
             // Steam's own page draws no status bar of ours: Steam's top bar is given back as the copy starts to fade (it fades in under it).
-            return withSteamBarBack(bridge, () => clearSteamBarCover(doc));
+            return withSteamBarBack(bridge, () => handBarBack(doc));
         },
         markOpen: () => {
             if (active) markOpen(active.appId, active.intent);

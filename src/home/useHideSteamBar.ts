@@ -20,12 +20,7 @@ export function useHideSteamBar(doc: Document | null, away: boolean): void {
         const update = () => {
             try {
                 if (away) return clear();
-                // Never clear and set again: the opacity transition would flicker once a second.
-                const bar = findTopBar(doc, doc.defaultView?.innerWidth ?? 0);
-                doc.querySelectorAll(`[${COVERED}]`).forEach((el) => {
-                    if (el !== bar) el.removeAttribute(COVERED);
-                });
-                if (bar && !bar.hasAttribute(COVERED)) bar.setAttribute(COVERED, '');
+                coverBar(doc, findTopBar(doc, doc.defaultView?.innerWidth ?? 0));
             } catch {
                 // leave Steam's bar as it is
             }
@@ -65,6 +60,7 @@ const holders = new WeakMap<object, number>();
  */
 export function holdCover(doc: object): () => boolean {
     holders.set(doc, (holders.get(doc) ?? 0) + 1);
+    handedOver.delete(doc);
     let held = true;
     return () => {
         if (!held) return false;
@@ -73,6 +69,30 @@ export function holdCover(doc: object): () => boolean {
         holders.set(doc, left);
         return left === 0;
     };
+}
+
+const handedOver = new WeakMap<object, boolean>();
+
+/**
+ * Covers `bar` (the marker set) and uncovers any other element; never clears and sets the same bar again, the opacity
+ * transition would flicker once a second. Once Steam's bar has been handed back (`handBarBack`), it clears instead: Home can
+ * still be mounted when the open's copy starts to fade, and its ticks would otherwise cover the bar again.
+ */
+export function coverBar(doc: Document, bar: Element | null): void {
+    if (handedOver.get(doc)) return clearSteamBarCover(doc);
+    doc.querySelectorAll(`[${COVERED}]`).forEach((el) => {
+        if (el !== bar) el.removeAttribute(COVERED);
+    });
+    if (bar && !bar.hasAttribute(COVERED)) bar.setAttribute(COVERED, '');
+}
+
+/**
+ * The open transition to Steam's own page gives Steam's top bar back and keeps it back: no holder covers it again until a
+ * new Home or game page mounts (`holdCover`), as Steam's bar fades in under the copy.
+ */
+export function handBarBack(doc: Document): void {
+    handedOver.set(doc, true);
+    clearSteamBarCover(doc);
 }
 
 /** Gives Steam's top bar back (the marker removed), e.g. after the open transition to Steam's own page. */
