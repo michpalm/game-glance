@@ -316,7 +316,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                             if (steamPill.action === 'Play') {
                                 markLaunch(appId);
                                 playNavSound('LaunchGame'); // Steam's game-start sound, as on the game page
-                                skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // not also the page-open sound of Steam's handler
+                                skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // Steam's handler then opens the page
                             }
                             steamPill.run(el?.ownerDocument?.defaultView ?? window);
                             return;
@@ -330,7 +330,6 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                         if (!api.RunGame) return false;
                         markLaunch(appId);
                         playNavSound('LaunchGame'); // Steam's own sound for starting a game
-                        skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS);
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
                     });

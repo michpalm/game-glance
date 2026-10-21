@@ -109,6 +109,33 @@ describe('skipSteamSound (Steam\'s own page-open sound while Play launches)', ()
         vi.advanceTimersByTime(1500);
         expect(navPlayer.PlayNavSound).toBe(original);
     });
+    it('after it ends, a wrapper someone put over ours passes every call through, so no later page sound is lost', () => {
+        vi.useFakeTimers();
+        skipSteamSound('IntoGameDetail', 1500);
+        const ours = navPlayer.PlayNavSound;
+        navPlayer.PlayNavSound = vi.fn((n: number) => ours(n));
+        vi.advanceTimersByTime(1500);
+        navPlayer.PlayNavSound(13);
+        navPlayer.PlayNavSound(13);
+        expect(original).toHaveBeenCalledTimes(2);
+    });
+    it('puts the method back as it was: a player that has it on its prototype gets no own property', () => {
+        vi.useFakeTimers();
+        // The shared player, with its method moved to a prototype for this test.
+        const method = vi.fn();
+        Object.setPrototypeOf(navPlayer, { PlayNavSound: method });
+        delete (navPlayer as { PlayNavSound?: unknown }).PlayNavSound;
+        try {
+            skipSteamSound('IntoGameDetail', 1500);
+            expect(Object.prototype.hasOwnProperty.call(navPlayer, 'PlayNavSound')).toBe(true);
+            navPlayer.PlayNavSound(13);
+            expect(method).not.toHaveBeenCalled();
+            expect(Object.prototype.hasOwnProperty.call(navPlayer, 'PlayNavSound')).toBe(false);
+            expect(navPlayer.PlayNavSound).toBe(method);
+        } finally {
+            Object.setPrototypeOf(navPlayer, Object.prototype);
+        }
+    });
     it('does nothing for a sound Steam has no name for', () => {
         skipSteamSound('NoSuchSound' as never, 1500);
         expect(navPlayer.PlayNavSound).toBe(original);

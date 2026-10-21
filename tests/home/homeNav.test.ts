@@ -69,7 +69,7 @@ describe('openNews', () => {
     };
     beforeEach(() => app.mockReset());
 
-    it('opens just the article in the external web view, never the game page under it (Navigator.App)', () => {
+    it('opens just the article in the external web view, never the game page under it', () => {
         steamUi({ appid: 570 });
         openNews(570, '123');
         expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
