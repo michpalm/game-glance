@@ -36,6 +36,23 @@ export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknow
     return Math.max(minutes(overviewMinutes), minutes(detailsMinutes));
 }
 
+/**
+ * Steam's minutes for a game, read the way the game page reads them: the live overview's `minutes_playtime_forever` and
+ * the live details' `nPlaytimeForever`, through playedMinutesOf. Home used to feed it a row copy and a details memo too,
+ * and R3APER's Lutris shortcut read 223.4 h on Home against 38.6 h on the page. The memo now only stands in until Steam
+ * has the details (any details object, even one without a count), and the row's copy only when there is no live
+ * overview. Pure, never throws.
+ */
+export function steamPlayedMinutes(overview: unknown, details: unknown, memoMinutes: number | undefined, fallbackOverviewMinutes?: number): number {
+    const overviewMinutes = overview !== null && typeof overview === 'object'
+        ? (overview as Record<string, unknown>).minutes_playtime_forever
+        : fallbackOverviewMinutes;
+    const detailsMinutes = details !== null && typeof details === 'object'
+        ? (details as Record<string, unknown>).nPlaytimeForever
+        : memoMinutes;
+    return playedMinutesOf(overviewMinutes, detailsMinutes);
+}
+
 /** A non-Steam shortcut: its app type, or an app id in the shortcuts' range. Pure. */
 export function isShortcutApp(appId: number, appType: unknown): boolean {
     return appType === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;

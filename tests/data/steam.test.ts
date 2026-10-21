@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCache } from '../../src/data/cache';
 import { memoryKv } from '../../src/data/kv';
-import { getDescription, parseStoreDescription, playedMinutesOf, readGameInfo } from '../../src/data/steam';
+import { getDescription, parseStoreDescription, playedMinutesOf, readGameInfo, steamPlayedMinutes } from '../../src/data/steam';
 
 describe('readGameInfo', () => {
     it('reads a Steam game with achievements', () => {
@@ -103,5 +103,28 @@ describe('getDescription keeps descriptions', () => {
         clock.t += 300 * 86_400_000;
         expect(await getDescription(8, 'english', { cache, fetcher })).toBe('Kept');
         expect(fetcher).toHaveBeenCalledOnce();
+    });
+});
+
+describe('steamPlayedMinutes', () => {
+    it("the live details win over a bigger memo (R3APER's Lutris shortcut: Home 223.4 h, page 38.6 h)", () => {
+        expect(steamPlayedMinutes({ minutes_playtime_forever: 0 }, { nPlaytimeForever: 2316 }, 13404)).toBe(2316);
+    });
+    it('without live details, the memo', () => {
+        expect(steamPlayedMinutes({ minutes_playtime_forever: 0 }, undefined, 2316)).toBe(2316);
+        expect(steamPlayedMinutes({ minutes_playtime_forever: 0 }, null, 21)).toBe(21);
+    });
+    it('a Steam game: the larger of the two, as before', () => {
+        expect(steamPlayedMinutes({ minutes_playtime_forever: 2406 }, { nPlaytimeForever: 2400 }, undefined)).toBe(2406);
+    });
+    it("without a live overview, the row's copy stands in; a live overview wins over it", () => {
+        expect(steamPlayedMinutes(undefined, { nPlaytimeForever: 30 }, undefined, 13404)).toBe(13404);
+        expect(steamPlayedMinutes({ minutes_playtime_forever: 5 }, undefined, undefined, 13404)).toBe(5);
+    });
+    it('live details without a count: the memo is not used', () => {
+        expect(steamPlayedMinutes({}, {}, 99)).toBe(0);
+    });
+    it('junk is 0', () => {
+        expect(steamPlayedMinutes('x', 'y', undefined)).toBe(0);
     });
 });

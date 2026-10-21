@@ -86,7 +86,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Until Steam has loaded the game's details, the achievement counts Spotlight Home already knows (home/detailsMemo), so the
     // first frame is complete (the Clean panel no longer gains its Achievements column after the open transition's hand-over).
     const steamGame = withKnownAchievements(readGameInfo(overview, details));
-    // A Unifideck or Lutris game: the launcher's own play time and last played, as on Unifideck's Play row (Steam has none for Unifideck's, an inflated one for Lutris's).
+    // A Unifideck or Lutris game: the launcher's own play time and last played, as on Unifideck's Play row (Steam has none for Unifideck's; Lutris's also counts play started from Lutris).
     const launcher = useLauncherPlaytime(steamGame.appId, steamGame.isShortcut, steamGame.lutris);
     const game = launcher ? { ...steamGame, playedMinutes: mergePlaytime({ minutes: steamGame.playedMinutes, lastPlayed: 0 }, launcher).minutes } : steamGame;
     const overrideVersion = useOverrideVersion();

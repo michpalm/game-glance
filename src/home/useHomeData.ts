@@ -9,7 +9,7 @@ import { useSettings } from '../data/settings';
 import { getSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
-import { getDescription, getSteamLanguage, peekSteamLanguage, playedMinutesOf, readGameInfo } from '../data/steam';
+import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo, steamPlayedMinutes } from '../data/steam';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
@@ -673,8 +673,16 @@ export function useHomeData(focusIndex = 0): HomeData {
     // useAccentWarmup makes most of them known beforehand.
     const accent = useAccent(appId, resting);
 
-    // Steam's own play time: a shortcut's is only in its details (memoPlaytime, kept as useAppDetailsVersion loads them; #52).
-    const steamMinutes = focused ? playedMinutesOf(focused.playedMinutes, memoPlaytime(focused.appId)) : 0;
+    // Steam's own play time, by the game page's rule on Steam's live overview and details. A shortcut's is only in its details;
+    // memoPlaytime (kept as useAppDetailsVersion loads them; #52) stands in until Steam has them, the row's copy until it has an overview.
+    const steamMinutes = focused
+        ? steamPlayedMinutes(
+            overview(focused.appId),
+            guarded('details', () => steam.appDetailsStore?.GetAppDetails?.(focused.appId), undefined),
+            memoPlaytime(focused.appId),
+            focused.playedMinutes,
+        )
+        : 0;
     const playedMinutes = focused ? mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, launcher).minutes : 0;
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
