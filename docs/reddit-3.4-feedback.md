@@ -13,6 +13,8 @@ The available indexed text contains replies from October 17–18. Reddit's direc
 | Back feels delayed after opening; top gradient flashes | B/Escape now cancels a pending transition, or removes its overlay and passes through to Steam after navigation. Remove the one-second activation lock. Subscribe to page readiness before navigation so an immediately ready page cannot be missed. | Cancellation and readiness race tested; gradient flash remains unconfirmed. |
 | Home metadata missing after updating, but present on the game page | Fix a fallback that discarded Home's cleanup when no transition overlay could be mounted. | Fallback tested; this is a candidate for a subset of disappearance cases, not a confirmed explanation of the report. |
 
+Superseded on 2026-10-21: RDR2 was a Lutris shortcut, which commit 2200f5d fixes with Lutris's own play time, and the change for Steam games (the first row above) was reverted (30abc15).
+
 The metadata reporter said disabling CSS Loader did not help. Do not label the report a CSS Loader conflict without further evidence.
 
 ## Device checks still required
