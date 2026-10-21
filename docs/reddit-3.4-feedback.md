@@ -15,6 +15,8 @@ The available indexed text contains replies from October 17–18. Reddit's direc
 
 Superseded on 2026-10-21: RDR2 was a Lutris shortcut, which commit 2200f5d fixes with Lutris's own play time, and the change for Steam games (the first row above) was reverted (30abc15).
 
+Update 2026-10-21: R3APER's screenshots show 223.4 h on Home and 38.6 h on the game page. Cause: Home-only inputs; fixed by plan Task 5c.
+
 The metadata reporter said disabling CSS Loader did not help. Do not label the report a CSS Loader conflict without further evidence.
 
 ## Device checks still required
