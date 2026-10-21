@@ -63,3 +63,39 @@ export function playNavSound(name: NavSoundName) {
         // a missing sound is not worth breaking navigation for
     }
 }
+
+/** Puts the player's own method back, if there is a skip pending; set by skipSteamSound. */
+let endSkip: (() => void) | null = null;
+
+/**
+ * Drops the next play of one of Steam's sounds, by anyone (Steam's own code included), for `ms` at most. Home's Play
+ * plays LaunchGame itself, then Steam's Play handler opens the game's page for its launch screen, and in Game Mode
+ * Steam's `Navigator.App` plays IntoGameDetail for that: a second sound for one press. The player's `PlayNavSound`
+ * is wrapped; every other sound passes through, and the original is put back on the first skipped call or after
+ * `ms`. A second call while one is pending replaces it. Nothing happens when Steam's player cannot be found.
+ */
+export function skipSteamSound(name: NavSoundName, ms: number) {
+    try {
+        const found = parts();
+        const sound = found?.names[name];
+        if (!found || typeof sound !== 'number') return;
+        endSkip?.();
+        const { player } = found;
+        const original = player.PlayNavSound;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const wrapper = function (this: unknown, ...args: [number]) {
+            if (args[0] === sound) return end();
+            return original.apply(this, args);
+        };
+        const end = () => {
+            clearTimeout(timer);
+            if (player.PlayNavSound === wrapper) player.PlayNavSound = original;
+            if (endSkip === end) endSkip = null;
+        };
+        player.PlayNavSound = wrapper;
+        endSkip = end;
+        timer = setTimeout(end, ms);
+    } catch {
+        // a sound played twice is not worth breaking the press for
+    }
+}

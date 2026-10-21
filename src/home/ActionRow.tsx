@@ -16,7 +16,7 @@ import { StreamChoice, streamChoices, StreamOverview } from './streaming';
 import { openGame, openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
-import { playNavSound } from './navSound';
+import { playNavSound, skipSteamSound } from './navSound';
 import type { HomeGame } from './useHomeData';
 import { pillWord, tr } from '../i18n/steamText';
 
@@ -31,6 +31,8 @@ const apps = (): AppsApi | undefined => (globalThis as { SteamClient?: { Apps?: 
 const LAUNCH_SOURCE = 100;
 /** A and a touch can both arrive for one press; one action per press. */
 const REPEAT_GUARD_MS = 1000;
+/** How long Steam's page-open sound is held back after Play: its handler opened the page 83 ms after the press on the Ally. */
+const PLAY_PAGE_SOUND_MS = 1500;
 
 /** The game's "Play from" choices (home/streaming), or null: one device only, or Steam's store unreadable. */
 function readStreamChoices(appId: number): StreamChoice[] | null {
@@ -314,6 +316,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                             if (steamPill.action === 'Play') {
                                 markLaunch(appId);
                                 playNavSound('LaunchGame'); // Steam's game-start sound, as on the game page
+                                skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // not also the page-open sound of Steam's handler
                             }
                             steamPill.run(el?.ownerDocument?.defaultView ?? window);
                             return;
@@ -327,6 +330,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                         if (!api.RunGame) return false;
                         markLaunch(appId);
                         playNavSound('LaunchGame'); // Steam's own sound for starting a game
+                        skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS);
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
                     });

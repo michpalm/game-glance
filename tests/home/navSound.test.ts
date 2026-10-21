@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { gameStepSound, navSoundParts, shoulderSound } from '../../src/home/navSound';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { gameStepSound, navSoundParts, shoulderSound, skipSteamSound } from '../../src/home/navSound';
 
 // Steam's sound player and its sound names, as the in-page module exports them (numbers from Steam's enum, probed).
 const navPlayer = vi.hoisted(() => ({ PlayNavSound: vi.fn() }));
@@ -60,5 +60,57 @@ describe('playNavSound (the game-page open and the game start)', () => {
         navPlayer.PlayNavSound.mockClear();
         playNavSound('OutOfGameDetail');
         expect(navPlayer.PlayNavSound).toHaveBeenCalledWith(14);
+    });
+});
+
+describe('skipSteamSound (Steam\'s own page-open sound while Play launches)', () => {
+    // Steam's player object as the module hands it out; the wrapper goes on this object, so the original is its first method.
+    const original = navPlayer.PlayNavSound;
+    afterEach(() => {
+        vi.useRealTimers();
+        navPlayer.PlayNavSound = original;
+        original.mockClear();
+    });
+
+    it('drops the next call of that sound, whoever makes it, and passes every other sound through', () => {
+        vi.useFakeTimers();
+        skipSteamSound('IntoGameDetail', 1500);
+        navPlayer.PlayNavSound(0);
+        navPlayer.PlayNavSound(13);
+        expect(original).toHaveBeenCalledTimes(1);
+        expect(original).toHaveBeenCalledWith(0);
+        expect(original).not.toHaveBeenCalledWith(13);
+    });
+    it('skips only one: the next call reaches Steam, and the original player method is back', () => {
+        vi.useFakeTimers();
+        skipSteamSound('IntoGameDetail', 1500);
+        navPlayer.PlayNavSound(13);
+        expect(navPlayer.PlayNavSound).toBe(original);
+        navPlayer.PlayNavSound(13);
+        expect(original).toHaveBeenCalledTimes(1);
+        expect(original).toHaveBeenCalledWith(13);
+    });
+    it('puts the original back after the time when Steam never played that sound', () => {
+        vi.useFakeTimers();
+        skipSteamSound('IntoGameDetail', 1500);
+        expect(navPlayer.PlayNavSound).not.toBe(original);
+        vi.advanceTimersByTime(1500);
+        expect(navPlayer.PlayNavSound).toBe(original);
+        navPlayer.PlayNavSound(13);
+        expect(original).toHaveBeenCalledWith(13);
+    });
+    it('a second call while one is pending replaces it, so the original is never lost', () => {
+        vi.useFakeTimers();
+        skipSteamSound('IntoGameDetail', 1500);
+        skipSteamSound('IntoGameDetail', 1500);
+        navPlayer.PlayNavSound(13);
+        expect(original).not.toHaveBeenCalled();
+        expect(navPlayer.PlayNavSound).toBe(original);
+        vi.advanceTimersByTime(1500);
+        expect(navPlayer.PlayNavSound).toBe(original);
+    });
+    it('does nothing for a sound Steam has no name for', () => {
+        skipSteamSound('NoSuchSound' as never, 1500);
+        expect(navPlayer.PlayNavSound).toBe(original);
     });
 });
