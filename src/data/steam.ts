@@ -25,8 +25,8 @@ type AnyRecord = Record<string, unknown> | undefined | null;
  * details' (`nPlaytimeForever`), for every game, as 3.4.0 (#52) did. A non-Steam shortcut's play time is only ever local
  * (localconfig.vdf's Playtime under its signed app id), which Steam loads into its details; its overview's stays 0
  * (#52: EmulationStationDE on the Deck read 0 here and 21 on Steam's own page). On the Ally the two counters agreed for
- * all 145 Steam games (2026-10-21), and R3APER's 200+ h for about 40 was a Lutris shortcut, not a Steam game (see
- * lutrisPlaytime). Junk counts as 0. Pure.
+ * all 145 Steam games (2026-10-21). R3APER's Red Dead Redemption 2 (a Lutris shortcut) read 223.4 h on Home and 38.6 h
+ * on the game page: Steam's numbers were right, Home's own inputs were wrong (see steamPlayedMinutes). Junk counts as 0. Pure.
  */
 export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknown): number {
     const minutes = (v: unknown) => {
