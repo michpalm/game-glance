@@ -86,7 +86,8 @@ export function skipSteamSound(name: NavSoundName, ms: number) {
         const original = player.PlayNavSound;
         const own = Object.prototype.hasOwnProperty.call(player, 'PlayNavSound');
         let timer: ReturnType<typeof setTimeout> | undefined;
-        // Once ended the wrapper only passes through: someone may have wrapped the method after us, and then we cannot unhook.
+        // Once ended the wrapper only passes through: someone may have wrapped the method after us,
+        // and then we cannot unhook.
         let done = false;
         const wrapper = function (this: unknown, ...args: [number]) {
             if (!done && args[0] === sound) return end();
