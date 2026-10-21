@@ -69,33 +69,25 @@ describe('openNews', () => {
     };
     beforeEach(() => app.mockReset());
 
-    it('opens the event on the game page as Game Mode does (Navigator.App with gidPartnerEvent), with no tracking call', () => {
+    it('opens just the article in the external web view, never the game page under it (Navigator.App)', () => {
         steamUi({ appid: 570 });
         openNews(570, '123');
-        expect(app).toHaveBeenCalledWith(570, { gidPartnerEvent: '123' });
-        expect(nav.NavigateToExternalWeb).not.toHaveBeenCalled();
+        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
+        expect(app).not.toHaveBeenCalled();
     });
-    it('falls back to the store news page when the game is not in the library', () => {
+    it('opens the same article when the game is not in the library', () => {
         steamUi(undefined);
         openNews(570, '123');
         expect(app).not.toHaveBeenCalled();
         expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
     });
-    it('falls back to the store news page without Steam\'s navigator, or when it throws', () => {
-        openNews(570, '123');
-        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
-        steamUi({ appid: 570 });
-        app.mockImplementationOnce(() => {
-            throw new Error('nope');
-        });
-        nav.NavigateToExternalWeb.mockClear();
-        expect(() => openNews(570, '123')).not.toThrow();
-        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
-    });
-    it('opens the game page when the event has no gid', () => {
+    it('opens the game page when the event has no gid, or one that is not a number', () => {
         steamUi({ appid: 570 });
         openNews(570, '');
+        openNews(570, 'abc');
         expect(app).not.toHaveBeenCalled();
+        expect(nav.NavigateToExternalWeb).not.toHaveBeenCalled();
+        expect(nav.Navigate).toHaveBeenCalledTimes(2);
         expect(nav.Navigate).toHaveBeenCalledWith('/library/app/570');
     });
 });

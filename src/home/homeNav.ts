@@ -74,33 +74,19 @@ export function openStorePage(appId: number) {
     openExternal(storeWebUrl(appId), 'store page');
 }
 
-type SteamNavGlobals = {
-    SteamUIStore?: { GetFocusedWindowInstance?(): { Navigator?: { App?(appId: number, options: { gidPartnerEvent: string }): void } } | null | undefined };
-    appStore?: { GetAppOverviewByAppID?(appId: number): unknown };
-};
-
 /**
- * Opens one news event the way Game Mode's own What's New and game pages do (probed on the Ally): the window's
- * `Navigator.App(appid, { gidPartnerEvent: gid })`, which shows the event over the game's page. The tracking
- * call those handlers also make (TrackEventClickedByUser) is deliberately not made. Steam's App() silently does
- * nothing for a game without an app overview, so then (or without the navigator, or if it throws) the event's
- * store news page opens on the web. No gid: the game's page. No open transition.
+ * Opens one news event on its own, in Steam's external web view (the event's store news page): B returns to Home.
+ * Steam's way (`Navigator.App(appid, { gidPartnerEvent })`, as its own What's New does) opens the game's page with
+ * the event on top, and gamepad focus lands on the page, so the article could not be scrolled (Michael, Ally
+ * 2026-10-21). Steam's news overlay over Home (route state `event_to_show`) never loaded the article there. The
+ * tracking call Steam's handlers make (TrackEventClickedByUser) is deliberately not made. No gid: the game's page.
+ * No open transition.
  */
 export function openNews(appId: number, gid: string) {
     markLeaving();
     if (!/^\d+$/.test(gid)) {
         openPage(appId);
         return;
-    }
-    try {
-        const steam = globalThis as unknown as SteamNavGlobals;
-        const navigator = steam.SteamUIStore?.GetFocusedWindowInstance?.()?.Navigator;
-        if (typeof navigator?.App === 'function' && steam.appStore?.GetAppOverviewByAppID?.(appId)) {
-            navigator.App(appId, { gidPartnerEvent: gid });
-            return;
-        }
-    } catch (error) {
-        console.warn(`${LOG_PREFIX} Home: could not open the event in Steam`, error);
     }
     openExternal(newsWebUrl(appId, gid), 'news page');
 }

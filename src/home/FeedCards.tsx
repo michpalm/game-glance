@@ -47,7 +47,7 @@ function confirmJoin(url: string, question: string, from: HTMLElement | null) {
  * One feed card: full art (or glass only), the bottom shade, an optional friend avatar, and the text block
  * (pill in the card's own game accent, title, sub line). Focus: the recents edge glow plus a 4px lift.
  * A opens `item.opens`: a game's page with the open transition (homeNav.openGame), expanding from this card with
- * its own art; a wishlist deal's store page or a news event without it (homeNav.openStorePage / openNews).
+ * its own art; a wishlist deal's store page or a news event (in Steam's web view, the article alone) without it (homeNav.openStorePage / openNews).
  */
 export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hoverKey, hover = false }: {
     item: FeedItem;
