@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
-import { centerFeedbackPanel, installPageFocusScrolling } from '../../src/logic/feedbackScroll';
+import { playRow } from '../../src/styles/theme';
 
-afterEach(() => vi.unstubAllGlobals());
+vi.mock('../../src/styles/theme', () => ({ playRow: vi.fn(() => '.play') }));
+
+import { centerFeedbackPanel, scrollPageToTop, installPageFocusScrolling } from '../../src/logic/feedbackScroll';
+
+afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 function fixture(scale = 1, native = true) {
-    const { document, window } = parseHTML('<div id="port"><div id="card" class="gg-card-nav" tabindex="0">Info card</div><div class="feedback"><button id="yes">Yes</button><button id="no">No</button></div><div id="menus"><div role="tablist"><button id="tab" role="tab">Activity</button><button id="tab2" role="tab">Game Info</button></div><button id="inner">New Note</button></div><button id="outside">Outside</button></div>');
+    const { document, window } = parseHTML('<html><body><div id="port"><div id="card" class="gg-card-nav" tabindex="0">Info card</div><div class="feedback"><button id="yes">Yes</button><button id="no">No</button></div><div id="menus"><div role="tablist"><button id="tab" role="tab">Activity</button><button id="tab2" role="tab">Game Info</button></div><button id="inner">New Note</button></div><button id="outside">Outside</button></div></body></html>');
     const port = document.querySelector('#port')! as unknown as HTMLElement;
     const panel = document.querySelector('.feedback')! as unknown as HTMLElement;
     let active: Element | null = null;
@@ -129,5 +133,36 @@ describe('game-page focus scrolling', () => {
         f.flush(); f.flush();
         expect(f.port.scrollTop).toBe(1000);
         stop();
+    });
+});
+
+describe('Family Sharing hero scrolling', () => {
+    it('uses the anchor scroll port without loading Steam theme classes', () => {
+        const f = fixture();
+        scrollPageToTop(f.document.querySelector('#card') as HTMLElement);
+        expect(f.port.scrollTop).toBe(0);
+        expect(playRow).not.toHaveBeenCalled();
+    });
+    it('returns to the hero when the Family Sharing pill itself has gamepad focus', () => {
+        const f = fixture();
+        const family = f.document.createElement('button');
+        family.className = 'gg-family gpfocus';
+        f.port.appendChild(family);
+        const stop = installPageFocusScrolling(f.document, null);
+        f.focus('#outside');
+        family.dispatchEvent(new f.document.defaultView!.Event('focusin', { bubbles: true }));
+        f.flush(); f.flush();
+        expect(f.port.scrollTop).toBe(0);
+        expect(f.state.animationRunning).toBe(false);
+        stop();
+    });
+    it('uses the native play row scroll port when the pill is portalled outside it', () => {
+        const f = fixture();
+        f.document.querySelector('#card')!.classList.add('play');
+        const family = f.document.createElement('button');
+        f.document.documentElement.appendChild(family);
+        scrollPageToTop(family);
+        expect(playRow).toHaveBeenCalledOnce();
+        expect(f.port.scrollTop).toBe(0);
     });
 });

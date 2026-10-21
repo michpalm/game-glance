@@ -40,9 +40,12 @@ export function centerFeedbackPanel(panel: HTMLElement): void {
 
 /** The hero screen: Play and the Family Sharing pill. Scroll the page port to the top. */
 export function scrollPageToTop(anchor: HTMLElement): void {
-    const playSel = playRow();
-    const play = playSel ? anchor.ownerDocument.querySelector<HTMLElement>(playSel) : null;
-    const port = scrollPort(anchor) ?? (play ? scrollPort(play) : null);
+    let port = scrollPort(anchor);
+    if (!port) {
+        const playSel = playRow();
+        const play = playSel ? anchor.ownerDocument.querySelector<HTMLElement>(playSel) : null;
+        port = play ? scrollPort(play) : null;
+    }
     if (port && !nativeScroll(port, 0)) port.scrollTop = 0;
 }
 

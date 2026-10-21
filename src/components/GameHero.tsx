@@ -201,7 +201,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
                 {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
                     Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
-                {!clean && (
+                {!cleanStyle && (
                     <CardsRow selectable={restyle}>
                         {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
