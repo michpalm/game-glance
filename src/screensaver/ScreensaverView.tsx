@@ -82,7 +82,7 @@ function StatsCard({ appId, locale, scale }: { appId: number; locale: string; sc
         };
     }, [appId]);
     if (!known) return null;
-    // A shortcut's play time is only in its details (#52): the ones Home kept, or Steam's store when it has them loaded.
+    // A shortcut's play time is only in its details (#52): Steam's store when it has them loaded, else the ones Home kept.
     const played = steamPlayedMinutes(overviewOf(appId) ?? undefined, liveDetails(appId), memoPlaytime(appId));
     const stats = screensaverStats(known.times, played, known.achievements, locale);
     return (
