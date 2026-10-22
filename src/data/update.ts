@@ -178,6 +178,21 @@ export async function installUpdate(release: Release, backend: DeckyBackendLike 
     }
 }
 
+/** Starts Decky's own upgrade/downgrade confirmation; success means the prompt was requested, not installed. */
+export async function installVersion(release: Release, current: string, backend: DeckyBackendLike | undefined = deckyBackend()): Promise<boolean> {
+    if (!parseVersion(current) || !parseVersion(release.version) || !backend?.call) return false;
+    const newer = isNewer(release.version, current);
+    const older = isNewer(current, release.version);
+    if (!newer && !older) return false;
+    try {
+        await backend.call('utilities/install_plugin', release.url, PLUGIN_NAME, release.version, release.sha256, older ? 3 : INSTALL_TYPE_UPDATE);
+        return true;
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} version install failed`, error);
+        return false;
+    }
+}
+
 /** The latest check (at start-up, then daily, or Check for updates); Quick Access shows its answer. */
 let latestCheck: Promise<UpdateState> | null = null;
 const checkListeners = new Set<() => void>();
