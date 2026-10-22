@@ -19,6 +19,35 @@ export interface BatteryView {
     low: boolean;
 }
 
+/** A connected Bluetooth controller's battery, from BlueZ through the backend (get_controller_batteries). */
+export interface ControllerBatteryView {
+    name: string;
+    /** 0..100, rounded. */
+    percent: number;
+    low: boolean;
+}
+
+/**
+ * The backend's controller list as the pill shows it: entries without a numeric percent dropped, the percent rounded
+ * and kept within 0..100, a missing name as "Controller", lowest first (then by name). Anything else is []. Pure.
+ */
+export function readControllerBatteries(raw: unknown): ControllerBatteryView[] {
+    if (!Array.isArray(raw)) return [];
+    const list: ControllerBatteryView[] = [];
+    for (const entry of raw) {
+        const { name, percent } = (entry ?? {}) as { name?: unknown; percent?: unknown };
+        if (typeof percent !== 'number' || !Number.isFinite(percent)) continue;
+        const value = Math.max(0, Math.min(100, Math.round(percent)));
+        list.push({ name: typeof name === 'string' && name ? name : 'Controller', percent: value, low: value <= LOW_BATTERY * 100 });
+    }
+    return list.sort((a, b) => a.percent - b.percent || a.name.localeCompare(b.name));
+}
+
+/** The controllers the pill shows (the first `max`) and how many more there are, for a "+n". */
+export function controllerItems(list: ControllerBatteryView[], max = 2): { shown: ControllerBatteryView[]; more: number } {
+    return { shown: list.slice(0, max), more: Math.max(0, list.length - max) };
+}
+
 export type ConnectionKind = 'wifi' | 'wired' | 'offline';
 
 /**
