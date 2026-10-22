@@ -140,3 +140,8 @@ Game Glance follows Steam's language and uses Steam's own words wherever Steam h
 juego" in Spanish, the collection and sort names, the cloud states and more). Unifideck's labels come from Unifideck. A
 few words with no Steam equivalent stay in English: the HowLongToBeat column names and this Quick Access panel (see
 [localization.md](localization.md)).
+
+## In development for 3.5.0
+
+- **Version choice:** select an installable stable release from 3.5.0 onward in Quick Access → Game Glance → Updates. Decky asks before an upgrade or downgrade. Original release assets are preserved. Device round-trip validation is still pending.
+- **Minimal games row:** a third style with small portrait cards throughout and Steam-style scrolling. The existing Steam and Spotlight styles remain available. Device acceptance is still pending.
