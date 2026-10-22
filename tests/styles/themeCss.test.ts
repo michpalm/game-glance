@@ -2,6 +2,7 @@ import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
 import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
 import { homeCanvas } from '../../src/home/scale';
+import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { SETTLE } from '../../src/home/openTwins';
 import { cardMaxWidths, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
@@ -118,6 +119,13 @@ describe('buildThemeCss play row', () => {
         expect(css).toContain('.ps_Cloud.ps_Problem');
         expect(css).toContain('.ps_Cloud.ps_Fail');
         expect(css).toContain('.ps_Offline .ps_Cloud');
+        // The 1.1.1 look keeps its coloured icon and has no badge (#64 is the restyle's).
+        expect(css).not.toContain('--gg-cloud-dot');
+        expect(rulesFor(css, '.ps_Cloud::after')).toBe('');
+        const restyledCss = buildThemeCss(full, { restyle: true });
+        expect(restyledCss).toMatch(/\.ps_Cloud\.ps_Syncing[^{]*\{[^}]*--gg-cloud-dot: var\(--gg-warn\)/);
+        expect(restyledCss).toMatch(/\.ps_Cloud\.ps_Problem[^{]*\{[^}]*--gg-cloud-dot: var\(--gg-bad\)/);
+        expect(restyledCss).toMatch(/\.ps_Offline \.ps_Cloud[^{]*\{[^}]*--gg-cloud-dot: var\(--gg-off\)/);
     });
 });
 
@@ -524,22 +532,46 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     it('restyle: the cloud status is the same dark circle as the others, with the re-tuned state colours and Home’s focus ring', () => {
         const cloud = rulesFor(restyled, '.ps_Cloud');
         expect(cloud).toContain('background: rgba(12, 16, 22, 0.4) !important;');
-        expect(cloud).toContain('border: 1px solid rgba(255, 255, 255, 0.18) !important;');
+        // Its ring is the menu circles' (1 d unit, the boosted ring colour), not 1 CSS px: a 1 px ring is 2 device px on the
+        // Ally and settled visibly as the open transition handed over from Home's (#64).
+        const menuRing = /border-width: [^;]*; border-color: [^;]*;/.exec(rulesFor(restyled, '.ps_Menu'))![0];
+        expect(cloud).toContain(menuRing);
         expect(cloud).toContain('backdrop-filter: blur(calc(12 * var(--gg-d))) !important;');
         expect(cloud).toContain('--gg-ok: #5cf2b4; --gg-warn: #ffd84d; --gg-bad: #ff8585; --gg-off: #c4c9d1;');
-        expect(rulesFor(restyled, '.ps_Cloud svg')).toContain('drop-shadow');
+        expect(rulesFor(restyled, '.ps_Cloud::before')).toContain('drop-shadow');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
         // The menu circles' fill is the same.
         expect(rulesFor(restyled, '.ps_Menu')).toContain('background: rgba(12, 16, 22, 0.4) !important;');
         // Not in the 1.1.1 output.
         expect(buildThemeCss(steam)).not.toContain('#5cf2b4');
     });
+    it('restyle: the cloud is one white cloud with its state in a badge at the top right, as on Home (#64)', () => {
+        expect(rulesFor(restyled, '.ps_Cloud')).toContain('color: #ffffff !important;');
+        expect(rulesFor(restyled, '.ps_Cloud svg')).toContain('display: none !important;');
+        // Steam clips the circle (overflow: hidden): the badge sits half outside it, as on Home.
+        expect(rulesFor(restyled, '.ps_Cloud')).toContain('overflow: visible !important;');
+        const glyph = rulesFor(restyled, '.ps_Cloud::before');
+        expect(glyph).toContain('content: "" !important;');
+        expect(glyph).toContain(`background: ${CLOUD_GLYPH_URL} center / contain no-repeat !important;`);
+        expect(glyph).toContain('drop-shadow');
+        // Centred in the circle whatever Steam's (hidden) icon box takes in its row.
+        expect(glyph).toContain('position: absolute !important; inset: 0 !important; margin: auto !important;');
+        const dot = rulesFor(restyled, '.ps_Cloud::after');
+        expect(dot).toContain('content: "" !important;');
+        expect(dot).toContain('background: var(--gg-cloud-dot, var(--gg-ok)) !important;');
+        expect(dot).toContain('width: calc(12 * var(--gg-d)) !important;');
+        expect(dot).toContain('border: calc(2 * var(--gg-d)) solid rgba(0, 0, 0, 0.75) !important;');
+        expect(dot).toContain('border-radius: 50% !important;');
+        // Steam's own ::after rule on this element sets left: 8px and a negative margin; ours replaces them.
+        expect(dot).toContain('left: auto !important; bottom: auto !important; margin: 0 !important;');
+    });
     it("the glass rings are Home's, 1 d unit (1 canvas px there), not 1 px: a 1 px border is drawn on 2 whole device px at the Ally's 2.32 and read brighter than Home's as the open transition handed over", () => {
         expect(rulesFor(restyled, '.ps_Menu')).toContain('border-width: calc(1 * var(--gg-d)) !important;');
         expect(rulesFor(restyled, '.gg-card')).toContain('border-width: calc(1 * var(--gg-d));');
         expect(buildCleanCss(full)).toMatch(/\.gg-clean-info \{[^}]*border: calc\(1 \* var\(--gg-d\)\) solid /);
-        // The cloud keeps its 1 px: placed at a fractional position, it is drawn soft like Home's already (Michael: no change there).
-        expect(rulesFor(restyled, '.ps_Cloud')).toContain('border: 1px solid rgba(255, 255, 255, 0.18) !important;');
+        // The cloud too (#64): with the white glyph its 1 px ring (2 device px) was seen settling at the hand-over, where
+        // the earlier coloured icon drew the eye (Michael, 2026-10-22; it had kept 1 px before).
+        expect(rulesFor(restyled, '.ps_Cloud')).toContain('border-width: calc(1 * var(--gg-d)) !important;');
     });
     it("the glass rings are as bright as Home's: their colour is Home's times --gg-ring (ringBoost), 1 when not set", () => {
         expect(rulesFor(restyled, '.ps_Menu')).toContain('border-color: rgba(255, 255, 255, calc(0.18 * var(--gg-ring, 1))) !important;');
@@ -844,8 +876,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // Without the full-screen layout the title block stays hidden (see below) and the logo stays.
         const stacked = extra(header({ TopCapsule: undefined }));
         expect(stacked).not.toContain('visibility: hidden');
-        // (the Play pill's hidden sheen is not layout: it holds in any layout)
-        expect(stacked.replace(/^.*\[role="button"\]::after \{[^}]*\}$/m, '')).not.toContain('::after');
+        // (the Play pill's hidden sheen and the cloud's state badge are not layout: they hold in any layout)
+        expect(stacked.replace(/^.*\[role="button"\]::after \{[^}]*\}$/m, '').replace(/^\.ps_Cloud::after \{[^}]*\}$/m, '')).not.toContain('::after');
         expect(stacked).not.toContain('> .gg-title');
         expect(stacked).toContain('.gg-title {');
 
@@ -854,12 +886,14 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // logo's visibility (its box stays), plus the Play row's side padding (the handoff's 56 px insets), and the focused
         // Play's scale (a transform: drawn bigger, nothing laid out again).
         const steamRules = [...extra(steam).matchAll(/^\s*([^{}\n]+)\{([^}]*)\}/gm)]
-            .filter((m) => /\.(hd|ad|ov|rt|ps)_/.test(m[1]) && !/^\s*\.ad_Inner > \.gg-/.test(m[1]));
+            .filter((m) => /\.(hd|ad|ov|rt|ps)_/.test(m[1]) && !/^\s*\.ad_Inner > \.gg-/.test(m[1]))
+            // (the cloud's glyph and state badge are our own boxes inside its circle, #64: not Steam's layout)
+            .filter((m) => !/^\s*\.ps_Cloud::(before|after)\s*$/.test(m[1]));
         expect(steamRules.length).toBeGreaterThan(0);
         for (const [, selector, body] of steamRules) {
             const props = body.split(';').map((d) => d.split(':')[0].trim()).filter(Boolean);
             for (const prop of props) {
-                expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|transition|color|background|border|border-width|border-color|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display|object-position|transform|transform-style)$/)]);
+                expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|--gg-cloud-dot|overflow|transition|color|background|border|border-width|border-color|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display|object-position|transform|transform-style)$/)]);
             }
         }
         // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's, and in

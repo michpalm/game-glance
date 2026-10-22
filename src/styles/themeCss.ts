@@ -1,7 +1,7 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
-import { CLOUD_COLOURS } from '../home/cloud';
+import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -617,6 +617,10 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
     const menuButton = cls(play, 'MenuButton');
     const cloud = cls(play, 'CloudStatusRow');
     const cloudIcon = cls(play, 'CloudStatusIcon');
+    const syncing = cls(play, 'CloudSynching');
+    const problem = cls(play, 'CloudSyncProblem');
+    const fail = cls(play, 'CloudStatusSyncFail');
+    const offline = cls(play, 'OfflineMode');
     const versionRow = cls(shared, 'SharedLibrary');
     const versionLink = versionRow && `${versionRow} a[role="button"]`;
 
@@ -670,7 +674,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
         // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring and glow.
-        rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
             backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
@@ -678,6 +682,20 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Centred as Home's: Steam's icon box (16 u in the 1.1.1 theme) as tall as the icon, which hung out of its bottom
         // and sat low in the circle after the open transition (1.65 px docked, Michael on the Ally).
         rule(cloudIcon, ` height: ${d(PAGE_LAYOUT.cloudIcon)} !important; `),
+        // One white cloud in every state, as Home's (#64): Steam's state icon is hidden and ours drawn in its place, with
+        // the halo; the state is the badge at the top right (CLOUD_DOT, from --gg-cloud-dot set by the state rules above).
+        rule(cloud, ` color: #ffffff !important; overflow: visible !important; `),
+        rule(cloud && syncing && [`${cloud}${syncing}`, `${syncing} ${cloud}`, `${cloud} ${syncing}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-warn); `),
+        rule(cloud && problem && [`${cloud}${problem}`, `${problem} ${cloud}`, `${cloud} ${problem}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-bad); `),
+        rule(cloud && fail && [`${cloud}${fail}`, `${fail} ${cloud}`, `${cloud} ${fail}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-bad); `),
+        rule(cloud && offline && `${offline} ${cloud}`, ` color: #ffffff !important; --gg-cloud-dot: var(--gg-off); `),
+        rule(cloud && `${cloud} svg`, ` display: none !important; `),
+        rule(cloud && `${cloud}::before`, ` content: "" !important; display: block !important; position: absolute !important; inset: 0 !important; margin: auto !important; width: ${d(PAGE_LAYOUT.cloudIcon)} !important; height: ${d(PAGE_LAYOUT.cloudIcon)} !important;
+            background: ${CLOUD_GLYPH_URL} center / contain no-repeat !important; filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
+        rule(cloud && `${cloud}::after`, ` content: "" !important; position: absolute !important; top: ${d(CLOUD_DOT.inset)} !important; right: ${d(CLOUD_DOT.inset)} !important;
+            left: auto !important; bottom: auto !important; margin: 0 !important;
+            width: ${d(CLOUD_DOT.size)} !important; height: ${d(CLOUD_DOT.size)} !important; box-sizing: content-box !important; border-radius: 50% !important;
+            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: ${d(CLOUD_DOT.ring)} solid ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
         rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
         rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
 
