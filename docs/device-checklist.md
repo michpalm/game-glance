@@ -297,3 +297,18 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
 3. Backend log on the device: `~/homebrew/logs/game-glance/`.
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.
+
+## 3.5.0 development checks
+
+These checks apply to the development branch, not the published 3.4.1 release.
+
+| Check | Expected | Result |
+| --- | --- | --- |
+| Choose version | Stable releases from 3.5.0 onward, including older pages, with installed/latest labels; selection alone never installs | Pending on device |
+| Catalog offline/refresh | Last complete choices remain visible with a refresh error; removed selection cannot install a different version | Automated state/catalog coverage; device pending |
+| Version round trip | Upgrade from 3.5, downgrade to it, switch forward; picker stays available and settings survive | Pending on device |
+| Installer confirmation | Correct upgrade/downgrade wording, cancellation leaves installed version unchanged | Router arguments tested; device pending |
+| Minimal row | All portrait cards stay small, selection scrolls as Steam's row, no unused first-card gap | Geometry/persistence tested; device pending |
+| Minimal inputs | Controller, held steps, tap/select/open, mouse, drag/flick, Library and loop previews work | Existing input tests pass; Minimal device pass pending |
+| Minimal transition | Open and B return retain selection, without a temporary wide source card or handover jump | Pending on device |
+| Existing row styles | Steam and Spotlight retain their dimensions, art and movement | Existing geometry tests pass; device pending |
