@@ -8,6 +8,7 @@ import { getShortcutDescription } from '../data/shortcutDescription';
 import { getDescription, getSteamLanguage } from '../data/steam';
 import type { HeroicRef } from '../logic/heroic';
 import { artKnown, resolveArt } from './HeroBackground';
+import { rowShowsWideCards } from './recentsLayout';
 import { cardArtKnown, warmCardArt } from './wideCardArt';
 import { memoAchievements, noteDetails, seedAchievements, setAchievementSink } from './detailsMemo';
 import { ArtWarmDeps, DescriptionWarmDeps, DetailsWarmDeps, HltbWarmDeps, warmAchievements, warmArt, warmDescriptions, warmHltb, warmOrder } from './warmup';
@@ -71,7 +72,9 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
             const ids = ordered.map((g) => g.appId);
             const artDeps: ArtWarmDeps = { has: artKnown, resolve: resolveArt, sleep };
             const cardDeps: ArtWarmDeps = { has: cardArtKnown, resolve: warmCardArt, sleep };
-            const art = Promise.all([warmArt(ids, artDeps, isCancelled), warmArt(ids, cardDeps, isCancelled)]);
+            // Minimal draws no wide card: no wide card art to warm (a later switch to Steam or Spotlight loads it as shown).
+            const wideCards = rowShowsWideCards(settings.get().homeRowStyle);
+            const art = Promise.all([warmArt(ids, artDeps, isCancelled), wideCards ? warmArt(ids, cardDeps, isCancelled) : undefined]);
             // The persisted counts first: no delay, so the chip is there on the very first selection after a restart.
             let seeded = false;
             for (const game of ordered) {

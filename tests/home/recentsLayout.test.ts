@@ -10,6 +10,7 @@ import {
     heroIndex,
     isLibraryFocus,
     MAX_GHOSTS,
+    rowShowsWideCards,
     RECENTS_BOTTOM,
     recentsGeometry,
     recentsLayout,
@@ -293,5 +294,15 @@ describe('Minimal row', () => {
         const bad = minimalRowLayout(NaN, NaN, g, NaN);
         expect(bad.items).toHaveLength(1);
         expect(Number.isFinite(bad.scrollX)).toBe(true);
+    });
+});
+
+describe('rowShowsWideCards (whether Home warms the wide card art)', () => {
+    it('is false for Minimal, whose cards all stay small', () => {
+        expect(rowShowsWideCards('minimal')).toBe(false);
+    });
+    it('is true for Steam and Spotlight', () => {
+        expect(rowShowsWideCards('steam')).toBe(true);
+        expect(rowShowsWideCards('spotlight')).toBe(true);
     });
 });
