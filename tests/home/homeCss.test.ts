@@ -1,4 +1,5 @@
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
+import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
 import { describe, expect, it } from 'vitest';
 import {
     statusCss, HOME_GLASS, HOME_PILL,
@@ -381,14 +382,20 @@ describe('homeCss', () => {
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
     });
-    it('the cloud circle is the same circle as the others; only its icon takes the state colour, with a halo', () => {
+    it('the cloud circle is the same circle as the others: a white cloud with a halo, its state in a badge at the top right (#64)', () => {
         const css = homeCss();
         expect(css).not.toMatch(/\.gh-btn-cloud\s*\{/);
         expect(css).toMatch(/\.gh-btn-cloud svg\s*\{[^}]*width:\s*26px[^}]*drop-shadow/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{\s*color:\s*#5cf2b4\s*!important/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-busy\s*\{\s*color:\s*#ffd84d/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-bad\s*\{\s*color:\s*#ff8585/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-off\s*\{\s*color:\s*#c4c9d1/);
+        for (const [tone, colour] of Object.entries(CLOUD_COLOURS)) {
+            expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-${tone}\\s*\\{\\s*--gh-cloud-dot:\\s*${colour}`));
+        }
+        expect(css).not.toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{[^}]*color:\s*#5cf2b4/);
+        expect(css).toMatch(/\.gh-btn-cloud:not\(\.gh-cloud-uni\)\s*\{[^}]*position:\s*relative/);
+        expect(css).toMatch(
+            new RegExp(
+                `\\.gh-btn-cloud:not\\(\\.gh-cloud-uni\\)::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+            ),
+        );
     });
     it('feed rows: card height from the row (inline variable), rows and their header placed inline, compact wide cards', () => {
         const css = homeCss();
@@ -560,6 +567,14 @@ describe('homeCss open transition', () => {
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-play-arrow') && /transform-origin:\s*100% 50%/.test(body))).toBe(true);
         // The arrow button itself fades with the info button.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-stream') && /opacity:\s*0/.test(body))).toBe(true);
+    });
+    it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
+        const all = rules(css);
+        for (const i of [0, 1, 2, 3]) {
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`));
+            expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
+        }
+        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud:not(.gh-cloud-uni)::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
     });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);

@@ -2,7 +2,7 @@ import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
 import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
 import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePill';
-import { CLOUD_COLOURS, CloudTone } from './cloud';
+import { CLOUD_COLOURS, CLOUD_DOT, CloudTone } from './cloud';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
@@ -341,7 +341,11 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // Cloud circle: the same circle as the others; only its icon is coloured by the sync state (cloud.CLOUD_COLOURS,
         // light tints for the dark translucent fill) with a dark halo so it reads over bright art too.
         rule('.gh-btn-cloud svg', `width: ${PAGE_LAYOUT.cloudIcon}px; height: ${PAGE_LAYOUT.cloudIcon}px; margin: 0; fill: currentColor; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.7))`),
-        ...(Object.keys(CLOUD_COLOURS) as CloudTone[]).map((tone) => rule(`.gh-btn-cloud.gh-cloud-${tone}`, `color: ${CLOUD_COLOURS[tone]}`)),
+        // The state is a badge at the top right (#64): the glyph stays white, the dot takes the state colour.
+        ...(Object.keys(CLOUD_COLOURS) as CloudTone[]).map((tone) => rule(`.gh-btn-cloud.gh-cloud-${tone}`, `--gh-cloud-dot: ${CLOUD_COLOURS[tone]}`)),
+        rule('.gh-btn-cloud:not(.gh-cloud-uni)', 'position: relative'),
+        rule('.gh-btn-cloud:not(.gh-cloud-uni)::after', `content: ""; position: absolute; top: ${CLOUD_DOT.inset}px; right: ${CLOUD_DOT.inset}px; width: ${CLOUD_DOT.size}px; height: ${CLOUD_DOT.size}px;
+            box-sizing: content-box; border-radius: 50%; background: var(--gh-cloud-dot); border: ${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour}; pointer-events: none`),
         // A Unifideck game's cloud button wears Unifideck's own look (data/unifideckCloud, as its page's button): a white
         // Font Awesome glyph at the circles' size, its state's ring inside the circle (focus shows ours instead), dimmed
         // without cloud support; its breathing is Unifideck's own class.
@@ -700,6 +704,10 @@ export function openingRules(): string[] {
         // Each circle's icon shrinks as the circle grows (openMotion), so it is the page's size throughout.
         rule(`${M} .gh-actions > .gh-btn-circle > .gh-btn-icon`, 'transform-origin: 50% 50%'),
         ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle) > .gh-btn-icon`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
+        // The cloud's state badge (#64) too, about its top-right corner: that corner is the circle's, which the circle's
+        // scale carries onto the page's corner, so the badge stays the page's size there throughout (no settling).
+        rule(`${M} .gh-actions > .gh-btn-cloud:not(.gh-cloud-uni)::after`, 'transform-origin: 100% 0'),
+        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
         // Chips: their glass gives way to the panels at once; texts move and grow; the bars and unmatched chips fade.
         rule(`${M} .gh-chip`, 'background: transparent; border-color: transparent; backdrop-filter: none; box-shadow: none'),
         // An accent copy of a value's words (data-text) over it, for a value the page draws in the accent (openMotion).
