@@ -2,7 +2,7 @@ import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
-import { ART_FILL_FILTER, HeroFit } from '../home/heroFit';
+import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
 import { homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -557,8 +557,12 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
 /** Steam's header image on the game page (the hero art); null without its class. */
 export function heroImageSelector({ header }: ThemeClasses): string | null {
     const topCapsule = cls(header, 'TopCapsule');
-    return topCapsule ? `${topCapsule} img` : null;
+    // Not Steam's blurred placeholder (as arrivalSelectors' headerImg).
+    return topCapsule ? `${topCapsule} img:not([src*="_blur"])` : null;
 }
+
+/** Fit's fade for the standard hero shape in any wider box, in CSS units: the art's height is 100vw / 3.1. */
+const STANDARD_FIT_MASK = `linear-gradient(180deg, #000 calc(100vw / ${STANDARD_HERO_ASPECT} * ${1 - FIT_FADE}), transparent calc(100vw / ${STANDARD_HERO_ASPECT}))`;
 
 /** Steam's Play row on the game page (the Play pill with its arrow, the circles, the cloud): logic/cardNav's `play`; null without its classes. */
 export function playRowSelector({ root, play, shared }: ThemeClasses): string | null {
@@ -821,11 +825,15 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
                       // Fit (home/heroFit): the whole art at the top centre, fading (--gg-hero-mask) into the art fill under it, a
                       // blurred copy of the same image (--gg-hero-fill; both set by GameHero), as Home draws it. This replaces the
                       // 50% 30% crop: left beside it, that rule would push the fitted art down by 30% of the leftover height.
-                      rule(topCapsule, ` isolation: isolate !important; `),
-                      rule(topCapsule && `${topCapsule}::before`, ` content: "" !important; position: absolute !important; inset: -120px !important; z-index: 0 !important;
-                          background: var(--gg-hero-fill) center / cover no-repeat !important; filter: ${ART_FILL_FILTER} !important; pointer-events: none !important; `),
-                      rule(topCapsule && `${topCapsule} img`, ` object-fit: contain !important; object-position: center top !important; -webkit-mask-image: var(--gg-hero-mask) !important;
-                          mask-image: var(--gg-hero-mask) !important; position: relative !important; z-index: 1 !important; `),
+                      // The fill sits behind the art (z-index -1 in the isolated header) and the art keeps Steam's order, so the
+                      // header's scrims (its ::after) still shade it, as Home's scrims shade Home's art; the fill's blurred edges
+                      // are clipped to the header, not drawn over Steam's tabs below it.
+                      rule(topCapsule, ` isolation: isolate !important; overflow: clip !important; `),
+                      rule(topCapsule && `${topCapsule}::before`, ` content: "" !important; position: absolute !important; inset: -120px !important; z-index: -1 !important;
+                          background: var(--gg-hero-fill, none) center / cover no-repeat !important; filter: ${ART_FILL_FILTER} !important; pointer-events: none !important; `),
+                      // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
+                      rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` object-fit: contain !important; object-position: center top !important;
+                          -webkit-mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; `),
                   ]
                 : [rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `)]),
             // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Focusable } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { withKnownAchievements } from '../home/detailsMemo';
@@ -69,24 +69,36 @@ export function heroFitVars(fit: HeroFit, src: string | null, artAspect: number 
     return { '--gg-hero-fill': `url("${src.replace(/"/g, '%22')}")`, '--gg-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) };
 }
 
+type VarStyle = { getPropertyValue(name: string): string; removeProperty(name: string): string };
+
+/**
+ * Removes the variables this page set, unless another page has set them since: Steam keeps a leaving page mounted
+ * through its exit, after the next page has set its own on the same document.
+ */
+export function removeOwnVars(style: VarStyle, own: Record<string, string>) {
+    for (const [name, value] of Object.entries(own)) if (style.getPropertyValue(name) === value) style.removeProperty(name);
+}
+
 /**
  * Keeps heroFitVars on the page's document while the restyled page shows (the header image's own url, so the fill is
  * the same art), following the image as it loads or changes and the setting; removed when the page goes.
  */
 function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
-    useEffect(() => {
+    // Before paint, so the page never shows a frame without them (themeCss also falls back to the standard fade).
+    useLayoutEffect(() => {
         const root = doc?.documentElement;
         const selector = pageHeroImage();
         if (!doc || !root || !active || !selector) return undefined;
-        let applied: string[] = [];
+        let applied: Record<string, string> = {};
         const apply = () => {
             const img = doc.querySelector<HTMLImageElement>(selector);
             const win = doc.defaultView;
             const aspect = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : null;
-            const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, win ? win.innerWidth / Math.max(1, win.innerHeight) : 16 / 9);
-            for (const name of applied) if (!(name in vars)) root.style.removeProperty(name);
+            const box = win && win.innerWidth > 0 && win.innerHeight > 0 ? win.innerWidth / win.innerHeight : 16 / 9;
+            const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, box);
+            removeOwnVars(root.style, Object.fromEntries(Object.entries(applied).filter(([name]) => !(name in vars))));
             for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
-            applied = Object.keys(vars);
+            applied = vars;
         };
         apply();
         // The header image arrives (or changes, for custom art) after the page: its load events reach the document in the capture phase.
@@ -96,7 +108,7 @@ function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
         doc.addEventListener('load', onLoad, true);
         return () => {
             doc.removeEventListener('load', onLoad, true);
-            for (const name of applied) root.style.removeProperty(name);
+            removeOwnVars(root.style, applied);
         };
     }, [doc, fit, active]);
 }

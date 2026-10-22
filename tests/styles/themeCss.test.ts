@@ -548,15 +548,24 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     });
     it("hero Fit: Steam's header image fitted at the top with its fade, over the art fill; it replaces the 50% 30% crop", () => {
         const fit = buildThemeCss(steam, { restyle: true, heroFit: 'fit' });
-        const img = rulesFor(fit, '.hd_Top img');
-        expect(img).toContain('object-fit: contain !important; object-position: center top !important; -webkit-mask-image: var(--gg-hero-mask) !important;');
-        expect(img).toContain('position: relative !important; z-index: 1 !important;');
+        // Only the hero, not Steam's blurred placeholder (as arrivalSelectors).
+        const img = rulesFor(fit, '.hd_Top img:not([src*="_blur"])');
+        expect(img).toContain('object-fit: contain !important; object-position: center top !important;');
+        // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
+        expect(img).toContain('-webkit-mask-image: var(--gg-hero-mask, linear-gradient(180deg, #000 calc(100vw / 3.1 * 0.78), transparent calc(100vw / 3.1))) !important;');
+        // The art stays in Steam's order, under the header's scrims (::after), as Home's art is under its scrims.
+        expect(img).not.toContain('z-index');
+        expect(img).not.toMatch(/(^|[\s;{])position:/);
         expect(img).not.toContain('50% 30%');
         const fill = rulesFor(fit, '.hd_Top::before');
-        expect(fill).toContain('background: var(--gg-hero-fill) center / cover no-repeat !important;');
+        expect(fill).toContain('background: var(--gg-hero-fill, none) center / cover no-repeat !important;');
         expect(fill).toContain(`filter: ${ART_FILL_FILTER} !important;`);
         expect(fill).toContain('inset: -120px !important;');
-        expect(rulesFor(fit, '.hd_Top')).toContain('isolation: isolate !important;');
+        expect(fill).toContain('z-index: -1 !important;');
+        // Its blurred edges stay inside the header, not over Steam's tabs below it.
+        const box = rulesFor(fit, '.hd_Top');
+        expect(box).toContain('isolation: isolate !important;');
+        expect(box).toContain('overflow: clip !important;');
     });
     it('hero Fill: the page as before; the 1.1.1 output is the same for both', () => {
         expect(buildThemeCss(steam, { restyle: true, heroFit: 'fill' })).toBe(buildThemeCss(steam, { restyle: true }));
@@ -567,7 +576,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(buildCleanCss(steam)).not.toContain('.hd_Top img');
     });
     it("heroImageSelector: Steam's header image; null without its class", () => {
-        expect(heroImageSelector(steam)).toBe('.hd_Top img');
+        expect(heroImageSelector(steam)).toBe('.hd_Top img:not([src*="_blur"])');
         expect(heroImageSelector({ ...steam, header: undefined })).toBeNull();
     });
     it('restyle: the cloud is one white cloud with its state in a badge at the top right, as on Home (#64)', () => {
