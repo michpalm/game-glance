@@ -45,8 +45,9 @@ Home's original handoff values (comment in `src/home/homeCss.ts`): ink `#07090c`
 | `glass-solid` | `rgba(12,16,22,.75)` | Small badges that must read on any artwork |
 | `ink` | `#07090c` | Unchanged |
 | `scrim` | `rgb(5,7,10)` | Page fades; unchanged |
+| `art-fill` | `blur(42px) saturate(1.25) brightness(.8)` on a copy of the art, drawn larger than its box | Blurred artwork behind art that does not fill its space: the hero's whole-art mode, Home's hero fallback (`.gh-hero-blur`); later the capsule and feed-card fills |
 
-One blur strength (16 px) everywhere a surface uses CSS backdrop blur. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
+One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own token, `art-fill`, Home's existing hero fill. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
 
 ### Edges
 
@@ -187,7 +188,7 @@ No fetch, push, pull request or release is part of this spec; those are separate
 - Unit tests for `tokenCss()`: every token name is emitted, the accent `@property` is registered, and values match this spec.
 - Unit tests for each recipe and for `applyAccent()` (fallback, legible text variant).
 - Each surface's CSS builder includes the token block (assert on presence of `--gg-` declarations, not full snapshots).
-- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius` or `font-weight` literals outside `tokens.ts`, except entries in a reviewed allowlist (artwork effects such as gradient scrims and download fill).
+- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius` or `font-weight` literals outside `tokens.ts`, except entries in a reviewed allowlist (artwork effects such as gradient scrims and download fill; blurred artwork uses the `art-fill` token).
 - Existing tests stay green; typecheck passes.
 - Device: a full Gamescope compositor screenshot (mode 3) of Home, a game page and the screensaver on the Ally, docked and handheld, compared against the visual reference and against before-screenshots, to confirm only the approved changes are visible.
 
