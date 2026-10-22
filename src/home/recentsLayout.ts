@@ -171,6 +171,9 @@ export function recentsLayout(count: number, focused: number, geometry: RecentsG
 export const ROW_STYLES = ['steam', 'spotlight', 'minimal'] as const;
 export type RowStyle = (typeof ROW_STYLES)[number];
 
+/** Whether the style ever draws a wide card: Minimal never does, so Home does not warm the wide card art for it. */
+export const rowShowsWideCards = (style: RowStyle): boolean => style !== 'minimal';
+
 /** A stored style, else Steam's (the default, and what an unknown value reads as). */
 export function rowStyleOf(value: unknown): RowStyle {
     return (ROW_STYLES as readonly unknown[]).includes(value) ? (value as RowStyle) : 'steam';
