@@ -1,7 +1,7 @@
 import { toaster } from '@decky/api';
 import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow } from '@decky/ui';
 import { useState } from 'react';
-import { installUpdate, installVersion, UpdateState, useUpdate } from '../data/update';
+import { createInstallGate, installUpdate, installVersion, sameVersion, UpdateState, useUpdate } from '../data/update';
 import { useVersionCatalog } from '../data/useVersionCatalog';
 import { PLUGIN_NAME } from '../constants';
 
@@ -30,17 +30,14 @@ export function UpdatesSection() {
     const [choosing, setChoosing] = useState(false);
     const [selected, setSelected] = useState('');
     const [installing, setInstalling] = useState(false);
+    const [installGate] = useState(() => createInstallGate(setInstalling));
     const catalog = useVersionCatalog(choosing);
     const release = catalog.releases.find((r) => r.version === selected);
     const current = state.current;
-    const requestInstall = async () => {
-        if (!release || !current || installing || catalog.loading) return;
-        setInstalling(true);
-        try {
-            if (!(await installVersion(release, current))) {
-                toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
-            }
-        } finally { setInstalling(false); }
+    const requestInstall = async (action: () => Promise<boolean>) => {
+        if ((await installGate.run(action)) === false) {
+            toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
+        }
     };
     return (
         <PanelSection title="Updates">
@@ -52,11 +49,8 @@ export function UpdatesSection() {
                     <ButtonItem
                         layout="below"
                         description="Decky asks to confirm, then installs it and reloads Game Glance."
-                        onClick={async () => {
-                            if (!(await installUpdate(state.release))) {
-                                toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the update. Install it from the release page instead.' });
-                            }
-                        }}
+                        disabled={installing}
+                        onClick={() => requestInstall(() => installUpdate(state.release))}
                     >
                         Update to {state.release.version}
                     </ButtonItem>
@@ -83,13 +77,13 @@ export function UpdatesSection() {
                         label="Version"
                         menuLabel="Choose version"
                         selectedOption={release?.version ?? ''}
-                        rgOptions={catalog.releases.map((r, i) => ({ data: r.version, label: `${r.version}${r.version === current ? ' · installed' : ''}${i === 0 ? ' · latest' : ''}` }))}
+                        rgOptions={catalog.releases.map((r, i) => ({ data: r.version, label: `${r.version}${current && sameVersion(r.version, current) ? ' · installed' : ''}${i === 0 ? ' · latest' : ''}` }))}
                         onChange={(option) => setSelected(String(option.data))}
                         disabled={catalog.loading || installing}
                     />
                 </PanelSectionRow>}
                 <PanelSectionRow>
-                    <ButtonItem layout="below" disabled={!release || !current || release.version === current || catalog.loading || installing} onClick={requestInstall}>
+                    <ButtonItem layout="below" disabled={!release || !current || sameVersion(release.version, current) || catalog.loading || installing} onClick={() => { if (release && current) void requestInstall(() => installVersion(release, current)); }}>
                         {release ? `Install ${release.version}` : 'Select a version to install'}
                     </ButtonItem>
                 </PanelSectionRow>

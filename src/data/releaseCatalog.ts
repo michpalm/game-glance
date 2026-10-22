@@ -12,8 +12,10 @@ export function pickVersionCatalog(rows: unknown[]): Release[] {
     for (const row of rows) {
         const release = pickRelease(row);
         if (!release || release.version.includes('-') || isNewer('3.5.0', release.version)) continue;
-        const key = parseVersion(release.version)?.join('.');
-        if (key && !kept.has(key)) kept.set(key, release);
+        const parts = parseVersion(release.version)!;
+        while (parts.length > 1 && parts[parts.length - 1] === 0) parts.pop();
+        const key = parts.join('.');
+        if (!kept.has(key)) kept.set(key, release);
     }
     return [...kept.values()].sort((a, b) => isNewer(a.version, b.version) ? -1 : isNewer(b.version, a.version) ? 1 : 0);
 }

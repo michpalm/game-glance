@@ -43,6 +43,11 @@ export function isNewer(latest: string, current: string): boolean {
     return isPreRelease(current) && !isPreRelease(latest);
 }
 
+/** Version labels can omit trailing zeros; the picker must agree with the updater about what is installed. */
+export function sameVersion(a: string, b: string): boolean {
+    return !!parseVersion(a) && !!parseVersion(b) && !isNewer(a, b) && !isNewer(b, a);
+}
+
 export interface Release {
     /** The tag without its "v": what Decky shows and stores. */
     version: string;
@@ -176,6 +181,21 @@ export async function installUpdate(release: Release, backend: DeckyBackendLike 
         console.warn(`${LOG_PREFIX} update install failed`, error);
         return false;
     }
+}
+
+/** Both install buttons share this synchronous guard while Decky's router answers. Null means already pending. */
+export function createInstallGate(onBusy: (busy: boolean) => void) {
+    let busy = false;
+    return {
+        async run(action: () => Promise<boolean>): Promise<boolean | null> {
+            if (busy) return null;
+            busy = true;
+            onBusy(true);
+            try { return await action(); }
+            catch { return false; }
+            finally { busy = false; onBusy(false); }
+        },
+    };
 }
 
 /** Starts Decky's own upgrade/downgrade confirmation; success means the prompt was requested, not installed. */

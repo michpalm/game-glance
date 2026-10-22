@@ -53,3 +53,9 @@ describe('version catalog', () => {
         expect(await createReleaseCatalog(async () => [], createCache(memoryKv())).load()).toEqual({ releases: [], stale: false });
     });
 });
+
+it('deduplicates equivalent shortened tags and prefers the first installable asset', () => {
+    const first = release('3.5.0');
+    const shorter = release('3.5');
+    expect(pickVersionCatalog([first, shorter])).toEqual([{ version: '3.5.0', url: first.assets[0].browser_download_url, sha256: '' }]);
+});
