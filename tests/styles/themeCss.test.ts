@@ -503,6 +503,12 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).toMatch(/\.gg-family \{ position: absolute; right: calc\(100% \+ calc\(10 \* var\(--gg-d\)\)\); top: 50%; transform: translateY\(-50%\);/);
         expect(rulesFor(restyled, '.gg-family')).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
     });
+    it('hides HLTB for Deck’s box, which lands before Steam’s overview and pushes the Play row onto the cards (#67)', () => {
+        expect(ruleFor(restyled, '.ad_Inner > #hltb-for-deck {')).toContain('display: none !important');
+        // Only with the restyled layout: the stock page keeps HLTB for Deck's row, and so does a degraded layout.
+        expect(buildThemeCss(steam)).not.toContain('hltb-for-deck');
+        expect(buildThemeCss({ ...steam, root: { ...steam.root, AppDetailsContainer: undefined } }, { restyle: true })).not.toContain('hltb-for-deck');
+    });
     it('the logo option: the same 560 x 180 box as Home, in the page\'s scale unit', () => {
         expect(restyled).toContain('.gg-logo { display: block; width: auto; height: auto; max-width: calc(560 * var(--gg-d)); max-height: calc(180 * var(--gg-d));');
     });

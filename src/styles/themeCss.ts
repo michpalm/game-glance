@@ -799,6 +799,9 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
             // while our title is on the page: Steam's header is the first child of the page container.
             rule(titleImage && `${inner}:has(> .gg-titleblock) ${topCapsule} ${titleImage}`, ` visibility: hidden !important; `),
             rule(svgTitle && `${inner}:has(> .gg-titleblock) ${topCapsule} ${svgTitle}`, ` visibility: hidden !important; `),
+            // HLTB for Deck (hulkrelax/hltb-for-deck) splices its row in before Steam's overview once its lookup answers; in
+            // flow (its default style), it pushed the Play row onto our cards (#67). Our HowLongToBeat card shows the same times.
+            rule(`${inner} > #hltb-for-deck`, ` display: none !important; `),
             // Handoff: Play row top = H - 386 and row = pill 60 + 36 gap, so the cards (at the row's bottom) start at H - 290.
             `:root { --gg-play-top: calc(100vh - ${d(PAGE_LAYOUT.playTop.spotlight)}); --gg-row-h: ${d(PAGE_LAYOUT.rowH)}; }`,
             // A TV (the side inset's media query): Steam's legend is a fixed STEAM_LEGEND_PX at every size, so the handoff's
