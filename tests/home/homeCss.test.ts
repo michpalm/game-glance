@@ -391,6 +391,18 @@ describe('homeCss', () => {
         expect(body('.gh-hero-full')).toContain('background-size: cover');
         expect(body('.gh-hero-full')).toContain('background-position: center 30%');
     });
+    it("hero Fit: another game's hero fades in with Fit's framing; without Fit as before", () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        const open = body('.gh-fit .gh-hero-open');
+        expect(open).toMatch(/isolation:\s*isolate/);
+        expect(open).toMatch(/background-image:\s*none/);
+        const fill = body('.gh-fit .gh-hero-open::before');
+        for (const part of ['background-image: var(--gho-hero', 'background-size: cover', `filter: ${ART_FILL_FILTER}`, 'inset: -120px']) expect(fill).toContain(part);
+        const art = body('.gh-fit .gh-hero-open::after');
+        for (const part of ['background-image: var(--gho-hero', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gho-hero-mask)']) expect(art).toContain(part);
+        expect(body('.gh-hero-open')).toContain('background-size: cover');
+    });
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
     });

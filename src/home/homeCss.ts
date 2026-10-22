@@ -646,6 +646,13 @@ export function openingRules(): string[] {
         lateFade('gh-open-settle', 0, 1, T.settle, 'ease-in-out'),
         // Always there, hidden: the page's scrims over Home's, the opened game's hero (heroFade), the glass panels.
         rule('.gh-hero-open', 'position: absolute; inset: 0; pointer-events: none; background-image: var(--gho-hero, none); background-size: cover; background-position: center 30%; background-repeat: no-repeat; opacity: 0'),
+        // In Fit (settings heroFit, .gh-fit on the root) the other game's hero arrives framed as Home and the page draw it: the
+        // art fill behind, the whole art at the top with its fade (--gho-hero-mask, set beside --gho-hero by applyOpening).
+        rule('.gh-fit .gh-hero-open', 'isolation: isolate; background-image: none'),
+        rule('.gh-fit .gh-hero-open::before', `content: ""; position: absolute; inset: -120px; background-image: var(--gho-hero, none); background-size: cover;
+            background-position: center; background-repeat: no-repeat; filter: ${ART_FILL_FILTER}; pointer-events: none`),
+        rule('.gh-fit .gh-hero-open::after', `content: ""; position: absolute; inset: 0; background-image: var(--gho-hero, none); background-size: contain;
+            background-position: center top; background-repeat: no-repeat; -webkit-mask-image: var(--gho-hero-mask); mask-image: var(--gho-hero-mask); pointer-events: none`),
         // The glass: the page's cards and Clean panel, their tint, border and blur, so the page's arrive as they are (Michael,
         // on the Ally: moving blurred felt more seamless than a blur growing in after the hand-over). 16 canvas px is the page's
         // 16 d units. Its ring is Home's 1px, so it looks like the chips' all the way: Chromium snaps a border to whole device px

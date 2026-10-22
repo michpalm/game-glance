@@ -1,4 +1,5 @@
 import type { HomeRects, MotionVar } from './openMotion';
+import { STANDARD_HERO_ASPECT, fitMask } from './heroFit';
 import type { Box, ExtraColumn, ExtrasAsked, LineMeasure, Measure, PageLook, PageStat, StatKey } from './openTargets';
 import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
@@ -218,7 +219,13 @@ export function applyOpening(root: HTMLElement, variant: OpenVariant, vars: Moti
         names.push(name);
     };
     for (const v of vars) set(v.name, v.value);
-    if (heroUrl) set('--gho-hero', `url("${heroUrl.replace(/"/g, '%22')}")`);
+    if (heroUrl) {
+        set('--gho-hero', `url("${heroUrl.replace(/"/g, '%22')}")`);
+        // Its fade in Fit (homeCss .gh-fit .gh-hero-open): the standard hero shape, as the other game's art is not decoded yet.
+        const win = root.ownerDocument?.defaultView;
+        const box = win && win.innerWidth > 0 && win.innerHeight > 0 ? win.innerWidth / win.innerHeight : 16 / 9;
+        set('--gho-hero-mask', fitMask(STANDARD_HERO_ASPECT, box));
+    }
     const shells = vars.find((v) => v.name === '--gho-shell-count')?.value;
     if (shells) root.setAttribute('data-gh-shells', shells);
     // The page's parts Home draws as it turns into it (extrasParts): homeCss shows only those.

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
 import { applyOpening, extrasFlags, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
 import type { TwinSpec } from '../../src/home/openTwins';
 import { BRIDGE_FADE_EASE, mountOpenBridge } from '../../src/home/openBridge';
@@ -119,6 +120,13 @@ describe('applyOpening', () => {
         const f = fakeRoot();
         applyOpening(f.root, 'heroFade', [], 'https://steamloopback.host/assets/10/library_hero.jpg');
         expect(f.props.get('--gho-hero')).toBe('url("https://steamloopback.host/assets/10/library_hero.jpg")');
+    });
+    it("a feed card's game in Fit: the standard hero fade beside its art (its size is not known yet), gone on undo", () => {
+        const f = fakeRoot();
+        const undo = applyOpening(f.root, 'heroFade', [], 'https://steamloopback.host/assets/10/library_hero.jpg');
+        expect(f.props.get('--gho-hero-mask')).toBe(fitMask(STANDARD_HERO_ASPECT, 16 / 9));
+        undo();
+        expect(f.props.has('--gho-hero-mask')).toBe(false);
     });
     it("marks the parts Home draws as it turns into the page (data-gh-extras), none when it has none", () => {
         const f = fakeRoot();
