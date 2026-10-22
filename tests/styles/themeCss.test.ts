@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
 import { homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
+import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
-import { cardMaxWidths, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
+import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -544,6 +545,30 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_Menu')).toContain('background: rgba(12, 16, 22, 0.4) !important;');
         // Not in the 1.1.1 output.
         expect(buildThemeCss(steam)).not.toContain('#5cf2b4');
+    });
+    it("hero Fit: Steam's header image fitted at the top with its fade, over the art fill; it replaces the 50% 30% crop", () => {
+        const fit = buildThemeCss(steam, { restyle: true, heroFit: 'fit' });
+        const img = rulesFor(fit, '.hd_Top img');
+        expect(img).toContain('object-fit: contain !important; object-position: center top !important; -webkit-mask-image: var(--gg-hero-mask) !important;');
+        expect(img).toContain('position: relative !important; z-index: 1 !important;');
+        expect(img).not.toContain('50% 30%');
+        const fill = rulesFor(fit, '.hd_Top::before');
+        expect(fill).toContain('background: var(--gg-hero-fill) center / cover no-repeat !important;');
+        expect(fill).toContain(`filter: ${ART_FILL_FILTER} !important;`);
+        expect(fill).toContain('inset: -120px !important;');
+        expect(rulesFor(fit, '.hd_Top')).toContain('isolation: isolate !important;');
+    });
+    it('hero Fill: the page as before; the 1.1.1 output is the same for both', () => {
+        expect(buildThemeCss(steam, { restyle: true, heroFit: 'fill' })).toBe(buildThemeCss(steam, { restyle: true }));
+        expect(rulesFor(buildThemeCss(steam, { restyle: true }), '.hd_Top img')).toContain('object-position: 50% 30% !important;');
+        expect(buildThemeCss(steam, { heroFit: 'fit' })).toBe(buildThemeCss(steam));
+        expect(buildThemeCss(steam, { restyle: true })).not.toContain('--gg-hero-fill');
+        // Clean look is added on top of the restyle and never touches the header image: Fit carries into it.
+        expect(buildCleanCss(steam)).not.toContain('.hd_Top img');
+    });
+    it("heroImageSelector: Steam's header image; null without its class", () => {
+        expect(heroImageSelector(steam)).toBe('.hd_Top img');
+        expect(heroImageSelector({ ...steam, header: undefined })).toBeNull();
     });
     it('restyle: the cloud is one white cloud with its state in a badge at the top right, as on Home (#64)', () => {
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('color: #ffffff !important;');

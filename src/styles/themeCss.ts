@@ -2,6 +2,7 @@ import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
+import { ART_FILL_FILTER, HeroFit } from '../home/heroFit';
 import { homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -232,6 +233,8 @@ const ring = (alpha: number) => `rgba(255, 255, 255, calc(${alpha} * var(--gg-ri
 export interface ThemeOptions {
     /** Spotlight Home's look (both toggles on, homeMode().restyleDetails): only appends rules to the 1.1.1 theme. */
     restyle?: boolean;
+    /** The hero art's framing in the restyle (settings heroFit): Fit shows Steam's header image whole, over the art fill. */
+    heroFit?: HeroFit;
 }
 
 /**
@@ -383,7 +386,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
                 margin: 0 !important; `),
         );
     }
-    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout)));
+    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout), options.heroFit ?? 'fill'));
     return rules.filter((r) => r.length > 0).join('\n');
 }
 
@@ -551,6 +554,12 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
     return out;
 }
 
+/** Steam's header image on the game page (the hero art); null without its class. */
+export function heroImageSelector({ header }: ThemeClasses): string | null {
+    const topCapsule = cls(header, 'TopCapsule');
+    return topCapsule ? `${topCapsule} img` : null;
+}
+
 /** Steam's Play row on the game page (the Play pill with its arrow, the circles, the cloud): logic/cardNav's `play`; null without its classes. */
 export function playRowSelector({ root, play, shared }: ThemeClasses): string | null {
     const list = [cls(root, 'ActionButtonAndStatusPanel'), cls(play, 'MenuButton'), cls(play, 'CloudStatusRow')];
@@ -605,7 +614,7 @@ const actionFocusShadow = `box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0
 const actionFocused = `${actionFocusShadow} transform: scale(${PAGE_LAYOUT.focusScale}) !important;`;
 const actionTransition = 'transition: transform 250ms, box-shadow 250ms !important;';
 
-function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean): string[] {
+function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean, heroFit: HeroFit): string[] {
     // Play focused, as Home's: a white ring and accent glow, grown by the focus scale (by the controller or DOM focus).
     const pillFocused = ` box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--glance-accent) !important; transform: scale(${PILL_FOCUS.x}, ${PILL_FOCUS.y}) !important; `;
     const topCapsule = cls(header, 'TopCapsule');
@@ -807,7 +816,18 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rules.push(
             // Steam's header crops the hero at 50% 50%, Home at 50% 30%: the same image then sits the same on both screens,
             // so the open transition's hand-over shows no jump (identical for standard heroes; taller custom art differs).
-            rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `),
+            ...(heroFit === 'fit'
+                ? [
+                      // Fit (home/heroFit): the whole art at the top centre, fading (--gg-hero-mask) into the art fill under it, a
+                      // blurred copy of the same image (--gg-hero-fill; both set by GameHero), as Home draws it. This replaces the
+                      // 50% 30% crop: left beside it, that rule would push the fitted art down by 30% of the leftover height.
+                      rule(topCapsule, ` isolation: isolate !important; `),
+                      rule(topCapsule && `${topCapsule}::before`, ` content: "" !important; position: absolute !important; inset: -120px !important; z-index: 0 !important;
+                          background: var(--gg-hero-fill) center / cover no-repeat !important; filter: ${ART_FILL_FILTER} !important; pointer-events: none !important; `),
+                      rule(topCapsule && `${topCapsule} img`, ` object-fit: contain !important; object-position: center top !important; -webkit-mask-image: var(--gg-hero-mask) !important;
+                          mask-image: var(--gg-hero-mask) !important; position: relative !important; z-index: 1 !important; `),
+                  ]
+                : [rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `)]),
             // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the
             // Play row on every screen (the row sits lower on a TV, --gg-play-top's media query): title, eyebrow, row and
             // cards stay one stack, the eyebrow always the same distance above the row, and a longer title grows upward.
