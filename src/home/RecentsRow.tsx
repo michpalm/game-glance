@@ -6,7 +6,7 @@ import { displayInfo } from './artShrink';
 import { ArtBox, cardBox } from './cardArt';
 import { wideArt } from './homeView';
 import { knownCardArt, lastCardArt, resolveCardArt } from './wideCardArt';
-import { clampFocus, isLibraryFocus, MAX_GHOSTS, RecentsGeometry, recentsLayout, RowStyle, steamRowLayout } from './recentsLayout';
+import { clampFocus, isLibraryFocus, MAX_GHOSTS, RecentsGeometry, recentsLayout, RowStyle, steamRowLayout, minimalRowLayout } from './recentsLayout';
 import { cardTap } from './rowDrag';
 import { useRowDrag } from './useRowDrag';
 import { useHover } from './useMouse';
@@ -150,7 +150,8 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
     // Steam's style: the first game is the wide card and the selection moves to the middle (`viewport`); a fast run
     // changes nothing there (no card widens). Spotlight: the selected game widens at the left edge.
     const steam = rowStyle === 'steam';
-    const layout = steam ? steamRowLayout(count, at, geometry, viewport) : recentsLayout(count, at, geometry, expand);
+    const layout = rowStyle === 'minimal' ? minimalRowLayout(count, at, geometry, viewport)
+        : steam ? steamRowLayout(count, at, geometry, viewport) : recentsLayout(count, at, geometry, expand);
     // The wide card in device px: its art is loaded for that size (home/artShrink).
     const perCanvas = displayInfo().perCanvas;
     const box = useMemo(() => cardBox(geometry, perCanvas), [geometry, perCanvas]);
@@ -212,11 +213,11 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
                         left={layout.items[i].left}
                         width={layout.items[i].width}
                         dim={layout.items[i].dim}
-                        wide={steam ? i === 0 : expand && !onLibrary && i === at}
+                        wide={layout.items[i].width > geometry.capsuleW}
                         selected={!onLibrary && i === at}
                         hover={hover.hovered === `g${i}`}
                         box={box}
-                        blur={capsuleBlur(i, at, steam)}
+                        blur={rowStyle !== 'minimal' && capsuleBlur(i, at, steam)}
                     />
                 ))}
                 <div className={`gh-cap gh-cap-lib${onLibrary ? ' gh-cap-lib-on' : ''}${hover.hovered === 'lib' ? ' gh-cap-hover' : ''}`} data-hover="lib" style={{ left: `${library.left}px`, width: `${library.width}px` }} onClick={(event) => onTap(count, event)}>

@@ -15,7 +15,7 @@ export interface Settings {
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
-    homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) or 'spotlight' (the selected game wide, at the left)
+    homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 

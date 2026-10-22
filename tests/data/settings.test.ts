@@ -216,3 +216,16 @@ describe('settings survive a return to an older version', () => {
         }
     });
 });
+
+describe('Minimal setting', () => {
+    it('remembers Minimal across reloads while leaving the default Steam', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().homeRowStyle).toBe('steam');
+        await store.setHomeRowStyle('minimal' as Parameters<typeof store.setHomeRowStyle>[0]);
+        const other = createSettingsStore(kv);
+        await other.load();
+        expect(other.get().homeRowStyle).toBe('minimal');
+    });
+});

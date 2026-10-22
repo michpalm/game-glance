@@ -270,3 +270,28 @@ describe('rowStyleOf', () => {
         expect(rowStyleOf('fancy')).toBe('steam');
     });
 });
+
+describe('Minimal row', () => {
+    it('keeps every card small and scrolls only once selection passes the viewport midpoint', async () => {
+        const { minimalRowLayout, rowStyleOf } = await import('../../src/home/recentsLayout');
+        expect(rowStyleOf('minimal')).toBe('minimal');
+        const g = recentsGeometry(1);
+        const first = minimalRowLayout(4, 0, g, 400);
+        expect(first.items.map((i) => [i.left, i.width])).toEqual([[0, 93], [105, 93], [210, 93], [315, 93], [420, 93]]);
+        expect(first.scrollX).toBe(0);
+        const third = minimalRowLayout(4, 2, g, 400);
+        expect(third.scrollX).toBe(-57);
+        expect(third.ghostStart).toBe(543);
+        expect(third.items.map((i) => i.width)).toEqual([93, 93, 93, 93, 93]);
+        expect(minimalRowLayout(4, 4, g, 400).scrollX).toBe(-267);
+    });
+    it('handles empty, short and invalid lists without leaving a wide-card gap', async () => {
+        const { minimalRowLayout } = await import('../../src/home/recentsLayout');
+        const g = recentsGeometry(1);
+        expect(minimalRowLayout(0, 99, g, 400).items).toEqual([{ left: 0, width: 93, dim: false }]);
+        expect(minimalRowLayout(1, 99, g, 400).items.map((i) => i.left)).toEqual([0, 105]);
+        const bad = minimalRowLayout(NaN, NaN, g, NaN);
+        expect(bad.items).toHaveLength(1);
+        expect(Number.isFinite(bad.scrollX)).toBe(true);
+    });
+});
