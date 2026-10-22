@@ -1,4 +1,5 @@
 import { toaster } from '@decky/api';
+import { HERO_FITS, HeroFit } from '../home/heroFit';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -13,8 +14,14 @@ import { RowStyle } from '../home/recentsLayout';
 import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
+/** The hero art setting's description, for the selected option. */
+const HERO_FIT_COPY: Record<HeroFit, string> = {
+    fill: 'Fills the screen; the sides of wide art are cut off.',
+    fit: 'Shows the whole art at the top, with a blurred copy behind it.',
+};
+
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, heroFit, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -135,6 +142,16 @@ export function SettingsPanel() {
                         rgOptions={[{ data: 'steam', label: 'Steam' }, { data: 'spotlight', label: 'Spotlight' }, { data: 'minimal', label: 'Minimal' }]}
                         selectedOption={homeRowStyle}
                         onChange={(option) => settings.setHomeRowStyle(option.data as RowStyle)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Hero art"
+                        description={HERO_FIT_COPY[heroFit]}
+                        menuLabel="Hero art"
+                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                        selectedOption={heroFit}
+                        onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

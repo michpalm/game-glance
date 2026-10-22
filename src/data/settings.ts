@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { RECENT_ROW, RowSort, rowSortOf } from '../home/collections';
+import { HeroFit, heroFitOf } from '../home/heroFit';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
 import { backendKv, KvBackend } from './kv';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
@@ -16,11 +17,12 @@ export interface Settings {
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
+    heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', heroFit: 'fill', screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -52,6 +54,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
+                heroFit: heroFitOf(raw?.heroFit),
                 screensaver: readScreensaverOptions(raw?.screensaver),
             };
             emit();
@@ -96,6 +99,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, homeRowStyle };
             emit();
             await persist({ homeRowStyle });
+        },
+        async setHeroFit(heroFit: HeroFit): Promise<void> {
+            current = { ...current, heroFit };
+            emit();
+            await persist({ heroFit });
         },
         async setCleanPage(cleanPage: boolean): Promise<void> {
             current = { ...current, cleanPage };
