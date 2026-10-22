@@ -246,6 +246,19 @@ Result per item: PASS, FAIL (with a note), or "not checked yet". Handheld unless
 | 150 | Pre-load with Unifideck (#48) | Quick Access → Game Glance → Pre-load: Unifideck games Unifideck has not installed are left out; a second run with everything cached finishes in seconds; the automatic run waits while a game is running | not checked yet |
 | 151 | Open transition: a game without a HowLongToBeat match | From Home, open a game HowLongToBeat has no match for (ES-DE): the card arrives with HowLongToBeat, No Matches Found and its hint already in it, and nothing lands alone where a time would be | not checked yet (Michael on the Deck) |
 | 152 | Open transition on wide screens | Emulated 21:9 (1500x644) and 32:9 (1500x423) at 1.28 on the Ally: the card text lands where the page draws it (the labels' line is the page's 'normal' one) | HowLongToBeat card exact at 21:9 (injected CSS, 2026-10-17); the info card's values with the build not checked yet |
+| 153 | Home row order (Reddit 3.4) | Spotlight Home's first games match Steam's own Home (turn Spotlight Home off to compare), including a game played only on another device appearing from the 16th place | PASS by script on the Ally: Steam's own order matched 20/20 (tests/home/fixtures/steam-home-ally.json, 2026-10-21); the Deck matched 20/20 on 2026-10-20. Visual check on Home: PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 154 | Play time of a Steam game | Home's Played chip and the game page show the same hours as Steam's own page (3.4.0's rule, kept); row 148's shortcut check still passes | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 155 | B during the open | A on a game, then B within half a second. No page opens, Home's title, chips, buttons and row fade back in (no jump), Steam's back sound plays, and A right away opens the game | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 156 | B as the page appears | A, then B just as the game page shows. Home comes back after about half a second (Steam's own speed) with no frozen copy left on screen | PASS on the Ally: Home is back about 540-630 ms after the page appears, the same as plain Steam navigation (2026-10-21) |
+| 157 | First D-pad press after B | Open a game page, B, then Left at once. The selection moves on the first press | PASS on the Ally (focus-test build, 2026-10-19) |
+| 158 | A feed card's open cancelled | On What's new, A on a card, then B at once. Home comes back; the other game's art snapping back to Home's game art is the known limit. Note whether it looks acceptable | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 159 | Games row style setting | The description explains Steam vs Spotlight: Steam keeps the first game wide and selection moves along the row; Spotlight keeps the selected game wide at the left | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 160 | Lutris play time | A game added from Lutris (on the Ally: "GG Playtime Test", Lutris Flatpak) shows Lutris's own play time (which includes play started from Lutris) on Home and the game page. Other shortcuts and Steam games are unchanged | PASS on the Ally (Lutris 0.5.22 Flatpak, test build, 2026-10-21): the game page showed Lutris's 12.5 h (test value) while Steam kept 1 min; a non-Lutris shortcut (27 min) and a Steam game were unchanged. Home's chip: PASS (test build e583df9, 2026-10-21): Michael saw Lutris's 12.5 h (test value, then restored) on Home and the page |
+| 161 | Opening a game with the status bar off | Quick Access → Game Glance → Spotlight Home → Status bar off. Open a game from Home: Steam's top bar stays on screen the whole time, with no blink | PASS on the Ally, 3 of 3 opens (2026-10-21): Steam's top bar stays on screen through the open. One remaining step from Home's darker top band to the page's lighter one as the page arrives; no blink |
+| 162 | Opening a game with the Game Glance page off | Steam's own page. Our status bar hands over to Steam's top bar with no moment without any bar | PASS on the Ally, 7 of 7 opens (5 plain, 2 with B at 1.2 s, 2026-10-21): no frame without a top bar, after fix 74c631e |
+| 163 | Home's play time matches the page | For a few games (a Steam game, a non-Steam shortcut, the Lutris test game), Home's Play time chip shows the same hours as the game page's | PASS: Lutris test game 12.5 h on Home and the page (test build e583df9); a Steam game and a non-Lutris shortcut match (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 164 | One sound for Play | On Home, Play on an installed game: only Steam's launch sound plays (not also the game-page sound); the game starts as before | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works) |
+| 165 | News card opens the article | What's new → A on a news card: the article opens alone (no game page under it), scrolls with the stick/D-pad, and B returns to Home | PASS (Michael (test build 15ccd10, Ally, 2026-10-21): works): the article opens alone and scrolls, B returns to Home. Steam's web view shows its own loading screens first (about 1.2 s: black, grey, a Loading box, then the article; recorded on the Ally). Steam's news overlay over Home was tried: it shows the article but cannot be scrolled or switched with the controller |
 
 ### Screensaver (3.2.0)
 
@@ -275,7 +288,12 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
 1. On the device: Decky → Settings → Developer → **Allow Remote CEF Debugging** on, and `sudo systemctl enable --now sshd`.
 2. On the Mac: `ssh -N -L 18080:127.0.0.1:8080 <device>`, then `node scripts/cef-eval.mjs '<js>'`,
    `node scripts/cef-shot.mjs out.png`, `node scripts/cef-css.mjs file.css` (try CSS live) or
-   `node scripts/cef-viewport.mjs out 1500x844@1.28` (preview another screen size).
+   `node scripts/cef-viewport.mjs out 1500x844@1.28` (preview another screen size),
+   `node scripts/cef-open-probe.mjs out/probe none t1200` (record an open from Home, and one with B 1.2 s after A: timeline and frames) or
+   `python3 -I scripts/frame-bands.py out/probe/trial-0-none` (brightness bands per frame, to find a blink).
+   The probe sends A and B through Steam's own controller path (FocusNavController.DispatchVirtualButtonClick), as a physical press would.
+   `node scripts/cef-home-order.mjs <out.json>`: Steam's own Home order and its four lists, anonymized; used for the recents fixtures.
+   `node scripts/cef-playtime.mjs`: Steam's two playtime counters side by side.
 3. Backend log on the device: `~/homebrew/logs/game-glance/`.
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.

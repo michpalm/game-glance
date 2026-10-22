@@ -15,7 +15,7 @@ import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
-import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
+import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
 import { useUnifideckGamepadFocus } from '../hooks/useUnifideckGamepadFocus';
 import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
 import { useUnifideckSizeLabel } from '../hooks/useUnifideckSizeLabel';
@@ -86,9 +86,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Until Steam has loaded the game's details, the achievement counts Spotlight Home already knows (home/detailsMemo), so the
     // first frame is complete (the Clean panel no longer gains its Achievements column after the open transition's hand-over).
     const steamGame = withKnownAchievements(readGameInfo(overview, details));
-    // A Unifideck game: its own play time and last played, as on Unifideck's Play row (Steam has none for these).
-    const unifideck = useUnifideckPlaytime(steamGame.appId, steamGame.isShortcut);
-    const game = unifideck ? { ...steamGame, playedMinutes: mergePlaytime({ minutes: steamGame.playedMinutes, lastPlayed: 0 }, unifideck).minutes } : steamGame;
+    // A Unifideck or Lutris game: the launcher's own play time and last played, as on Unifideck's Play row (Steam has none for Unifideck's; Lutris's also counts play started from Lutris).
+    const launcher = useLauncherPlaytime(steamGame.appId, steamGame.isShortcut, steamGame.lutris);
+    const game = launcher ? { ...steamGame, playedMinutes: mergePlaytime({ minutes: steamGame.playedMinutes, lastPlayed: 0 }, launcher).minutes } : steamGame;
     const overrideVersion = useOverrideVersion();
     const knownLang = peekSteamLanguage();
     const loadedLang = useAsync(knownLang ? null : 'lang', getSteamLanguage);
@@ -166,7 +166,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
     const ringStyle = pageDoc?.defaultView ? ringCss(pageDoc.defaultView) : '';
-    const eyebrow = restyle ? openedFrom?.eyebrow ?? lastPlayedEyebrow(overview, locale, unifideck?.lastPlayed ?? null) : null;
+    const eyebrow = restyle ? openedFrom?.eyebrow ?? lastPlayedEyebrow(overview, locale, launcher?.lastPlayed ?? null) : null;
     return (
         <>
             {/* Spotlight Home's status bar, over Steam's top strip, with the restyled page (not while Steam's launch screen is up). */}

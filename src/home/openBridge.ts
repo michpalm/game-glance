@@ -76,3 +76,59 @@ export function mountOpenBridge(root: HTMLElement, css = '', extras: Element[] =
         },
     };
 }
+
+/**
+ * A copy of Steam's own top bar for the bridge, pinned where the live one is. With Game Glance's status bar off, Steam's
+ * bar is what Home shows at the top; the bridge covers the whole screen, so without this copy the bar vanished for the
+ * whole open (Reddit 3.4, R3APER's blink; Task 5 on the Ally). On the Ally the live bar is an absolute strip at the top,
+ * transparent, over Home's own gradient: the copy is a fixed wrapper at the bar's rect and the clone fills it. Detached;
+ * `mountOpenBridge` takes it as an extra.
+ */
+export function topBarCopy(bar: Element, rect: { left: number; top: number; width: number; height: number }, doc: Document): HTMLElement {
+    const wrap = doc.createElement('div');
+    Object.assign(wrap.style, {
+        position: 'fixed',
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        pointerEvents: 'none',
+        margin: '0',
+    });
+    wrap.setAttribute('aria-hidden', 'true');
+    const clone = bar.cloneNode(true) as HTMLElement;
+    Object.assign(clone.style, { position: 'relative', inset: 'auto', width: '100%', height: '100%' });
+    wrap.appendChild(clone);
+    return wrap;
+}
+
+/**
+ * On Steam's own page, Steam's bar fades in under the copy as the copy fades out, instead of only after the copy is
+ * gone (the 190 ms without any bar, seen on the Ally). `giveBack` runs once, when the fade starts, or at `remove()` if
+ * the copy goes without a fade. A throwing `giveBack` never stops the fade.
+ */
+export function withSteamBarBack(bridge: OpenBridge, giveBack: () => void): OpenBridge {
+    let done = false;
+    const back = () => {
+        if (done) return;
+        done = true;
+        try {
+            giveBack();
+        } catch {
+            // the bar stays covered until the copy is gone; never stop the fade
+        }
+    };
+    const wrapped: OpenBridge = {
+        fadeIn: (ms) => bridge.fadeIn(ms),
+        fadeOut: (ms) => {
+            back();
+            bridge.fadeOut(ms);
+        },
+        remove: () => {
+            bridge.remove();
+            back();
+        },
+    };
+    if (bridge.settle) wrapped.settle = () => bridge.settle?.();
+    return wrapped;
+}

@@ -1,5 +1,6 @@
 import { fetchNoCors } from '@decky/api';
 import { HeroicRef, parseHeroicLaunch } from '../logic/heroic';
+import { LutrisRef, parseLutrisLaunch } from '../logic/lutris';
 import { htmlToText } from '../logic/text';
 import { attempt } from './attempt';
 import { Cache, cache as defaultCache, TTL } from './cache';
@@ -11,6 +12,7 @@ export interface GameInfo {
     playedMinutes: number;
     achievements: { achieved: number; total: number } | null;
     heroic: HeroicRef | null; // set when Heroic Games Launcher added this shortcut
+    lutris: LutrisRef | null; // set when Lutris added this shortcut
 }
 
 const SHORTCUT_APP_TYPE = 1073741824;
@@ -20,9 +22,11 @@ type AnyRecord = Record<string, unknown> | undefined | null;
 
 /**
  * Minutes played: the larger of the app overview's (`minutes_playtime_forever`, Steam's servers' count) and the app
- * details' (`nPlaytimeForever`). A non-Steam shortcut's play time is only ever local (localconfig.vdf's Playtime under its
- * signed app id), which Steam loads into its details; its overview's stays 0 (#52: EmulationStationDE on the Deck read 0
- * here and 21 on Steam's own page). Junk counts as 0. Pure.
+ * details' (`nPlaytimeForever`), for every game, as 3.4.0 (#52) did. A non-Steam shortcut's play time is only ever local
+ * (localconfig.vdf's Playtime under its signed app id), which Steam loads into its details; its overview's stays 0
+ * (#52: EmulationStationDE on the Deck read 0 here and 21 on Steam's own page). On the Ally the two counters agreed for
+ * all 145 Steam games (2026-10-21). R3APER's Red Dead Redemption 2 (a Lutris shortcut) read 223.4 h on Home and 38.6 h
+ * on the game page: Steam's numbers were right, Home's own inputs were wrong (see steamPlayedMinutes). Junk counts as 0. Pure.
  */
 export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknown): number {
     const minutes = (v: unknown) => {
@@ -32,11 +36,33 @@ export function playedMinutesOf(overviewMinutes: unknown, detailsMinutes: unknow
     return Math.max(minutes(overviewMinutes), minutes(detailsMinutes));
 }
 
+/**
+ * Steam's minutes for a game, read the way the game page reads them: the live overview's `minutes_playtime_forever` and
+ * the live details' `nPlaytimeForever`, through playedMinutesOf. Home used to feed it a row copy and a details memo too,
+ * and R3APER's Lutris shortcut read 223.4 h on Home against 38.6 h on the page. The memo now only stands in until Steam
+ * has the details (any details object, even one without a count), and the row's copy only when there is no live
+ * overview. Pure, never throws.
+ */
+export function steamPlayedMinutes(overview: unknown, details: unknown, memoMinutes: number | undefined, fallbackOverviewMinutes?: number): number {
+    const overviewMinutes = overview !== null && typeof overview === 'object'
+        ? (overview as Record<string, unknown>).minutes_playtime_forever
+        : fallbackOverviewMinutes;
+    const detailsMinutes = details !== null && typeof details === 'object'
+        ? (details as Record<string, unknown>).nPlaytimeForever
+        : memoMinutes;
+    return playedMinutesOf(overviewMinutes, detailsMinutes);
+}
+
+/** A non-Steam shortcut: its app type, or an app id in the shortcuts' range. Pure. */
+export function isShortcutApp(appId: number, appType: unknown): boolean {
+    return appType === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
+}
+
 export function readGameInfo(overview: unknown, details: unknown): GameInfo {
     const o = overview as AnyRecord;
     const d = details as AnyRecord;
     const appId = Number(o?.appid ?? 0) || 0;
-    const isShortcut = o?.app_type === SHORTCUT_APP_TYPE || appId >= FIRST_SHORTCUT_APP_ID;
+    const isShortcut = isShortcutApp(appId, o?.app_type);
     const a = d?.achievements as AnyRecord;
     const total = Number(a?.nTotal ?? 0);
     const achievements = !isShortcut && Number.isFinite(total) && total > 0
@@ -49,6 +75,7 @@ export function readGameInfo(overview: unknown, details: unknown): GameInfo {
         playedMinutes: playedMinutesOf(o?.minutes_playtime_forever, d?.nPlaytimeForever),
         achievements,
         heroic: isShortcut ? parseHeroicLaunch(d?.strShortcutLaunchOptions as string | undefined) : null,
+        lutris: isShortcut ? parseLutrisLaunch(d?.strShortcutLaunchOptions as string | undefined) : null,
     };
 }
 

@@ -35,6 +35,21 @@ describe('openTransition', () => {
         vi.useRealTimers();
     });
 
+    it('isRunning is false before an open, true right after it, false once the open finishes, and false after cancel()', () => {
+        const { t } = setup();
+        expect(t.isRunning()).toBe(false);
+        t.open(620, 'morph');
+        expect(t.isRunning()).toBe(true);
+        vi.advanceTimersByTime(449);
+        expect(t.isRunning()).toBe(true);
+        t.cancel();
+        expect(t.isRunning()).toBe(false);
+        t.open(620, 'morph');
+        expect(t.isRunning()).toBe(true);
+        vi.advanceTimersByTime(10_000);
+        expect(t.isRunning()).toBe(false);
+    });
+
     it('wires controller cancellation until navigation, cancels every pending timer, and can open again', () => {
         let back: (() => void) | null = null;
         const stop = vi.fn(() => { back = null; });
@@ -86,6 +101,16 @@ describe('openTransition', () => {
         expect(log).toContain('fadeOut(300)@650');
         vi.advanceTimersByTime(300);
         expect(log).toContain('remove@950');
+    });
+
+    it('a page that reports ready during navigation does not wait for the timeout', () => {
+        const { t, deps, fireReady, bridge } = setup();
+        vi.mocked(deps.navigate).mockImplementation(() => fireReady());
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(bridge.fadeOut).toHaveBeenCalledTimes(1);
+        vi.advanceTimersByTime(300);
+        expect(bridge.remove).toHaveBeenCalledTimes(1);
     });
 
     it("once the bridge is gone Home's opening state is undone (Steam may keep Home, or bring it back on B: it was left mid-open)", () => {
@@ -162,10 +187,18 @@ describe('openTransition', () => {
     });
 
     it('a bridge that cannot be mounted still lets the page open at the hand-over', () => {
-        const { t, log } = setup({ mountBridge: vi.fn(() => { throw new Error('no body'); }) });
+        const { t, log, undo } = setup({ mountBridge: vi.fn(() => { throw new Error('no body'); }) });
         t.open(620, 'morph');
         vi.advanceTimersByTime(450);
         expect(log).toContain('navigate /library/app/620@450');
+        expect(undo).toHaveBeenCalledTimes(1);
+    });
+
+    it('a missing bridge restores Home so returning cannot leave its metadata hidden', () => {
+        const { t, undo } = setup({ mountBridge: () => null });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(450);
+        expect(undo).toHaveBeenCalledTimes(1);
     });
 
     it('a second open while one runs is ignored', () => {
@@ -208,5 +241,48 @@ describe('openTransition', () => {
         t.open(700, 'fade');
         vi.advanceTimersByTime(2000);
         expect(deps.navigate).toHaveBeenCalledTimes(2);
+    });
+
+    it('a cancel by B tells Home once (its return look and sound), after Home is restored', () => {
+        let back: (() => void) | null = null;
+        const onCancelled = vi.fn();
+        const { t, undo } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(200);
+        back!();
+        expect(undo).toHaveBeenCalledOnce();
+        expect(onCancelled).toHaveBeenCalledOnce();
+        expect(undo.mock.invocationCallOrder[0]).toBeLessThan(onCancelled.mock.invocationCallOrder[0]);
+    });
+    it('no cancel hook for an open that runs to the page, or for cancel() from elsewhere', () => {
+        const onCancelled = vi.fn();
+        const { t, fireReady } = setup({ listenForCancel: () => () => undefined, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        fireReady();
+        vi.advanceTimersByTime(2000);
+        t.open(700, 'morph');
+        t.cancel();
+        expect(onCancelled).not.toHaveBeenCalled();
+    });
+    it("no cancel hook once the page has opened (the listener is gone; B is Steam's)", () => {
+        let back: (() => void) | null = null;
+        const onCancelled = vi.fn();
+        const { t } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(back).toBeNull();
+        expect(onCancelled).not.toHaveBeenCalled();
+    });
+    it('a throwing cancel hook still leaves Home restored and the controller usable', () => {
+        let back: (() => void) | null = null;
+        const { t, undo, deps } = setup({ listenForCancel: (cancel) => { back = cancel; return () => { back = null; }; }, onCancelled: () => { throw new Error('x'); } });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(100);
+        expect(() => back!()).not.toThrow();
+        expect(undo).toHaveBeenCalledOnce();
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600);
+        expect(deps.navigate).toHaveBeenCalledWith('/library/app/620');
     });
 });

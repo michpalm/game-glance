@@ -45,10 +45,13 @@ import { collectionEyebrow } from './collections';
 import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 import { FaTrash } from 'react-icons/fa';
+import { keepSteamFocus } from './steamFocus';
 
 /** Hero dim: none at rest (the art is shaded as on the game page, homeCss .gh-scrim-page), .45 while the feed sheet is up. */
 const DIM_REST = 0;
 const DIM_SHEET = 0.45;
+/** Two activations closer than this are one press (A and a touch both arriving); see onRecentsActivate. */
+const SAME_PRESS_MS = 300;
 
 interface Size {
     width: number;
@@ -272,11 +275,12 @@ export function SpotlightHome() {
         else setTimeout(run, 50);
     };
     // A on the cards: the selected game's page (expanding from its card), or the Library on the Library card. One
-    // action per press (A and a touch can both arrive).
+    // action per press (A and a touch can both arrive, a frame apart; openGame also ignores another open while one
+    // runs). Short, so A right after B cancelled an open (homeNav, openCancel) opens again (3.4.0's 1 s lock swallowed it).
     const lastOpen = useRef(0);
     const onRecentsActivate = () => {
         const now = Date.now();
-        if (now - lastOpen.current < 1000) return;
+        if (now - lastOpen.current < SAME_PRESS_MS) return;
         lastOpen.current = now;
         try {
             if (onLibrary || !data.focused) return openLibrary();
@@ -465,6 +469,12 @@ export function SpotlightHome() {
         setRestoring(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [contentUp, restoring]);
+
+    // Steam can clear its navigation node after this mount's initial restore; repair before it consumes the next press.
+    useEffect(() => {
+        if (!contentUp || !restore) return undefined;
+        return keepSteamFocus(rootRef.current, RETURN_TIMINGS.hold);
+    }, [contentUp, restore]);
 
     return (
         <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, false)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px` } as CSSProperties}>

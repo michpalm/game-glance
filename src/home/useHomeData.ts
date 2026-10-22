@@ -8,8 +8,8 @@ import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/install
 import { useSettings } from '../data/settings';
 import { getSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
-import { useUnifideckPlaytime } from '../hooks/useUnifideckPlaytime';
-import { getDescription, getSteamLanguage, peekSteamLanguage, playedMinutesOf, readGameInfo } from '../data/steam';
+import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
+import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo, steamPlayedMinutes } from '../data/steam';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { useAsync } from '../hooks/useAsync';
 import { useOverrideVersion } from '../hooks/useOverrideVersion';
@@ -33,7 +33,7 @@ import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
 import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
-import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, RawApp, RecentGame } from './recents';
+import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
 import { memoPlaytime, memoSpaceRequired, noteDetails, withKnownAchievements } from './detailsMemo';
@@ -97,11 +97,15 @@ export interface HomeData {
     deals: DealCard[];
 }
 
-type AnyApp = RawApp & { installed?: boolean; m_gameid?: string; appid: number };
+type AnyApp = RawApp & SteamHomeApp & { installed?: boolean; m_gameid?: string; appid: number };
+/** One of Steam's collections: all its apps, and those it shows (`visibleApps`: without hidden games). */
+type SteamCollection = { allApps?: AnyApp[]; visibleApps?: AnyApp[] };
 type StoreGlobals = {
     collectionStore?: {
-        recentAppsCollection?: { allApps?: AnyApp[] };
-        localGamesCollection?: { allApps?: AnyApp[] };
+        recentAppsCollection?: SteamCollection;
+        localGamesCollection?: SteamCollection;
+        localPlayedGamesCollection?: SteamCollection;
+        recentPurchasedGamesCollection?: SteamCollection;
         userCollections?: Array<{ id?: unknown; displayName?: unknown; allApps?: AnyApp[] } | null | undefined>;
         BIsHidden?(appId: number): boolean;
     };
@@ -151,26 +155,47 @@ function appName(appId: number): string {
     return typeof name === 'string' ? name : '';
 }
 
-/** Logged once per session: where the recents came from (Steam's recent list, the rest of the library). */
+/** Logged once per session: where the recents came from (Steam's Home lists, or the 3.4.0 fallback). */
 let recentsSourcesLogged = false;
 
+/** The four lists Steam's own Home row is built from (their `visibleApps`); null when this Steam has not all of them. */
+function readSteamHomeLists(): { recent: AnyApp[]; localPlayed: AnyApp[]; recentPurchased: AnyApp[]; localGames: AnyApp[] } | null {
+    const store = steam.collectionStore;
+    const recent = store?.recentAppsCollection?.visibleApps;
+    const localPlayed = store?.localPlayedGamesCollection?.visibleApps;
+    const recentPurchased = store?.recentPurchasedGamesCollection?.visibleApps;
+    const localGames = store?.localGamesCollection?.visibleApps;
+    if (!Array.isArray(recent) || !Array.isArray(localPlayed) || !Array.isArray(recentPurchased) || !Array.isArray(localGames)) return null;
+    return { recent, localPlayed, recentPurchased, localGames };
+}
+
 /**
- * `collectionStore.recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
- * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources:
- * on the Ally it gave 10 while Steam's Home shows more).
+ * The recent games in the order Steam's own Home shows them (recents.pickSteamHomeRecents: games played and installed
+ * on this device first, games played only elsewhere from the 16th place; Reddit, 3.4). A Steam without those lists
+ * gets 3.4.0's row: `recentAppsCollection.allApps` (newest first, `installed`, `m_gameid` for shortcuts), filled up to
+ * RECENTS_LIMIT from the whole library (`appStore.allApps`) when it holds fewer played games (recents.mergeRecentSources).
  */
 function readRecentGames(): HomeGame[] {
     return guarded('recents', () => {
+        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
+        const lists = guarded('Steam Home lists', readSteamHomeLists, null);
+        if (lists) {
+            const picked = pickSteamHomeRecents({ ...lists, isHidden, includeNew: true });
+            if (!recentsSourcesLogged && picked.length > 0) {
+                recentsSourcesLogged = true;
+                console.log(`${LOG_PREFIX} Home: recents in Steam's Home order: played here ${lists.localPlayed.length}, bought ${lists.recentPurchased.length}, installed ${lists.localGames.length}, recent ${lists.recent.length}; row ${picked.length}`);
+            }
+            if (picked.length > 0) return withLaunchInfo(picked, [...lists.localGames, ...lists.recentPurchased, ...lists.localPlayed, ...lists.recent]);
+        }
         const recent = steam.collectionStore?.recentAppsCollection?.allApps;
         if (!Array.isArray(recent)) return [];
         const listed = guarded('library apps', () => steam.appStore?.allApps, undefined);
         const all = Array.isArray(listed) ? listed : [];
-        const isHidden = (appId: number) => steam.collectionStore?.BIsHidden?.(appId) === true;
         const picked = pickHomeRecents({ recent, all, isHidden, includeNew: true });
         if (!recentsSourcesLogged && recent.length > 0) {
             recentsSourcesLogged = true;
             const merged = pickRecents(mergeRecentSources(recent, all, isHidden)).length;
-            console.log(`${LOG_PREFIX} Home: recents from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
+            console.log(`${LOG_PREFIX} Home: recents (3.4.0 order) from Steam's list ${pickRecents(recent).length}, with the library ${merged}, new to library ${picked.filter((g) => g.isNew).length}`);
         }
         // Steam's recent list wins for its own games (`installed`, `m_gameid` as Steam keeps them there).
         return withLaunchInfo(picked, [...all, ...recent]);
@@ -642,20 +667,28 @@ export function useHomeData(focusIndex = 0): HomeData {
     const source = useAsync(info ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
-    // Unifideck's own play time for the selected game once it rests (one request, cached), for Unifideck games only.
-    const unifideck = useUnifideckPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, resting !== null);
+    // Unifideck's or Lutris's own play time for the selected game once it rests (one request, cached), for their games only.
+    const launcher = useLauncherPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, info?.lutris ?? null, resting !== null);
     // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and
     // useAccentWarmup makes most of them known beforehand.
     const accent = useAccent(appId, resting);
 
-    // Steam's own play time: a shortcut's is only in its details (memoPlaytime, kept as useAppDetailsVersion loads them; #52).
-    const steamMinutes = focused ? playedMinutesOf(focused.playedMinutes, memoPlaytime(focused.appId)) : 0;
-    const playedMinutes = focused ? mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, unifideck).minutes : 0;
+    // Steam's own play time, by the game page's rule on Steam's live overview and details. A shortcut's is only in its details;
+    // memoPlaytime (kept as useAppDetailsVersion loads them; #52) stands in until Steam has them, the row's copy until it has an overview.
+    const steamMinutes = focused
+        ? steamPlayedMinutes(
+            overview(focused.appId),
+            guarded('details', () => steam.appDetailsStore?.GetAppDetails?.(focused.appId), undefined),
+            memoPlaytime(focused.appId),
+            focused.playedMinutes,
+        )
+        : 0;
+    const playedMinutes = focused ? mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, launcher).minutes : 0;
     const nowSeconds = Math.floor(Date.now() / 1000);
     const chips = useMemo(() => {
         if (!focused) return [];
-        const merged = mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, unifideck);
-        const isNew = focused.isNew && !(unifideck?.lastPlayed);
+        const merged = mergePlaytime({ minutes: steamMinutes, lastPlayed: focused.lastPlayed }, launcher);
+        const isNew = focused.isNew && !(launcher?.lastPlayed);
         return guarded('game chips', () => gameChips({
             playedMinutes: merged.minutes,
             achievements: info?.achievements ?? null,
@@ -666,12 +699,12 @@ export function useHomeData(focusIndex = 0): HomeData {
             spaceBytes: info?.isShortcut ? null : (memoSpaceRequired(focused.appId) ?? null),
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, locale, unifideck, detailsVersion]);
-    // Unifideck knows a last played Steam does not: such a game is no longer "new to library".
-    const focusedIsNew = focused?.isNew === true && !unifideck?.lastPlayed;
+    }, [focused, info, hltb, locale, launcher, detailsVersion]);
+    // The launcher knows a last played Steam does not: such a game is no longer "new to library".
+    const focusedIsNew = focused?.isNew === true && !launcher?.lastPlayed;
     const lastPlayedLabel = focused
         ? guarded('last played', () => {
-            const when = focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, unifideck).lastPlayed;
+            const when = focusedIsNew ? focused.addedAt : mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, launcher).lastPlayed;
             // Never played (a collection's game): no date, the eyebrow says so (homeView.eyebrowText).
             return when > 0 ? formatLastPlayed(when, nowSeconds, locale) : null;
         }, null)

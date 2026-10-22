@@ -3,21 +3,22 @@ import { LOG_PREFIX } from '../constants';
 import { browserStores, heroUrls } from './artwork';
 import { markLeaving } from './homeMemory';
 import { playNavSound } from './navSound';
-import { listenOpenCancel } from './openCancel';
+import { listenOpenCancel, showCancelReturn } from './openCancel';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
 import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleTwins, viewportSize } from './openHome';
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
 import { pageTargets, PageLook } from './openTargets';
-import { mountOpenBridge } from './openBridge';
+import { mountOpenBridge, topBarCopy, withSteamBarBack } from './openBridge';
 import { heroArtFor, heroShownApp } from './HeroBackground';
 import { homeMode } from './mode';
 import { settings } from '../data/settings';
 import { clearOpen, markOpen, onOpenReady, OpenIntent } from '../data/openIntent';
 import { pageArrivalSelectors, pageTwinTargets, steamEnterOffCss, steamFooter } from '../styles/theme';
 import { MOUSE_ATTR } from './mouseMode';
-import { clearSteamBarCover } from './useHideSteamBar';
+import { findTopBar } from './topBar';
+import { COVERED, handBarBack } from './useHideSteamBar';
 
 /** Opens a game's page directly, without the transition (Play pill fallbacks, Steam call fallbacks). */
 export function openPage(appId: number) {
@@ -73,33 +74,19 @@ export function openStorePage(appId: number) {
     openExternal(storeWebUrl(appId), 'store page');
 }
 
-type SteamNavGlobals = {
-    SteamUIStore?: { GetFocusedWindowInstance?(): { Navigator?: { App?(appId: number, options: { gidPartnerEvent: string }): void } } | null | undefined };
-    appStore?: { GetAppOverviewByAppID?(appId: number): unknown };
-};
-
 /**
- * Opens one news event the way Game Mode's own What's New and game pages do (probed on the Ally): the window's
- * `Navigator.App(appid, { gidPartnerEvent: gid })`, which shows the event over the game's page. The tracking
- * call those handlers also make (TrackEventClickedByUser) is deliberately not made. Steam's App() silently does
- * nothing for a game without an app overview, so then (or without the navigator, or if it throws) the event's
- * store news page opens on the web. No gid: the game's page. No open transition.
+ * Opens one news event on its own, in Steam's external web view (the event's store news page): B returns to Home.
+ * Steam's way (`Navigator.App(appid, { gidPartnerEvent })`, as its own What's New does) opens the game's page with
+ * the event on top, and gamepad focus lands on the page, so the article could not be scrolled (Michael, Ally
+ * 2026-10-21). Steam's news overlay over Home (route state `event_to_show`) never loaded the article there. The
+ * tracking call Steam's handlers make (TrackEventClickedByUser) is deliberately not made. No gid: the game's page.
+ * No open transition.
  */
 export function openNews(appId: number, gid: string) {
     markLeaving();
     if (!/^\d+$/.test(gid)) {
         openPage(appId);
         return;
-    }
-    try {
-        const steam = globalThis as unknown as SteamNavGlobals;
-        const navigator = steam.SteamUIStore?.GetFocusedWindowInstance?.()?.Navigator;
-        if (typeof navigator?.App === 'function' && steam.appStore?.GetAppOverviewByAppID?.(appId)) {
-            navigator.App(appId, { gidPartnerEvent: gid });
-            return;
-        }
-    } catch (error) {
-        console.warn(`${LOG_PREFIX} Home: could not open the event in Steam`, error);
     }
     openExternal(newsWebUrl(appId, gid), 'news page');
 }
@@ -226,6 +213,10 @@ function controller(): OpenTransition {
     transition ??= createOpenTransition({
         navigate: (path) => Navigation.Navigate(path),
         listenForCancel: (cancel) => active?.root ? listenOpenCancel(active.root.ownerDocument, cancel) : () => undefined,
+        onCancelled: () => {
+            playNavSound('OutOfGameDetail');
+            if (active?.root) showCancelReturn(active.root);
+        },
         startHome: () => {
             active = next;
             next = null;
@@ -238,14 +229,22 @@ function controller(): OpenTransition {
             // Our status bar lives outside Home's root; its copy also keeps Steam's top bar hidden until the page's own takes over.
             // Steam's footer is one element over every page: the copy would cover it, so it carries a copy of it too.
             const footer = steamFooter();
-            const extras = [...doc.querySelectorAll('.gg-status-host'), ...(footer ? [...doc.querySelectorAll(footer)] : [])];
+            const extras: Element[] = [...doc.querySelectorAll('.gg-status-host'), ...(footer ? [...doc.querySelectorAll(footer)] : [])];
+            // With our status bar off, Steam's own top bar is what Home shows at the top: the copy carries it, pinned where it is.
+            // (Never SharedJSContext's window for the width: it is 1x1.) A failure here means no bar copy, never no bridge.
+            try {
+                const bar = findTopBar(doc, doc.defaultView?.innerWidth ?? 0);
+                if (bar && !bar.hasAttribute(COVERED)) extras.push(topBarCopy(bar, bar.getBoundingClientRect(), doc));
+            } catch {
+                // the open goes on without the bar copy
+            }
             // Home's game row, tabs and feed have left (or faded with the rest) by the hand-over: the copy goes without them.
             // At the page's ready the copy's text twins glide onto the page's text as measured (openHome.settleTwins).
             const look = c.intent.look;
             const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => settleTwins(copy, doc, pageTwinTargets(look)));
             if (c.intent.look !== 'steam') return bridge;
-            // Steam's own page draws no status bar of ours: give Steam's top bar back once the bridge is gone.
-            return { fadeIn: (ms: number) => bridge.fadeIn(ms), fadeOut: (ms: number) => bridge.fadeOut(ms), remove: () => { bridge.remove(); clearSteamBarCover(doc); } };
+            // Steam's own page draws no status bar of ours: Steam's top bar is given back as the copy starts to fade (it fades in under it).
+            return withSteamBarBack(bridge, () => handBarBack(doc));
         },
         markOpen: () => {
             if (active) markOpen(active.appId, active.intent);
@@ -263,9 +262,11 @@ function controller(): OpenTransition {
  * the selected game's Home morphs into its page over the steady hero; a feed card's game gets its hero faded in over
  * Home; with fallback art or Steam's own page Home's UI fades. `source` is the pressed element (inside Home). The
  * single entry point for every A that opens a game from Home. Anything that cannot be set up still opens the page,
- * without motion; a press while a transition runs is ignored.
+ * without motion; a press while a transition runs is ignored (before its sound, so a second A does not play it twice).
  */
 export function openGame(appId: number, source?: HTMLElement | null) {
+    // The controller would drop this open anyway; the sound, the leaving mark and the pending open must not happen first.
+    if (transition?.isRunning()) return;
     // Steam's own sound for going into a game's page (every open from Home: a card, the info button, a feed card).
     playNavSound('IntoGameDetail');
     markLeaving();

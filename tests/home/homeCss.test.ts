@@ -9,6 +9,22 @@ import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, ST
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
 
+/** Splits a selector list at the commas outside parentheses (`:is(a, b)` stays one selector). */
+function topLevelCommas(list: string): string[] {
+    const parts: string[] = [];
+    let depth = 0, from = 0;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i] === '(') depth++;
+        else if (list[i] === ')') depth--;
+        else if (list[i] === ',' && depth === 0) {
+            parts.push(list.slice(from, i));
+            from = i + 1;
+        }
+    }
+    parts.push(list.slice(from));
+    return parts;
+}
+
 /** Selector lists of every style rule, @-rule preludes (keyframes, @property) excluded. */
 function selectors(css: string): string[] {
     const out: string[] = [];
@@ -20,7 +36,7 @@ function selectors(css: string): string[] {
     while ((m = re.exec(noKeyframes)) !== null) {
         const prelude = m[1].trim();
         if (prelude.startsWith('@')) continue;
-        out.push(...prelude.split(',').map((s) => s.trim()).filter(Boolean));
+        out.push(...topLevelCommas(prelude).map((s) => s.trim()).filter(Boolean));
     }
     return out;
 }
@@ -737,8 +753,12 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-back:not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-back:not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+    });
+    it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\) \.gh-safe :is\(/);
+        expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
     it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
@@ -786,7 +806,7 @@ describe('delayed fades in the open transition', () => {
     });
     it("the bridge's freeze outranks every animation rule: the late fades and Home's way-back fade (opened soon after B)", () => {
         // Home's way-back fade never applies in the copy.
-        expect(css).toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\)/);
         for (const target of ['\\.gh-open-extras', '\\.gh-source', '\\[data-action="play"\\]::after']) {
             expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-bridge\\[data-gh-opening\\]\\[data-gh-phase\\][^{]*${target}\\s*\\{[^}]*animation: none`));
         }
