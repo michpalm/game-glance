@@ -166,3 +166,28 @@ describe('install a chosen version', () => {
         warn.mockRestore();
     });
 });
+
+it('recognizes equivalent version labels for installed markers and no-op actions', async () => {
+    const { sameVersion } = await import('../../src/data/update');
+    expect(sameVersion('v3.5', '3.5.0')).toBe(true);
+    expect(sameVersion('3.5.0', '3.5.1')).toBe(false);
+    expect(sameVersion('bad', 'bad')).toBe(false);
+    expect(sameVersion('3.5.0-rc.1', '3.5.0')).toBe(false);
+});
+
+it('shares one pending install across latest-update and selected-version actions', async () => {
+    const { createInstallGate } = await import('../../src/data/update');
+    const states: boolean[] = [];
+    const gate = createInstallGate((busy) => states.push(busy));
+    let finish!: (ok: boolean) => void;
+    let calls = 0;
+    const first = gate.run(() => { calls++; return new Promise((resolve) => { finish = resolve; }); });
+    expect(await gate.run(async () => { calls++; return true; })).toBeNull();
+    expect(calls).toBe(1);
+    expect(states).toEqual([true]);
+    finish(true);
+    expect(await first).toBe(true);
+    expect(states).toEqual([true, false]);
+    expect(await gate.run(async () => false)).toBe(false);
+    expect(states).toEqual([true, false, true, false]);
+});
