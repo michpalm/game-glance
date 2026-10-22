@@ -3,6 +3,7 @@ import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
 import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePill';
 import { CLOUD_COLOURS, CLOUD_DOT, CloudTone } from './cloud';
+import { ART_FILL_FILTER } from './heroFit';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
@@ -261,6 +262,13 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-hero-layer.gh-hero-settled', 'animation: none; opacity: 1'),
         rule('.gh-hero-none', 'background: var(--gh-ink)'),
         rule('.gh-hero-full', 'position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat'),
+        // Fit (settings heroFit): the whole art at the top centre, fading (heroFit.fitMask, --gh-hero-mask) into a blurred copy
+        // of it (the visual language's art-fill), drawn past the box so its blurred edges stay off screen.
+        rule('.gh-hero-full.gh-hero-fit', 'isolation: isolate'),
+        rule('.gh-hero-full.gh-hero-fit::before', `content: ""; position: absolute; inset: -120px; background-image: inherit; background-size: cover; background-position: center;
+            background-repeat: no-repeat; filter: ${ART_FILL_FILTER}; pointer-events: none`),
+        rule('.gh-hero-full.gh-hero-fit::after', `content: ""; position: absolute; inset: 0; background-image: inherit; background-size: contain; background-position: center top;
+            background-repeat: no-repeat; -webkit-mask-image: var(--gh-hero-mask); mask-image: var(--gh-hero-mask); pointer-events: none`),
         rule('.gh-hero-blur', 'position: absolute; inset: -60px; background-size: cover; background-position: center; filter: blur(42px) saturate(1.25) brightness(.8)'),
         rule('.gh-hero-sharp', `position: absolute; right: 0; top: 0; height: 100%; width: 62%; background-size: cover; background-position: center 30%;
             background-repeat: no-repeat; opacity: .92;

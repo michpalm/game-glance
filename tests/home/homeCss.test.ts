@@ -1,5 +1,6 @@
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
 import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
+import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
 import {
     statusCss, HOME_GLASS, HOME_PILL,
@@ -378,6 +379,17 @@ describe('homeCss', () => {
                 expect(756 + 260 + shift - (FEED_SHEET.raise + shift)).toBeLessThan(h - FEED_SHEET.legendReserve);
             }
         });
+    });
+    it('hero Fit: the art fill behind, the whole art at the top with its fade; Fill unchanged', () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        expect(body('.gh-hero-full.gh-hero-fit')).toMatch(/isolation:\s*isolate/);
+        const fill = body('.gh-hero-full.gh-hero-fit::before');
+        for (const part of ['inset: -120px', 'background-image: inherit', 'background-size: cover', `filter: ${ART_FILL_FILTER}`]) expect(fill).toContain(part);
+        const art = body('.gh-hero-full.gh-hero-fit::after');
+        for (const part of ['inset: 0', 'background-image: inherit', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gh-hero-mask)']) expect(art).toContain(part);
+        expect(body('.gh-hero-full')).toContain('background-size: cover');
+        expect(body('.gh-hero-full')).toContain('background-position: center 30%');
     });
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
