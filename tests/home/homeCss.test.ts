@@ -4,7 +4,7 @@ import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
 import {
     statusCss, HOME_GLASS, HOME_PILL,
-    FEED_SHEET, hexAlpha, homeCss, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
+    FEED_SHEET, giveWayVars, hexAlpha, homeCss, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
@@ -304,7 +304,7 @@ describe('homeCss', () => {
         });
         it('the CSS: a 116-tall slot aligning the title to its bottom, a one-line eyebrow, a fixed-height chip row', () => {
             const css = homeCss();
-            expect(css).toMatch(/\.gh-title-slot\s*\{[^}]*height:\s*116px\s*!important[^}]*justify-content:\s*flex-end/);
+            expect(css).toMatch(/\.gh-title-slot\s*\{[^}]*height:\s*var\(--gh-slot, 116px\)\s*!important[^}]*justify-content:\s*flex-end/);
             expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*white-space:\s*nowrap[^}]*text-overflow:\s*ellipsis/);
             expect(css).toMatch(/\.gh-chips\s*\{[^}]*height:\s*69px\s*!important[^}]*flex-wrap:\s*nowrap/);
         });
@@ -321,8 +321,8 @@ describe('homeCss', () => {
         expect(titleBlockBottom()).toBeLessThan(hand);
         // The CSS uses the same metrics.
         const css = homeCss();
-        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
-        expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
+        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\) \+ var\(--gh-title-give, 0px\)\)[^}]*gap:\s*var\(--gh-gap, 18px\)/);
+        expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*var\(--gh-actions-margin, 8px\) 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
         expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
     });
@@ -357,8 +357,8 @@ describe('homeCss', () => {
         it('the CSS moves the page as one unit and the raised sheet keeps its old place (rise 440 + shift)', () => {
             const css = homeCss();
             expect(css).toMatch(/\.gh-root\s*\{[^}]*--gh-shift:\s*0px/);
-            expect(css).toMatch(/\.gh-page\s*\{[^}]*top:\s*var\(--gh-shift\)\s*!important[^}]*height:\s*100%/);
-            expect(css).toMatch(/\.gh-page\.gh-page-up\s*\{[^}]*transform:\s*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\)\)\)/);
+            expect(css).toMatch(/\.gh-page\s*\{[^}]*top:\s*calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)\s*!important[^}]*height:\s*100%/);
+            expect(css).toMatch(/\.gh-page\.gh-page-up\s*\{[^}]*transform:\s*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
             expect(css).toMatch(/\.gh-tabs\s*\{[^}]*top:\s*calc\(700px - var\(--gh-top\)\)/);
         });
         it('Home handles a finger itself: no browser panning, and a dragged feed row follows the finger', () => {
@@ -1040,4 +1040,27 @@ describe('homeCss open transition: text twins', () => {
     it('no !important on transform or opacity in any twin rule', () => {
         for (const m of css.matchAll(/[^{}]*gh-twin[^{]*\{([^}]*)\}/g)) expect(m[1]).not.toMatch(/(?:transform|opacity|translate):[^;]*!important/);
     });
+});
+
+describe('Home gives way when Steam\'s scale leaves too little room (#55)', () => {
+    it('writes today\'s values when nothing gives way', () =>
+        expect(giveWayVars({ need: 0, titleLines: 2, gapsTight: false }, 0)).toEqual({ '--gh-give': '0px', '--gh-title-give': '0px', '--gh-gap': '18px', '--gh-actions-margin': '8px', '--gh-slot': '116px' }));
+    it('moves the stack up and keeps the title block bottom', () => {
+        const v = giveWayVars({ need: 120, titleLines: 1, gapsTight: true }, 83);
+        expect(v).toMatchObject({ '--gh-give': '-120px', '--gh-title-give': '83px', '--gh-gap': '12px', '--gh-actions-margin': '1px', '--gh-slot': '58px' });
+    });
+    it('positions the title block with its give-way', () => expect(homeCss()).toMatch(/\.gh-title-block \{[^}]*top: calc\(118px - var\(--gh-top\) \+ var\(--gh-title-give, 0px\)\)/));
+    it('lays the title block out from the variables', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-title-block \{[^}]*gap: var\(--gh-gap, 18px\)/);
+        expect(css).toMatch(/\.gh-title-slot \{[^}]*height: var\(--gh-slot, 116px\)/);
+        expect(css).toMatch(/\.gh-actions \{[^}]*margin: var\(--gh-actions-margin, 8px\) 0 0 0/);
+    });
+    it('moves the page by the give-way and keeps the raised sheet in place', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-page \{[^}]*top: calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)/);
+        expect(css).toMatch(/\.gh-page\.gh-page-up \{[^}]*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
+    });
+    it('hides the chips row under gh-no-chips', () => expect(homeCss()).toMatch(/\.gh-no-chips \.gh-chips \{[^}]*display: none/));
+    it('draws a logo to the one-line slot', () => expect(homeCss()).toMatch(/\.gh-one-line \.gh-logo \{[^}]*max-height: 58px/));
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { giveWay, MIN_LOGICAL_HEIGHT, roomMissing, STACK_NUMBERS, titleGive } from '../../src/home/giveWay';
+import { fitTitleSize, giveWay, MIN_LOGICAL_HEIGHT, roomMissing, STACK_NUMBERS, titleGive } from '../../src/home/giveWay';
 import { FEED_SHEET } from '../../src/home/homeCss';
 
 describe('giveWay (what of Home gives way when Steam\'s scale leaves too little room)', () => {
@@ -29,4 +29,10 @@ describe('the stack numbers', () => {
     it('are homeCss FEED_SHEET\'s', () => {
         expect(STACK_NUMBERS).toEqual({ tabsTop: FEED_SHEET.tabsTop, tabHeight: FEED_SHEET.tabHeight, tabClearance: FEED_SHEET.tabClearance, legendReserve: FEED_SHEET.legendReserve });
     });
+});
+
+describe('fitTitleSize (a title in the one-line slot)', () => {
+    it('keeps a title that fits at full size', () => expect(fitTitleSize(() => true)).toBe(58));
+    it('takes the first size that fits', () => expect(fitTitleSize((px) => px <= 40)).toBe(36));
+    it('ends at the smallest size, two lines in the slot, when nothing fits', () => expect(fitTitleSize(() => false)).toBe(29));
 });

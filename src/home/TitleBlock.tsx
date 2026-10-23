@@ -1,4 +1,6 @@
+import { RefObject, useLayoutEffect, useRef } from 'react';
 import { GameTitle } from '../components/GameTitle';
+import { fitTitleSize, TITLE_ONE_LINE_SIZES } from './giveWay';
 import type { Chip } from './chips';
 
 function ChipView({ chip }: { chip: Chip }) {
@@ -25,10 +27,37 @@ function ChipView({ chip }: { chip: Chip }) {
  */
 const px = (n: number) => `${n}px`;
 
-export function TitleBlock({ eyebrow, title, chips, appId = 0, logo = false, version = 0, resolve = true }: { eyebrow: string; title: string; chips: Chip[]; appId?: number; logo?: boolean; version?: number; resolve?: boolean }) {
+/** The title's padding on each side (homeCss TITLE_BLOCK.titleBleed), outside the lines it measures. */
+const TITLE_BLEED = 16;
+
+/**
+ * With the title slot down to one line (`oneLine`, home/giveWay step 2), a text title takes the largest size at which it
+ * fits the slot (giveWay.fitTitleSize), measured in place; back to the stylesheet's size otherwise.
+ */
+function useOneLineTitle(slot: RefObject<HTMLDivElement | null>, oneLine: boolean, key: string) {
+    useLayoutEffect(() => {
+        const el = slot.current?.querySelector<HTMLElement>('.gh-title');
+        if (!el) return;
+        el.style.removeProperty('font-size');
+        el.style.removeProperty('-webkit-line-clamp');
+        if (!oneLine) return;
+        const lineSlot = TITLE_ONE_LINE_SIZES[0];
+        const fits = (size: number) => {
+            el.style.setProperty('font-size', `${size}px`, 'important');
+            return el.clientHeight - 2 * TITLE_BLEED <= lineSlot + 0.5;
+        };
+        const size = fitTitleSize(fits);
+        el.style.setProperty('font-size', `${size}px`, 'important');
+        el.style.setProperty('-webkit-line-clamp', String(Math.max(1, Math.floor(lineSlot / size))), 'important');
+    }, [oneLine, key]);
+}
+
+export function TitleBlock({ eyebrow, title, chips, appId = 0, logo = false, version = 0, resolve = true, oneLine = false }: { eyebrow: string; title: string; chips: Chip[]; appId?: number; logo?: boolean; version?: number; resolve?: boolean; oneLine?: boolean }) {
+    const slot = useRef<HTMLDivElement>(null);
+    useOneLineTitle(slot, oneLine, `${appId}:${title}:${logo}:${version}`);
     return (
         <>
-            <div className="gh-title-slot">
+            <div className="gh-title-slot" ref={slot}>
                 <GameTitle appId={appId} name={title} logo={logo} className="gh-title" logoClassName="gh-logo" unit={px} version={version} resolve={resolve} />
             </div>
             <div className="gh-eyebrow">{eyebrow}</div>

@@ -60,3 +60,12 @@ export function giveWay(need: number): GiveWay {
 export function titleGive(g: GiveWay): number {
     return (2 - g.titleLines) * GIVE_WAY.titleLine + (g.gapsTight ? GIVE_WAY.gaps : 0) + (g.chipsHidden ? GIVE_WAY.chips : 0);
 }
+
+/** The title's sizes in the one-line slot (step 2), largest first: the last one is two lines in the slot's 58 px. */
+export const TITLE_ONE_LINE_SIZES = [58, 46, 36, 29] as const;
+
+/** The first of TITLE_ONE_LINE_SIZES at which the title `fits` the one-line slot; the smallest when none does (never cut). */
+export function fitTitleSize(fits: (px: number) => boolean): number {
+    for (const px of TITLE_ONE_LINE_SIZES) if (fits(px)) return px;
+    return TITLE_ONE_LINE_SIZES[TITLE_ONE_LINE_SIZES.length - 1];
+}

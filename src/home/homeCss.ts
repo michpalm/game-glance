@@ -155,6 +155,22 @@ export const FEED_SHEET = {
 /** The mouse's sheet toggle (a chevron): its box, its icon, and how far its top sits above the games row's. */
 export const SHEET_TOGGLE = { w: 44, h: 24, lift: 18 + 24, icon: { w: 28, h: 12 } } as const;
 
+/**
+ * Home's root variables for the give-way steps (home/giveWay, #55): the page moves up by `need` (--gh-give), the title
+ * block's top moves back down by what it frees inside (`titleGivePx`, --gh-title-give) so its bottom stays, and its slot,
+ * gaps and action margin take the steps' sizes. Today's values with nothing to give.
+ */
+export function giveWayVars(g: { need: number; titleLines: 1 | 2; gapsTight: boolean }, titleGivePx: number): Record<string, string> {
+    const t = TITLE_BLOCK;
+    return {
+        '--gh-give': `${g.need > 0 ? -g.need : 0}px`,
+        '--gh-title-give': `${titleGivePx}px`,
+        '--gh-gap': `${g.gapsTight ? 12 : t.gap}px`,
+        '--gh-actions-margin': `${g.gapsTight ? 1 : t.actionsMargin}px`,
+        '--gh-slot': `${g.titleLines * t.titleSize}px`,
+    };
+}
+
 /** The most the stack moves down, whatever the screen. */
 export const MAX_STACK_SHIFT = 120;
 /** ...and the most it moves up when Steam's legend is taller than the 46 reserve (handheld: 72 logical px). */
@@ -285,19 +301,19 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-safe', 'position: absolute; left: 0; right: 0; top: var(--gh-top); bottom: var(--gh-bottom)'),
         // The page holds the whole stack; it sits --gh-shift lower (stackShift, set inline by SpotlightHome), so every
         // element moves as one unit and keeps its gaps.
-        rule('.gh-page', `position: absolute; left: 0; right: 0; top: var(--gh-shift); height: 100%; transform: none; transition: transform ${SHEET}, opacity 300ms`),
+        rule('.gh-page', `position: absolute; left: 0; right: 0; top: calc(var(--gh-shift) + var(--gh-give, 0px)); height: 100%; transform: none; transition: transform ${SHEET}, opacity 300ms`),
         // Focus in the tabs or feed: the page rises 440 plus the shift, so the raised sheet keeps its place (tabs at 260, cards at 316).
         // The tab strip (reachable with Down) is out of sight until the sheet is raised; it fades in with the rise. The stack sits where the
         // tab strip would have been (stackShift without the feed), so the recents row ends there.
         rule('.gh-page .gh-tabs', 'transition: opacity 300ms'),
         rule('.gh-page:not(.gh-page-up) .gh-tabs', 'opacity: 0'),
-        rule('.gh-page.gh-page-up', `transform: translateY(calc(-1 * var(--gh-raise, ${FEED_SHEET.raise}px) - var(--gh-shift)))`),
+        rule('.gh-page.gh-page-up', `transform: translateY(calc(-1 * var(--gh-raise, ${FEED_SHEET.raise}px) - var(--gh-shift) - var(--gh-give, 0px)))`),
 
         // Title block (handoff: left 56, top 118 from the screen top, width 620, gap 18): title slot, eyebrow, chips, actions.
-        rule('.gh-title-block', `position: absolute; left: var(--gh-side, ${SIDE_INSET.handheld}px); top: calc(${t.top}px - var(--gh-top)); width: 620px; display: flex; flex-direction: column; gap: ${t.gap}px; margin: 0; padding: 0`),
+        rule('.gh-title-block', `position: absolute; left: var(--gh-side, ${SIDE_INSET.handheld}px); top: calc(${t.top}px - var(--gh-top) + var(--gh-title-give, 0px)); width: 620px; display: flex; flex-direction: column; gap: var(--gh-gap, ${t.gap}px); margin: 0; padding: 0`),
         // The title's slot: always two lines tall, the title aligned to its bottom, so a one-line title leaves room above
         // it and nothing below moves (titleBlockLayout). Not clipped: the title's own bleed reaches past it.
-        rule('.gh-title-slot', `height: ${t.titleLines * t.titleSize}px; display: flex; flex-direction: column; justify-content: flex-end; margin: 0; padding: 0; overflow: visible`),
+        rule('.gh-title-slot', `height: var(--gh-slot, ${t.titleLines * t.titleSize}px); display: flex; flex-direction: column; justify-content: flex-end; margin: 0; padding: 0; overflow: visible`),
         // Eyebrow, between the title and the chips: always one line (ellipsis), so it never pushes the chips.
         rule('.gh-eyebrow', `margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; line-height: 1.2; height: ${t.eyebrow}px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--glance-accent-text)`),
@@ -313,6 +329,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             object-fit: contain; object-position: left bottom; align-self: flex-start; filter: drop-shadow(0 4px 24px rgba(0,0,0,.45))`),
         // One row of fixed height, present even with no chips yet, so the actions never move.
         rule('.gh-chips', `height: ${t.chipRow}px; display: flex; gap: 10px; flex-wrap: nowrap; align-items: stretch; margin: 0; padding: 0`),
+        // Steam's scale left too little room (giveWay, #55): the chips' row is the last step to go.
+        rule('.gh-no-chips .gh-chips', 'display: none'),
+        // ...and with the title slot down to one line, a logo is drawn to its height (TitleBlock fits a text title).
+        rule('.gh-one-line .gh-logo', `max-height: ${t.titleSize}px`),
         rule('.gh-chip', `display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),
         rule('.gh-chip-label', 'font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: 1.2; color: rgba(255,255,255,.62)'),
         rule('.gh-chip-value', 'font-size: 20px; font-weight: 700; line-height: 1.2; color: #fff; white-space: nowrap'),
@@ -338,7 +358,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         ...statusRules(),
         ...openingRules(),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
-        rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
+        rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: var(--gh-actions-margin, ${t.actionsMargin}px) 0 0 0; padding: 0`),
         rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: var(--gh-r-pill); display: flex; align-items: center; justify-content: center; gap: 12px;
             font-size: 19px; font-weight: 700; line-height: 1; color: #fff; background: rgba(12,16,22,.4); border: 1px solid rgba(255,255,255,.18);
             backdrop-filter: blur(12px); box-shadow: none; transform: none; outline: none; cursor: pointer;
