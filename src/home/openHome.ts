@@ -1,3 +1,4 @@
+import { OPEN_TIMINGS } from './motion';
 import type { HomeRects, MotionVar } from './openMotion';
 import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
 import type { Box, ExtraColumn, ExtrasAsked, LineMeasure, Measure, PageLook, PageStat, StatKey } from './openTargets';
@@ -170,6 +171,37 @@ export function restTwinsOnExtras(root: HTMLElement) {
         twin.style.setProperty('--t-y', `${at.top - from.top}px`);
         twin.style.setProperty('--t-shift', '0%');
     }
+}
+
+
+/** Match Clean's final glass and crisp border to the actual flex panel, rather than its text-width estimate. */
+export function settleCleanPanel(copy: HTMLElement, doc: Document): boolean {
+    const page = doc.querySelector<HTMLElement>('.gg-clean-info');
+    const shell = copy.querySelector<HTMLElement>('.gh-open-shell[data-i="0"]');
+    const ring = copy.querySelector<HTMLElement>('.gh-open-ring[data-i="0"]');
+    const canvas = copy.querySelector<HTMLElement>('.gh-canvas');
+    const win = doc.defaultView;
+    if (!page || !shell || !ring || !canvas || !win) return false;
+    const target = page.getBoundingClientRect();
+    const predicted = ring.getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    const root = copy.getBoundingClientRect();
+    const scale = c.width / parseFloat(win.getComputedStyle(canvas).width);
+    if (![target.left, target.top, target.width, target.height, scale].every(Number.isFinite) || target.width <= 0 || target.height <= 0 || scale <= 0) return false;
+    // Only a small raster/layout correction; newly changed stats or a different panel must not distort the copy.
+    if ([target.left - predicted.left, target.top - predicted.top, target.width - predicted.width, target.height - predicted.height].some((v) => !Number.isFinite(v) || Math.abs(v) > 6)) return false;
+    const land = (el: HTMLElement, box: Record<string, number>) => {
+        const from = win.getComputedStyle(el);
+        const start = Object.fromEntries(Object.keys(box).map((k) => [k, from.getPropertyValue(k)]));
+        // Home protects its geometry with !important. The measured settle must override it in the bridge only.
+        for (const [key, value] of Object.entries(start)) el.style.setProperty(key, value, 'important');
+        el.style.setProperty('transition', Object.keys(box).map((k) => `${k} ${OPEN_TIMINGS.settleGlide}ms ease-out`).join(', '), 'important');
+        void el.offsetWidth;
+        for (const [key, value] of Object.entries(box)) el.style.setProperty(key, `${value}px`, 'important');
+    };
+    land(shell, { left: (target.left - c.left) / scale, top: (target.top - c.top) / scale, width: target.width / scale, height: target.height / scale });
+    land(ring, { left: target.left - root.left, top: target.top - root.top, width: target.width, height: target.height });
+    return true;
 }
 
 /**

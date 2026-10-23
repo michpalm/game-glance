@@ -6,7 +6,7 @@ import { playNavSound } from './navSound';
 import { listenOpenCancel, showCancelReturn } from './openCancel';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
-import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleTwins, viewportSize } from './openHome';
+import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleCleanPanel, settleTwins, viewportSize } from './openHome';
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
 import { pageTargets, PageLook } from './openTargets';
@@ -250,7 +250,10 @@ function controller(): OpenTransition {
             // Home's game row, tabs and feed have left (or faded with the rest) by the hand-over: the copy goes without them.
             // At the page's ready the copy's text twins glide onto the page's text as measured (openHome.settleTwins).
             const look = c.intent.look;
-            const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => settleTwins(copy, doc, pageTwinTargets(look)));
+            const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => {
+                if (look === 'clean') settleCleanPanel(copy, doc);
+                settleTwins(copy, doc, pageTwinTargets(look));
+            });
             if (c.intent.look !== 'steam') return bridge;
             // Steam's own page draws no status bar of ours: Steam's top bar is given back as the copy starts to fade (it fades in under it).
             return withSteamBarBack(bridge, () => handBarBack(doc));
