@@ -155,6 +155,21 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         out[`--gho-shell-${i}-o0`] = from ? '1' : '0';
     });
     out['--gho-shell-count'] = String(page.shells.length);
+    // The cards' crisp ring (.gh-open-ring), outside the scaled canvas in the root's px: it crossfades in over the morph as
+    // the panel's soft canvas ring fades out, so the page's ring (whole device px, brightened by --gg-ring) is already
+    // there at the hand-over. Width and brightness are the page's (openTargets border, ring), unrounded so it snaps alike.
+    const rx = home.root?.x ?? 0;
+    const ry = home.root?.y ?? 0;
+    page.shells.forEach((shell, i) => {
+        out[`--gho-ring-${i}-x`] = k(shell.x - rx);
+        out[`--gho-ring-${i}-y`] = k(shell.y - ry);
+        out[`--gho-ring-${i}-w`] = k(shell.w);
+        out[`--gho-ring-${i}-h`] = k(shell.h);
+        out[`--gho-ring-${i}-from`] = sources[i].length > 0 ? mapBox(shell, union(sources[i]), 1) : `${translate(0, 0)} scale(1, 1)`;
+    });
+    out['--gho-ring-w'] = `${page.border ?? 1}px`;
+    out['--gho-ring-boost'] = String(page.ring ?? 1);
+    out['--gho-ring-r'] = `${k(16 * d)}px`;
 
     // The extras layer: the page's parts drawn at the page's size in the root's px (outside the scaled canvas), laid out
     // as the page lays them out, from the d unit: the store pill (by its right edge and top, both looks) and, Spotlight,

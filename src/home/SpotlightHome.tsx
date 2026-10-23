@@ -612,6 +612,9 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
+            {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
+            <div className="gh-open-ring" data-i="0" />
+            <div className="gh-open-ring" data-i="1" />
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
             {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
         </div>

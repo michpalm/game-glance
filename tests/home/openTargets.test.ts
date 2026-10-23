@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Box, cardBorder, ExtraColumn, Measure, pageTargets, PageLook, PageStat, StatKey } from '../../src/home/openTargets';
-import { PAGE_LAYOUT, pageDUnit } from '../../src/styles/themeCss';
+import { PAGE_LAYOUT, pageDUnit, ringBoost } from '../../src/styles/themeCss';
 import { baseCanvas, defaultGrowth } from '../../src/home/scale';
 
 interface Fixture {
@@ -265,5 +265,14 @@ describe('pageTargets with Home\'s default growth (#55)', () => {
         const grown = pageTargets('spotlight', { width: 1920, height: 1080 }, [played], measure, { w: 100, h: 34 });
         const base = pageTargets('spotlight', { width: 1920, height: 1080, grow: 1 }, [played], measure, { w: 100, h: 34 });
         expect(grown.d! / base.d!).toBeCloseTo(defaultGrowth(810), 6);
+    });
+});
+
+describe('the page cards\' ring for the open transition', () => {
+    it('is the page\'s: its width on whole device px and its brightness', () => {
+        const screen = { width: 1500, height: 844, dpr: 1.28 };
+        const t = pageTargets('spotlight', screen, [], (text) => text.length * 10, { w: 100, h: 34 });
+        expect(t.border).toBeCloseTo(cardBorder(1.28, t.d!), 10);
+        expect(t.ring).toBe(ringBoost(1.28, 1500, 844));
     });
 });

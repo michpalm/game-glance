@@ -153,7 +153,10 @@ describe('homeCss', () => {
         // The panels are drawn in the scaled canvas with Home's own 1px ring, so it looks the same as the chips' all the way.
         // (Chromium snaps a border to whole device px in the canvas's own units before the scale: the page's 1 device px,
         // 0.75 canvas px on the Ally, became 1 device px there and 0.575 on screen, half as bright as both ends.)
-        expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        // (The ring is drawn by its ::before, which fades out as the page's crisp ring, outside the canvas, fades in; the
+        // panel keeps a transparent 1px border so its box and edges stay the page card's.)
+        expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid transparent/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
         expect(css).not.toContain('--gho-x-border');
         // The pill's layers that grow into the page pill start at its outer edge (its 1px border), as openMotion's scales assume.
         expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: -1px[^}]*top: -1px[^}]*width: calc\(100% \+ 2px\)[^}]*height: calc\(100% \+ 2px\)/);
@@ -545,7 +548,8 @@ describe('homeCss open transition', () => {
         const shell = body((sel) => sel === '.gh-open-shell');
         expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.38\)/);
         expect(shell).toContain('backdrop-filter: blur(16px)');
-        expect(all.some(([sel]) => sel.includes('.gh-open-shell::'))).toBe(false);
+        // No backdrop blur on a pseudo-element of the panel (it would see nothing behind it); its ::before draws only the ring.
+        expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
         const pill = body((sel) => sel.includes('data-gh-opening="morph"') && !sel.includes('data-gh-phase') && sel.endsWith('[data-action="play"]::after'));
         expect(pill).toContain('width: calc((100% + 2px) * var(--gho-play-sx))');
@@ -1061,5 +1065,20 @@ describe('the stack under the default growth (#55)', () => {
         const css = homeCss();
         expect(css).toMatch(/\.gh-page \{[^}]*top: calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)/);
         expect(css).toMatch(/\.gh-page\.gh-page-up \{[^}]*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
+    });
+});
+
+describe('the cards\' crisp ring in the open transition', () => {
+    const css = homeCss();
+    it('draws it as the page\'s card ring, outside the canvas', () => {
+        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(255,255,255,calc\(\.12 \* var\(--gho-ring-boost, 1\)\)\)/);
+    });
+    it('starts on the chips, transparent, and grows to the card as it fades in', () => {
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-open-ring\[data-i="0"\] \{[^}]*display: block[^}]*transform: var\(--gho-ring-0-from\)[^}]*opacity: 0/);
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-ring\[data-i="0"\] \{[^}]*transform: none[^}]*opacity: 1[^}]*transition: transform/);
+    });
+    it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
     });
 });

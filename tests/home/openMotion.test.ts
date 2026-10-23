@@ -365,3 +365,31 @@ describe('return timings (B from a page: Home is just there)', () => {
         expect(RETURN_TIMINGS.hold).toBeLessThanOrEqual(2000);
     });
 });
+
+describe('the cards\' crisp ring crossfades in over the morph (soft canvas ring -> page ring)', () => {
+    const page = { ...spotlight(), border: 0.78125, ring: 1.45 };
+    const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+    const v = vars(openMotion(home, page, 'spotlight', s));
+    it('places a ring at each page card, in the root\'s px (outside the scaled canvas)', () => {
+        expect(Number(v['--gho-ring-0-x'])).toBeCloseTo(25 - 10, 3);
+        expect(Number(v['--gho-ring-0-y'])).toBeCloseTo(593.1 - 20, 3);
+        expect(Number(v['--gho-ring-1-w'])).toBeCloseTo(681.6, 3);
+        expect(Number(v['--gho-ring-1-h'])).toBeCloseTo(185.4, 3);
+    });
+    it('starts it on the chips it grows from, as the panel does', () => {
+        const from = parse(v['--gho-ring-0-from']);
+        const chips = [r['chip:chip0'], r['chip:chip1']];
+        const x = Math.min(...chips.map((c) => c.x));
+        expect(from.tx).toBeCloseTo(x - 25, 2);
+    });
+    it('draws it as the page does: the page card\'s width in device px and its brightness', () => {
+        expect(v['--gho-ring-w']).toBe('0.78125px');
+        expect(v['--gho-ring-boost']).toBe('1.45');
+        expect(v['--gho-ring-r']).toBe(`${Math.round(16 * (page.d ?? s) * 10000) / 10000}px`);
+    });
+    it('has no ring without page targets for it', () => {
+        const none = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        expect(none['--gho-ring-w']).toBe('1px');
+        expect(none['--gho-ring-boost']).toBe('1');
+    });
+});

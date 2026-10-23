@@ -628,6 +628,12 @@ export function openingRules(): string[] {
         rule(`${M}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]`, `display: block; left: calc(var(--gho-shell-${i}-x) * 1px); top: calc(var(--gho-shell-${i}-y) * 1px);
             width: calc(var(--gho-shell-${i}-w) * 1px); height: calc(var(--gho-shell-${i}-h) * 1px); transform: var(--gho-shell-${i}-from); opacity: var(--gho-shell-${i}-o0)`),
         rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]`, `transform: none; opacity: 1; transition: ${move}, opacity ${T.morph}ms ease`),
+        rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]::before`, `opacity: 0; transition: opacity ${T.morph}ms ease`),
+        // The page card's crisp ring, outside the canvas (.gh-open-ring): it grows with the panel and fades in as the panel's
+        // soft ring fades out, so the hand-over shows the ring the page draws.
+        rule(`${M}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-ring[data-i="${i}"]`, `display: block; left: calc(var(--gho-ring-${i}-x) * 1px); top: calc(var(--gho-ring-${i}-y) * 1px);
+            width: calc(var(--gho-ring-${i}-w) * 1px); height: calc(var(--gho-ring-${i}-h) * 1px); transform: var(--gho-ring-${i}-from); opacity: 0`),
+        rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-ring[data-i="${i}"]`, `transform: none; opacity: 1; transition: ${move}, opacity ${T.morph}ms ease`),
     ];
     // Fades that start late in the morph are keyframe animations over the whole morph that hold their start value until
     // then, never delayed transitions: on Steam's browser the GPU draws a delayed opacity transition at its end value
@@ -673,7 +679,12 @@ export function openingRules(): string[] {
         // on the Ally: moving blurred felt more seamless than a blur growing in after the hand-over). 16 canvas px is the page's
         // 16 d units. Its ring is Home's 1px, so it looks like the chips' all the way: Chromium snaps a border to whole device px
         // in the canvas's own units, before the scale, so the page's 1 device px drawn in here came out half as bright on the Ally.
-        rule('.gh-open-shell', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(16px)'),
+        // The page cards' ring drawn as the page draws it (openMotion --gho-ring-*): outside the scaled canvas, so Chromium
+        // snaps it to whole device px as it does the page's; brightened by the page's --gg-ring (ringBoost).
+        rule('.gh-open-ring', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; box-sizing: border-box; background: none; border-radius: var(--gho-ring-r, 16px); border: var(--gho-ring-w, 1px) solid rgba(255,255,255,calc(.12 * var(--gho-ring-boost, 1)))'),
+        rule('.gh-open-shell', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; background: rgba(12,16,22,.38); border: 1px solid transparent; backdrop-filter: blur(16px)'),
+        // Its soft canvas ring, as Home's chips draw theirs: fades out as the crisp ring (.gh-open-ring) fades in.
+        rule('.gh-open-shell::before', 'content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid rgba(255,255,255,.12); pointer-events: none; opacity: 1'),
         // A Unifideck game's page has a fourth circle (Uninstall) Home has no button for: one is drawn at its place as Home's
         // circles look at the page's size, and fades in late as the page's other parts do, so it does not pop in after the
         // hand-over. Its own fade, not the extras layer's: a backdrop blur inside a fading parent sees nothing behind it.
