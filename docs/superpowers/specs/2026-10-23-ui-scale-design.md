@@ -1,6 +1,6 @@
 # Follow Steam's display scale (#55) — design
 
-2026-10-23. Status: design approved in chat; spec awaiting review. Branch `feature/3.6-hero-scale-whatsnew` (after 3.5.0).
+2026-10-23. Status: implemented and checked on the Ally (2026-10-23, docs/device-checklist.md); the page's title follows Home's one-line slot (decided on device). Branch `feature/3.6-hero-scale-whatsnew` (after 3.5.0).
 
 ## Problem
 
