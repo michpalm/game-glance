@@ -6,7 +6,7 @@ import { playNavSound } from './navSound';
 import { listenOpenCancel, showCancelReturn } from './openCancel';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
-import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleCleanPanel, settleTwins, viewportSize } from './openHome';
+import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, measureCanvasScale, settleTwins, viewportSize } from './openHome';
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
 import { pageTargets, PageLook } from './openTargets';
@@ -172,9 +172,8 @@ function startHome(c: OpenContext): (() => void) | null {
     if (c.variant === 'morph') {
         try {
             const home = measureHome(root);
-            const canvasEl = root.querySelector('.gh-canvas') as HTMLElement | null;
             const win = root.ownerDocument?.defaultView;
-            const scale = home && canvasEl && canvasEl.offsetWidth > 0 ? home.canvas.w / canvasEl.offsetWidth : 0;
+            const scale = measureCanvasScale(root);
             const screen = win ? viewportSize(win) : { width: 0, height: 0 };
             if (home && scale > 0 && screen.width > 0 && screen.height > 0) {
                 // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
@@ -251,7 +250,6 @@ function controller(): OpenTransition {
             // At the page's ready the copy's text twins glide onto the page's text as measured (openHome.settleTwins).
             const look = c.intent.look;
             const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => {
-                if (look === 'clean') settleCleanPanel(copy, doc);
                 settleTwins(copy, doc, pageTwinTargets(look));
             });
             if (c.intent.look !== 'steam') return bridge;

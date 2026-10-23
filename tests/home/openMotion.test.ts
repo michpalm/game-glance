@@ -5,6 +5,8 @@ import { HomeRects, MotionVar, openMotion } from '../../src/home/openMotion';
 import type { Box, PageTargets } from '../../src/home/openTargets';
 import { MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS } from '../../src/home/motion';
 import { PAGE_LAYOUT, pillFocusScale } from '../../src/styles/themeCss';
+import { measureCanvasScale } from '../../src/home/openHome';
+import { homeCanvas } from '../../src/home/scale';
 import { HOME_PILL } from '../../src/home/homeCss';
 
 const raw = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/openLayout/home-1500x844.json'), 'utf8')) as { canvasScale: number; rects: Record<string, Box> };
@@ -51,6 +53,26 @@ function parse(t: string | undefined) {
 }
 
 describe('openMotion', () => {
+    it('keeps the glass on the crisp ring with fractional grown canvases across aspect ratios and both looks', () => {
+        for (const [width, height] of [[1500, 844.53125], [1280, 800], [1920, 1080], [2560, 1080], [3840, 1080]]) {
+            const layout = homeCanvas(width, height);
+            // Chromium quantizes layout width but offsetWidth further rounds it to a whole CSS px.
+            const logical = Math.floor(layout.logicalWidth * 64) / 64;
+            const drawn = logical * layout.scale;
+            const root = {
+                ownerDocument: { defaultView: { getComputedStyle: () => ({ width: `${logical}px` }) } },
+                querySelector: () => ({ offsetWidth: Math.round(logical), getBoundingClientRect: () => ({ width: drawn }) }),
+            } as unknown as Element;
+            for (const look of ['clean', 'spotlight'] as const) {
+                const home = { ...homeRects(), canvas: box(0, 0, drawn, height) };
+                const v = vars(openMotion(home, spotlight(), look, measureCanvasScale(root)));
+                for (const axis of ['x', 'y', 'w', 'h']) {
+                    expect(Math.abs(Number(v[`--gho-shell-0-${axis}`]) * layout.scale - Number(v[`--gho-ring-0-${axis}`]))).toBeLessThan(0.0002);
+                }
+            }
+        }
+    });
+
     it('the title block moves by its bottom-left corner, in canvas px', () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         const t = parse(v['--gho-title']);
