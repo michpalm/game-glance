@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets } from './themeCss';
+import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets } from './themeCss';
 import { viewportSize } from '../home/openHome';
 import type { ReadySelectors } from './pageReady';
 
@@ -134,4 +134,9 @@ export function playRowControlSelector(): string | null {
 export function versionLinkSelector(): string | null {
     const row = themeClasses().shared?.SharedLibrary;
     return row ? `.${row} a[role="button"]` : null;
+}
+
+/** Steam's unavailable message, for the shared Last played / availability metadata line. */
+export function unavailableMessageSelectors(): { container: string | null; message: string | null } {
+    return nativeUnavailableMessageSelectors(themeClasses());
 }

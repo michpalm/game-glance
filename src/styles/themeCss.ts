@@ -27,6 +27,15 @@ function cls(map: ClassMap, key: string): string | null {
     return typeof name === 'string' && name.length > 0 ? `.${name}` : null;
 }
 
+/** The native source remains mounted; the restyled metadata row mirrors only a blocking explanation. */
+export function nativeUnavailableMessageSelectors({ root, play }: ThemeClasses): { container: string | null; message: string | null } {
+    const status = cls(play, 'StatusAndStats');
+    const unavailable = cls(play, 'PermanentlyUnavailable');
+    const label = cls(play, 'DetailsSectionStatus');
+    return { container: cls(root, 'ActionRow'), message: status && unavailable && label ? `${status}${unavailable} ${label}` : null };
+}
+
+
 /**
  * A focused pill's scale: 4% taller as a focused circle, but only as much wider as a circle grows (its height's share), not
  * 4% of its width: a 340 wide pill grew 6.8 px each side and halved its gap to the circles (Michael: too narrow). Same on
@@ -243,7 +252,7 @@ export interface ThemeOptions {
  * does not sit on the cards. Nothing in Steam's page structure moves, so controller navigation and
  * scrolling stay Steam's.
  * If any class the layout needs is missing, none of the layout applies and the page stays stacked.
- * Without `restyle` the output is exactly 1.1.1's (pinned by a snapshot test); `restyle` appends restyleRules().
+ * Without `restyle` the 1.1.1 layout is preserved, with unavailable-status explanations (#62); `restyle` appends restyleRules().
  */
 export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {}): string {
     const { header, details, overview, root, play, launch } = classes;
@@ -267,7 +276,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
     const fail = cls(play, 'CloudStatusSyncFail');
     const offline = cls(play, 'OfflineMode');
     const menuButton = cls(play, 'MenuButton');
-    const hidden = present([cls(play, 'StatusAndStats'), cls(play, 'GameStatsSection'), cls(play, 'Playtime'), cls(play, 'LastPlayed')]);
+    const statusAndStats = cls(play, 'StatusAndStats');
+    const unavailable = cls(play, 'PermanentlyUnavailable');
+    // This wrapper also owns Steam's install-blocking explanations (#62), not just duplicate statistics.
+    // If its unavailable class is unknown, keep the wrapper rather than silently hiding the reason.
+    const hidden = present([statusAndStats && unavailable ? `${statusAndStats}:not(${unavailable})` : null, cls(play, 'GameStatsSection'), cls(play, 'Playtime'), cls(play, 'LastPlayed')]);
 
     const layout = topCapsule && inner && overviewPanel && tabs;
 
@@ -312,6 +325,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
 
         // Duplicate stats: our info card already shows play time.
         rule(hidden.length ? hidden : null, ` display: none !important; `),
+        // Unavailable reasons belong below the main button, in the row's existing lower gap. Keeping the wrapper
+        // in the flex row would push the controller/settings controls to the right (#62, found on the Ally).
+        rule(actionRow && statusAndStats && unavailable && `${actionRow}:has(> ${statusAndStats}${unavailable})`, ` position: relative !important; `),
+        rule(actionRow && statusAndStats && unavailable && `${actionRow} > ${statusAndStats}${unavailable}`, ` position: absolute !important; left: 0 !important;
+            top: calc(var(--gg-icon) + ${u(4)}) !important; max-height: none !important; overflow: visible !important; `),
 
         // Play row: pill Play button, round icon buttons, room for the cloud icon.
         rule(actionRow, ` justify-content: flex-start !important; align-items: flex-start !important; gap: var(--gg-gap) !important; `),
@@ -728,6 +746,11 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // full-screen layout applies (below): all-or-nothing, like the rest of the layout.
         `.gg-titleblock { display: none; flex-direction: column; gap: ${d(PAGE_LAYOUT.titleBlock.gap)}; max-width: ${d(640)}; margin: 1vh var(--gg-side); color: #fff; font-family: inherit; }`,
         `.gg-eyebrow { ${pageType('eyebrow', d)} color: var(--glance-accent-text); }`,
+        `.gg-metadata { display: flex; flex-wrap: wrap; align-items: center; column-gap: ${d(16)}; row-gap: ${d(6)}; }`,
+        `.gg-availability { display: inline-flex; align-items: center; gap: ${d(6)}; font-size: ${d(PAGE_LAYOUT.titleBlock.eyebrow)}; line-height: 1.2; font-weight: 700; text-transform: uppercase; color: #fff; }`,
+        `.gg-availability img { display: block; width: ${d(14)}; height: ${d(14)}; object-fit: contain; }`,
+        // Keep the native fallback until the mirrored reason exists; never hide the only explanation.
+        rule(layout && inner && cls(play, 'StatusAndStats') && cls(play, 'PermanentlyUnavailable') ? `${inner}:has(> .gg-titleblock .gg-availability) ${cls(play, 'StatusAndStats')}${cls(play, 'PermanentlyUnavailable')}` : null, ` display: none !important; `),
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
         `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)}
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;

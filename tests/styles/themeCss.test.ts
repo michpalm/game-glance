@@ -20,6 +20,7 @@ const full: ThemeClasses = {
     },
     play: {
         StatusAndStats: 'ps_Stats',
+        PermanentlyUnavailable: 'ps_Unavailable',
         Playtime: 'ps_Playtime',
         LastPlayed: 'ps_LastPlayed',
         MenuButton: 'ps_Menu',
@@ -343,7 +344,7 @@ describe('buildCleanCss (the Clean look)', () => {
 describe('buildThemeCss 1.1.1 baseline', () => {
     const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined };
 
-    it('buildThemeCss without restyle is identical to 1.1.1 output', () => {
+    it('buildThemeCss without restyle preserves the baseline with unavailable-status explanations', () => {
         expect(buildThemeCss(full)).toMatchInlineSnapshot(`
           ":root {
                       --gg-accent: #1fbf8f;
@@ -381,7 +382,10 @@ describe('buildThemeCss 1.1.1 baseline', () => {
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
           .gg-pill-icon { flex: 0 0 auto; width: calc(12 * var(--gg-u)); height: calc(12 * var(--gg-u)); margin-right: calc(6 * var(--gg-u)); }
           .gg-more { position: absolute; left: 50%; bottom: calc(44 * var(--gg-u)); transform: translateX(-50%); font-size: calc(20 * var(--gg-u)); line-height: 1; opacity: 0.35; pointer-events: none; }
-          .ps_Stats, .ps_Playtime, .ps_LastPlayed { display: none !important; }
+          .ps_Stats:not(.ps_Unavailable), .ps_Playtime, .ps_LastPlayed { display: none !important; }
+          .rt_Row:has(> .ps_Stats.ps_Unavailable) { position: relative !important; }
+          .rt_Row > .ps_Stats.ps_Unavailable { position: absolute !important; left: 0 !important;
+                      top: calc(var(--gg-icon) + calc(4 * var(--gg-u))) !important; max-height: none !important; overflow: visible !important; }
           .rt_Row { justify-content: flex-start !important; align-items: flex-start !important; gap: var(--gg-gap) !important; }
           .rt_PlayBtn { width: var(--gg-play-w) !important; flex: 0 0 var(--gg-play-w) !important; }
           .rt_PlayBtn > div:has(> [role="button"]) { display: flex !important; width: 100% !important; height: var(--gg-icon) !important;
