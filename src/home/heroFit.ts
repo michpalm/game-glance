@@ -20,6 +20,14 @@ export const STANDARD_HERO_ASPECT = 3.1;
 /** The visual language's `art-fill` token: blurred artwork behind art that does not fill its space. */
 export const ART_FILL_FILTER = 'blur(42px) saturate(1.25) brightness(.8)';
 
+/**
+ * The screen's shape from the window the hero is drawn in (its element's `ownerDocument.defaultView`): never the
+ * plugin's global `window`, which is Steam's shared context (1x1 on the Ally). 16:9 without a real size.
+ */
+export function windowAspect(win: { innerWidth: number; innerHeight: number } | null | undefined): number {
+    return win && win.innerWidth >= 64 && win.innerHeight >= 64 ? win.innerWidth / win.innerHeight : 16 / 9;
+}
+
 const round = (n: number) => Math.round(n * 100) / 100;
 const pct = (n: number) => `${round(n)}%`;
 

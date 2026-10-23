@@ -32,7 +32,7 @@ import { openPending } from '../data/openIntent';
 import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '../home/warmup';
 import { accentMemo, knownAccent } from '../home/accentMemo';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
-import { HeroFit, STANDARD_HERO_ASPECT, fitMask } from '../home/heroFit';
+import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
 import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
 import { pageNavParts } from '../logic/cardNav';
@@ -94,8 +94,7 @@ function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
             const img = doc.querySelector<HTMLImageElement>(selector);
             const win = doc.defaultView;
             const aspect = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : null;
-            const box = win && win.innerWidth > 0 && win.innerHeight > 0 ? win.innerWidth / win.innerHeight : 16 / 9;
-            const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, box);
+            const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, windowAspect(win));
             removeOwnVars(root.style, Object.fromEntries(Object.entries(applied).filter(([name]) => !(name in vars))));
             for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
             applied = vars;

@@ -4,7 +4,7 @@ import { useSettings } from '../data/settings';
 import { browserStores, capsuleUrls, heroUrls } from './artwork';
 import { displayInfo, loadArt } from './artShrink';
 import { HeroLayer, nextHeroLayers, settledHeroLayers } from './heroLayers';
-import { HeroFit, STANDARD_HERO_ASPECT, fitMask } from './heroFit';
+import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
 import { heroSources, shouldMemoArt } from './homeView';
 import { HERO_FADE_MS, HERO_PRELOAD_DELAY_MS } from './motion';
 
@@ -157,15 +157,31 @@ function useArtAspect(url: string | null): number | null {
     return aspect;
 }
 
+/** The shape of the screen `ref`'s element is drawn on (heroFit.windowAspect), following resizes (a Deck docked to a TV). */
+function useScreenAspect(ref: { current: HTMLElement | null }, active: boolean): number {
+    const [aspect, setAspect] = useState(16 / 9);
+    useLayoutEffect(() => {
+        const win = ref.current?.ownerDocument?.defaultView;
+        if (!active || !win) return undefined;
+        const read = () => setAspect(windowAspect(win));
+        read();
+        win.addEventListener('resize', read);
+        return () => win.removeEventListener('resize', read);
+    }, [ref, active]);
+    return aspect;
+}
+
 function Layer({ art, settled }: { art: Art; settled: boolean }) {
     const cls = `gh-hero-layer${settled ? ' gh-hero-settled' : ''}`;
     const { heroFit } = useSettings();
     const fit = art.mode === 'full' ? heroFit : 'fill';
+    const ref = useRef<HTMLDivElement>(null);
     const aspect = useArtAspect(art.mode === 'full' && fit === 'fit' ? art.url : null);
+    const screen = useScreenAspect(ref, fit === 'fit');
     if (art.mode === 'full') {
         return (
-            <div className={cls}>
-                <div className={`gh-hero-full${fit === 'fit' ? ' gh-hero-fit' : ''}`} style={heroFullStyle(art.url, fit, aspect, window.innerWidth / Math.max(1, window.innerHeight))} />
+            <div className={cls} ref={ref}>
+                <div className={`gh-hero-full${fit === 'fit' ? ' gh-hero-fit' : ''}`} style={heroFullStyle(art.url, fit, aspect, screen)} />
             </div>
         );
     }
