@@ -70,6 +70,14 @@ export function heroFitVars(fit: HeroFit, src: string | null, artAspect: number 
     return { '--gg-hero-fill': `url("${src.replace(/"/g, '%22')}")`, '--gg-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) };
 }
 
+/** Steam's low-resolution placeholder remains a fallback until the full hero has usable pixels. */
+export function pageHeroFitVars(fit: HeroFit, img: Pick<HTMLImageElement, 'src' | 'currentSrc' | 'complete' | 'naturalWidth' | 'naturalHeight'> | null, boxAspect: number): Record<string, string> {
+    const aspect = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : null;
+    const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, boxAspect);
+    if (!('--gg-hero-fill' in vars)) return vars;
+    return { ...vars, '--gg-hero-placeholder': img?.complete && aspect !== null ? 'hidden' : 'visible' };
+}
+
 type VarStyle = { getPropertyValue(name: string): string; removeProperty(name: string): string };
 
 /**
@@ -94,8 +102,7 @@ function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
         const apply = () => {
             const img = doc.querySelector<HTMLImageElement>(selector);
             const win = doc.defaultView;
-            const aspect = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : null;
-            const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, windowAspect(win));
+            const vars = pageHeroFitVars(fit, img, windowAspect(win));
             removeOwnVars(root.style, Object.fromEntries(Object.entries(applied).filter(([name]) => !(name in vars))));
             for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
             applied = vars;
@@ -106,8 +113,15 @@ function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
             if ((event.target as Element | null)?.matches?.(selector)) apply();
         };
         doc.addEventListener('load', onLoad, true);
+        doc.addEventListener('error', onLoad, true);
+        // A replacement source can start loading after a ready image: restore the fallback immediately.
+        const observer = new MutationObserver(apply);
+        const image = doc.querySelector(selector);
+        observer.observe(image?.parentElement ?? doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'srcset'] });
         return () => {
+            observer.disconnect();
             doc.removeEventListener('load', onLoad, true);
+            doc.removeEventListener('error', onLoad, true);
             removeOwnVars(root.style, applied);
         };
     }, [doc, fit, active]);

@@ -854,6 +854,8 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
                       rule(topCapsule, ` isolation: isolate !important; overflow: clip !important; `),
                       rule(topCapsule && `${topCapsule}::before`, ` content: "" !important; position: absolute !important; inset: -120px !important; z-index: -1 !important;
                           background: var(--gg-hero-fill, none) center / cover no-repeat !important; filter: ${ART_FILL_FILTER} !important; pointer-events: none !important; `),
+                      // Steam's low-resolution blur would otherwise sit over our art fill after loading. Keep it only as a loading fallback.
+                      rule(topCapsule && `${topCapsule} img[src*="_blur"]`, ` visibility: var(--gg-hero-placeholder, visible) !important; `),
                       // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
                       rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` object-fit: contain !important; object-position: center top !important;
                           -webkit-mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; `),

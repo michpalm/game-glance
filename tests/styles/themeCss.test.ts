@@ -571,6 +571,12 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(box).toContain('isolation: isolate !important;');
         expect(box).toContain('overflow: clip !important;');
     });
+    it('Fit hides Steam blurred placeholders only when the full hero is ready, preserving loading visibility', () => {
+        const selector = '.hd_Top img[src*="_blur"]';
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fit' }), selector)).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fill' }), selector)).toBe('');
+        expect(rulesFor(buildThemeCss(steam), selector)).toBe('');
+    });
     it('hero Fill: the page as before; the 1.1.1 output is the same for both', () => {
         expect(buildThemeCss(steam, { restyle: true, heroFit: 'fill' })).toBe(buildThemeCss(steam, { restyle: true }));
         expect(rulesFor(buildThemeCss(steam, { restyle: true }), '.hd_Top img')).toContain('object-position: 50% 30% !important;');
