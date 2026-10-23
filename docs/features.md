@@ -143,6 +143,7 @@ few words with no Steam equivalent stay in English: the HowLongToBeat column nam
 
 ## In development for 3.5.0
 
+- **Hero art: Fill or Fit (3.6, in development):** Quick Access → Game Glance → Hero art. Fill covers the screen as before; Fit shows the whole hero art at the top, fading into a blurred copy of it, on Home and the game page (both looks), with the open transition unchanged.
 - **Cloud status badge (#64):** the cloud circle on Home and the game page shows one white cloud, like the other buttons, with the sync state as a small dot at its top right: green synced, yellow syncing, red failed, grey offline. Unifideck games keep Unifideck's own look, and the page without Spotlight Home keeps its coloured icon.
 - **Controller battery:** each connected Bluetooth controller's battery in the status bar, before the system battery (lowest first, at most two, then +n; red at 20% or below), read from the system's Bluetooth service so it matches Steam's Bluetooth settings. The built-in controller and USB controllers are not shown, and charging is not shown. Checked on the Ally with an 8BitDo Ultimate 2C.
 - **Version choice:** select an installable stable release from 3.5.0 onward in Quick Access → Game Glance → Updates. Decky asks before an upgrade or downgrade. Original release assets are preserved. Device round-trip validation is still pending.
