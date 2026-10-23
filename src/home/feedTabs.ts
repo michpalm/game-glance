@@ -42,3 +42,13 @@ export function restoreZoneFor(zone: Zone | undefined, hasFeed: boolean): Zone {
     if (!zone) return 'recents';
     return !hasFeed && (zone === 'tabs' || zone === 'feed') ? 'recents' : zone;
 }
+
+/**
+ * Where Home puts focus once Quick Access closes after a tab switch changed the feed under it (the focused tab or card
+ * may be gone): nowhere when Steam put focus back on Home itself (`holds`); the selected tab while the feed is still up;
+ * else the game cards.
+ */
+export function refocusAfterMenu(holds: boolean, hasFeed: boolean, sheetUp: boolean): 'tab' | 'recents' | null {
+    if (holds) return null;
+    return hasFeed && sheetUp ? 'tab' : 'recents';
+}

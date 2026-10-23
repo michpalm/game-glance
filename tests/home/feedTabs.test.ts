@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FEED_TAB_IDS, FEED_TABS_DEFAULT, feedTabsOf, nextTabId, restoreTabId, restoreZoneFor, shownTabs } from '../../src/home/feedTabs';
+import { FEED_TAB_IDS, FEED_TABS_DEFAULT, feedTabsOf, nextTabId, refocusAfterMenu, restoreTabId, restoreZoneFor, shownTabs } from '../../src/home/feedTabs';
 
 describe('feedTabsOf', () => {
     it('defaults every tab on', () => expect(feedTabsOf(undefined)).toEqual({ news: true, friends: true, recommended: true }));
@@ -41,4 +41,11 @@ describe('restoreZoneFor', () => {
         expect(restoreZoneFor('tabs', false)).toBe('recents');
     });
     it('lands on the game cards without a remembered zone', () => expect(restoreZoneFor(undefined, true)).toBe('recents'));
+});
+
+describe('refocusAfterMenu', () => {
+    it('leaves focus alone when Steam put it back on Home', () => expect(refocusAfterMenu(true, true, true)).toBeNull());
+    it('focuses the selected tab when the feed is still up', () => expect(refocusAfterMenu(false, true, true)).toBe('tab'));
+    it('focuses the game cards when the feed is gone', () => expect(refocusAfterMenu(false, false, true)).toBe('recents'));
+    it('focuses the game cards when the feed was down', () => expect(refocusAfterMenu(false, true, false)).toBe('recents'));
 });

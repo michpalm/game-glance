@@ -3,7 +3,8 @@ import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect,
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
-import { restoreZoneFor, shownTabs } from './feedTabs';
+import { refocusAfterMenu, restoreZoneFor, shownTabs } from './feedTabs';
+import { menuOpen, steamMenuStore } from './steamMenu';
 import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, holdsFocus, openGame, openLibrary } from './homeNav';
@@ -47,6 +48,10 @@ import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 import { FaTrash } from 'react-icons/fa';
 import { keepSteamFocus } from './steamFocus';
+
+/** How often Home checks whether Quick Access has closed, and how long it then lets Steam restore focus first. */
+const MENU_POLL_MS = 250;
+const MENU_SETTLE_MS = 300;
 
 /** Hero dim: none at rest (the art is shaded as on the game page, homeCss .gh-scrim-page), .45 while the feed sheet is up. */
 const DIM_REST = 0;
@@ -233,6 +238,39 @@ export function SpotlightHome() {
         if (holdsFocus(rootRef.current)) focusGames();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasFeed]);
+    // A tab switch changed the feed while Quick Access held focus (the focused tab or card may be gone): once Quick Access
+    // closes and Steam has had a moment to restore focus, focus the selected tab or the game cards if Home still has none
+    // (feedTabs.refocusAfterMenu; Steam's menu store, home/steamMenu, says when it is closed).
+    const [refocusPending, setRefocusPending] = useState(false);
+    const feedLive = useRef({ hasFeed, sheetUp });
+    feedLive.current = { hasFeed, sheetUp };
+    const shownKey = feedShown.join();
+    const shownKeyAtMount = useRef(shownKey);
+    useEffect(() => {
+        if (shownKey === shownKeyAtMount.current) return;
+        shownKeyAtMount.current = shownKey;
+        if (!holdsFocus(rootRef.current)) setRefocusPending(true);
+    }, [shownKey]);
+    useEffect(() => {
+        if (!refocusPending) return undefined;
+        let settle: ReturnType<typeof setTimeout> | undefined;
+        const poll = setInterval(() => {
+            if (menuOpen(steamMenuStore(), true)) return;
+            clearInterval(poll);
+            settle = setTimeout(() => {
+                setRefocusPending(false);
+                const root = rootRef.current;
+                const target = refocusAfterMenu(holdsFocus(root), feedLive.current.hasFeed, feedLive.current.sheetUp);
+                if (target === 'tab') focusElement(root?.querySelector<HTMLElement>('.gh-tab-on'), 'the selected feed tab');
+                else if (target === 'recents') focusGames();
+            }, MENU_SETTLE_MS);
+        }, MENU_POLL_MS);
+        return () => {
+            clearInterval(poll);
+            if (settle) clearTimeout(settle);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refocusPending]);
     // L1/R1: a new selection. Moving onto the Library card drops the circles, so a focused circle hands focus to the
     // pill first (the pill element itself stays, it only turns into the Library pill).
     const select = (next: number) => {
