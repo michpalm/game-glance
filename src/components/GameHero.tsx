@@ -31,7 +31,10 @@ import { useOpenArrival } from '../hooks/useOpenArrival';
 import { openPending } from '../data/openIntent';
 import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '../home/warmup';
 import { accentMemo, knownAccent } from '../home/accentMemo';
-import { pageGrowVar } from '../styles/themeCss';
+import { PAGE_LAYOUT, pageDUnit, pageGrowVar } from '../styles/themeCss';
+import { pageTitleSizes, titleOneLine } from '../home/titleMode';
+import { useOneLineFit } from '../home/useOneLineFit';
+import { findLegendHeight } from '../home/legend';
 import { viewportSize } from '../home/openHome';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
@@ -140,6 +143,38 @@ function usePageGrow(doc: Document | null, active: boolean) {
     }, [doc, active]);
 }
 
+/**
+ * Whether the page's title slot is down to one line, by Home's own rule (home/titleMode, #55): the page's window and
+ * Steam's legend in it. Kept as `gg-one-line` on the page's root while the restyled page shows, so its logo is drawn to
+ * Home's one-line height (themeCss); followed on resize and re-measured once the footer has laid out. Also the page's
+ * d unit, for the text title's fit.
+ */
+function usePageOneLine(doc: Document | null, active: boolean): { oneLine: boolean; d: number } {
+    const [state, setState] = useState({ oneLine: false, d: 1 });
+    useLayoutEffect(() => {
+        const root = doc?.documentElement;
+        const win = doc?.defaultView;
+        if (!root || !win || !active) return undefined;
+        const apply = () => {
+            const { width, height, dpr } = viewportSize(win);
+            const anchor = doc.querySelector<HTMLElement>('.gg-titleblock') ?? doc.body;
+            const oneLine = titleOneLine(width, height, dpr, anchor ? findLegendHeight(anchor) : null);
+            root.classList.toggle('gg-one-line', oneLine);
+            const d = pageDUnit(width, height, dpr);
+            setState((old) => (old.oneLine === oneLine && old.d === d ? old : { oneLine, d }));
+        };
+        apply();
+        win.addEventListener('resize', apply);
+        const later = [setTimeout(apply, 500), setTimeout(apply, 2000)];
+        return () => {
+            win.removeEventListener('resize', apply);
+            later.forEach(clearTimeout);
+            root.classList.remove('gg-one-line');
+        };
+    }, [doc, active]);
+    return state;
+}
+
 function useGameAccent(appId: number, active: boolean): string | undefined {
     const loaded = useAsync(active && appId !== 0 ? `accent:${appId}` : null, async () => {
         const color = await accentFor(appId, { cache, sample: sampleAccent, version: accentVersion });
@@ -217,6 +252,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
     usePageHeroFit(pageDoc, heroFit, restyle);
     usePageGrow(pageDoc, restyle);
+    const page = usePageOneLine(pageDoc, restyle);
+    const titleBlockRef = useRef<HTMLDivElement>(null);
+    useOneLineFit(titleBlockRef, page.oneLine, `${game.appId}:${game.name}:${gameLogo}`, '.gg-title', pageTitleSizes(page.d), PAGE_LAYOUT.titleBlock.title * page.d, 16 * page.d);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
     const navParts = pageNavParts(restyle, clean);
     useCardNav(pageDoc, navParts.dpad);
@@ -261,7 +299,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {restyle && game.isShortcut && <UnifideckCloud appId={game.appId} installed={uniInstalled} />}
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
-                <div className="gg-titleblock">
+                <div className="gg-titleblock" ref={titleBlockRef}>
                     {/* As on Home: the title (or logo) first, the eyebrow under it. */}
                     <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} />
                     {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}

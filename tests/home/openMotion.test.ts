@@ -367,8 +367,8 @@ describe('return timings (B from a page: Home is just there)', () => {
 });
 
 describe('a title fitted to the one-line slot (#55)', () => {
-    it('grows the title from its measured size', () => {
+    it('keeps the layouts\' ratio: the page fits its title to the same step (home/titleMode)', () => {
         const t = parse(vars(openMotion({ ...homeRects(), titleText: true, titleFont: 29 }, spotlight(), 'spotlight', s))['--gho-title']);
-        expect(t.sx).toBeCloseTo(64 / 29, 3);
+        expect(t.sx).toBeCloseTo(64 / 58, 3);
     });
 });

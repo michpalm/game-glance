@@ -65,7 +65,7 @@ export function titleGive(g: GiveWay): number {
 export const TITLE_ONE_LINE_SIZES = [58, 46, 36, 29] as const;
 
 /** The first of TITLE_ONE_LINE_SIZES at which the title `fits` the one-line slot; the smallest when none does (never cut). */
-export function fitTitleSize(fits: (px: number) => boolean): number {
-    for (const px of TITLE_ONE_LINE_SIZES) if (fits(px)) return px;
-    return TITLE_ONE_LINE_SIZES[TITLE_ONE_LINE_SIZES.length - 1];
+export function fitTitleSize(fits: (px: number) => boolean, sizes: readonly number[] = TITLE_ONE_LINE_SIZES): number {
+    for (const px of sizes) if (fits(px)) return px;
+    return sizes[sizes.length - 1];
 }

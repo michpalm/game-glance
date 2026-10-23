@@ -210,5 +210,8 @@ describe('a title fitted to the one-line slot (#55)', () => {
         const full = byName(twinSpecs(homeRects(), page(), texts, [], 'spotlight', true, 1)).title;
         const fitted = byName(twinSpecs({ ...homeRects(), titleFont: 29 }, page(), texts, [], 'spotlight', true, 1)).title;
         expect(scaleOf(fitted.from) / scaleOf(full.from)).toBeCloseTo(29 / 58, 3);
+        // ...and ends at the page's fitted size (Home's step at the page's ratio), not its full 64.
+        expect(fitted.to).toBe('scale(0.5)');
+        expect(full.to).toBe('none');
     });
 });

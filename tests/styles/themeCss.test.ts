@@ -1235,3 +1235,9 @@ describe('the page follows Steam\'s display scale (#55)', () => {
         expect(pageGrowVar(960, 540, 3)).toBe(String(810 / 576));
     });
 });
+
+describe('the page\'s title follows Home\'s one-line slot (#55)', () => {
+    it('caps the logo at Home\'s one-line height in the page unit', () => {
+        expect(buildThemeCss(full, { restyle: true })).toContain('.gg-one-line .gg-logo { max-height: calc(58 * var(--gg-d)) !important; }'); // over GameTitle's inline max-height: none
+    });
+});

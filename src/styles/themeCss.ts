@@ -757,6 +757,9 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The logo option (components/GameTitle): the game's logo in the title's place, the same box as on Home (homeCss.LOGO_BOX).
         `.gg-logo { display: block; width: auto; height: auto; max-width: ${d(LOGO_BOX.width)}; max-height: ${d(LOGO_BOX.height)}; object-fit: contain; object-position: left bottom;
             filter: drop-shadow(0 ${d(4)} ${d(24)} rgba(0, 0, 0, 0.45)); }`,
+        // Steam's display scale took the title's slot down to one line (home/titleMode, set as gg-one-line on the page's root
+        // by GameHero): the logo is drawn to Home's one-line height, so the open transition hands it over at one size (#55).
+        `.gg-one-line .gg-logo { max-height: ${d(58)} !important; }`,
 
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass (its ring 1 d unit, as Home's: see the
         // menu circles); its type sizes. Each card at most

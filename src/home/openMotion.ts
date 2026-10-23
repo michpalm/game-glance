@@ -68,7 +68,8 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     const out: Record<string, string> = {};
 
     // From the top-left origin, scaled by k: the title's bottom ends at y + h * k, which must be the page's bottom.
-    const tk = home.titleText ? PAGE_LAYOUT.titleBlock.title / (home.titleFont ?? TITLE_BLOCK.titleSize) : 1;
+    // A title fitted to the one-line slot keeps this ratio too: the page fits its own to the same step (home/titleMode).
+    const tk = home.titleText ? PAGE_LAYOUT.titleBlock.title / TITLE_BLOCK.titleSize : 1;
     const titleMove = translate((page.titleBottomLeft.x - home.titleSlot.x) / s, (page.titleBottomLeft.y - (home.titleSlot.y + home.titleSlot.h * tk)) / s);
     out['--gho-title'] = tk === 1 ? titleMove : `${titleMove} scale(${k(tk)})`;
     out['--gho-eyebrow'] = translate((page.eyebrowBottomLeft.x - home.eyebrow.x) / s, (page.eyebrowBottomLeft.y - (home.eyebrow.y + home.eyebrow.h)) / s);

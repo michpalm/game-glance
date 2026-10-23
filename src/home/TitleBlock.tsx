@@ -1,6 +1,7 @@
-import { RefObject, useLayoutEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { GameTitle } from '../components/GameTitle';
-import { fitTitleSize, TITLE_ONE_LINE_SIZES } from './giveWay';
+import { TITLE_ONE_LINE_SIZES } from './giveWay';
+import { useOneLineFit } from './useOneLineFit';
 import type { Chip } from './chips';
 
 function ChipView({ chip }: { chip: Chip }) {
@@ -30,47 +31,9 @@ const px = (n: number) => `${n}px`;
 /** The title's padding on each side (homeCss TITLE_BLOCK.titleBleed), outside the lines it measures. */
 const TITLE_BLEED = 16;
 
-/**
- * With the title slot down to one line (`oneLine`, home/giveWay step 2), a text title takes the largest size at which it
- * fits the slot (giveWay.fitTitleSize), measured in place; back to the stylesheet's size otherwise.
- */
-function useOneLineTitle(slot: RefObject<HTMLDivElement | null>, oneLine: boolean, key: string) {
-    useLayoutEffect(() => {
-        const box = slot.current;
-        if (!box) return undefined;
-        const fit = () => {
-            const el = box.querySelector<HTMLElement>('.gh-title');
-            if (!el) return;
-            el.style.removeProperty('font-size');
-            el.style.removeProperty('-webkit-line-clamp');
-            if (!oneLine) return;
-            const lineSlot = TITLE_ONE_LINE_SIZES[0];
-            const fits = (size: number) => {
-                el.style.setProperty('font-size', `${size}px`, 'important');
-                return el.clientHeight - 2 * TITLE_BLEED <= lineSlot + 0.5;
-            };
-            const size = fitTitleSize(fits);
-            el.style.setProperty('font-size', `${size}px`, 'important');
-            el.style.setProperty('-webkit-line-clamp', String(Math.max(1, Math.floor(lineSlot / size))), 'important');
-        };
-        fit();
-        // The text title can arrive after this effect (GameTitle shows it once a logo turns out missing) and the font can
-        // load late: fit again then. The fit itself only changes the title's style, which this does not watch.
-        const View = box.ownerDocument?.defaultView as (Window & { MutationObserver?: typeof MutationObserver }) | null;
-        const observer = View?.MutationObserver ? new View.MutationObserver(fit) : null;
-        observer?.observe(box, { childList: true, subtree: true, characterData: true });
-        let live = true;
-        box.ownerDocument?.fonts?.ready?.then(() => live && fit()).catch(() => undefined);
-        return () => {
-            live = false;
-            observer?.disconnect();
-        };
-    }, [oneLine, key]);
-}
-
 export function TitleBlock({ eyebrow, title, chips, appId = 0, logo = false, version = 0, resolve = true, oneLine = false }: { eyebrow: string; title: string; chips: Chip[]; appId?: number; logo?: boolean; version?: number; resolve?: boolean; oneLine?: boolean }) {
     const slot = useRef<HTMLDivElement>(null);
-    useOneLineTitle(slot, oneLine, `${appId}:${title}:${logo}:${version}`);
+    useOneLineFit(slot, oneLine, `${appId}:${title}:${logo}:${version}`, '.gh-title', TITLE_ONE_LINE_SIZES, TITLE_ONE_LINE_SIZES[0], TITLE_BLEED);
     return (
         <>
             <div className="gh-title-slot" ref={slot}>

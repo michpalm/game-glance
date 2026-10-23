@@ -35,4 +35,5 @@ describe('fitTitleSize (a title in the one-line slot)', () => {
     it('keeps a title that fits at full size', () => expect(fitTitleSize(() => true)).toBe(58));
     it('takes the first size that fits', () => expect(fitTitleSize((px) => px <= 40)).toBe(36));
     it('ends at the smallest size, two lines in the slot, when nothing fits', () => expect(fitTitleSize(() => false)).toBe(29));
+    it('takes another list of steps (the page\'s)', () => expect(fitTitleSize((px) => px <= 50, [64, 51, 40, 32])).toBe(40));
 });
