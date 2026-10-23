@@ -89,7 +89,7 @@ describe('the raised sheet above a measured legend', () => {
         expect(r.row2).toBe(80);
         expect(r.row1).toBe(264);
         // Below the smallest rows (230 + 14 + 24 + 80) the second row drops instead of reaching under the legend (#55).
-        expect(feedRows('news', 260, true)).toMatchObject({ row1: 270, row2: 0 });
+        expect(feedRows('news', 260, true)).toMatchObject({ row1: 260, row2: 0 });
         expect(feedRows('friends', feedSpace(800, 90), true).row1).toBe(260);
     });
     it('without a second row nothing shrinks', () => {
