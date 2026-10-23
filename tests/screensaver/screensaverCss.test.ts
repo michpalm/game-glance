@@ -74,3 +74,13 @@ describe('cardScale', () => {
         expect(cardScale(NaN)).toBe(1);
     });
 });
+
+describe('screensaverCanvas follows Steam\'s display scale (#55)', () => {
+    it('grows by the same factor as Home', () => {
+        const today = screensaverCanvas(1601, 900);
+        const grown = screensaverCanvas(1601, 900, 1.2);
+        expect(grown.scale).toBeCloseTo(today.scale * 1.2, 5);
+        expect(grown.logicalHeight).toBeCloseTo(today.logicalHeight / 1.2, 5);
+    });
+    it('is today at Steam 100%', () => expect(screensaverCanvas(1920, 1080, 1)).toEqual(screensaverCanvas(1920, 1080)));
+});

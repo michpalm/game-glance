@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { canvasStyle, homeCanvas } from '../../src/home/scale';
+import { canvasStyle, homeCanvas, steamGrowth } from '../../src/home/scale';
+import { MIN_LOGICAL_HEIGHT } from '../../src/home/giveWay';
 
 describe('homeCanvas', () => {
     it('homeCanvas picks 1440x810 for 1920x1080 with scale 4/3', () => {
@@ -51,5 +52,25 @@ describe('canvasStyle', () => {
     it("hidden until it has a size; then it inherits (an explicit 'visible' showed Home through Steam's hidden exit, as a ghost)", () => {
         expect(canvasStyle({ logicalWidth: 1440, scale: 1 }, 810, false).visibility).toBe('hidden');
         expect(canvasStyle({ logicalWidth: 1440, scale: 1 }, 810, true).visibility).toBeUndefined();
+    });
+});
+
+describe('homeCanvas follows Steam\'s display scale (#55)', () => {
+    it('is today at Steam 100% and below', () => {
+        for (const dpr of [undefined, 0, NaN, 0.8, 1]) expect(homeCanvas(1920, 1080, dpr)).toEqual(homeCanvas(1920, 1080));
+    });
+    it('grows with Steam at 1.2 on the Ally (1601 x 900 CSS px)', () => {
+        const c = homeCanvas(1601, 900, 1.2);
+        expect(c.logicalHeight).toBeCloseTo(675, 0);
+        expect(c.scale * 1.2).toBeCloseTo(1.6, 2);
+    });
+    it('caps growth where the stack no longer fits', () => expect(homeCanvas(960, 540, 2).logicalHeight).toBeCloseTo(MIN_LOGICAL_HEIGHT, 5));
+    it('grows the Deck shape too', () => expect(homeCanvas(1066.7, 666.7, 1.2).logicalHeight).toBeCloseTo(666.7, 0));
+    it('keeps a 21:9 screen at 100% as today', () => expect(homeCanvas(2560, 1080, 1)).toEqual(homeCanvas(2560, 1080)));
+    it('names the growth: 1 up to 100%, the scale above, the cap past the fit', () => {
+        expect(steamGrowth(1, 810)).toBe(1);
+        expect(steamGrowth(1.2, 810)).toBe(1.2);
+        expect(steamGrowth(3, 810)).toBeCloseTo(810 / MIN_LOGICAL_HEIGHT, 6);
+        expect(steamGrowth(undefined, 810)).toBe(1);
     });
 });
