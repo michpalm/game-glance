@@ -3,7 +3,7 @@ import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
-import { homeCanvas, steamGrowth } from '../home/scale';
+import { defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
@@ -202,18 +202,11 @@ const cardContentMax = (outer: number) => d(outer - 2 * PAGE_LAYOUT.cards.padX -
 /** A card's width filling its grid column, content-box as above: a plain 100% overflowed the column by the padding and borders. */
 const CARD_FILL_WIDTH = `calc(100% - ${d(2 * PAGE_LAYOUT.cards.padX + 2)})`;
 
-/**
- * The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px at pixel ratio `dpr`
- * (Steam's display scale), as --gg-d: Home's scale, grown with Steam's scale as Home is (home/scale, #55).
- */
-export function pageDUnit(width: number, height: number, dpr?: number): number {
-    return homeCanvas(width, height, dpr).scale;
+/** The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px, as --gg-d: Home's scale (with its default growth). */
+export function pageDUnit(width: number, height: number): number {
+    return homeCanvas(width, height).scale;
 }
 
-/** --gg-grow for the page's window: how much the page's CSS unit grows with Steam's display scale (home/scale steamGrowth). */
-export function pageGrowVar(width: number, height: number, dpr?: number): string {
-    return String(steamGrowth(dpr, homeCanvas(width, height).logicalHeight));
-}
 
 /**
  * How much brighter the page's glass rings are drawn to look like Home's, on a screen of `dpr` device px per CSS px and
@@ -224,7 +217,7 @@ export function pageGrowVar(width: number, height: number, dpr?: number): string
  */
 export function ringBoost(dpr: number, width: number, height: number): number {
     if (!(dpr > 0)) return 1;
-    const d = pageDUnit(width, height, dpr);
+    const d = pageDUnit(width, height);
     const home = Math.max(1, Math.floor(dpr)) * d;
     const page = Math.max(1, Math.floor(d * dpr));
     return Math.round((home / page) * 1000) / 1000;
@@ -655,8 +648,8 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The game's accent (buildAccentCss sets it on the page container) becomes the theme's accent:
         // the Play pill, the HLTB goal value and bar. Registered so it can animate, as on Home.
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
-        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * var(--gg-grow, 1)); }`,
-        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * var(--gg-grow, 1)); } }`,
+        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)}); }`,
+        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)}); } }`,
         rule(inner, ` --gg-accent: var(--glance-accent); transition: --glance-accent ${ACCENT_MS}ms ease; `),
 
         // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
@@ -757,9 +750,6 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The logo option (components/GameTitle): the game's logo in the title's place, the same box as on Home (homeCss.LOGO_BOX).
         `.gg-logo { display: block; width: auto; height: auto; max-width: ${d(LOGO_BOX.width)}; max-height: ${d(LOGO_BOX.height)}; object-fit: contain; object-position: left bottom;
             filter: drop-shadow(0 ${d(4)} ${d(24)} rgba(0, 0, 0, 0.45)); }`,
-        // Steam's display scale took the title's slot down to one line (home/titleMode, set as gg-one-line on the page's root
-        // by GameHero): the logo is drawn to Home's one-line height, so the open transition hands it over at one size (#55).
-        `.gg-one-line .gg-logo { max-height: ${d(58)} !important; }`,
 
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass (its ring 1 d unit, as Home's: see the
         // menu circles); its type sizes. Each card at most

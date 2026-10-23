@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { fitTitleSize, giveWay, MIN_LOGICAL_HEIGHT, roomMissing, STACK_NUMBERS, titleGive } from '../../src/home/giveWay';
+import { GIVE_WAY, giveWay, roomMissing, STACK_NUMBERS } from '../../src/home/giveWay';
 import { FEED_SHEET } from '../../src/home/homeCss';
 
-describe('giveWay (what of Home gives way when Steam\'s scale leaves too little room)', () => {
-    it('takes nothing when nothing is missing', () => expect(giveWay(0)).toEqual({ need: 0, titleLines: 2, gapsTight: false, chipsHidden: false }));
-    it('takes the air first', () => expect(giveWay(52)).toEqual({ need: 52, titleLines: 2, gapsTight: false, chipsHidden: false }));
-    it('drops the title to one line past the air', () => expect(giveWay(53)).toEqual({ need: 53, titleLines: 1, gapsTight: false, chipsHidden: false }));
-    it('tightens the gaps past the title line', () => expect(giveWay(111)).toMatchObject({ titleLines: 1, gapsTight: true, chipsHidden: false }));
-    it('hides the chips last', () => expect(giveWay(136)).toMatchObject({ titleLines: 1, gapsTight: true, chipsHidden: true }));
-    it('never moves more than the four steps give', () => expect(giveWay(500).need).toBe(222));
+describe('giveWay (the air above the title gives way to the default growth, #55)', () => {
+    it('takes nothing when nothing is missing', () => expect(giveWay(0)).toEqual({ need: 0 }));
+    it('takes the missing room from the air', () => expect(giveWay(30)).toEqual({ need: 30 }));
+    it('never takes more than the air', () => expect(giveWay(500).need).toBe(GIVE_WAY.air));
     it('treats a negative or broken need as nothing', () => {
         for (const n of [-5, NaN]) expect(giveWay(n).need).toBe(0);
     });
-    it('frees the title block by the steps that apply', () => expect(titleGive(giveWay(136))).toBe(58 + 25 + 87));
 });
 
 describe('roomMissing', () => {
@@ -20,20 +16,12 @@ describe('roomMissing', () => {
         expect(roomMissing(810.75, 46)).toBe(0);
         expect(roomMissing(800, 46)).toBe(0);
     });
-    it('lacks the difference on a shorter canvas', () => expect(roomMissing(675, 46)).toBe(123));
+    it('lacks the difference on a shorter canvas', () => expect(roomMissing(745.6, 46)).toBe(52));
     it('lacks nothing for a broken height', () => expect(roomMissing(NaN, 46)).toBe(0));
-    it('fits the whole stack at the minimum height', () => expect(MIN_LOGICAL_HEIGHT).toBe(576));
 });
 
 describe('the stack numbers', () => {
     it('are homeCss FEED_SHEET\'s', () => {
         expect(STACK_NUMBERS).toEqual({ tabsTop: FEED_SHEET.tabsTop, tabHeight: FEED_SHEET.tabHeight, tabClearance: FEED_SHEET.tabClearance, legendReserve: FEED_SHEET.legendReserve });
     });
-});
-
-describe('fitTitleSize (a title in the one-line slot)', () => {
-    it('keeps a title that fits at full size', () => expect(fitTitleSize(() => true)).toBe(58));
-    it('takes the first size that fits', () => expect(fitTitleSize((px) => px <= 40)).toBe(36));
-    it('ends at the smallest size, two lines in the slot, when nothing fits', () => expect(fitTitleSize(() => false)).toBe(29));
-    it('takes another list of steps (the page\'s)', () => expect(fitTitleSize((px) => px <= 50, [64, 51, 40, 32])).toBe(40));
 });

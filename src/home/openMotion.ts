@@ -22,8 +22,6 @@ export interface HomeRects {
     titleSlot: Box;
     /** The title is text (not a logo): it grows from Home's type size to the page's (a logo is the same size on both). */
     titleText?: boolean;
-    /** The text title's size when the one-line slot fitted it (TitleBlock, #55), in canvas px; absent: TITLE_BLOCK.titleSize. */
-    titleFont?: number;
     eyebrow: Box;
     play: Box;
     circles: Box[];
@@ -68,7 +66,6 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     const out: Record<string, string> = {};
 
     // From the top-left origin, scaled by k: the title's bottom ends at y + h * k, which must be the page's bottom.
-    // A title fitted to the one-line slot keeps this ratio too: the page fits its own to the same step (home/titleMode).
     const tk = home.titleText ? PAGE_LAYOUT.titleBlock.title / TITLE_BLOCK.titleSize : 1;
     const titleMove = translate((page.titleBottomLeft.x - home.titleSlot.x) / s, (page.titleBottomLeft.y - (home.titleSlot.y + home.titleSlot.h * tk)) / s);
     out['--gho-title'] = tk === 1 ? titleMove : `${titleMove} scale(${k(tk)})`;

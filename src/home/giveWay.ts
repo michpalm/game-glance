@@ -1,8 +1,8 @@
 /**
- * What of Home gives way when Steam's display scale leaves too little room (docs/superpowers/specs/2026-10-23-ui-scale-design.md,
- * #55). Home grows with Steam's scale (home/scale.ts), so a larger scale gives it a shorter logical canvas; the stack
- * then moves up by the room missing, in this order: the air above the title, the title's second line, the gaps in the
- * title block, then the stats chips. The games row, the action row and the tab strip never give way. Pure.
+ * What of Home gives way to its default growth (home/scale defaultGrowth, docs/superpowers/specs/2026-10-23-ui-scale-design.md,
+ * #55): Home is drawn a little larger than authored, so its logical canvas is a little shorter, and the stack moves up
+ * by the room missing, taken from the air above the title. Nothing else gives way: the growth is sized so the air is
+ * enough. Pure.
  *
  * The stack's layout numbers are homeCss FEED_SHEET's (a test keeps them equal): importing homeCss here would close an
  * import cycle through themeCss and scale.
@@ -13,24 +13,18 @@ const TAB_HEIGHT = 8 + 10 + 13 * 1.2;
 const TAB_CLEARANCE = 18;
 const LEGEND_RESERVE = 46;
 
-/** Logical px each step frees: the air above the title (118 -> 66), one title line, the title block's gaps, the chip row and its gap. */
-export const GIVE_WAY = { air: 52, titleLine: 58, gaps: 25, chips: 87 } as const;
-export const GIVE_WAY_TOTAL = GIVE_WAY.air + GIVE_WAY.titleLine + GIVE_WAY.gaps + GIVE_WAY.chips;
+/** Logical px the air above the title can give (118 -> 66, just under Steam's top bar). */
+export const GIVE_WAY = { air: 52 } as const;
 
 /** Where the stack ends today: the tab strip's bottom plus its clearance above the legend reserve. */
 export const STACK_BOTTOM = TABS_TOP + TAB_HEIGHT + TAB_CLEARANCE;
-/** The shortest canvas the stack fits with every step taken: Home stops growing there. */
-export const MIN_LOGICAL_HEIGHT = Math.ceil(STACK_BOTTOM + LEGEND_RESERVE - GIVE_WAY_TOTAL);
 
 /** The layout numbers above, for the test that keeps them equal to homeCss's. */
 export const STACK_NUMBERS = { tabsTop: TABS_TOP, tabHeight: TAB_HEIGHT, tabClearance: TAB_CLEARANCE, legendReserve: LEGEND_RESERVE } as const;
 
 export interface GiveWay {
-    /** Logical px the whole stack moves up. */
+    /** Logical px the whole stack moves up, out of the air above the title. */
     need: number;
-    titleLines: 1 | 2;
-    gapsTight: boolean;
-    chipsHidden: boolean;
 }
 
 /** Logical px a canvas `logicalHeight` tall lacks for the stack with a legend `legendReserve` tall; 0 with room to spare or a broken height. */
@@ -40,32 +34,7 @@ export function roomMissing(logicalHeight: number, legendReserve: number): numbe
     return Math.max(0, Math.ceil(STACK_BOTTOM + legend - logicalHeight));
 }
 
-/**
- * The steps for `need` px missing (clamped to 0..GIVE_WAY_TOTAL): the air takes the first 52; past it each later step
- * switches on whole as soon as the room before it is not enough. What the title block frees beyond `need` returns as
- * air above the title (its top is 118 - need + titleGive).
- */
+/** The give-way for `need` px missing: taken from the air, at most GIVE_WAY.air (stackShift answers a taller legend). */
 export function giveWay(need: number): GiveWay {
-    const n = Number.isFinite(need) ? Math.min(GIVE_WAY_TOTAL, Math.max(0, need)) : 0;
-    const g = GIVE_WAY;
-    return {
-        need: n,
-        titleLines: n > g.air ? 1 : 2,
-        gapsTight: n > g.air + g.titleLine,
-        chipsHidden: n > g.air + g.titleLine + g.gaps,
-    };
-}
-
-/** Logical px the title block frees inside itself for these steps. */
-export function titleGive(g: GiveWay): number {
-    return (2 - g.titleLines) * GIVE_WAY.titleLine + (g.gapsTight ? GIVE_WAY.gaps : 0) + (g.chipsHidden ? GIVE_WAY.chips : 0);
-}
-
-/** The title's sizes in the one-line slot (step 2), largest first: the last one is two lines in the slot's 58 px. */
-export const TITLE_ONE_LINE_SIZES = [58, 46, 36, 29] as const;
-
-/** The first of TITLE_ONE_LINE_SIZES at which the title `fits` the one-line slot; the smallest when none does (never cut). */
-export function fitTitleSize(fits: (px: number) => boolean, sizes: readonly number[] = TITLE_ONE_LINE_SIZES): number {
-    for (const px of sizes) if (fits(px)) return px;
-    return sizes[sizes.length - 1];
+    return { need: Number.isFinite(need) ? Math.min(GIVE_WAY.air, Math.max(0, need)) : 0 };
 }

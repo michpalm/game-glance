@@ -57,7 +57,7 @@ export const FEED_WIDE_ASPECT = 460 / 215;
 export function feedSpace(logicalHeight: number, legendReserve: number = LEGEND_FALLBACK, raiseDelta = 0): number {
     const h = Number.isFinite(logicalHeight) ? logicalHeight : 800;
     const legend = Number.isFinite(legendReserve) ? legendReserve : LEGEND_FALLBACK;
-    // Floored at row 1's own minimum: a short canvas (Steam's display scale at the growth cap, #55) gets its real room.
+    // Floored at row 1's own minimum: a short canvas (a tall legend, a short window) gets its real room.
     return Math.max(FEED_ROW1_MIN_H, Math.floor(h - legend - BOTTOM_ROOM - (FEED_TOP_RAISED - (Number.isFinite(raiseDelta) ? raiseDelta : 0))));
 }
 
@@ -82,11 +82,11 @@ export function feedRows(tab: FeedTab, space: number, secondRow: boolean): FeedR
     const room = Math.max(FEED_ROW1_MIN_H, Math.floor(Number.isFinite(space) ? space : FEED_CARD_H));
     const row1Full = tab === 'friends' ? FEED_CARD_H : FEED_ROW1_H;
     // Row 2 needs at least FEED_ROW2_MIN_H; when the room is short of that (a tall legend), row 1 gives up the
-    // difference, down to FEED_ROW1_MIN_H. Below that (a short canvas: Steam's display scale, #55) row 2 drops, so the
+    // difference, down to FEED_ROW1_MIN_H. Below that (a short canvas) row 2 drops, so the
     // sheet never reaches under Steam's legend.
     const smallest = FEED_ROW1_MIN_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H;
     if (!secondRow || room < smallest) {
-        // Alone, row 1 also yields to a short room (at the growth cap: Steam 1.5 on the Ally), down to FEED_ROW1_MIN_H.
+        // Alone, row 1 also yields to a short room (found on the Ally at a large scale), down to FEED_ROW1_MIN_H.
         const row1 = Math.max(FEED_ROW1_MIN_H, Math.min(row1Full, room));
         return { row1, row2: 0, row2Top: 0, total: row1 };
     }

@@ -1,7 +1,4 @@
-import { useRef } from 'react';
 import { GameTitle } from '../components/GameTitle';
-import { TITLE_ONE_LINE_SIZES } from './giveWay';
-import { useOneLineFit } from './useOneLineFit';
 import type { Chip } from './chips';
 
 function ChipView({ chip }: { chip: Chip }) {
@@ -28,15 +25,10 @@ function ChipView({ chip }: { chip: Chip }) {
  */
 const px = (n: number) => `${n}px`;
 
-/** The title's padding on each side (homeCss TITLE_BLOCK.titleBleed), outside the lines it measures. */
-const TITLE_BLEED = 16;
-
-export function TitleBlock({ eyebrow, title, chips, appId = 0, logo = false, version = 0, resolve = true, oneLine = false }: { eyebrow: string; title: string; chips: Chip[]; appId?: number; logo?: boolean; version?: number; resolve?: boolean; oneLine?: boolean }) {
-    const slot = useRef<HTMLDivElement>(null);
-    useOneLineFit(slot, oneLine, `${appId}:${title}:${logo}:${version}`, '.gh-title', TITLE_ONE_LINE_SIZES, TITLE_ONE_LINE_SIZES[0], TITLE_BLEED);
+export function TitleBlock({ eyebrow, title, chips, appId = 0, logo = false, version = 0, resolve = true }: { eyebrow: string; title: string; chips: Chip[]; appId?: number; logo?: boolean; version?: number; resolve?: boolean }) {
     return (
         <>
-            <div className="gh-title-slot" ref={slot}>
+            <div className="gh-title-slot">
                 <GameTitle appId={appId} name={title} logo={logo} className="gh-title" logoClassName="gh-logo" unit={px} version={version} resolve={resolve} />
             </div>
             <div className="gh-eyebrow">{eyebrow}</div>

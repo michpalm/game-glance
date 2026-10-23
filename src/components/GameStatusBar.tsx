@@ -10,12 +10,12 @@ const MENU_POLL_MS = 250;
 import { findTopBar, focusInTopBar } from '../home/topBar';
 
 /** The window's size, kept current. The plugin's code runs in another window than Steam's screen, so it is always `win`'s. */
-function useViewport(win: Window | null): { width: number; height: number; dpr: number } {
-    const read = () => ({ width: win?.innerWidth ?? 0, height: win?.innerHeight ?? 0, dpr: win?.devicePixelRatio ?? 1 });
+function useViewport(win: Window | null): { width: number; height: number } {
+    const read = () => ({ width: win?.innerWidth ?? 0, height: win?.innerHeight ?? 0 });
     const [size, setSize] = useState(read);
     useEffect(() => {
         if (!win) return;
-        const onResize = () => setSize({ width: win.innerWidth, height: win.innerHeight, dpr: win.devicePixelRatio });
+        const onResize = () => setSize({ width: win.innerWidth, height: win.innerHeight });
         onResize();
         win.addEventListener('resize', onResize);
         return () => win.removeEventListener('resize', onResize);
@@ -82,12 +82,12 @@ export function GameStatusBar({ hidden = false }: { hidden?: boolean }) {
         if (el) setDoc(el.ownerDocument);
     }, []);
     const win = doc?.defaultView ?? null;
-    const { width, height, dpr } = useViewport(win);
+    const { width, height } = useViewport(win);
     // Away (ours fades, Steam's top bar shows): focus is in Steam's top bar, or a menu is open over the page.
     const focusInBar = useFocusInTopBar(doc);
     const menuShown = useMenuOpen(doc);
     const away = focusInBar || menuShown;
-    const canvas = homeCanvas(width, height, dpr);
+    const canvas = homeCanvas(width, height);
     return (
         <>
             <span ref={marker} style={{ display: 'none' }} />

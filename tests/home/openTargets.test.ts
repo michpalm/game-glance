@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Box, cardBorder, ExtraColumn, Measure, pageTargets, PageLook, PageStat, StatKey } from '../../src/home/openTargets';
 import { PAGE_LAYOUT, pageDUnit } from '../../src/styles/themeCss';
+import { baseCanvas, defaultGrowth } from '../../src/home/scale';
 
 interface Fixture {
     screen: { width: number; height: number };
@@ -106,14 +107,14 @@ for (const look of ['spotlight', 'clean'] as const) {
 }
 
 describe('pageTargets stats', () => {
-    const screen = { width: 1500, height: 844 };
+    const screen = { width: 1500, height: 844, grow: 1 }; // the layout's formulas, without Home's default growth
     const measure: Measure = (text) => text.length * 10;
     const store = { w: 100, h: 34 };
     const played: PageStat = { key: 'played', label: 'Play Time', value: '1 h' };
     const main: PageStat = { key: 'hltb', label: 'Main', value: '9 h' };
     const columns: ExtraColumn[] = [{ key: 'mainExtras', label: '+ Extras', value: '12 h' }, { key: 'completionist', label: '100%', value: '24 h' }];
     it("a label's line is the measured 'normal' one when Home measures it (21:9: 12.5, not 1.5 x 8.75), so the values below land where the page's are", () => {
-        const wide = { width: 1500, height: 644.53125, dpr: 1.28, grow: 1 }; // recorded before the page grew with Steam's scale
+        const wide = { width: 1500, height: 644.53125, dpr: 1.28, grow: 1 }; // recorded before Home's default growth
         const d = 644.53125 / 810;
         const lines = (role: 'label' | 'caption', fontPx: number) => (role === 'label' ? 12.5 : fontPx * 1.4);
         const t = pageTargets('spotlight', wide, [played, main], measure, store, { columns, bar: true }, lines);
@@ -158,7 +159,8 @@ describe('pageTargets stats', () => {
     });
     it('the Spotlight cards keep their own widths: the info card at the left side, HowLongToBeat at the right, the art between', () => {
         const { infoW, hltbW } = PAGE_LAYOUT.cards;
-        const cards = (w: number, h: number) => pageTargets('spotlight', { width: w, height: h }, [played, main], measure, store).shells;
+        // The layout's formulas, without Home's default growth (grow 1).
+        const cards = (w: number, h: number) => pageTargets('spotlight', { width: w, height: h, grow: 1 }, [played, main], measure, store).shells;
         // 21:9 (the Ally's TV window emulated at 1500x643): d = 643 / 810, 56 sides (not a TV by height).
         const d = 643 / 810;
         const side = PAGE_LAYOUT.side.base * d;
@@ -202,8 +204,8 @@ describe('pageTargets at a fractional pixel ratio', () => {
     // The Ally handheld (2.32 device px per CSS px), measured on the device: Ori's page in the Spotlight look, then with a
     // 1 px ring (drawn 2 device px, 0.862 CSS px). The ring is now 1 d unit (0.575 CSS px), drawn 1 device px (0.431):
     // everything inside the cards sits 0.431 px further up and left, and each card is 0.862 px narrower and shorter.
-    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1 }; // recorded before the page grew with Steam's scale
-    const d = pageDUnit(screen.width, screen.height);
+    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1 }; // recorded before Home's default growth
+    const d = baseCanvas(screen.width, screen.height).scale;
     // Measured: rings of 2 / 2.32 inside widths that allowed 2 px for them. Now: 1 / 2.32 inside widths allowing 2 d units.
     const was = 2 / 2.32;
     const now = 1 / 2.32;
@@ -256,13 +258,12 @@ describe('pageTargets at a fractional pixel ratio', () => {
     });
 });
 
-describe('pageTargets follows Steam\'s display scale (#55)', () => {
+describe('pageTargets with Home\'s default growth (#55)', () => {
     it('sizes the page in the grown unit', () => {
         const measure: Measure = (text) => text.length * 10;
         const played: PageStat = { key: 'played', label: 'Play Time', value: '1 h' };
-        const at = (dpr: number) => pageTargets('spotlight', { width: 1601, height: 900, dpr }, [played], measure, { w: 100, h: 34 });
-        const grown = at(1.2);
-        const today = at(1);
-        expect(grown.stats.played!.value.h / today.stats.played!.value.h).toBeCloseTo(1.2, 2);
+        const grown = pageTargets('spotlight', { width: 1920, height: 1080 }, [played], measure, { w: 100, h: 34 });
+        const base = pageTargets('spotlight', { width: 1920, height: 1080, grow: 1 }, [played], measure, { w: 100, h: 34 });
+        expect(grown.d! / base.d!).toBeCloseTo(defaultGrowth(810), 6);
     });
 });

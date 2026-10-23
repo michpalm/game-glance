@@ -1,4 +1,5 @@
 import { cardMaxWidths, PAGE_LAYOUT, pageDUnit, STEAM_LEGEND_PX } from '../styles/themeCss';
+import { baseCanvas } from './scale';
 
 /**
  * Where the Game Glance page (restyled, Spotlight or Clean look) puts the things Spotlight Home morphs into during the
@@ -87,8 +88,8 @@ export function pageTargets(
     const L = PAGE_LAYOUT;
     const W = screen.width;
     const H = screen.height;
-    // The page's unit, grown with Steam's display scale (#55); `grow` overrides the growth (recorded pages from before it).
-    const d = typeof screen.grow === 'number' ? pageDUnit(W, H) * screen.grow : pageDUnit(W, H, screen.dpr);
+    // The page's unit, with Home's default growth (#55); `grow` overrides it (pages recorded before it: 1).
+    const d = typeof screen.grow === 'number' ? baseCanvas(W, H).scale * screen.grow : pageDUnit(W, H);
     const BORDER = cardBorder(screen.dpr, d);
     // The cards' widths allow 1 d unit for each ring (themeCss.cardContentMax, CARD_FILL_WIDTH): a thinner one as drawn
     // makes them this much narrower.

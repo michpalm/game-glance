@@ -4,7 +4,6 @@ import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
 import { refocusAfterMenu, restoreZoneFor, shownTabs } from './feedTabs';
-import { titleGive } from './giveWay';
 import { menuOpen, steamMenuStore } from './steamMenu';
 import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
@@ -461,8 +460,7 @@ export function SpotlightHome() {
         noteHome(recent ? { zone, recent } : { zone });
     }, [resolved, zone, focusIndex, gameIds]);
     const size = useBoxSize(rootRef);
-    // Grown with Steam's display scale: the pixel ratio of the window Home is drawn in (home/scale, #55).
-    const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0, rootRef.current?.ownerDocument?.defaultView?.devicePixelRatio);
+    const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0);
     // The screen in device px, for the size art is loaded at (home/artShrink).
     useLayoutEffect(() => {
         if (size) noteDisplay(size.width, size.height, rootRef.current?.ownerDocument?.defaultView?.devicePixelRatio ?? 1, canvas.scale);
@@ -482,7 +480,7 @@ export function SpotlightHome() {
     const side = sideInset(tv);
     const scale = measuredScale ?? CARD_SCALE_HANDHELD;
     const legend = legendReserve(useLegendHeight(rootRef, size), canvas.scale);
-    // Steam's scale left too little room: what gives way, in order (home/giveWay, #55), and the stack's shift after it (homeCss.homeStack).
+    // The default growth's room comes from the air above the title (home/giveWay, #55); the stack's shift after it (homeCss.homeStack).
     const stack = homeStack(logicalHeight, legend, false);
     const give = stack.give;
     // How much further the raised view rises so its top margin equals its bottom margin (raised.solveRaiseDelta).
@@ -533,7 +531,7 @@ export function SpotlightHome() {
     }, [contentUp, restore]);
 
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${give.chipsHidden ? ' gh-no-chips' : ''}${give.titleLines === 1 ? ' gh-one-line' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give, titleGive(give)) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
@@ -572,7 +570,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title={tr('viewLibrary')} chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={collectionEyebrow(data.rowCollection, eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew, data.rowCollection !== null))} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} resolve={!cycle.holding} oneLine={give.titleLines === 1} />
+                                        <TitleBlock eyebrow={collectionEyebrow(data.rowCollection, eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew, data.rowCollection !== null))} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} resolve={!cycle.holding} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}

@@ -304,7 +304,7 @@ describe('homeCss', () => {
         });
         it('the CSS: a 116-tall slot aligning the title to its bottom, a one-line eyebrow, a fixed-height chip row', () => {
             const css = homeCss();
-            expect(css).toMatch(/\.gh-title-slot\s*\{[^}]*height:\s*var\(--gh-slot, 116px\)\s*!important[^}]*justify-content:\s*flex-end/);
+            expect(css).toMatch(/\.gh-title-slot\s*\{[^}]*height:\s*116px\s*!important[^}]*justify-content:\s*flex-end/);
             expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*white-space:\s*nowrap[^}]*text-overflow:\s*ellipsis/);
             expect(css).toMatch(/\.gh-chips\s*\{[^}]*height:\s*69px\s*!important[^}]*flex-wrap:\s*nowrap/);
         });
@@ -321,8 +321,8 @@ describe('homeCss', () => {
         expect(titleBlockBottom()).toBeLessThan(hand);
         // The CSS uses the same metrics.
         const css = homeCss();
-        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\) \+ var\(--gh-title-give, 0px\)\)[^}]*gap:\s*var\(--gh-gap, 18px\)/);
-        expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*var\(--gh-actions-margin, 8px\) 0 0 0/);
+        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
+        expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
         expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
     });
@@ -1042,46 +1042,24 @@ describe('homeCss open transition: text twins', () => {
     });
 });
 
-describe('Home gives way when Steam\'s scale leaves too little room (#55)', () => {
-    it('writes today\'s values when nothing gives way', () =>
-        expect(giveWayVars({ need: 0, titleLines: 2, gapsTight: false }, 0)).toEqual({ '--gh-give': '0px', '--gh-title-give': '0px', '--gh-gap': '18px', '--gh-actions-margin': '8px', '--gh-slot': '116px' }));
-    it('moves the stack up and keeps the title block bottom', () => {
-        const v = giveWayVars({ need: 120, titleLines: 1, gapsTight: true }, 83);
-        expect(v).toMatchObject({ '--gh-give': '-120px', '--gh-title-give': '83px', '--gh-gap': '12px', '--gh-actions-margin': '1px', '--gh-slot': '58px' });
+describe('the stack under the default growth (#55)', () => {
+    const top = (h: number, legend: number) => { const s = homeStack(h, legend, false); return s.shift - s.give.need; };
+    it('places the stack as before at 810 and 800 (nothing missing)', () => {
+        for (const h of [810.75, 800]) expect(homeStack(h, 46, false)).toEqual({ shift: stackShift(h, 46, false), give: { need: 0 } });
     });
-    it('positions the title block with its give-way', () => expect(homeCss()).toMatch(/\.gh-title-block \{[^}]*top: calc\(118px - var\(--gh-top\) \+ var\(--gh-title-give, 0px\)\)/));
-    it('lays the title block out from the variables', () => {
-        const css = homeCss();
-        expect(css).toMatch(/\.gh-title-block \{[^}]*gap: var\(--gh-gap, 18px\)/);
-        expect(css).toMatch(/\.gh-title-slot \{[^}]*height: var\(--gh-slot, 116px\)/);
-        expect(css).toMatch(/\.gh-actions \{[^}]*margin: var\(--gh-actions-margin, 8px\) 0 0 0/);
+    it('moves the stack up by the room the growth takes, out of the air', () => {
+        const s = homeStack(745.6, 46, false);
+        expect(s.give.need).toBe(52);
+        expect(s.shift).toBe(stackShift(745.6 + 52, 46, false));
+    });
+    it('does not count a tall legend twice (stackShift already moves up for it)', () => expect(top(810.75, 72)).toBe(stackShift(810.75, 72, false)));
+    it('writes the move as --gh-give', () => {
+        expect(giveWayVars({ need: 0 })).toEqual({ '--gh-give': '0px' });
+        expect(giveWayVars({ need: 40 })).toEqual({ '--gh-give': '-40px' });
     });
     it('moves the page by the give-way and keeps the raised sheet in place', () => {
         const css = homeCss();
         expect(css).toMatch(/\.gh-page \{[^}]*top: calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)/);
         expect(css).toMatch(/\.gh-page\.gh-page-up \{[^}]*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
-    });
-    it('hides the chips row under gh-no-chips', () => expect(homeCss()).toMatch(/\.gh-no-chips \.gh-chips \{[^}]*display: none/));
-    it('draws a logo to the one-line slot', () => expect(homeCss()).toMatch(/\.gh-one-line \.gh-logo \{[^}]*max-height: 58px/));
-});
-
-describe('homeStack: the stack\'s offsets with give-way (#55 review)', () => {
-    const top = (h: number, legend: number) => { const s = homeStack(h, legend, false); return s.shift - s.give.need; };
-    it('places the stack as today at 810 and 800 (default legend)', () => {
-        for (const h of [810.75, 800]) expect(top(h, 46)).toBe(stackShift(h, 46, false));
-    });
-    it('places the stack as today when a taller legend only needs the air (handheld 72)', () => {
-        expect(top(810.75, 72)).toBe(stackShift(810.75, 72, false));
-        expect(homeStack(810.75, 72, false).give.titleLines).toBe(2);
-    });
-    it('does not count the missing room twice on a short canvas with a tall legend', () => {
-        const s = homeStack(576, 51, false);
-        expect(s.shift).toBe(stackShift(576 + s.give.need, 51, false));
-        expect(s.give.need).toBeLessThanOrEqual(222);
-    });
-    it('moves the stack up by the room missing at 1.2 on the Ally', () => {
-        const s = homeStack(675, 46, false);
-        expect(s.give.need).toBe(123);
-        expect(s.shift).toBe(stackShift(810.75, 46, false) - 13 + 0);
     });
 });

@@ -587,13 +587,3 @@ describe('hidden chips (#55: Steam\'s scale hid them)', () => {
         expect(readChipTexts(root as unknown as Element)).toEqual([]);
     });
 });
-
-describe('the title\'s measured size (#55)', () => {
-    it('reads the size the one-line fit set on the title', () => {
-        const root = home();
-        const title = { ...el(25, 250, 600, 58), style: { fontSize: '36px' } };
-        const withTitle = { ...root, querySelector: (q: string) => (q === '.gh-title-slot .gh-title' ? title : root.querySelector(q)) };
-        expect(measureHome(withTitle as unknown as Element)!.titleFont).toBe(36);
-    });
-    it('has no measured size without a fitted title', () => expect(measureHome(home() as unknown as Element)!.titleFont).toBeUndefined());
-});

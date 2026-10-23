@@ -78,10 +78,10 @@ export function twinSpecs(home: HomeRects, page: PageTargets, texts: { title: st
         const where = { x: r2(at.x - ox), y: r2(at.y - oy) };
         const around = cardAround(page.cards ?? page.shells, at);
         const card = around ? { card: { x: r2(around.x - ox), y: r2(around.y - oy) } } : {};
-        out.push({ name, role, text, ...where, origin, from: twinFrom(local(homeBox), where, homeFont / PAGE_TYPE[role].size, origin), to: role === 'title' && home.titleFont ? `scale(${r2(home.titleFont / TITLE_BLOCK.titleSize)})` : 'none', accent: false, ...card, ...extra });
+        out.push({ name, role, text, ...where, origin, from: twinFrom(local(homeBox), where, homeFont / PAGE_TYPE[role].size, origin), to: 'none', accent: false, ...card, ...extra });
     };
 
-    if (texts.title !== null && home.titleText !== false) add('title', 'title', texts.title, home.titleSlot, page.titleBottomLeft, 'base', home.titleFont ?? TITLE_BLOCK.titleSize);
+    if (texts.title !== null && home.titleText !== false) add('title', 'title', texts.title, home.titleSlot, page.titleBottomLeft, 'base', TITLE_BLOCK.titleSize);
     add('eyebrow', 'eyebrow', texts.eyebrow, home.eyebrow, page.eyebrowBottomLeft, 'base', PAGE_TYPE.eyebrow.size);
 
     // Home's canvas and the page share one scale (openMotion: d = s).

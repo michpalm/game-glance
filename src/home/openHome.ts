@@ -73,7 +73,6 @@ export function measureHome(root: Element | null): HomeRects | null {
             canvas,
             titleSlot,
             titleText: root.querySelector('.gh-title-slot .gh-title') !== null,
-            ...titleFontOf(root.querySelector('.gh-title-slot .gh-title')),
             eyebrow,
             play,
             circles: circleEls.map((c) => boxOf(c)!),
@@ -358,16 +357,9 @@ export function readExtrasSize(root: Element): { label: string; value: string } 
     return label && value ? { label, value } : null;
 }
 
-/** Home's chips as shown (data-chip, label, value, bar), for pageStatsFromChips. */
-/** The size the one-line slot fitted the title to (TitleBlock sets it inline), when it did. */
-function titleFontOf(title: Element | null): { titleFont?: number } {
-    const px = parseFloat((title as HTMLElement | null)?.style?.fontSize ?? '');
-    return Number.isFinite(px) && px > 0 ? { titleFont: px } : {};
-}
-
 /**
- * Home's chips as drawn: none while Steam's display scale hid the chip row (giveWay step 4, `display: none`: zero-size
- * boxes), so the open transition neither flies stat twins in from the corner nor counts the page's columns as covered.
+ * Home's chips as drawn: a chip with no box (hidden by CSS) is skipped, so the open transition never flies a stat twin
+ * in from the corner nor counts a page column as covered by it.
  */
 function drawnChips(root: Element): Element[] {
     return [...root.querySelectorAll('.gh-chip')].filter((chip) => {
@@ -376,6 +368,7 @@ function drawnChips(root: Element): Element[] {
     });
 }
 
+/** Home's chips as shown (data-chip, label, value, bar), for pageStatsFromChips. */
 export function readChipTexts(root: Element): ChipText[] {
     return drawnChips(root).map((chip) => ({
         key: chip.getAttribute('data-chip') ?? '',

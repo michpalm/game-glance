@@ -174,7 +174,7 @@ function useSlides(): SlideStack<Slide> {
 
 function ScreensaverView({ doc, options }: { doc: Document; options: ScreensaverOptions }) {
     const { width, height } = useWindowSize(doc.defaultView);
-    const canvas = screensaverCanvas(width, height, doc.defaultView?.devicePixelRatio);
+    const canvas = screensaverCanvas(width, height);
     const slides = useSlides();
     const locale = steamLanguageToLocale(peekSteamLanguage() ?? 'english');
     return (
