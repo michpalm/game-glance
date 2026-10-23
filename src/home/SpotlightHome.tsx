@@ -6,7 +6,7 @@ import { feedSpace, feedViewportInset } from './feedLayout';
 import { restoreZoneFor, shownTabs } from './feedTabs';
 import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
-import { focusElement, focusElementSettled, openGame, openLibrary } from './homeNav';
+import { focusElement, focusElementSettled, holdsFocus, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
 import { useSettings } from '../data/settings';
 import { recentsButton, selectionForButton, type Zone } from './focusZones';
@@ -195,7 +195,7 @@ export function SpotlightHome() {
         if (resolved || !restore || (gameIds.length === 0 && !data.recentsSettled)) return;
         if (gameIds.length > 0) {
             setRecentIndex(recentIndexFor(restore.recent, gameIds));
-            setZone(restore.zone);
+            setZone(restoreZoneFor(restore.zone, hasFeed));
         } else {
             setRestoring(false);
         }
@@ -225,9 +225,12 @@ export function SpotlightHome() {
     // Home leaves B to Steam (focusZones.onBack).
     const recentsRef = useRef<HTMLDivElement | null>(null);
     const focusGames = () => focusElement(recentsRef.current, 'the game cards');
-    // The last tab was turned off (Quick Access over Home) while focus was in the feed: back to the game cards.
+    // The last tab was turned off (Quick Access over Home) while the feed was up: lower the page; focus moves to the
+    // game cards only if Home holds it (Quick Access keeps the controller until it closes).
     useEffect(() => {
-        if (!hasFeed && sheetUp) focusGames();
+        if (hasFeed || !sheetUp) return;
+        setZone('recents');
+        if (holdsFocus(rootRef.current)) focusGames();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasFeed]);
     // L1/R1: a new selection. Moving onto the Library card drops the circles, so a focused circle hands focus to the

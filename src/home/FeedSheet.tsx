@@ -7,7 +7,7 @@ import { browserStores, capsuleUrls, heroUrls, landscapeUrls, storeHeaderUrl } f
 import { FeedCard } from './FeedCards';
 import { claimsPreferredFocus, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle } from './feedLayout';
 import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from './focusZones';
-import { focusElement } from './homeNav';
+import { focusElement, holdsFocus } from './homeNav';
 import { HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
 import { nextTabId, restoreTabId } from './feedTabs';
 import { useCardAccents } from './useHomeData';
@@ -211,7 +211,8 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     useEffect(() => {
         const next = nextTabId(tabId, tabs);
         if (next === null || next === tabId) return;
-        if (raised) focusAfterSwitch.current = 'tab';
+        // Focus follows only while Home holds it (not while Quick Access, where the switch is, does).
+        if (raised && holdsFocus(tabRefs.current[0]?.closest('.gh-root'))) focusAfterSwitch.current = 'tab';
         setTabId(next);
         reset();
         // eslint-disable-next-line react-hooks/exhaustive-deps

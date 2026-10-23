@@ -189,7 +189,7 @@ export function SettingsPanel() {
                 )}
             </PanelSection>
             <PanelSection title="Spotlight Home">
-                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
+                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs, screensaverOn: screensaver.enabled && screensaverAvailable() }, rowChosen !== RECENT_ROW).map((row) => (
                     <PanelSectionRow key={row}>{spotlightRow[row]}</PanelSectionRow>
                 ))}
             </PanelSection>

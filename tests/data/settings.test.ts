@@ -271,6 +271,14 @@ describe('settings: feed tabs', () => {
         await store.load();
         expect(store.get().feedTabs).toEqual({ news: false, friends: true, recommended: true });
     });
+    it('keeps a newer version\'s unknown tab when a tab changes', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { feedTabs: { news: true, friends: true, recommended: true, later: false } });
+        const store = createSettingsStore(kv);
+        await store.load();
+        await store.setFeedTab('friends', false);
+        expect(await kv.get('settings')).toMatchObject({ feedTabs: { news: true, friends: false, recommended: true, later: false } });
+    });
     it('keeps stored keys it does not know when a tab changes', async () => {
         const kv = memoryKv();
         await kv.set('settings', { futureKey: 1 });

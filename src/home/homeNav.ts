@@ -102,6 +102,15 @@ export function openLibrary() {
 }
 
 /**
+ * Focus (DOM) is inside `root`, Home's own element. False while Quick Access, a menu or another window holds it: a
+ * change made from there (a feed tab turned off) must not pull the controller back to Home behind it.
+ */
+export function holdsFocus(root: Element | null | undefined): boolean {
+    const active = root?.ownerDocument?.activeElement;
+    return !!root && !!active && root.contains(active);
+}
+
+/**
  * Moves gamepad focus to a Home element (the handoff's "focus item 0 via a ref"): the one mechanism used by the
  * restore, the Library card hand-off and every B step (tabs -> the Play pill, feed -> tabs), so there is a single fix point.
  * Steam's gamepad focus normally follows DOM focus; when it does not (Steam's window without system focus), the

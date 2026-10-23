@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { spotlightRows } from '../../src/components/settingsRows';
 
-const on = { spotlightHome: true, homeStatusBar: true, feedTabs: { news: true, friends: true, recommended: true } };
+const on = { spotlightHome: true, homeStatusBar: true, feedTabs: { news: true, friends: true, recommended: true }, screensaverOn: false };
 
 describe('spotlightRows (Quick Access: a row shows while the row it depends on is on)', () => {
     it('lists every row in order with everything on and a collection row', () =>
@@ -9,6 +9,8 @@ describe('spotlightRows (Quick Access: a row shows while the row it depends on i
     it('has no sort for the recent games row', () => expect(spotlightRows(on, false)).not.toContain('rowSort'));
     it('keeps only the shared rows with Spotlight Home off', () =>
         expect(spotlightRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome', 'statusBar', 'statusAvatar', 'gameLogo', 'heroFit']));
+    it('keeps the Games row and its sort for the Game Glance screensaver with Spotlight Home off', () =>
+        expect(spotlightRows({ ...on, spotlightHome: false, screensaverOn: true }, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'statusBar', 'statusAvatar', 'gameLogo', 'heroFit']));
     it('hides the profile picture with the status bar off', () => expect(spotlightRows({ ...on, homeStatusBar: false }, false)).not.toContain('statusAvatar'));
     it('hides wishlist deals with Recommended off', () =>
         expect(spotlightRows({ ...on, feedTabs: { ...on.feedTabs, recommended: false } }, false)).not.toContain('wishlistDeals'));

@@ -44,6 +44,8 @@ Game logo
 Hero art
 ```
 
+Games row and its Sort by also choose the Game Glance screensaver's games, so they also show while the screensaver is on (found in review, 2026-10-23).
+
 Moved: Games row and Games row style come directly under Spotlight Home (before, they followed Game logo); Hero art follows Game logo. Values are unchanged.
 
 ## Feed behaviour

@@ -113,7 +113,8 @@ export function createSettingsStore(kv: KvBackend) {
             const feedTabs = { ...current.feedTabs, [tab]: on };
             current = { ...current, feedTabs };
             emit();
-            await persist({ feedTabs });
+            // Keep tabs a newer version stored (as setScreensaver keeps unknown screensaver keys).
+            await persist({ feedTabs: { ...feedTabs, ...object(retained.feedTabs), [tab]: on } as FeedTabs });
         },
         async setCleanPage(cleanPage: boolean): Promise<void> {
             current = { ...current, cleanPage };
