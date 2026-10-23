@@ -1,6 +1,6 @@
 # Home feed tabs on and off (#56, Home part) — design
 
-2026-10-23. Status: design approved in chat; spec awaiting review. Branch `feature/3.6-hero-scale-whatsnew` (after 3.5.0).
+2026-10-23. Status: implemented and checked on the Ally (2026-10-23, docs/device-checklist.md). Branch `feature/3.6-hero-scale-whatsnew` (after 3.5.0).
 
 ## Problem
 
