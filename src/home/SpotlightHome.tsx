@@ -460,7 +460,8 @@ export function SpotlightHome() {
         noteHome(recent ? { zone, recent } : { zone });
     }, [resolved, zone, focusIndex, gameIds]);
     const size = useBoxSize(rootRef);
-    const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0);
+    // Grown with Steam's display scale: the pixel ratio of the window Home is drawn in (home/scale, #55).
+    const canvas = homeCanvas(size?.width ?? 0, size?.height ?? 0, rootRef.current?.ownerDocument?.defaultView?.devicePixelRatio);
     // The screen in device px, for the size art is loaded at (home/artShrink).
     useLayoutEffect(() => {
         if (size) noteDisplay(size.width, size.height, rootRef.current?.ownerDocument?.defaultView?.devicePixelRatio ?? 1, canvas.scale);

@@ -81,13 +81,14 @@ const CAPTION_LINE = 1.45;
 const CARDS_H = PAGE_LAYOUT.playTop.tvCards;
 
 export function pageTargets(
-    look: PageLook, screen: { width: number; height: number; dpr?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
+    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
     lines?: LineMeasure,
 ): PageTargets {
     const L = PAGE_LAYOUT;
     const W = screen.width;
     const H = screen.height;
-    const d = pageDUnit(W, H);
+    // The page's unit, grown with Steam's display scale (#55); `grow` overrides the growth (recorded pages from before it).
+    const d = typeof screen.grow === 'number' ? pageDUnit(W, H) * screen.grow : pageDUnit(W, H, screen.dpr);
     const BORDER = cardBorder(screen.dpr, d);
     // The cards' widths allow 1 d unit for each ring (themeCss.cardContentMax, CARD_FILL_WIDTH): a thinner one as drawn
     // makes them this much narrower.

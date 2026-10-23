@@ -5,7 +5,7 @@ import { homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
-import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
+import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, pageGrowVar, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -707,8 +707,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_CloudIcon')).toContain(`height: calc(${PAGE_LAYOUT.cloudIcon} * var(--gg-d)) !important;`);
     });
     it("ringBoost: Home's ring as drawn on screen over the page's, both on whole device px", () => {
-        // The Ally handheld (2.32, 828x466: d 0.575): Home's 1 canvas px is 2 device px scaled to 1.15; the page's 1 d unit is 1.
-        const d = pageDUnit(828.0172, 466.3793);
+        // The Ally handheld at Steam's scale 2.32 (828x466): d 0.575 grown to the cap (810 / 576), 0.809; Home's 1 canvas px
+        // is 2 device px scaled by d, the page's 1 d unit is 1 (floor(0.809 x 2.32)).
+        const d = pageDUnit(828.0172, 466.3793, 2.32);
         expect(ringBoost(2.32, 828.0172, 466.3793)).toBeCloseTo(2 * d, 3);
         // The Deck (1, 1280x800: d 1): both 1 device px.
         expect(ringBoost(1, 1280, 800)).toBe(1);
@@ -769,8 +770,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ad_Inner')).toContain('transition: --glance-accent 500ms ease;');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('var(--glance-accent)');
         // handoff px scaled like Home: its 1440 canvas on 16:9, its 1280 canvas on 16:10
-        expect(restyled).toContain(':root { --gg-d: min(calc(100vw / 1440), calc(100vh / 810)); }');
-        expect(restyled).toContain('@media (max-aspect-ratio: 17/10) { :root { --gg-d: min(calc(100vw / 1280), calc(100vh / 800)); } }');
+        expect(restyled).toContain(':root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * var(--gg-grow, 1)); }');
+        expect(restyled).toContain('@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * var(--gg-grow, 1)); } }');
         // eyebrow and 64px/800 title
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: var(--glance-accent-text)');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('text-transform: uppercase');
@@ -933,7 +934,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's, and in
         // the d unit's height limit, the shared scale rule with Home: home/scale.ts)
         // (z-index only on our own hero, lifted over Steam's page panel so the tappable cards get touches, #24)
-        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: min\([^;]*\);/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '')).not.toMatch(/z-index|100vh/);
+        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: [^;]*;/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '')).not.toMatch(/z-index|100vh/);
     });
 });
 
@@ -1217,5 +1218,20 @@ describe('the Spotlight cards have one height', () => {
         expect(content).toBeCloseTo(L.stats.label * 1.5 + L.stats.rowGap + L.stats.value * 1.2 + L.cards.colGap + L.cardText.desc * L.cardText.descLine * L.cardText.descLines, 5);
         expect(css).toContain(`min-height: calc(${content} * var(--gg-d))`);
         expect(css).toMatch(/\.gg-card \{[^}]*min-height: calc\(/);
+    });
+});
+
+describe('the page follows Steam\'s display scale (#55)', () => {
+    it('gives the page the same unit as Home at a grown scale', () => expect(pageDUnit(1601, 900, 1.2)).toBeCloseTo(homeCanvas(1601, 900, 1.2).scale, 6));
+    it('is today\'s unit at Steam 100%', () => expect(pageDUnit(1920, 1080, 1)).toBe(pageDUnit(1920, 1080)));
+    it('multiplies the page unit by --gg-grow in both canvas rules', () => {
+        const css = buildThemeCss(full, { restyle: true });
+        expect(css).toContain('--gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * var(--gg-grow, 1))');
+        expect(css).toContain('--gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * var(--gg-grow, 1))');
+    });
+    it('writes the growth for the page', () => {
+        expect(pageGrowVar(1601, 900, 1.2)).toBe('1.2');
+        expect(pageGrowVar(1920, 1080, 1)).toBe('1');
+        expect(pageGrowVar(960, 540, 3)).toBe(String(810 / 576));
     });
 });

@@ -65,7 +65,7 @@ for (const look of ['spotlight', 'clean'] as const) {
             const r = f.rects;
             // The fixtures' games had a bar (captions "7.3 h left in main story", "7.2 h left in main story").
             const extras = { columns: extraColumns(f), bar: true };
-            const t = pageTargets(look, f.screen, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
+            const t = pageTargets(look, { ...f.screen, grow: 1 }, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
             nearBox(t.play, r.play, 'play');
             // The circles the page drew (three for an installed game, two before it is installed).
             const circles = Object.keys(r).filter((k) => /^circle\d$/.test(k));
@@ -113,7 +113,7 @@ describe('pageTargets stats', () => {
     const main: PageStat = { key: 'hltb', label: 'Main', value: '9 h' };
     const columns: ExtraColumn[] = [{ key: 'mainExtras', label: '+ Extras', value: '12 h' }, { key: 'completionist', label: '100%', value: '24 h' }];
     it("a label's line is the measured 'normal' one when Home measures it (21:9: 12.5, not 1.5 x 8.75), so the values below land where the page's are", () => {
-        const wide = { width: 1500, height: 644.53125, dpr: 1.28 };
+        const wide = { width: 1500, height: 644.53125, dpr: 1.28, grow: 1 }; // recorded before the page grew with Steam's scale
         const d = 644.53125 / 810;
         const lines = (role: 'label' | 'caption', fontPx: number) => (role === 'label' ? 12.5 : fontPx * 1.4);
         const t = pageTargets('spotlight', wide, [played, main], measure, store, { columns, bar: true }, lines);
@@ -144,7 +144,7 @@ describe('pageTargets stats', () => {
     it("the cards as laid out, unsnapped (the twins' layers sit there, as the page's card layers do), and the page's d unit", () => {
         const f = fixture('spotlight-1500x844');
         // The Ally docked: the window's real height (the fixture's is rounded to 844).
-        const t = pageTargets('spotlight', { width: 1500, height: 844.53125, dpr: 1.28 }, pageStats('spotlight', f), measureFrom('spotlight', f), { w: f.rects.store.w, h: f.rects.store.h });
+        const t = pageTargets('spotlight', { width: 1500, height: 844.53125, dpr: 1.28, grow: 1 }, pageStats('spotlight', f), measureFrom('spotlight', f), { w: f.rects.store.w, h: f.rects.store.h });
         // The glass panels are on whole device px (759 / 1.28); the cards themselves are where the page lays them out.
         expect(t.shells[1].y).toBe(759 / 1.28);
         // Probed on the Ally docked (2026-10-17): the HowLongToBeat card at 985.9375, 593.1030.
@@ -202,7 +202,7 @@ describe('pageTargets at a fractional pixel ratio', () => {
     // The Ally handheld (2.32 device px per CSS px), measured on the device: Ori's page in the Spotlight look, then with a
     // 1 px ring (drawn 2 device px, 0.862 CSS px). The ring is now 1 d unit (0.575 CSS px), drawn 1 device px (0.431):
     // everything inside the cards sits 0.431 px further up and left, and each card is 0.862 px narrower and shorter.
-    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32 };
+    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1 }; // recorded before the page grew with Steam's scale
     const d = pageDUnit(screen.width, screen.height);
     // Measured: rings of 2 / 2.32 inside widths that allowed 2 px for them. Now: 1 / 2.32 inside widths allowing 2 d units.
     const was = 2 / 2.32;
@@ -253,5 +253,16 @@ describe('pageTargets at a fractional pixel ratio', () => {
         expect(cardBorder(2, 1.333)).toBe(1);
         expect(cardBorder(3, 1.34)).toBeCloseTo(4 / 3, 6);
         expect(cardBorder(undefined, 0.575)).toBe(0.575);
+    });
+});
+
+describe('pageTargets follows Steam\'s display scale (#55)', () => {
+    it('sizes the page in the grown unit', () => {
+        const measure: Measure = (text) => text.length * 10;
+        const played: PageStat = { key: 'played', label: 'Play Time', value: '1 h' };
+        const at = (dpr: number) => pageTargets('spotlight', { width: 1601, height: 900, dpr }, [played], measure, { w: 100, h: 34 });
+        const grown = at(1.2);
+        const today = at(1);
+        expect(grown.stats.played!.value.h / today.stats.played!.value.h).toBeCloseTo(1.2, 2);
     });
 });

@@ -3,7 +3,7 @@ import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
-import { homeCanvas } from '../home/scale';
+import { homeCanvas, steamGrowth } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
@@ -202,9 +202,17 @@ const cardContentMax = (outer: number) => d(outer - 2 * PAGE_LAYOUT.cards.padX -
 /** A card's width filling its grid column, content-box as above: a plain 100% overflowed the column by the padding and borders. */
 const CARD_FILL_WIDTH = `calc(100% - ${d(2 * PAGE_LAYOUT.cards.padX + 2)})`;
 
-/** The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px, as --gg-d: Home's scale. */
-export function pageDUnit(width: number, height: number): number {
-    return homeCanvas(width, height).scale;
+/**
+ * The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px at pixel ratio `dpr`
+ * (Steam's display scale), as --gg-d: Home's scale, grown with Steam's scale as Home is (home/scale, #55).
+ */
+export function pageDUnit(width: number, height: number, dpr?: number): number {
+    return homeCanvas(width, height, dpr).scale;
+}
+
+/** --gg-grow for the page's window: how much the page's CSS unit grows with Steam's display scale (home/scale steamGrowth). */
+export function pageGrowVar(width: number, height: number, dpr?: number): string {
+    return String(steamGrowth(dpr, homeCanvas(width, height).logicalHeight));
 }
 
 /**
@@ -216,7 +224,7 @@ export function pageDUnit(width: number, height: number): number {
  */
 export function ringBoost(dpr: number, width: number, height: number): number {
     if (!(dpr > 0)) return 1;
-    const d = pageDUnit(width, height);
+    const d = pageDUnit(width, height, dpr);
     const home = Math.max(1, Math.floor(dpr)) * d;
     const page = Math.max(1, Math.floor(d * dpr));
     return Math.round((home / page) * 1000) / 1000;
@@ -647,8 +655,8 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The game's accent (buildAccentCss sets it on the page container) becomes the theme's accent:
         // the Play pill, the HLTB goal value and bar. Registered so it can animate, as on Home.
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
-        `:root { --gg-d: min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})); }`,
-        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})); } }`,
+        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * var(--gg-grow, 1)); }`,
+        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * var(--gg-grow, 1)); } }`,
         rule(inner, ` --gg-accent: var(--glance-accent); transition: --glance-accent ${ACCENT_MS}ms ease; `),
 
         // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,

@@ -31,6 +31,8 @@ import { useOpenArrival } from '../hooks/useOpenArrival';
 import { openPending } from '../data/openIntent';
 import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '../home/warmup';
 import { accentMemo, knownAccent } from '../home/accentMemo';
+import { pageGrowVar } from '../styles/themeCss';
+import { viewportSize } from '../home/openHome';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
@@ -112,6 +114,32 @@ function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
     }, [doc, fit, active]);
 }
 
+/**
+ * Keeps --gg-grow on the page's document while the restyled page shows: how much its d unit grows with Steam's display
+ * scale (themeCss pageGrowVar, #55), so the page stays the size Home draws it. Follows resizes (Steam's scale changing
+ * resizes the window); removed when the page goes, unless the next page has set its own.
+ */
+function usePageGrow(doc: Document | null, active: boolean) {
+    useLayoutEffect(() => {
+        const root = doc?.documentElement;
+        const win = doc?.defaultView;
+        if (!root || !win || !active) return undefined;
+        let applied: Record<string, string> = {};
+        const apply = () => {
+            const { width, height, dpr } = viewportSize(win);
+            const vars = { '--gg-grow': pageGrowVar(width, height, dpr) };
+            root.style.setProperty('--gg-grow', vars['--gg-grow']);
+            applied = vars;
+        };
+        apply();
+        win.addEventListener('resize', apply);
+        return () => {
+            win.removeEventListener('resize', apply);
+            removeOwnVars(root.style, applied);
+        };
+    }, [doc, active]);
+}
+
 function useGameAccent(appId: number, active: boolean): string | undefined {
     const loaded = useAsync(active && appId !== 0 ? `accent:${appId}` : null, async () => {
         const color = await accentFor(appId, { cache, sample: sampleAccent, version: accentVersion });
@@ -188,6 +216,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
     // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
     usePageHeroFit(pageDoc, heroFit, restyle);
+    usePageGrow(pageDoc, restyle);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
     const navParts = pageNavParts(restyle, clean);
     useCardNav(pageDoc, navParts.dpad);
