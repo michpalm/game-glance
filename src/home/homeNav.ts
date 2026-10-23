@@ -1,3 +1,4 @@
+import { prepareCleanOpen } from './cleanOpen';
 import { Navigation } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { browserStores, heroUrls } from './artwork';
@@ -189,7 +190,11 @@ function startHome(c: OpenContext): (() => void) | null {
                 } catch (error) {
                     console.warn(`${LOG_PREFIX} Home: could not set up the text twins`, error);
                 }
-                return applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, twins);
+                const undoClean = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : null;
+                try {
+                    const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoClean ? twins.filter((t) => !t.card) : twins);
+                    return () => { undoOpen(); undoClean?.(); };
+                } catch (error) { undoClean?.(); throw error; }
             }
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: could not set up the morph`, error);

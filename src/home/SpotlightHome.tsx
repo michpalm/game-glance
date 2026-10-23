@@ -1,3 +1,5 @@
+import { CleanInfoPanel } from '../components/CleanInfo';
+import { homeCleanStats } from '../logic/cleanInfo';
 import type { GamepadEvent } from '@decky/ui';
 import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
@@ -612,6 +614,7 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
+            {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn)} />}
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
             <div className="gh-open-ring" data-i="0" />
             <div className="gh-open-ring" data-i="1" />

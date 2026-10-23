@@ -180,6 +180,10 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     out['--gho-x-d'] = String(d);
     out['--gho-x-pill-x'] = px(page.store.x + page.store.w - ox);
     out['--gho-x-pill-y'] = px(page.store.y - oy);
+    // Both copies follow one path while crossfading. A stationary destination pill doubled the moving Home pill.
+    out['--gho-x-pill-from'] = home.store
+        ? translate(home.store.x + home.store.w - page.store.x - page.store.w, home.store.y - page.store.y)
+        : translate(0, 0);
     // The Play time column (a new game's: Home shows its Added chip instead), by its top-left corner, in the look's value size.
     // A Unifideck game's size column (right after Played), likewise.
     // Each in a layer at the page card that holds it, as the page's card is one (openTwins.TwinSpec.card), by its top-left.

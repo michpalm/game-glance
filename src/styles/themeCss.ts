@@ -502,6 +502,18 @@ const CLEAN_GAP = PAGE_LAYOUT.clean.gap;
  * start on the next screen. Its own stylesheet, only with the full-screen layout (the classes buildThemeCss needs for
  * it); '' otherwise, and the page keeps its usual look.
  */
+/** The actual Clean card skin and flex layout, shared with its moving Home copy. */
+export function cleanInfoCss(panel: string, unit: (n: number) => string, prefix = 'gg'): string {
+    return `
+${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; background: rgba(12,16,22,.38); backdrop-filter: blur(${unit(16)}); color: #fff; }
+${panel} > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }
+${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; color: rgba(255,255,255,.62); }
+${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
+${panel} .${prefix}-bar { width: ${unit(PAGE_LAYOUT.cleanInfo.barW)}; height: ${unit(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${unit(PAGE_LAYOUT.cleanInfo.barTop)}; border-radius: ${unit(3)}; background: rgba(255,255,255,.14); overflow: hidden; }
+${panel} .${prefix}-bar > div { height: 100%; border-radius: ${unit(3)}; background: var(--gg-accent); }
+`;
+}
+
 export function buildCleanCss({ header, details, root }: ThemeClasses): string {
     const inner = cls(details, 'InnerContainer');
     if (!(cls(header, 'TopCapsule') && inner && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
@@ -514,12 +526,7 @@ export function buildCleanCss({ header, details, root }: ThemeClasses): string {
         // No description or HowLongToBeat cards in this look.
         `.gg-cards { display: none !important; }`,
         // The info card at the right end of the row, vertically centred on the Play pill; the glass of the other cards.
-        `.gg-clean-info { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${d(PAGE_LAYOUT.cleanInfo.colGap)};
-            padding: ${d(PAGE_LAYOUT.cleanInfo.padY)} ${d(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${d(16)}; border: ${d(1)} solid ${ring(0.12)}; background: rgba(12, 16, 22, 0.38);
-            backdrop-filter: blur(${d(16)}); color: #fff; }`,
-        `.gg-clean-info > div { display: flex; flex-direction: column; gap: ${d(PAGE_LAYOUT.stats.rowGap)}; }`,
-        `.gg-clean-info .gg-value { ${pageType('cleanValue', d)} }`,
-        `.gg-clean-info .gg-bar { width: ${d(PAGE_LAYOUT.cleanInfo.barW)}; height: ${d(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${d(PAGE_LAYOUT.cleanInfo.barTop)}; }`,
+        cleanInfoCss('.gg-clean-info', d),
         // The store pill above the row, at its right edge.
         `.gg-pill { top: auto; bottom: calc(100% + ${d(PAGE_LAYOUT.clean.storeGap)}); }`,
         // The eyebrow and title just above the row, at the left (their bottom CLEAN_GAP above the Play pill).

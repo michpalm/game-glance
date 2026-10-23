@@ -10,7 +10,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
+import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -806,6 +806,18 @@ export function openingRules(): string[] {
         // higher than in a default one, so the twin's text landed 0.65 px low and stepped up at the end (Ally, docked).
         soft('.gh-twin[data-role="playLabel"]', `${pageType('playLabel', dd)} line-height: ${STEAM_PLAY_LINE}px`),
         soft('.gh-twin[data-accent]', 'color: var(--glance-accent-text)'),
+        cleanInfoCss('.gh-clean-info', dd, 'gh-clean'),
+        '.gh-clean-info { display:none; pointer-events:none; --gg-accent:var(--glance-accent); --gg-ring:var(--gho-ring-boost,1); }',
+        `${M}[data-gh-clean] .gh-clean-info { display:flex; transform-origin:0 0; transform:translateY(-50%) var(--clean-from); }`,
+        `${MT}[data-gh-clean] .gh-clean-info { transform:translateY(-50%); transition:${move}; }`,
+        `${M}[data-gh-clean] .gh-clean-info [data-clean-move] { transform-origin:0 0; transform:var(--clean-from); opacity:0; }`,
+        `${MT}[data-gh-clean] .gh-clean-info [data-clean-move] { transform:none; transition:${move}; animation:gh-twin-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-clean] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { animation:gh-twin-out ${T.morph}ms linear both; }`,
+        rule(`${M}[data-gh-clean] :is(.gh-open-shell,.gh-open-ring)[data-i]`, 'display:none'),
+        rule(`${M}[data-gh-clean] .gh-x-card:is([data-for="played"],[data-for="size"])`, 'display:none'),
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info { transform:translateY(-50%); transition:none; }',
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info [data-clean-move] { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { opacity:0; animation:none; }',
         ...twinOut.map(([name, sel]) => soft(`${MT}[data-gh-twins~="${name}"] ${sel}`, `animation: gh-twin-out ${T.morph}ms linear both`)),
         // The bridge (nothing animates in it): the twins at their end, Home's twinned text hidden, stated above the live rules.
         soft(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-twin`, `opacity: 1; transform: var(--t-to); animation: none; transition: translate ${T.settleGlide}ms ease-out !important`),
@@ -824,9 +836,11 @@ export function openingRules(): string[] {
         rule('.gh-root[data-gh-extras~="hltb"] .gh-x-hltb', 'display: flex'),
         // The page's store pill (and family pill in it), right-aligned where the page draws it, as themeCss draws .gg-pill
         // and .gg-family; Home's own (moving, scaled) fades out as it fades in.
-        rule(`${X} .gh-x-pill`, `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%); align-items: center;
+        rule(`${X} .gh-x-pill`, `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%) var(--gho-x-pill-from, translate(0px, 0px)); align-items: center;
             border-radius: 999px; border: 1px solid; color: #fff; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule('.gh-root[data-gh-extras~="pills"] .gh-x-pill', 'display: inline-flex'),
+        rule(`${MT} .gh-x-pill`, `transform: translateX(-100%); transition: ${move}`),
+        rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-x-pill', 'transform: translateX(-100%); transition: none'),
         rule(`${X} .gh-x-pill-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
         rule(`${X} .gh-x-family`, `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),

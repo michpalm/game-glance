@@ -646,6 +646,10 @@ describe('homeCss open transition', () => {
         for (const decl of ['left: var(--gho-x-pill-x)', 'top: var(--gho-x-pill-y)', 'transform: translateX(-100%)']) expect(body('.gh-open-extras .gh-x-pill')).toContain(decl);
         expect(body('.gh-open-extras .gh-x-family')).toContain(`right: calc(100% + ${dd(10)})`);
         expect(all.some(([sel, b]) => sel === '.gh-root[data-gh-extras~="pills"] .gh-x-pill' && b.includes('display: inline-flex'))).toBe(true);
+        expect(body('.gh-open-extras .gh-x-pill')).toContain('var(--gho-x-pill-from');
+        const mover = body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-x-pill');
+        expect(mover).toContain('transform: translateX(-100%)');
+        expect(mover).toContain(`transform ${OPEN_TIMINGS.morph}ms`);
         // Home's own pill (moving into place) fades out as the page's fades in, still moving.
         const home = body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"][data-gh-extras~="pills"] .gh-source');
         expect(home).toContain(`animation: gh-open-pill-out ${OPEN_TIMINGS.morph}ms linear both`);
@@ -807,7 +811,7 @@ describe('the way back (B from a page)', () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
         expect(blurred.length).toBeGreaterThan(0);
         for (const sel of blurred) {
-            if (['.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
+            if (['.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
             const last = sel.split(',').map((p) => p.trim().split(/[\s>+~]+/).pop()!);
             for (const compound of last) expect(HOME_GLASS.some((g) => compound.includes(g)), sel).toBe(true);
         }

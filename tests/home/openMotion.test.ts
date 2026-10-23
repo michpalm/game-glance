@@ -73,6 +73,16 @@ describe('openMotion', () => {
         }
     });
 
+    it('starts the page pill at Home’s right edge so its crossfade follows the moving pill', () => {
+        const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+        const target = spotlight();
+        const v = vars(openMotion(home, target, 'clean', s));
+        const start = parse(v['--gho-x-pill-from']);
+        expect(start.tx + target.store.x + target.store.w).toBeCloseTo(home.store!.x + home.store!.w, 3);
+        expect(start.ty + target.store.y).toBeCloseTo(home.store!.y, 3);
+        expect(vars(openMotion({ ...home, store: null }, target, 'clean', s))['--gho-x-pill-from']).toBe('translate(0px, 0px)');
+    });
+
     it('the title block moves by its bottom-left corner, in canvas px', () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         const t = parse(v['--gho-title']);
