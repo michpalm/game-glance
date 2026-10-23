@@ -202,3 +202,13 @@ describe('settleDelta', () => {
         expect(settleDelta(at, box(100.1, 200.2, 80, 20))).toEqual({ dx: 0.1, dy: 0.2 });
     });
 });
+
+describe('a title fitted to the one-line slot (#55)', () => {
+    it('starts the title twin at Home\'s measured size, not 58 px', () => {
+        const texts = { title: 'A long title', eyebrow: 'LAST PLAYED', play: 'Play' };
+        const scaleOf = (from: string) => Number(/scale\(([\d.]+)\)/.exec(from)?.[1] ?? NaN);
+        const full = byName(twinSpecs(homeRects(), page(), texts, [], 'spotlight', true, 1)).title;
+        const fitted = byName(twinSpecs({ ...homeRects(), titleFont: 29 }, page(), texts, [], 'spotlight', true, 1)).title;
+        expect(scaleOf(fitted.from) / scaleOf(full.from)).toBeCloseTo(29 / 58, 3);
+    });
+});

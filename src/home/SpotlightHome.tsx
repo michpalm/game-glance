@@ -4,7 +4,7 @@ import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
 import { refocusAfterMenu, restoreZoneFor, shownTabs } from './feedTabs';
-import { giveWay, roomMissing, titleGive } from './giveWay';
+import { titleGive } from './giveWay';
 import { menuOpen, steamMenuStore } from './steamMenu';
 import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
@@ -23,7 +23,7 @@ import { steamEnterOffCss } from '../styles/theme';
 import { legibleAccent } from './accent';
 import { solveRaiseDelta } from './raised';
 import { findLegendHeight, legendReserve } from './legend';
-import { FEED_SHEET, giveWayVars, homeCss, stackShift } from './homeCss';
+import { FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { HomePills } from './HomePills';
@@ -482,8 +482,9 @@ export function SpotlightHome() {
     const side = sideInset(tv);
     const scale = measuredScale ?? CARD_SCALE_HANDHELD;
     const legend = legendReserve(useLegendHeight(rootRef, size), canvas.scale);
-    // Steam's scale left too little room: what gives way, in order (home/giveWay, #55).
-    const give = giveWay(roomMissing(logicalHeight, legend));
+    // Steam's scale left too little room: what gives way, in order (home/giveWay, #55), and the stack's shift after it (homeCss.homeStack).
+    const stack = homeStack(logicalHeight, legend, false);
+    const give = stack.give;
     // How much further the raised view rises so its top margin equals its bottom margin (raised.solveRaiseDelta).
     const raiseDelta = solveRaiseDelta(logicalHeight, legend, scale);
     const geometry = useMemo(() => recentsGeometry(scale), [scale]);
@@ -532,7 +533,7 @@ export function SpotlightHome() {
     }, [contentUp, restore]);
 
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${give.chipsHidden ? ' gh-no-chips' : ''}${give.titleLines === 1 ? ' gh-one-line' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stackShift(logicalHeight, legend, false)}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give, titleGive(give)) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${give.chipsHidden ? ' gh-no-chips' : ''}${give.titleLines === 1 ? ' gh-one-line' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give, titleGive(give)) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}

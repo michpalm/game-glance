@@ -1,4 +1,5 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
+import { GiveWay, giveWay, roomMissing } from './giveWay';
 import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
 import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePill';
@@ -169,6 +170,16 @@ export function giveWayVars(g: { need: number; titleLines: 1 | 2; gapsTight: boo
         '--gh-actions-margin': `${g.gapsTight ? 1 : t.actionsMargin}px`,
         '--gh-slot': `${g.titleLines * t.titleSize}px`,
     };
+}
+
+/**
+ * The stack's two offsets on a canvas `logicalHeight` tall: what gives way for the room missing (home/giveWay, #55), and
+ * stackShift computed on the stack as it is after giving way, so a legend taller than the reserve (which stackShift
+ * already answers by moving up) is not counted twice. With room to spare: no give-way and today's shift.
+ */
+export function homeStack(logicalHeight: number, legendReserve: number, feed: boolean): { shift: number; give: GiveWay } {
+    const give = giveWay(roomMissing(logicalHeight, legendReserve));
+    return { shift: stackShift(logicalHeight + give.need, legendReserve, feed), give };
 }
 
 /** The most the stack moves down, whatever the screen. */

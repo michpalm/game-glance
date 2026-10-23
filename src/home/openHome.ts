@@ -61,7 +61,7 @@ export function measureHome(root: Element | null): HomeRects | null {
         if (!canvas || !titleSlot || !eyebrow || !play) return null;
         const circleEls = [...root.querySelectorAll('.gh-actions .gh-btn-circle')];
         const info = circleEls.findIndex((c) => c.getAttribute('data-action') === 'info');
-        const chips = [...root.querySelectorAll('.gh-chip')].map((chip) => ({
+        const chips = drawnChips(root).map((chip) => ({
             key: chip.getAttribute('data-chip') ?? '',
             shell: boxOf(chip)!,
             label: boxOf(chip.querySelector('.gh-chip-label'))!,
@@ -73,6 +73,7 @@ export function measureHome(root: Element | null): HomeRects | null {
             canvas,
             titleSlot,
             titleText: root.querySelector('.gh-title-slot .gh-title') !== null,
+            ...titleFontOf(root.querySelector('.gh-title-slot .gh-title')),
             eyebrow,
             play,
             circles: circleEls.map((c) => boxOf(c)!),
@@ -358,8 +359,25 @@ export function readExtrasSize(root: Element): { label: string; value: string } 
 }
 
 /** Home's chips as shown (data-chip, label, value, bar), for pageStatsFromChips. */
+/** The size the one-line slot fitted the title to (TitleBlock sets it inline), when it did. */
+function titleFontOf(title: Element | null): { titleFont?: number } {
+    const px = parseFloat((title as HTMLElement | null)?.style?.fontSize ?? '');
+    return Number.isFinite(px) && px > 0 ? { titleFont: px } : {};
+}
+
+/**
+ * Home's chips as drawn: none while Steam's display scale hid the chip row (giveWay step 4, `display: none`: zero-size
+ * boxes), so the open transition neither flies stat twins in from the corner nor counts the page's columns as covered.
+ */
+function drawnChips(root: Element): Element[] {
+    return [...root.querySelectorAll('.gh-chip')].filter((chip) => {
+        const r = chip.getBoundingClientRect?.();
+        return !r || (r.width > 0 && r.height > 0);
+    });
+}
+
 export function readChipTexts(root: Element): ChipText[] {
-    return [...root.querySelectorAll('.gh-chip')].map((chip) => ({
+    return drawnChips(root).map((chip) => ({
         key: chip.getAttribute('data-chip') ?? '',
         label: chip.querySelector('.gh-chip-label')?.textContent?.trim() ?? '',
         value: chip.querySelector('.gh-chip-value')?.textContent?.trim() ?? '',

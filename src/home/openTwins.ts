@@ -81,7 +81,7 @@ export function twinSpecs(home: HomeRects, page: PageTargets, texts: { title: st
         out.push({ name, role, text, ...where, origin, from: twinFrom(local(homeBox), where, homeFont / PAGE_TYPE[role].size, origin), to: 'none', accent: false, ...card, ...extra });
     };
 
-    if (texts.title !== null && home.titleText !== false) add('title', 'title', texts.title, home.titleSlot, page.titleBottomLeft, 'base', TITLE_BLOCK.titleSize);
+    if (texts.title !== null && home.titleText !== false) add('title', 'title', texts.title, home.titleSlot, page.titleBottomLeft, 'base', home.titleFont ?? TITLE_BLOCK.titleSize);
     add('eyebrow', 'eyebrow', texts.eyebrow, home.eyebrow, page.eyebrowBottomLeft, 'base', PAGE_TYPE.eyebrow.size);
 
     // Home's canvas and the page share one scale (openMotion: d = s).

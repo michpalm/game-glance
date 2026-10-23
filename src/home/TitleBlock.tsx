@@ -36,19 +36,35 @@ const TITLE_BLEED = 16;
  */
 function useOneLineTitle(slot: RefObject<HTMLDivElement | null>, oneLine: boolean, key: string) {
     useLayoutEffect(() => {
-        const el = slot.current?.querySelector<HTMLElement>('.gh-title');
-        if (!el) return;
-        el.style.removeProperty('font-size');
-        el.style.removeProperty('-webkit-line-clamp');
-        if (!oneLine) return;
-        const lineSlot = TITLE_ONE_LINE_SIZES[0];
-        const fits = (size: number) => {
+        const box = slot.current;
+        if (!box) return undefined;
+        const fit = () => {
+            const el = box.querySelector<HTMLElement>('.gh-title');
+            if (!el) return;
+            el.style.removeProperty('font-size');
+            el.style.removeProperty('-webkit-line-clamp');
+            if (!oneLine) return;
+            const lineSlot = TITLE_ONE_LINE_SIZES[0];
+            const fits = (size: number) => {
+                el.style.setProperty('font-size', `${size}px`, 'important');
+                return el.clientHeight - 2 * TITLE_BLEED <= lineSlot + 0.5;
+            };
+            const size = fitTitleSize(fits);
             el.style.setProperty('font-size', `${size}px`, 'important');
-            return el.clientHeight - 2 * TITLE_BLEED <= lineSlot + 0.5;
+            el.style.setProperty('-webkit-line-clamp', String(Math.max(1, Math.floor(lineSlot / size))), 'important');
         };
-        const size = fitTitleSize(fits);
-        el.style.setProperty('font-size', `${size}px`, 'important');
-        el.style.setProperty('-webkit-line-clamp', String(Math.max(1, Math.floor(lineSlot / size))), 'important');
+        fit();
+        // The text title can arrive after this effect (GameTitle shows it once a logo turns out missing) and the font can
+        // load late: fit again then. The fit itself only changes the title's style, which this does not watch.
+        const View = box.ownerDocument?.defaultView as (Window & { MutationObserver?: typeof MutationObserver }) | null;
+        const observer = View?.MutationObserver ? new View.MutationObserver(fit) : null;
+        observer?.observe(box, { childList: true, subtree: true, characterData: true });
+        let live = true;
+        box.ownerDocument?.fonts?.ready?.then(() => live && fit()).catch(() => undefined);
+        return () => {
+            live = false;
+            observer?.disconnect();
+        };
     }, [oneLine, key]);
 }
 

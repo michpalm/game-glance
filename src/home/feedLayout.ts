@@ -80,9 +80,11 @@ export interface FeedRows {
 export function feedRows(tab: FeedTab, space: number, secondRow: boolean): FeedRows {
     const room = Math.max(FEED_CARD_H, Math.floor(Number.isFinite(space) ? space : FEED_CARD_H));
     const row1Full = tab === 'friends' ? FEED_CARD_H : FEED_ROW1_H;
-    if (!secondRow) return { row1: row1Full, row2: 0, row2Top: 0, total: row1Full };
     // Row 2 needs at least FEED_ROW2_MIN_H; when the room is short of that (a tall legend), row 1 gives up the
-    // difference, down to FEED_ROW1_MIN_H. Below that the sheet is accepted as is (row 2 stays at its minimum).
+    // difference, down to FEED_ROW1_MIN_H. Below that (a short canvas: Steam's display scale, #55) row 2 drops, so the
+    // sheet never reaches under Steam's legend.
+    const smallest = FEED_ROW1_MIN_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H;
+    if (!secondRow || room < smallest) return { row1: row1Full, row2: 0, row2Top: 0, total: row1Full };
     const lacking = row1Full + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H - room;
     const row1 = lacking > 0 ? Math.max(FEED_ROW1_MIN_H, row1Full - lacking) : row1Full;
     const row2Top = row1 + FEED_ROW_GAP + FEED_ROW2_HEADER;

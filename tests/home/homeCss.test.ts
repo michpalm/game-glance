@@ -4,7 +4,7 @@ import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
 import {
     statusCss, HOME_GLASS, HOME_PILL,
-    FEED_SHEET, giveWayVars, hexAlpha, homeCss, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
+    FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
@@ -1063,4 +1063,25 @@ describe('Home gives way when Steam\'s scale leaves too little room (#55)', () =
     });
     it('hides the chips row under gh-no-chips', () => expect(homeCss()).toMatch(/\.gh-no-chips \.gh-chips \{[^}]*display: none/));
     it('draws a logo to the one-line slot', () => expect(homeCss()).toMatch(/\.gh-one-line \.gh-logo \{[^}]*max-height: 58px/));
+});
+
+describe('homeStack: the stack\'s offsets with give-way (#55 review)', () => {
+    const top = (h: number, legend: number) => { const s = homeStack(h, legend, false); return s.shift - s.give.need; };
+    it('places the stack as today at 810 and 800 (default legend)', () => {
+        for (const h of [810.75, 800]) expect(top(h, 46)).toBe(stackShift(h, 46, false));
+    });
+    it('places the stack as today when a taller legend only needs the air (handheld 72)', () => {
+        expect(top(810.75, 72)).toBe(stackShift(810.75, 72, false));
+        expect(homeStack(810.75, 72, false).give.titleLines).toBe(2);
+    });
+    it('does not count the missing room twice on a short canvas with a tall legend', () => {
+        const s = homeStack(576, 51, false);
+        expect(s.shift).toBe(stackShift(576 + s.give.need, 51, false));
+        expect(s.give.need).toBeLessThanOrEqual(222);
+    });
+    it('moves the stack up by the room missing at 1.2 on the Ally', () => {
+        const s = homeStack(675, 46, false);
+        expect(s.give.need).toBe(123);
+        expect(s.shift).toBe(stackShift(810.75, 46, false) - 13 + 0);
+    });
 });

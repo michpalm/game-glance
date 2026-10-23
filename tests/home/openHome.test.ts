@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
-import { applyOpening, extrasFlags, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
+import { applyOpening, extrasFlags, readChipTexts, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
 import type { TwinSpec } from '../../src/home/openTwins';
 import { BRIDGE_FADE_EASE, mountOpenBridge } from '../../src/home/openBridge';
 
@@ -573,4 +573,27 @@ describe('lineMeasure', () => {
     it('nothing measurable: 0, so pageTargets keeps its constants', () => {
         expect(lineMeasure({ ownerDocument: null } as unknown as Element)('label', 9)).toBe(0);
     });
+});
+
+describe('hidden chips (#55: Steam\'s scale hid them)', () => {
+    const hidden = (key: string) => el(0, 0, 0, 0, { 'data-chip': key }, { '.gh-chip-label': el(0, 0, 0, 0), '.gh-chip-value': el(0, 0, 0, 0) });
+    it('are not measured, so no stat twin flies in from the corner', () => {
+        const root = home();
+        const withHidden = { ...root, querySelectorAll: (s: string) => (s === '.gh-chip' ? [hidden('played'), hidden('hltb')] : root.querySelectorAll(s)) };
+        expect(measureHome(withHidden as unknown as Element)!.chips).toEqual([]);
+    });
+    it('are not read as Home\'s stats, so the page\'s own columns fade in', () => {
+        const root = { querySelectorAll: (s: string) => (s === '.gh-chip' ? [hidden('played')] : []) };
+        expect(readChipTexts(root as unknown as Element)).toEqual([]);
+    });
+});
+
+describe('the title\'s measured size (#55)', () => {
+    it('reads the size the one-line fit set on the title', () => {
+        const root = home();
+        const title = { ...el(25, 250, 600, 58), style: { fontSize: '36px' } };
+        const withTitle = { ...root, querySelector: (q: string) => (q === '.gh-title-slot .gh-title' ? title : root.querySelector(q)) };
+        expect(measureHome(withTitle as unknown as Element)!.titleFont).toBe(36);
+    });
+    it('has no measured size without a fitted title', () => expect(measureHome(home() as unknown as Element)!.titleFont).toBeUndefined());
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    claimsPreferredFocus, FEED_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
+    claimsPreferredFocus, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
 } from '../../src/home/feedLayout';
 
 // Handoff: featured news 600, news 320, friend 230, recommended 187; gap 14; viewport 1440 - 2 x 44 = 1352.
@@ -336,4 +336,13 @@ describe('feedItems placeholders', () => {
         expect(items).toHaveLength(1);
         expect(items[0].backdrop).toEqual({ url: null, tone: null });
     });
+});
+
+describe('feedRows on a short canvas (#55: Steam\'s scale)', () => {
+    it('drops the second row when even the smallest rows do not fit', () => {
+        const r = feedRows('news', 300, true);
+        expect(r.row2).toBe(0);
+        expect(r.total).toBe(FEED_ROW1_H);
+    });
+    it('keeps the second row from the smallest size that fits', () => expect(feedRows('news', FEED_ROW1_MIN_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H, true).row2).toBe(FEED_ROW2_MIN_H));
 });
