@@ -1,4 +1,19 @@
-# Follow Steam's display scale (#55) — design
+# A larger default size (#55) — design
+
+2026-10-23. Status: implemented and checked on the Ally (19ce89b; docs/device-checklist.md). Replaces the earlier design below, which followed Steam's display scale (kept for its findings).
+
+## Decision (with Michael, 2026-10-23)
+
+Following Steam's display scale grew too complex: every larger scale took room from every surface, each give-way had to happen identically on Home and the game page for the open transition, and Clean look ran out of width. Instead, Game Glance gets one better default for everyone:
+
+- A fixed growth, as large as fits with only the air above the title giving way, at most 10%: 810 ÷ 745.6 ≈ 1.086 on 16:9 and ultrawide, 800 ÷ 745.6 ≈ 1.073 on 16:10 (`home/scale.defaultGrowth`, `AIR_ONLY_MIN_HEIGHT` = stack bottom 751.6 + legend reserve 46 − air 52).
+- The same growth for Home, the restyled page (baked into `--gg-d` per canvas shape), the status bar, the open transition and the screensaver; Steam's display scale is not read.
+- Nothing else gives way: the title keeps two lines, the chips, the feed and Clean look's stats stay as they are.
+- Kept from the earlier work: `homeStack` (the stack's shift after the air gives way), the feed's second row dropping and row 1 yielding on a short canvas, and the open transition skipping chips with no box.
+
+---
+
+# Earlier design: follow Steam's display scale (superseded)
 
 2026-10-23. Status: implemented and checked on the Ally (2026-10-23, docs/device-checklist.md); the page's title follows Home's one-line slot (decided on device). Branch `feature/3.6-hero-scale-whatsnew` (after 3.5.0).
 

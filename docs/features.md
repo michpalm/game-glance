@@ -89,7 +89,7 @@ An optional new Home screen, off by default (Quick Access → Game Glance → Sp
     then joins them. Under them, the games popular among your friends, with their pictures.
   - **Recommended:** Play next from your library, and, with Show wishlist deals on, up to six wishlist games on sale
     (the new price, then the old one struck through).
-- **Follows Steam's display scale.** Raise Steam's scale (Settings → Display) and Home, the game page and the status bar grow with Steam's own text; at 100% they look as before. On a large scale Home makes room by tightening its top: the title goes to one line, then the stats step aside.
+- **A comfortable size.** Text, cards and buttons are drawn a little larger than in earlier versions (about 8.6% on 16:9 screens, 7.3% on the Deck), on Home, the game page and the screensaver alike.
 - **Safe.** If anything in Spotlight Home fails, you get Steam's own Home instead of a broken screen.
 
 ## Screensaver
