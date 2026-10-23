@@ -5,12 +5,14 @@ const on = { spotlightHome: true, homeStatusBar: true, feedTabs: { news: true, f
 
 describe('spotlightRows (Quick Access: a row shows while the row it depends on is on)', () => {
     it('lists every row in order with everything on and a collection row', () =>
-        expect(spotlightRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'news', 'friends', 'recommended', 'wishlistDeals', 'statusBar', 'statusAvatar', 'gameLogo', 'heroFit']));
+        expect(spotlightRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'news', 'friends', 'recommended', 'wishlistDeals', 'statusBar', 'statusAvatar']));
     it('has no sort for the recent games row', () => expect(spotlightRows(on, false)).not.toContain('rowSort'));
-    it('keeps only the shared rows with Spotlight Home off', () =>
-        expect(spotlightRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome', 'statusBar', 'statusAvatar', 'gameLogo', 'heroFit']));
-    it('keeps the Games row and its sort for the Game Glance screensaver with Spotlight Home off', () =>
-        expect(spotlightRows({ ...on, spotlightHome: false, screensaverOn: true }, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'statusBar', 'statusAvatar', 'gameLogo', 'heroFit']));
+    it('shows only the main toggle with Spotlight Home off', () =>
+        expect(spotlightRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome']));
+    it('hides all subordinate rows with Spotlight Home off even when the screensaver is on', () => {
+        const screensaverOn = { ...on, spotlightHome: false, screensaverOn: true };
+        expect(spotlightRows(screensaverOn, true)).toEqual(['spotlightHome']);
+    });
     it('hides the profile picture with the status bar off', () => expect(spotlightRows({ ...on, homeStatusBar: false }, false)).not.toContain('statusAvatar'));
     it('hides wishlist deals with Recommended off', () =>
         expect(spotlightRows({ ...on, feedTabs: { ...on.feedTabs, recommended: false } }, false)).not.toContain('wishlistDeals'));

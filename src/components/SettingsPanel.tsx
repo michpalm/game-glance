@@ -127,24 +127,6 @@ export function SettingsPanel() {
                 onChange={(value) => settings.setStatusAvatar(value)}
             />
         ),
-        gameLogo: (
-            <ToggleField
-                label="Game logo"
-                description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
-                checked={gameLogo}
-                onChange={(value) => settings.setGameLogo(value)}
-            />
-        ),
-        heroFit: (
-            <DropdownItem
-                label="Hero art"
-                description={HERO_FIT_COPY[heroFit]}
-                menuLabel="Hero art"
-                rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
-                selectedOption={heroFit}
-                onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
-            />
-        ),
         news: (
             <ToggleField
                 label="What's new"
@@ -189,9 +171,29 @@ export function SettingsPanel() {
                 )}
             </PanelSection>
             <PanelSection title="Spotlight Home">
-                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs, screensaverOn: screensaver.enabled && screensaverAvailable() }, rowChosen !== RECENT_ROW).map((row) => (
+                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
                     <PanelSectionRow key={row}>{spotlightRow[row]}</PanelSectionRow>
                 ))}
+            </PanelSection>
+            <PanelSection title="Appearance">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Game logo"
+                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
+                        checked={gameLogo}
+                        onChange={(value) => settings.setGameLogo(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Hero art"
+                        description={HERO_FIT_COPY[heroFit]}
+                        menuLabel="Hero art"
+                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                        selectedOption={heroFit}
+                        onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
+                    />
+                </PanelSectionRow>
             </PanelSection>
             <PanelSection title="Screensaver">
                 {!screensaverAvailable() ? (
