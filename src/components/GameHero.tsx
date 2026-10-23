@@ -46,6 +46,7 @@ import { InfoCard } from './InfoCard';
 import { GameSourcePill } from './GameSourcePill';
 import { LibraryPill } from './LibraryPill';
 import { GameTitle } from './GameTitle';
+import { GameMetadata } from './GameMetadata';
 import { hltbUrl, openGameInfoTab, openHltbPage } from './cardActions';
 
 /** A canvas length in the restyled page's scale unit (themeCss: --gg-d). */
@@ -180,7 +181,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 <div className="gg-titleblock">
                     {/* As on Home: the title (or logo) first, the eyebrow under it. */}
                     <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} />
-                    {eyebrow && <div className="gg-eyebrow">{eyebrow}</div>}
+                    <GameMetadata key={game.appId} doc={pageDoc} eyebrow={eyebrow} />
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>

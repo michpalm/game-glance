@@ -15,7 +15,7 @@ export interface Settings {
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
-    homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) or 'spotlight' (the selected game wide, at the left)
+    homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 
@@ -24,11 +24,20 @@ const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: fa
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
+    let retained: Record<string, unknown> = {};
+    const object = (value: unknown): Record<string, unknown> =>
+        value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    // Save only the explicit change over retained raw values: an older version must not erase future preferences.
+    const persist = async (change: Partial<Settings>) => {
+        retained = { ...current, ...retained, ...change };
+        await kv.set(KEY, retained);
+    };
     const listeners = new Set<() => void>();
     const emit = () => listeners.forEach((listener) => listener());
     return {
         async load(): Promise<void> {
-            const raw = (await kv.get(KEY)) as Partial<Settings> | null;
+            retained = object(await kv.get(KEY));
+            const raw = retained as Partial<Settings>;
             const pick = <K extends keyof Settings>(key: K): Settings[K] =>
                 typeof raw?.[key] === 'boolean' ? (raw[key] as Settings[K]) : DEFAULTS[key];
             current = {
@@ -51,63 +60,63 @@ export function createSettingsStore(kv: KvBackend) {
         async setEnabled(enabled: boolean): Promise<void> {
             current = { ...current, enabled };
             emit();
-            await kv.set(KEY, current);
+            await persist({ enabled });
         },
         async setStatusAvatar(statusAvatar: boolean): Promise<void> {
             current = { ...current, statusAvatar };
             emit();
-            await kv.set(KEY, current);
+            await persist({ statusAvatar });
         },
         async setAutoPreload(autoPreload: boolean): Promise<void> {
             current = { ...current, autoPreload };
             emit();
-            await kv.set(KEY, current);
+            await persist({ autoPreload });
         },
         async setSpotlightHome(spotlightHome: boolean): Promise<void> {
             current = { ...current, spotlightHome };
             emit();
-            await kv.set(KEY, current);
+            await persist({ spotlightHome });
         },
         async setWishlistDeals(wishlistDeals: boolean): Promise<void> {
             current = { ...current, wishlistDeals };
             emit();
-            await kv.set(KEY, current);
+            await persist({ wishlistDeals });
         },
         async setHomeRow(homeRow: string): Promise<void> {
             current = { ...current, homeRow };
             emit();
-            await kv.set(KEY, current);
+            await persist({ homeRow });
         },
         async setHomeRowSort(homeRowSort: RowSort): Promise<void> {
             current = { ...current, homeRowSort };
             emit();
-            await kv.set(KEY, current);
+            await persist({ homeRowSort });
         },
         async setHomeRowStyle(homeRowStyle: RowStyle): Promise<void> {
             current = { ...current, homeRowStyle };
             emit();
-            await kv.set(KEY, current);
+            await persist({ homeRowStyle });
         },
         async setCleanPage(cleanPage: boolean): Promise<void> {
             current = { ...current, cleanPage };
             emit();
-            await kv.set(KEY, current);
+            await persist({ cleanPage });
         },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };
             emit();
-            await kv.set(KEY, current);
+            await persist({ homeStatusBar });
         },
         async setGameLogo(gameLogo: boolean): Promise<void> {
             current = { ...current, gameLogo };
             emit();
-            await kv.set(KEY, current);
+            await persist({ gameLogo });
         },
         /** One or more screensaver options. */
         async setScreensaver(change: Partial<ScreensaverOptions>): Promise<void> {
             current = { ...current, screensaver: { ...current.screensaver, ...change } };
             emit();
-            await kv.set(KEY, current);
+            await persist({ screensaver: { ...current.screensaver, ...object(retained.screensaver), ...change } as ScreensaverOptions });
         },
         subscribe(listener: () => void): () => void {
             listeners.add(listener);

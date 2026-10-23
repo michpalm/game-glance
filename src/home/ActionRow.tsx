@@ -2,14 +2,14 @@ import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ComponentType, CSSProperties, ReactNode, useRef, useState } from 'react';
 import { UnifideckCloudGlyph } from '../components/UnifideckCloudGlyph';
-import { IoCloudDoneOutline, IoCloudOfflineOutline, IoCloudOutline, IoCloudUploadOutline, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
+import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { markLaunch } from '../data/launchIntent';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
-import { pressCloud, steamCloudIcon } from './steamCloud';
+import { pressCloud } from './steamCloud';
 import { steamCheckIcon, steamControllerIcon, steamGearIcon, steamStreamMenuClasses } from './steamIcons';
 import { readSteamPill } from './steamPill';
 import { StreamChoice, streamChoices, StreamOverview } from './streaming';
@@ -182,14 +182,9 @@ function ActionButton({ className, label, onPress, preferredFocus, fill, setRef,
     );
 }
 
-/** Steam's own cloud icon in the state's variant (as the game page draws it); ours if Steam's is not found. */
-export function CloudIcon({ cloud }: { cloud: CloudState }) {
-    const Steam = steamCloudIcon();
-    if (Steam) return <Steam {...cloud.icon} />;
-    if (cloud.tone === 'off') return <IoCloudOfflineOutline />;
-    if (cloud.icon.uploaded) return <IoCloudDoneOutline />;
-    if (cloud.icon.save) return <IoCloudUploadOutline />;
-    return <IoCloudOutline />;
+/** The cloud circle's glyph: the same solid cloud in every state (#64); the state is the circle's badge (homeCss). */
+export function CloudIcon(_props: { cloud: CloudState }) {
+    return <IoCloud />;
 }
 
 /** Steam's own icon for a circle (as the game page draws it), ours if Steam's is not found. */

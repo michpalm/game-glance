@@ -297,3 +297,20 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
 3. Backend log on the device: `~/homebrew/logs/game-glance/`.
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.
+
+## 3.5.0 development checks
+
+These checks apply to the development branch, not the published 3.4.1 release.
+
+| Check | Expected | Result |
+| --- | --- | --- |
+| Choose version | Stable releases from 3.5.0 onward, including older pages, with installed/latest labels; selection alone never installs | Empty state PASS (Ally, 2026-10-22: "No versions from 3.5.0 onward are available yet.", nothing installed); list with real entries pending a test catalog |
+| Catalog offline/refresh | Last complete choices remain visible with a refresh error; removed selection cannot install a different version | Automated state/catalog coverage; device pending |
+| Version round trip | Upgrade from 3.5, downgrade to it, switch forward; picker stays available and settings survive | PASS on Ally, 2026-10-23, local 3.5.1 test package and real Decky installer; final original 3.5.0 files/settings verified. See validation/3.5.0-round-trip.md |
+| Installer confirmation | Correct upgrade/downgrade wording, cancellation leaves installed version unchanged | PASS on Ally, 2026-10-23: both dialog wordings, real accepted installs and cancellation in both directions. See validation/3.5.0-round-trip.md |
+| Minimal row | All portrait cards stay small, selection scrolls as Steam's row, no unused first-card gap | PASS (Ally, 2026-10-22): first, middle and last game small; row scrolls and dims earlier cards like Steam's |
+| Minimal inputs | Controller, held steps, tap/select/open, mouse, drag/flick, Library and loop previews work | Controller PASS (Ally, 2026-10-22): D-pad steps, View more in your library tile, right from it returns to the first game. Held steps, touch, mouse and drag/flick pending |
+| Minimal transition | Open and B return retain selection, without a temporary wide source card or handover jump | A opens the game page, B returns with the same game selected (Ally, 2026-10-22, still screenshots). Transition smoothness not judged |
+| Existing row styles | Steam and Spotlight retain their dimensions, art and movement | PASS (Ally, 2026-10-22): Steam wide first card; Spotlight puts the selected game wide at the left. Layout functions unchanged since 3.4.1. Switching styles by controller is stable (an earlier hang came from code-driven test clicks; see validation/3.5.0-performance.md) |
+| Controller battery | A connected Bluetooth controller shows in the pill before the system battery with the same percent as Steam's Bluetooth settings, low colour at 20% or below; off removes it within a minute, on brings it back; the built-in controller never shows | PASS (Ally, 2026-10-22, 8BitDo Ultimate 2C): 16% low, matching BlueZ, label "8BitDo Ultimate 2C Wireless, Battery 16%"; off → gone at the next read; on → back at 17% within 5 s of checking; no backend failures logged. Read on change (Steam's controller callback, 2 s later): off → gone at 23:31:20, on (connected 23:31:39) → back at 23:31:41. Two or more controllers not tested (one available) |
+| Cloud status badge (#64) | Home and game page: a white cloud like the other circles, the state as a dot at the top right (green / yellow / red / grey), the same on both so the open transition hands over without a change | Synced state PASS on Ally (2026-10-22, Ori): Home and page identical, glyph centred, badge at the top right. Open transition: the badge now keeps the page's size (counter-scaled like the icons), and the page cloud's ring is the other circles' 1 d unit (was 1 CSS px = 2 device px, seen settling); measured equal on the Ally; hand-over seamless (Michael, 2026-10-22). Syncing, failed and offline states not yet seen on device |

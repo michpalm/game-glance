@@ -1,7 +1,7 @@
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
-import { CLOUD_COLOURS } from '../home/cloud';
+import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -26,6 +26,15 @@ function cls(map: ClassMap, key: string): string | null {
     const name = map?.[key];
     return typeof name === 'string' && name.length > 0 ? `.${name}` : null;
 }
+
+/** The native source remains mounted; the restyled metadata row mirrors only a blocking explanation. */
+export function nativeUnavailableMessageSelectors({ root, play }: ThemeClasses): { container: string | null; message: string | null } {
+    const status = cls(play, 'StatusAndStats');
+    const unavailable = cls(play, 'PermanentlyUnavailable');
+    const label = cls(play, 'DetailsSectionStatus');
+    return { container: cls(root, 'ActionRow'), message: status && unavailable && label ? `${status}${unavailable} ${label}` : null };
+}
+
 
 /**
  * A focused pill's scale: 4% taller as a focused circle, but only as much wider as a circle grows (its height's share), not
@@ -243,7 +252,7 @@ export interface ThemeOptions {
  * does not sit on the cards. Nothing in Steam's page structure moves, so controller navigation and
  * scrolling stay Steam's.
  * If any class the layout needs is missing, none of the layout applies and the page stays stacked.
- * Without `restyle` the output is exactly 1.1.1's (pinned by a snapshot test); `restyle` appends restyleRules().
+ * Without `restyle` the 1.1.1 layout is preserved, with unavailable-status explanations (#62); `restyle` appends restyleRules().
  */
 export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {}): string {
     const { header, details, overview, root, play, launch } = classes;
@@ -267,7 +276,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
     const fail = cls(play, 'CloudStatusSyncFail');
     const offline = cls(play, 'OfflineMode');
     const menuButton = cls(play, 'MenuButton');
-    const hidden = present([cls(play, 'StatusAndStats'), cls(play, 'GameStatsSection'), cls(play, 'Playtime'), cls(play, 'LastPlayed')]);
+    const statusAndStats = cls(play, 'StatusAndStats');
+    const unavailable = cls(play, 'PermanentlyUnavailable');
+    // This wrapper also owns Steam's install-blocking explanations (#62), not just duplicate statistics.
+    // If its unavailable class is unknown, keep the wrapper rather than silently hiding the reason.
+    const hidden = present([statusAndStats && unavailable ? `${statusAndStats}:not(${unavailable})` : null, cls(play, 'GameStatsSection'), cls(play, 'Playtime'), cls(play, 'LastPlayed')]);
 
     const layout = topCapsule && inner && overviewPanel && tabs;
 
@@ -312,6 +325,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
 
         // Duplicate stats: our info card already shows play time.
         rule(hidden.length ? hidden : null, ` display: none !important; `),
+        // Unavailable reasons belong below the main button, in the row's existing lower gap. Keeping the wrapper
+        // in the flex row would push the controller/settings controls to the right (#62, found on the Ally).
+        rule(actionRow && statusAndStats && unavailable && `${actionRow}:has(> ${statusAndStats}${unavailable})`, ` position: relative !important; `),
+        rule(actionRow && statusAndStats && unavailable && `${actionRow} > ${statusAndStats}${unavailable}`, ` position: absolute !important; left: 0 !important;
+            top: calc(var(--gg-icon) + ${u(4)}) !important; max-height: none !important; overflow: visible !important; `),
 
         // Play row: pill Play button, round icon buttons, room for the cloud icon.
         rule(actionRow, ` justify-content: flex-start !important; align-items: flex-start !important; gap: var(--gg-gap) !important; `),
@@ -617,6 +635,10 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
     const menuButton = cls(play, 'MenuButton');
     const cloud = cls(play, 'CloudStatusRow');
     const cloudIcon = cls(play, 'CloudStatusIcon');
+    const syncing = cls(play, 'CloudSynching');
+    const problem = cls(play, 'CloudSyncProblem');
+    const fail = cls(play, 'CloudStatusSyncFail');
+    const offline = cls(play, 'OfflineMode');
     const versionRow = cls(shared, 'SharedLibrary');
     const versionLink = versionRow && `${versionRow} a[role="button"]`;
 
@@ -670,7 +692,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
         // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring and glow.
-        rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
             backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
@@ -678,6 +700,20 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Centred as Home's: Steam's icon box (16 u in the 1.1.1 theme) as tall as the icon, which hung out of its bottom
         // and sat low in the circle after the open transition (1.65 px docked, Michael on the Ally).
         rule(cloudIcon, ` height: ${d(PAGE_LAYOUT.cloudIcon)} !important; `),
+        // One white cloud in every state, as Home's (#64): Steam's state icon is hidden and ours drawn in its place, with
+        // the halo; the state is the badge at the top right (CLOUD_DOT, from --gg-cloud-dot set by the state rules above).
+        rule(cloud, ` color: #ffffff !important; overflow: visible !important; `),
+        rule(cloud && syncing && [`${cloud}${syncing}`, `${syncing} ${cloud}`, `${cloud} ${syncing}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-warn); `),
+        rule(cloud && problem && [`${cloud}${problem}`, `${problem} ${cloud}`, `${cloud} ${problem}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-bad); `),
+        rule(cloud && fail && [`${cloud}${fail}`, `${fail} ${cloud}`, `${cloud} ${fail}`], ` color: #ffffff !important; --gg-cloud-dot: var(--gg-bad); `),
+        rule(cloud && offline && `${offline} ${cloud}`, ` color: #ffffff !important; --gg-cloud-dot: var(--gg-off); `),
+        rule(cloud && `${cloud} svg`, ` display: none !important; `),
+        rule(cloud && `${cloud}::before`, ` content: "" !important; display: block !important; position: absolute !important; inset: 0 !important; margin: auto !important; width: ${d(PAGE_LAYOUT.cloudIcon)} !important; height: ${d(PAGE_LAYOUT.cloudIcon)} !important;
+            background: ${CLOUD_GLYPH_URL} center / contain no-repeat !important; filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
+        rule(cloud && `${cloud}::after`, ` content: "" !important; position: absolute !important; top: ${d(CLOUD_DOT.inset)} !important; right: ${d(CLOUD_DOT.inset)} !important;
+            left: auto !important; bottom: auto !important; margin: 0 !important;
+            width: ${d(CLOUD_DOT.size)} !important; height: ${d(CLOUD_DOT.size)} !important; box-sizing: content-box !important; border-radius: 50% !important;
+            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: ${d(CLOUD_DOT.ring)} solid ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
         rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
         rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
 
@@ -710,6 +746,11 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // full-screen layout applies (below): all-or-nothing, like the rest of the layout.
         `.gg-titleblock { display: none; flex-direction: column; gap: ${d(PAGE_LAYOUT.titleBlock.gap)}; max-width: ${d(640)}; margin: 1vh var(--gg-side); color: #fff; font-family: inherit; }`,
         `.gg-eyebrow { ${pageType('eyebrow', d)} color: var(--glance-accent-text); }`,
+        `.gg-metadata { display: flex; flex-wrap: wrap; align-items: center; column-gap: ${d(16)}; row-gap: ${d(6)}; }`,
+        `.gg-availability { display: inline-flex; align-items: center; gap: ${d(6)}; font-size: ${d(PAGE_LAYOUT.titleBlock.eyebrow)}; line-height: 1.2; font-weight: 700; text-transform: uppercase; color: #fff; }`,
+        `.gg-availability img { display: block; width: ${d(14)}; height: ${d(14)}; object-fit: contain; }`,
+        // Keep the native fallback until the mirrored reason exists; never hide the only explanation.
+        rule(layout && inner && cls(play, 'StatusAndStats') && cls(play, 'PermanentlyUnavailable') ? `${inner}:has(> .gg-titleblock .gg-availability) ${cls(play, 'StatusAndStats')}${cls(play, 'PermanentlyUnavailable')}` : null, ` display: none !important; `),
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
         `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)}
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;

@@ -1,8 +1,10 @@
+import asyncio
 import datetime
 import os
 
 import decky
 
+from gameglance.bluetooth import read_controllers
 from gameglance.heroic import HeroicLibrary, heroic_cache_dirs
 from gameglance.home_errors import FILE_NAME, append_log, start_entry
 from gameglance.kv import KvStore
@@ -64,6 +66,14 @@ class Plugin:
         except Exception:
             decky.logger.exception("[game-glance] get_lutris_playtime failed")
             return None
+
+    async def get_controller_batteries(self):
+        # [{"name", "percent"}] for connected Bluetooth controllers, from BlueZ; busctl runs off the event loop.
+        try:
+            return await asyncio.to_thread(read_controllers, log=lambda reason: decky.logger.warning(f"[game-glance] controller batteries: {reason}"))
+        except Exception:
+            decky.logger.exception("[game-glance] get_controller_batteries failed")
+            return []
 
     async def log_home_error(self, entry: str) -> None:
         # Home recovered from an error (src/home/RouteGuard): kept in the plugin's own log for a bug report.

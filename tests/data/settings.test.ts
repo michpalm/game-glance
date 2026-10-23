@@ -186,3 +186,46 @@ describe('screensaver settings', () => {
         expect(reloaded.get().screensaver).toEqual({ enabled: true, logo: false, statusBar: true, stats: true });
     });
 });
+
+describe('settings survive a return to an older version', () => {
+    it('preserves future fields and unsupported values while changing a known setting', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { homeRowStyle: 'future-style', future: { mode: 2 }, screensaver: { logo: 'future-mode', future: 7 } });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().homeRowStyle).toBe('steam');
+        expect(store.get().screensaver.logo).toBe(true);
+        await store.setEnabled(false);
+        await store.setScreensaver({ stats: false });
+        expect(await kv.get('settings')).toMatchObject({ enabled: false, homeRowStyle: 'future-style', future: { mode: 2 }, screensaver: { logo: 'future-mode', future: 7, stats: false } });
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().enabled).toBe(false);
+        await reloaded.setHomeRowStyle('steam');
+        expect(await kv.get('settings')).toMatchObject({ homeRowStyle: 'steam', future: { mode: 2 }, screensaver: { future: 7 } });
+    });
+    it('recovers from non-object payloads without storing array indices', async () => {
+        for (const raw of [null, 42, 'bad', [1, 2]]) {
+            const kv = memoryKv();
+            await kv.set('settings', raw);
+            const store = createSettingsStore(kv);
+            await store.load();
+            await store.setEnabled(false);
+            expect(await kv.get('settings')).toMatchObject({ enabled: false });
+            expect(await kv.get('settings')).not.toHaveProperty('0');
+        }
+    });
+});
+
+describe('Minimal setting', () => {
+    it('remembers Minimal across reloads while leaving the default Steam', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().homeRowStyle).toBe('steam');
+        await store.setHomeRowStyle('minimal' as Parameters<typeof store.setHomeRowStyle>[0]);
+        const other = createSettingsStore(kv);
+        await other.load();
+        expect(other.get().homeRowStyle).toBe('minimal');
+    });
+});

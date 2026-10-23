@@ -140,3 +140,10 @@ Game Glance follows Steam's language and uses Steam's own words wherever Steam h
 juego" in Spanish, the collection and sort names, the cloud states and more). Unifideck's labels come from Unifideck. A
 few words with no Steam equivalent stay in English: the HowLongToBeat column names and this Quick Access panel (see
 [localization.md](localization.md)).
+
+## In development for 3.5.0
+
+- **Cloud status badge (#64):** the cloud circle on Home and the game page shows one white cloud, like the other buttons, with the sync state as a small dot at its top right: green synced, yellow syncing, red failed, grey offline. Unifideck games keep Unifideck's own look, and the page without Spotlight Home keeps its coloured icon.
+- **Controller battery:** each connected Bluetooth controller's battery in the status bar, before the system battery (lowest first, at most two, then +n; red at 20% or below), read from the system's Bluetooth service so it matches Steam's Bluetooth settings. The built-in controller and USB controllers are not shown, and charging is not shown. Checked on the Ally with an 8BitDo Ultimate 2C.
+- **Version choice:** select an installable stable release from 3.5.0 onward in Quick Access → Game Glance → Updates. Decky asks before an upgrade or downgrade. Original release assets are preserved. Device round-trip validation is still pending.
+- **Minimal games row:** a third style with small portrait cards throughout and Steam-style scrolling. The existing Steam and Spotlight styles remain available. Device acceptance is still pending.

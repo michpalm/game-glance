@@ -1,5 +1,5 @@
 import { CSSProperties, ReactElement, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { avatarView, BatteryView, batteryColour, downloadStatus, statusAway, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement, statusScale } from './statusItems';
+import { avatarView, BatteryView, ControllerBatteryView, controllerItems, batteryColour, downloadStatus, statusAway, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement, statusScale } from './statusItems';
 import { COVER_CSS, useHideSteamBar } from './useHideSteamBar';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
 import { acquireDownloads, activeDownload, subscribeDownloads } from './downloadStore';
@@ -65,6 +65,41 @@ function WiredIcon() {
     );
 }
 
+function GamepadIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+            <path d="M7 6h10a5 5 0 0 1 4.8 6.4l-1.3 4.4a2.5 2.5 0 0 1-4.2 1L14.5 16h-5l-1.8 1.8a2.5 2.5 0 0 1-4.2-1l-1.3-4.4A5 5 0 0 1 7 6z" />
+            <path d="M7.5 9.5v3M6 11h3" />
+            <circle cx="15.5" cy="10" r="0.9" fill="currentColor" stroke="none" />
+            <circle cx="17.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+
+/**
+ * The connected Bluetooth controllers' batteries (lowest first, at most two, then "+n"), in the low colour at or below
+ * LOW_BATTERY like the system battery. Nothing without controllers. No hooks: the bar passes the store's list.
+ */
+export function ControllerItems({ controllers }: { controllers: ControllerBatteryView[] }) {
+    const { shown, more } = controllerItems(controllers);
+    return (
+        <>
+            {shown.map((c, i) => (
+                <span key={`${c.name}-${i}`} className={`gh-status-item gh-controller${c.low ? ' gh-status-low' : ''}`} aria-label={`${c.name}, ${tr('battery', [c.percent])}`}>
+                    <GamepadIcon />
+                    {c.percent}%
+                </span>
+            ))}
+            {more > 0 && (
+                // English only: Steam's strings have none for this (rare: three or more controllers).
+                <span className="gh-status-item gh-controller" aria-label={`${more} more ${more === 1 ? 'controller' : 'controllers'}`}>
+                    +{more}
+                </span>
+            )}
+        </>
+    );
+}
+
 const CONNECTION: Record<ConnectionKind, { icon: () => ReactElement; label: () => string }> = {
     wifi: { icon: WifiIcon, label: () => tr('connected') },
     wired: { icon: WiredIcon, label: () => tr('wired') },
@@ -123,7 +158,7 @@ const DOT_LABEL: Record<PersonaDot, () => string> = { online: () => tr('online')
 export function StatusBar({ away: topBarFocus, scale }: { away: boolean; scale: number }) {
     useEffect(() => startStatus(), []);
     useEffect(() => acquireDownloads(), []);
-    const { battery, connection } = useSyncExternalStore(subscribeStatus, statusState, statusState);
+    const { battery, connection, controllers } = useSyncExternalStore(subscribeStatus, statusState, statusState);
     const percent = useSyncExternalStore(subscribeDownloads, downloadPercent, downloadPercent);
     const clock = useClock();
     const self = useSelfPersona();
@@ -172,6 +207,7 @@ export function StatusBar({ away: topBarFocus, scale }: { away: boolean; scale: 
                         <conn.icon />
                     </span>
                 )}
+                <ControllerItems controllers={controllers} />
                 {battery && (
                     <span className={`gh-status-item${battery.low ? ' gh-status-low' : ''}`} aria-label={`${tr('battery', [battery.percent])}${battery.charging ? `, ${tr('charging').toLowerCase()}` : ''}`}>
                         <BatteryIcon battery={battery} />

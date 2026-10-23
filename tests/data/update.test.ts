@@ -142,3 +142,52 @@ describe('daily check (as in Ambideck)', () => {
         await expect(failing.daily()).rejects.toThrow('offline');
     });
 });
+
+describe('install a chosen version', () => {
+    it('uses the downgrade prompt for an older release and the update prompt for a newer one', async () => {
+        const { installVersion } = await import('../../src/data/update');
+        const call = vi.fn(async () => undefined);
+        const r = { version: '3.5.0', url: 'https://github.com/michpalm/game-glance/releases/download/v3.5.0/game-glance.zip', sha256: SHA };
+        expect(await installVersion(r, '4.0.0', { call })).toBe(true);
+        expect(call).toHaveBeenLastCalledWith('utilities/install_plugin', r.url, 'Game Glance', '3.5.0', SHA, 3);
+        expect(await installVersion(r, '3.4.1', { call })).toBe(true);
+        expect(call).toHaveBeenLastCalledWith('utilities/install_plugin', r.url, 'Game Glance', '3.5.0', SHA, 2);
+    });
+    it('does not reinstall the current version or start an install with an unknown current version', async () => {
+        const { installVersion } = await import('../../src/data/update');
+        const call = vi.fn(async () => undefined);
+        const r = { version: '3.5.0', url: 'https://github.com/a/game-glance.zip', sha256: SHA };
+        expect(await installVersion(r, '3.5.0', { call })).toBe(false);
+        expect(await installVersion(r, 'bad', { call })).toBe(false);
+        expect(call).not.toHaveBeenCalled();
+        expect(await installVersion(r, '4.0.0', undefined)).toBe(false);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        expect(await installVersion(r, '4.0.0', { call: async () => { throw Error('offline'); } })).toBe(false);
+        warn.mockRestore();
+    });
+});
+
+it('recognizes equivalent version labels for installed markers and no-op actions', async () => {
+    const { sameVersion } = await import('../../src/data/update');
+    expect(sameVersion('v3.5', '3.5.0')).toBe(true);
+    expect(sameVersion('3.5.0', '3.5.1')).toBe(false);
+    expect(sameVersion('bad', 'bad')).toBe(false);
+    expect(sameVersion('3.5.0-rc.1', '3.5.0')).toBe(false);
+});
+
+it('shares one pending install across latest-update and selected-version actions', async () => {
+    const { createInstallGate } = await import('../../src/data/update');
+    const states: boolean[] = [];
+    const gate = createInstallGate((busy) => states.push(busy));
+    let finish!: (ok: boolean) => void;
+    let calls = 0;
+    const first = gate.run(() => { calls++; return new Promise((resolve) => { finish = resolve; }); });
+    expect(await gate.run(async () => { calls++; return true; })).toBeNull();
+    expect(calls).toBe(1);
+    expect(states).toEqual([true]);
+    finish(true);
+    expect(await first).toBe(true);
+    expect(states).toEqual([true, false]);
+    expect(await gate.run(async () => false)).toBe(false);
+    expect(states).toEqual([true, false, true, false]);
+});

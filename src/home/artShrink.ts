@@ -119,6 +119,16 @@ export function loadDecoded(url: string, crossOrigin = false): Promise<HTMLImage
     }
 }
 
+/**
+ * `url`, a blob copy just made, when it decodes; else null, and the blob is revoked: nothing else holds it yet, so it would
+ * stay in memory for the plugin's lifetime.
+ */
+export async function keepIfDecoded(url: string, decode: (url: string) => Promise<unknown>, revoke: (url: string) => void = (u) => URL.revokeObjectURL(u)): Promise<string | null> {
+    if (await decode(url)) return url;
+    revoke(url);
+    return null;
+}
+
 /** The file at `url`, as bytes to decode; null when it does not load. */
 async function fetchBlob(url: string): Promise<Blob | null> {
     if (typeof fetch !== 'function') return null;
@@ -148,7 +158,7 @@ async function createCopy(url: string, size: Size, type: CopyType, source?: Imag
         ctx.drawImage(bitmap, 0, 0);
         bitmap.close?.();
         const copy = URL.createObjectURL(await canvas.convertToBlob({ type, quality: 0.9 }));
-        return (await loadDecoded(copy)) ? copy : null;
+        return await keepIfDecoded(copy, loadDecoded);
     } catch {
         return null;
     }
