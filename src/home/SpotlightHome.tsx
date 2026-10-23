@@ -3,6 +3,7 @@ import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect,
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
+import { restoreZoneFor, shownTabs } from './feedTabs';
 import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, openGame, openLibrary } from './homeNav';
@@ -140,8 +141,11 @@ export function SpotlightHome() {
     // a cold start. It is applied as soon as the recents are known and before the content mounts, so Home never shows
     // the first game and then jumps. `restoring` also keeps the Play pill from claiming focus while it runs.
     const [restore] = useState(takeRestore);
-    // Home is clean: the What's new, Friends and Recommended tabs are always there (Down reaches them) but stay out of sight until focus is in them.
-    const { homeStatusBar, gameLogo, homeRowStyle, heroFit } = useSettings();
+    // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
+    // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
+    const { homeStatusBar, gameLogo, homeRowStyle, heroFit, feedTabs } = useSettings();
+    const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
+    const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
     const [restoring, setRestoring] = useState(restore !== null);
     // Back from a page (B): Home is just there (motion.RETURN_TIMINGS): Steam's page fades are off for a moment and its UI fades in.
@@ -221,6 +225,11 @@ export function SpotlightHome() {
     // Home leaves B to Steam (focusZones.onBack).
     const recentsRef = useRef<HTMLDivElement | null>(null);
     const focusGames = () => focusElement(recentsRef.current, 'the game cards');
+    // The last tab was turned off (Quick Access over Home) while focus was in the feed: back to the game cards.
+    useEffect(() => {
+        if (!hasFeed && sheetUp) focusGames();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasFeed]);
     // L1/R1: a new selection. Moving onto the Library card drops the circles, so a focused circle hands focus to the
     // pill first (the pill element itself stays, it only turns into the Library pill).
     const select = (next: number) => {
@@ -348,6 +357,7 @@ export function SpotlightHome() {
     const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
     /** Raises the feed sheet as Down does: focus to its current tab (the swipe up, the mouse's sheet toggle). */
     const raiseSheet = () => {
+        if (!hasFeed) return;
         const root = rootRef.current;
         focusElement(root?.querySelector<HTMLElement>('.gh-tab-on') ?? root?.querySelector<HTMLElement>('.gh-tab'), 'the feed tab');
     };
@@ -451,7 +461,7 @@ export function SpotlightHome() {
     // Once the content is up: focus what was focused. The game cards or the actions here; the tabs and the feed are
     // the feed sheet's (their cards may still be loading), which says when it is done. Without a restore (a cold start
     // or a fresh visit) Home opens on the first game card, as Steam's own Home does.
-    const restoreZone: Zone = restore?.zone ?? 'recents';
+    const restoreZone: Zone = restoreZoneFor(restore?.zone, hasFeed);
     useEffect(() => {
         if (contentUp && !restore) focusElementSettled(recentsRef.current, 'the game cards');
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -503,7 +513,7 @@ export function SpotlightHome() {
                     {/* The page container: moved down by the stack shift (homeCss.stackShift); raised while focus is in the tabs or feed. */}
                     <div className={`gh-page${sheetUp ? ' gh-page-up' : ''}`}>
                         {/* The mouse's sheet toggle (homeCss: shown in mouse mode only; not Focusable, so the controller never lands on it). */}
-                        {contentUp && game ? (
+                        {contentUp && game && hasFeed ? (
                             <div className="gh-sheet-toggle" role="button" aria-label={sheetUp ? 'Back to the games' : 'Show the feed'} onClick={() => (sheetUp ? focusGames() : raiseSheet())}>
                                 <svg viewBox="0 0 28 12" aria-hidden="true">
                                     <path d="M2 2 L14 10 L26 2" />
@@ -535,8 +545,9 @@ export function SpotlightHome() {
                                     <HomePills appId={game.appId} source={data.source} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} />
                                 )}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
-                                <FeedSheet
+                                {hasFeed && <FeedSheet
                                         data={data}
+                                        tabs={feedShown}
                                         raised={sheetUp}
                                         viewport={canvas.logicalWidth - feedViewportInset(side, tv)}
                                         space={feedSpace(logicalHeight, legend, raiseDelta)}
@@ -545,7 +556,7 @@ export function SpotlightHome() {
                                         scale={canvasScale}
                                         restore={restore}
                                         onRestored={() => setRestoring(false)}
-                                    />
+                                    />}
                             </>
                         ) : showEmptyMessage(data.games.length, data.recentsSettled) ? (
                             // No recents once the boot-time retries are over: the Library action, so Home is never

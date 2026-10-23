@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FEED_TAB_IDS, FEED_TABS_DEFAULT, feedTabsOf, shownTabs } from '../../src/home/feedTabs';
+import { FEED_TAB_IDS, FEED_TABS_DEFAULT, feedTabsOf, nextTabId, restoreTabId, restoreZoneFor, shownTabs } from '../../src/home/feedTabs';
 
 describe('feedTabsOf', () => {
     it('defaults every tab on', () => expect(feedTabsOf(undefined)).toEqual({ news: true, friends: true, recommended: true }));
@@ -16,4 +16,29 @@ describe('shownTabs', () => {
     });
     it('drops tabs that are off', () => expect(shownTabs({ news: false, friends: true, recommended: false })).toEqual(['friends']));
     it('is empty with all off', () => expect(shownTabs({ news: false, friends: false, recommended: false })).toEqual([]));
+});
+
+describe('restoreTabId', () => {
+    it('keeps a remembered tab that is shown', () => expect(restoreTabId('friends', ['news', 'friends'])).toBe('friends'));
+    it('falls back to the first shown tab for a tab now off', () => expect(restoreTabId('news', ['friends', 'recommended'])).toBe('friends'));
+    it('uses the first shown tab with nothing remembered', () => expect(restoreTabId(null, ['recommended'])).toBe('recommended'));
+    it('is null with no tab shown', () => expect(restoreTabId('news', [])).toBeNull());
+});
+
+describe('nextTabId', () => {
+    it('keeps the selected tab while it is shown', () => expect(nextTabId('recommended', ['news', 'recommended'])).toBe('recommended'));
+    it('moves to the first shown tab when the selected one is turned off', () => expect(nextTabId('news', ['friends', 'recommended'])).toBe('friends'));
+    it('is null when the last tab is turned off', () => expect(nextTabId('friends', [])).toBeNull());
+});
+
+describe('restoreZoneFor', () => {
+    it('keeps the remembered zone while the feed has a tab', () => {
+        expect(restoreZoneFor('feed', true)).toBe('feed');
+        expect(restoreZoneFor('actions', false)).toBe('actions');
+    });
+    it('lands on the game cards for a feed zone when every tab is off', () => {
+        expect(restoreZoneFor('feed', false)).toBe('recents');
+        expect(restoreZoneFor('tabs', false)).toBe('recents');
+    });
+    it('lands on the game cards without a remembered zone', () => expect(restoreZoneFor(undefined, true)).toBe('recents'));
 });
