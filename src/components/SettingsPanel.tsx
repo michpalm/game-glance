@@ -1,12 +1,13 @@
 import { toaster } from '@decky/api';
 import { HERO_FITS, HeroFit } from '../home/heroFit';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
+import { SpotlightRow, spotlightRows } from './settingsRows';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
@@ -21,7 +22,7 @@ const HERO_FIT_COPY: Record<HeroFit, string> = {
 };
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, heroFit, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, heroFit, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -63,6 +64,113 @@ export function SettingsPanel() {
         setOverrideId(null);
     };
 
+    // Spotlight Home's rows, shown in settingsRows' order: each only while the row it depends on is on.
+    const spotlightRow: Record<SpotlightRow, ReactElement> = {
+        spotlightHome: (
+            <ToggleField
+                label="Spotlight Home"
+                description="Replaces Steam's Home screen. Off returns Steam's own Home."
+                checked={spotlightHome}
+                onChange={(value) => settings.setSpotlightHome(value)}
+            />
+        ),
+        gamesRow: (
+            <DropdownItem
+                label="Games row"
+                description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
+                menuLabel="Games row"
+                rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
+                selectedOption={rowChosen}
+                onChange={(option) => settings.setHomeRow(String(option.data))}
+            />
+        ),
+        rowSort: (
+            <DropdownItem
+                label={sortByLabel()}
+                menuLabel={sortByLabel()}
+                rgOptions={ROW_SORTS.map((s) => ({ data: s, label: rowSortLabel(s) }))}
+                selectedOption={homeRowSort}
+                onChange={(option) => settings.setHomeRowSort(option.data as RowSort)}
+            />
+        ),
+        rowStyle: (
+            <DropdownItem
+                label="Games row style"
+                description="Steam: the first game stays wide and selection moves along the row. Spotlight: the selected game stays wide at the left. Minimal: all cards stay small."
+                menuLabel="Games row style"
+                rgOptions={[{ data: 'steam', label: 'Steam' }, { data: 'spotlight', label: 'Spotlight' }, { data: 'minimal', label: 'Minimal' }]}
+                selectedOption={homeRowStyle}
+                onChange={(option) => settings.setHomeRowStyle(option.data as RowStyle)}
+            />
+        ),
+        wishlistDeals: (
+            <ToggleField
+                label="Show wishlist deals"
+                description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
+                checked={wishlistDeals}
+                onChange={(value) => settings.setWishlistDeals(value)}
+            />
+        ),
+        statusBar: (
+            <ToggleField
+                label="Status bar"
+                description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
+                checked={homeStatusBar}
+                onChange={(value) => settings.setHomeStatusBar(value)}
+            />
+        ),
+        statusAvatar: (
+            <ToggleField
+                label="Profile picture in the status bar"
+                description="Shows your avatar, round and ringed in your online colour, instead of the dot."
+                checked={statusAvatar}
+                onChange={(value) => settings.setStatusAvatar(value)}
+            />
+        ),
+        gameLogo: (
+            <ToggleField
+                label="Game logo"
+                description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
+                checked={gameLogo}
+                onChange={(value) => settings.setGameLogo(value)}
+            />
+        ),
+        heroFit: (
+            <DropdownItem
+                label="Hero art"
+                description={HERO_FIT_COPY[heroFit]}
+                menuLabel="Hero art"
+                rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                selectedOption={heroFit}
+                onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
+            />
+        ),
+        news: (
+            <ToggleField
+                label="What's new"
+                description="News and events from your games, and recently updated games."
+                checked={feedTabs.news}
+                onChange={(value) => settings.setFeedTab('news', value)}
+            />
+        ),
+        friends: (
+            <ToggleField
+                label="Friends"
+                description="What your friends are playing, and what is trending among them."
+                checked={feedTabs.friends}
+                onChange={(value) => settings.setFeedTab('friends', value)}
+            />
+        ),
+        recommended: (
+            <ToggleField
+                label="Recommended"
+                description="Games from your library to play next."
+                checked={feedTabs.recommended}
+                onChange={(value) => settings.setFeedTab('recommended', value)}
+            />
+        ),
+    };
+
     return (
         <>
             <PanelSection title="Game page">
@@ -81,87 +189,9 @@ export function SettingsPanel() {
                 )}
             </PanelSection>
             <PanelSection title="Spotlight Home">
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Spotlight Home"
-                        description="Replaces Steam's Home screen. Off returns Steam's own Home."
-                        checked={spotlightHome}
-                        onChange={(value) => settings.setSpotlightHome(value)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Status bar"
-                        description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
-                        checked={homeStatusBar}
-                        onChange={(value) => settings.setHomeStatusBar(value)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Profile picture in the status bar"
-                        description="Shows your avatar, round and ringed in your online colour, instead of the dot."
-                        checked={statusAvatar}
-                        onChange={(value) => settings.setStatusAvatar(value)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Game logo"
-                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
-                        checked={gameLogo}
-                        onChange={(value) => settings.setGameLogo(value)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <DropdownItem
-                        label="Games row"
-                        description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
-                        menuLabel="Games row"
-                        rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
-                        selectedOption={rowChosen}
-                        onChange={(option) => settings.setHomeRow(String(option.data))}
-                    />
-                </PanelSectionRow>
-                {rowChosen !== RECENT_ROW && (
-                    <PanelSectionRow>
-                        <DropdownItem
-                            label={sortByLabel()}
-                            menuLabel={sortByLabel()}
-                            rgOptions={ROW_SORTS.map((s) => ({ data: s, label: rowSortLabel(s) }))}
-                            selectedOption={homeRowSort}
-                            onChange={(option) => settings.setHomeRowSort(option.data as RowSort)}
-                        />
-                    </PanelSectionRow>
-                )}
-                <PanelSectionRow>
-                    <DropdownItem
-                        label="Games row style"
-                        description="Steam: the first game stays wide and selection moves along the row. Spotlight: the selected game stays wide at the left. Minimal: all cards stay small."
-                        menuLabel="Games row style"
-                        rgOptions={[{ data: 'steam', label: 'Steam' }, { data: 'spotlight', label: 'Spotlight' }, { data: 'minimal', label: 'Minimal' }]}
-                        selectedOption={homeRowStyle}
-                        onChange={(option) => settings.setHomeRowStyle(option.data as RowStyle)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <DropdownItem
-                        label="Hero art"
-                        description={HERO_FIT_COPY[heroFit]}
-                        menuLabel="Hero art"
-                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
-                        selectedOption={heroFit}
-                        onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Show wishlist deals"
-                        description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
-                        checked={wishlistDeals}
-                        onChange={(value) => settings.setWishlistDeals(value)}
-                    />
-                </PanelSectionRow>
+                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
+                    <PanelSectionRow key={row}>{spotlightRow[row]}</PanelSectionRow>
+                ))}
             </PanelSection>
             <PanelSection title="Screensaver">
                 {!screensaverAvailable() ? (
