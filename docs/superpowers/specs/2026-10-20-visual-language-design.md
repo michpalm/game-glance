@@ -70,10 +70,11 @@ Home's original handoff values (comment in `src/home/homeCss.ts`): ink `#07090c`
 |---|---|---|
 | `glass` | `rgba(12,16,22,.40)`, backdrop blur 16 px | Cards, chips, buttons, menu bar and panel, status pill |
 | `glass-strong` | `rgba(12,16,22,.55)` | Anything layered on glass: focused rows, avatar rings |
-| `glass-solid` | `rgba(12,16,22,.75)` | Small badges that must read on any artwork |
+| `glass-solid` | `rgba(12,16,22,.75)` | Small badges that must read on any artwork, including the feed card pills with `edge-raised` and white text (visual reference Q24, approved 2026-10-25: pills carry no accent) |
 | `ink` | `#07090c` | Unchanged |
 | `scrim` | `rgb(5,7,10)` | Page fades; unchanged |
-| `art-fill` | `blur(42px) saturate(1.25) brightness(.8)` on a copy of the art, drawn larger than its box | Blurred artwork behind art that does not fill its space: the hero's whole-art mode, Home's hero fallback (`.gh-hero-blur`); later the capsule and feed-card fills |
+| `art-fill` | `blur(42px) saturate(1.25) brightness(.8)` on a copy of the art, drawn larger than its box | Blurred artwork that stands alone: the hero's whole-art mode, Home's hero fallback (`.gh-hero-blur`), the Recents capsule fill (`.gh-cap-blur`) |
+| `art-fill-dim` | `blur(42px) saturate(.7) brightness(.5)`, drawn the same way | Blurred artwork that carries text: the feed's friend backdrops (`.gh-card-backdrop`) and news fills (`.gh-card-fit-blur`) (visual reference Q23, approved 2026-10-25) |
 
 One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own token, `art-fill`, Home's existing hero fill. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
 
@@ -209,6 +210,8 @@ These are the only intended visible changes to Home, the game page, the screensa
 6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role (11 / 800 / .16em), matching Home's labels (Q21).
 7. Text on accent fills is white: Home's Library button and the feed card pills change from `#0b0d10` to white (Q20).
 8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150 (Q22).
+9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent to `glass-solid` with a raised edge and white text (Q24).
+10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the look stays as calm as today (Q23).
 
 ### Branch and release
 
