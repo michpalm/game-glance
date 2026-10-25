@@ -1,6 +1,6 @@
 # Game Glance visual language
 
-Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review. No code has changed.
+Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review (re-review on 3.6 in progress, 2026-10-25). No code has changed.
 
 Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact; Q1–Q14 with the approved option marked "Proposed").
 
@@ -32,31 +32,33 @@ Recorded cases:
 
 ## Purpose and success criteria
 
-Give every Game Glance surface one consistent visual language, so a control looks and behaves the same wherever it appears. Surfaces: Spotlight Home, the game page, the status bar, the screensaver, the plugin settings panel and the floating menu.
+Give every Game Glance surface one consistent visual language, so a control looks and behaves the same wherever it appears. Surfaces: Spotlight Home, the game page, the screensaver and the floating menu. The status bar is part of the surface it sits on (Home's `StatusBar`, the game page's `GameStatusBar`). The plugin settings panel keeps Steam's own look (see below).
 
 Spotlight Home is the reference. Home may receive small fixes (merging near-duplicate values, resolving its own inconsistencies) but stays recognisably the same.
 
 The work succeeds when:
 
 - One module, `src/styles/tokens.ts`, holds every shared colour, glass, edge, radius, type, spacing and motion value, and every surface reads from it.
-- The 80 distinct `rgba()` colours, 29 radii and 13 blur values in today's style files collapse to the named sets below. Values that remain outside the module are listed in an allowlist with a reason.
+- The 55 distinct `rgba()` colours, 10 radii and 9 blur strengths in 3.6's style files (plus the floating menu's when it is rebased) collapse to the named sets below. Values that remain outside the module are listed in an allowlist with a reason.
 - Focus, current, on and unavailable states look the same on every surface.
 - Released surfaces (Home, game page, screensaver, status bar) show no visible change on the Ally apart from the small fixes listed under "Approved changes to released surfaces".
 
 The floating menu's polish is a separate, later deliverable. It is built on these tokens after this work ships.
 
-## Audit baseline (2026-10-20, branch `codex/floating-menu`)
+## Audit baseline (2026-10-25, branch `feature/3.6-hero-scale-whatsnew` at 751e7ed)
+
+Redone on 3.6, which this work builds on. 3.6 has no floating menu; its numbers are added when `codex/floating-menu` is rebased (the 2026-10-20 audit on that branch counted menu 10 `rgba()` values, a soft-glass focus, a Steam blue fallback and `--gg-menu-accent`). Values are counted by number, whatever unit helper writes them (`unit(3)`, `dd(3)` and `3px` are one radius). 3.6's own work added no new values: one radius variable, `--gho-ring-r`.
 
 | Measure | Count | Notes |
 |---|---|---|
-| Distinct `rgba()` values | 80 | Home 37, game page 32, menu 10, screensaver 7 |
-| Distinct border radii | 29 | |
-| Distinct blur values | 13 | 12–42 px |
-| Font weights | 5 | 400–800, mostly 700 |
-| Transition durations | 6 | 120–400 ms, mostly 250 ms |
-| Focus treatments | 3 | Home buttons: white ring; Home cards: 1 px accent edge; menu: soft glass |
-| Fallback accents | 2 | Home teal `#5fd1ae`; menu spec Steam blue `#1a9fff` |
-| Accent variable names | 3 | `--glance-accent`, `--gg-accent`, `--gg-menu-accent` |
+| Distinct `rgba()` values | 55 | Home 37, game page 37, screensaver 7 by surface (shared values counted in each); unchanged since 3.4.2 |
+| Distinct border radii | 10 | 0, 2, 3, 4, 8, 10, 12, 16, 50%, 999; plus avatar radii and `--gh-r-card`, `--gh-r-pill`, `--gho-ring-r` |
+| Distinct blur values | 9 | 0, 10, 12, 14, 16, 22, 24, 28, 42 px; plus the screensaver's computed card blur |
+| Font weights | 4 | 400, 600, 700 (20 uses), 800 (8 uses) |
+| Transition durations | 6 | 120, 150, 200, 250, 300, 400 ms, mostly 250 ms |
+| Focus treatments | 2 | Home buttons: white ring; Home cards: 1 px accent edge |
+| Fallback accents | 1 | Home teal `#5fd1ae` (`DEFAULT_ACCENT`, `src/home/accent.ts`) |
+| Accent variable names | 5 | `--glance-accent`, `--glance-accent-text`, `--gg-accent`, `--gh-card-accent`, `--gh-on-accent` |
 
 Home's original handoff values (comment in `src/home/homeCss.ts`): ink `#07090c`, scrim `rgb(5,7,10)`, glass `rgba(12,16,22,.38)` + blur 14 px, radii 8/12/16/999.
 
@@ -147,7 +149,7 @@ Font family stays Steam's loaded Motiva Sans with the existing fallbacks.
 
 ### Spacing and units
 
-Gaps and padding use one 4-point scale: 4, 8, 12, 16, 24, 32. Token sizes are written in Home's design unit (`--gg-d`, the 1440×810 handoff canvas). Each surface keeps its own conversion from that unit to screen pixels; the floating menu's approved on-screen size does not change, only the unit its sizes are written in.
+Gaps and padding use one 4-point scale: 4, 8, 12, 16, 24, 32. Token sizes are written in Home's design unit (`--gg-d`, the 1440×810 handoff canvas, 1280×800 on 16:10 screens). 3.6's larger default (#55) is built into that unit, so tokens grow with it and need no size of their own. Snapping spacing to the 4-point scale must not change the height of Home's lower stack: `giveWay.ts` measures it, and a test keeps those numbers equal to `homeCss`. Each surface keeps its own conversion from that unit to screen pixels; the floating menu's approved on-screen size does not change, only the unit its sizes are written in.
 
 ### Motion
 
@@ -178,9 +180,11 @@ Toggles, tiles, cards, tabs and sliders take the tokens above with no further de
 - Recipes returning CSS declarations: `glassSurface(level)`, `focusRing(kind)` for compact controls and cards, `currentUnderline()`, `onFill()`, `ghost()`.
 - `applyAccent(root, colour | null)`: sets `--gg-accent` and `--gg-accent-text` on a surface root, falling back to teal for null.
 
-`src/styles/homeGlass.ts` is folded into the module; its exports remain as re-exports until callers move.
+`src/styles/homeGlass.ts` (on `codex/floating-menu`; not on 3.6) is folded into the module when the menu is rebased; its exports remain as re-exports until callers move.
 
 ### Surfaces
+
+The plugin settings panel (`SettingsPanel.tsx`) is built only from Decky's components and keeps Steam's Quick Access look, matching the tabs around it (visual reference Q19, approved 2026-10-25: tokens there would bring a per-game accent among Steam's blue toggles, and `glass-strong` does not show on Steam's solid panel). Its one style of its own, the dimmed HowLongToBeat match line, moves to `text-dim` and the `label` size.
 
 Each surface writes `tokenCss()` into its own document once:
 
@@ -205,7 +209,7 @@ These are the only intended visible changes to Home, the game page, the screensa
 
 ### Branch and release
 
-Work happens on the local branch `design/visual-language`, created from `fix/3.4.1` (5 unreleased Home fixes ahead of `main`), in the worktree `../game-glance-visual-language`. Order: token module, then Home, game page, screensaver and status bar. This ships as release 3.5. The floating menu branch `codex/floating-menu` is then rebased onto it and polished using only tokens.
+Work happens on the local branch `design/visual-language`, in the worktree `../game-glance-visual-language`, rebased on 2026-10-25 onto `feature/3.6-hero-scale-whatsnew` (751e7ed, which contains v3.4.2 and v3.5.0). Order: token module, then Home, game page, screensaver and status bar. This ships as release 4.0.0, after 3.6.0. 3.6.0 contains nothing from this spec; if 3.6 gains commits before it ships, this branch is rebased onto its final state. The floating menu branch `codex/floating-menu` is then rebased onto it and polished using only tokens.
 
 No fetch, push, pull request or release is part of this spec; those are separate steps.
 
@@ -222,5 +226,5 @@ No fetch, push, pull request or release is part of this spec; those are separate
 
 - Floating menu layout and polish (next deliverable, built on these tokens).
 - New colour themes or a user-selectable theme.
-- Changes to Steam-owned native panels.
-- Changing the Home layout, sizes or open transitions.
+- Changes to Steam-owned native panels, including the Quick Access panel that holds Game Glance's settings (beyond the one line above).
+- Changing Home's layout, its size (settled in 3.6, #55) or its open transitions.
