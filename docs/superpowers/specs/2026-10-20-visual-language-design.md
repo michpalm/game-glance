@@ -1,8 +1,8 @@
 # Game Glance visual language
 
-Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review (re-review on 3.6 in progress, 2026-10-25). No code has changed.
+Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review; re-reviewed on 3.6 on 2026-10-25 (Q19–Q24). No code has changed.
 
-Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact; Q1–Q14 with the approved option marked "Proposed").
+Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions are Q1–Q14 (2026-10-20) and Q19–Q24 (re-review, 2026-10-25); Q15–Q18 on that page belong to the Deck Shelves spec. The approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
 ## Identity: the focus is games
 
@@ -55,7 +55,7 @@ Redone on 3.6, which this work builds on. 3.6 has no floating menu; its numbers 
 | Distinct border radii | 10 | 0, 2, 3, 4, 8, 10, 12, 16, 50%, 999; plus avatar radii and `--gh-r-card`, `--gh-r-pill`, `--gho-ring-r` |
 | Distinct blur values | 9 | 0, 10, 12, 14, 16, 22, 24, 28, 42 px; plus the screensaver's computed card blur |
 | Font weights | 4 | 400, 600, 700 (20 uses), 800 (8 uses) |
-| Transition durations | 6 | 120, 150, 200, 250, 300, 400 ms, mostly 250 ms |
+| Transition durations | 7 | 120, 150, 200, 220, 250, 300, 400 ms, mostly 250 ms; 220 is the capsule state (`CAP_STATE_MS`) |
 | Focus treatments | 2 | Home buttons: white ring; Home cards: 1 px accent edge |
 | Fallback accents | 1 | Home teal `#5fd1ae` (`DEFAULT_ACCENT`, `src/home/accent.ts`) |
 | Accent variable names | 5 | `--glance-accent`, `--glance-accent-text`, `--gg-accent`, `--gh-card-accent`, `--gh-on-accent` |
@@ -76,7 +76,7 @@ Home's original handoff values (comment in `src/home/homeCss.ts`): ink `#07090c`
 | `art-fill` | `blur(42px) saturate(1.25) brightness(.8)` on a copy of the art, drawn larger than its box | Blurred artwork that stands alone: the hero's whole-art mode, Home's hero fallback (`.gh-hero-blur`), the Recents capsule fill (`.gh-cap-blur`) |
 | `art-fill-dim` | `blur(42px) saturate(.7) brightness(.5)`, drawn the same way | Blurred artwork that carries text: the feed's friend backdrops (`.gh-card-backdrop`) and news fills (`.gh-card-fit-blur`) (visual reference Q23, approved 2026-10-25) |
 
-One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own token, `art-fill`, Home's existing hero fill. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
+One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own tokens: `art-fill`, Home's existing hero fill, and `art-fill-dim` for art that carries text. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
 
 ### Edges
 
@@ -127,10 +127,10 @@ Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabl
 
 | Token | Value | Use |
 |---|---|---|
-| `r-small` | 8 | Capsules, small badges, slider tracks |
+| `r-small` | 8 | Capsules, small badges |
 | `r-card` | 12 | Cards, tiles, setting rows |
 | `r-panel` | 16 | Panels and sheets, including the floating menu bar and panel (26 today) |
-| `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls |
+| `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls, slider tracks and thin bars |
 
 A shape nested inside another uses the outer radius minus the gap between them. Every radius snaps to its role's token (visual reference Q21, approved 2026-10-25): the game page's info cards move from 10 to `r-card` 12. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round and use `r-pill`, which leaves them unchanged. The Library card's tiny grid icon keeps its own 2-unit cells and is on the allowlist.
 
@@ -196,19 +196,19 @@ Each surface writes `tokenCss()` into its own document once:
 | Screensaver | `ScreensaverView` |
 | Floating menu | `src/menu/host.tsx`, both the owner document and the popup document |
 
-The accent variables `--glance-accent`, `--gg-accent` and `--gg-menu-accent` become `--gg-accent`. Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
+The accent variables `--glance-accent`, `--gg-accent` and (after the menu rebase) `--gg-menu-accent` become `--gg-accent`; `--glance-accent-text` becomes `--gg-accent-text`, and `--gh-on-accent` becomes the `on-accent` token. `--gh-card-accent` (each feed card's game accent) loses its pill after Q24. Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
 
 ### Approved changes to released surfaces
 
 These are the only intended visible changes to Home, the game page, the screensaver and the status bar:
 
-1. Home info cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring; lift, glow and accent bar unchanged.
+1. Home info cards, feed cards and Recents capsules: focus changes from an edge (1 px accent on info cards and capsules, a brighter white edge on feed cards) to the 2 px white ring; lift, glow and accent bar unchanged.
 2. Small capital labels unify to 11 px / 800 / .16em.
 3. Status pill weight changes from 600 to 700.
 4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 14 → 16).
 5. Any 400/500/600 weights move to 700.
-6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role (11 / 800 / .16em), matching Home's labels (Q21).
-7. Text on accent fills is white: Home's Library button and the feed card pills change from `#0b0d10` to white (Q20).
+6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role (11 / 800 / .16em), matching Home's small capitals; their height stays the same on screen, the spacing widens and the weight rises (Q21).
+7. Text on accent fills is white: Home's Library button changes from `#0b0d10` to white (Q20). The feed pills are covered by 9.
 8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150 (Q22).
 9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent to `glass-solid` with a raised edge and white text (Q24).
 10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the look stays as calm as today (Q23).
@@ -224,7 +224,7 @@ No fetch, push, pull request or release is part of this spec; those are separate
 - Unit tests for `tokenCss()`: every token name is emitted, the accent `@property` is registered, and values match this spec.
 - Unit tests for each recipe and for `applyAccent()` (fallback, legible text variant).
 - Each surface's CSS builder includes the token block (assert on presence of `--gg-` declarations, not full snapshots).
-- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius` or `font-weight` literals outside `tokens.ts`, except entries in a reviewed allowlist (artwork effects such as gradient scrims and download fill; blurred artwork uses the `art-fill` token).
+- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius`, `font-weight` or `ms` duration literals outside `tokens.ts`, except entries in a reviewed allowlist: artwork effects such as gradient scrims and download fill, the Library card's grid icon, and the tuned timings named in Motion. Blurred artwork uses `art-fill` or `art-fill-dim`.
 - Existing tests stay green; typecheck passes.
 - Device: a full Gamescope compositor screenshot (mode 3) of Home, a game page and the screensaver on the Ally, docked and handheld, compared against the visual reference and against before-screenshots, to confirm only the approved changes are visible.
 
