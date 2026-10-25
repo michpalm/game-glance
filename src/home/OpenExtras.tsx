@@ -34,6 +34,7 @@ export function OpenExtras({ description, hltb, playedMinutes, locale, source, f
     // No match: the page card's two lines, so the card is not empty until they arrive after the hand-over.
     const none = parts.includes('hltb') && hltb?.status === 'notFound' ? hltbNotFoundView(hltb.overrideId) : null;
     return (
+        <>
         <div className="gh-open-extras" data-parts={parts}>
             {parts.includes('desc') && <p className="gh-x-desc" data-settle={SETTLE.desc}>{description}</p>}
             {view && (
@@ -78,11 +79,12 @@ export function OpenExtras({ description, hltb, playedMinutes, locale, source, f
                     </div>
                 </div>
             )}
+        </div>
             {source && (
-                <SourcePill plus={sourceMultiple} label={source} className="gh-x-pill" iconClassName="gh-x-pill-icon">
+                <SourcePill plus={sourceMultiple} label={source} className="gh-x-pill" iconClassName="gh-x-pill-icon" selectableClassName="gh-x-selectable" controlClassName="gh-x-store-choice" plusClassName="gh-x-copy-plus">
                     {family && <FamilyPill plus={familyMultiple} label={family} className="gh-x-family" iconClassName="gh-x-family-icon" />}
                 </SourcePill>
             )}
-        </div>
+        </>
     );
 }

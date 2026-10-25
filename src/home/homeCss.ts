@@ -1,3 +1,4 @@
+import { SCALE_UNIT_CSS } from '../styles/screenScale';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
 import { GiveWay, giveWay, roomMissing } from './giveWay';
 import { withDomFocus } from './focusCss';
@@ -10,7 +11,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
+import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -806,6 +807,23 @@ export function openingRules(): string[] {
         // higher than in a default one, so the twin's text landed 0.65 px low and stepped up at the end (Ally, docked).
         soft('.gh-twin[data-role="playLabel"]', `${pageType('playLabel', dd)} line-height: ${STEAM_PLAY_LINE}px`),
         soft('.gh-twin[data-accent]', 'color: var(--glance-accent-text)'),
+        cardBaseCss('gh-normal', (n) => `calc(${n} * var(--gg-u))`),
+        normalCardsCss('gh-normal', dd),
+        `.gh-normal-cards { display:none; position:absolute; margin:0; padding:0; color:#fff; pointer-events:none; transform-style:preserve-3d; --gg-u:${SCALE_UNIT_CSS}; --gg-accent:var(--glance-accent); --gg-ring:var(--gho-ring-boost,1); }`,
+        rule('.gh-normal-card', 'box-sizing:content-box'),
+        `${M}[data-gh-normal] .gh-normal-cards { display:grid; }`,
+        // Keep native text layout outside the glass's nonuniform scale (as the Play pill's foreground).
+        rule(`${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`, 'position:relative; z-index:0; background:transparent; border-color:transparent; backdrop-filter:none'),
+        `${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { content:""; position:absolute; inset:calc(-1 * var(--normal-border)); box-sizing:border-box; border:var(--normal-border) solid var(--normal-ring); border-radius:inherit; background:var(--normal-bg); backdrop-filter:var(--normal-blur); pointer-events:none; z-index:-1; transform-origin:0 0; transform:var(--normal-from); }`,
+        `${MT}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { transform:none; transition:${move}; }`,
+        `${M}[data-gh-normal] [data-normal-move] { transform-origin:0 0; transform:var(--normal-from); opacity:0; }`,
+        `${MT}[data-gh-normal] [data-normal-move] { transform:none; transition:${move}; animation:gh-twin-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-normal] [data-normal-move="extra"], ${MT}[data-gh-normal] [data-normal-empty] { animation:gh-open-extras-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-normal] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { animation:gh-twin-out ${T.morph}ms linear both; }`,
+        rule(`${M}[data-gh-normal] :is(.gh-open-shell,.gh-open-ring)[data-i], ${M}[data-gh-normal] :is(.gh-x-card,.gh-x-desc)`, 'display:none'),
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] .gh-normal-card { transform:none; transition:none; opacity:1; animation:none; }',
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] [data-normal-move] { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { opacity:0; animation:none; }',
         cleanInfoCss('.gh-clean-info', dd, 'gh-clean'),
         '.gh-clean-info { display:none; pointer-events:none; --gg-accent:var(--glance-accent); --gg-ring:var(--gho-ring-boost,1); }',
         `${M}[data-gh-clean] .gh-clean-info { display:flex; transform-origin:0 0; transform:translateY(-50%) var(--clean-from); }`,
@@ -835,17 +853,28 @@ export function openingRules(): string[] {
         rule(`${X} .gh-x-hltb`, `display: none; position: absolute; ${inCard('hltb')}; width: var(--gho-x-hltb-w); flex-direction: column; gap: ${dd(L.cards.hltbGap)}`),
         rule('.gh-root[data-gh-extras~="hltb"] .gh-x-hltb', 'display: flex'),
         // The page's store pill (and family pill in it), right-aligned where the page draws it, as themeCss draws .gg-pill
-        // and .gg-family; Home's own (moving, scaled) fades out as it fades in.
-        rule(`${X} .gh-x-pill`, `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%) var(--gho-x-pill-from, translate(0px, 0px)); align-items: center;
+        // and .gg-family. The legacy path crossfades; measured openings use one translated pair below.
+        rule('.gh-x-pill', `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%) var(--gho-x-pill-from, translate(0px, 0px)); align-items: center;
             border-radius: 999px; border: 1px solid; color: #fff; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule('.gh-root[data-gh-extras~="pills"] .gh-x-pill', 'display: inline-flex'),
         rule(`${MT} .gh-x-pill`, `transform: translateX(-100%); transition: ${move}`),
         rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-x-pill', 'transform: translateX(-100%); transition: none'),
-        rule(`${X} .gh-x-pill-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
-        rule(`${X} .gh-x-family`, `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+        rule('.gh-x-pill-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
+        rule('.gh-x-family', `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),
-        rule(`${X} .gh-x-family-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
-        rule(`${X} .gh-x-copy-plus`, `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
+        rule('.gh-x-family-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
+        rule('.gh-x-copy-plus', `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
+
+        rule('.gh-x-pill.gh-x-selectable', 'padding:0; border:0; background:transparent; backdrop-filter:none'),
+        rule('.gh-x-store-choice', `display:inline-flex; align-items:center; border:1px solid; border-radius:999px; color:#fff; ${sourcePillLook(dd)}`),
+        rule(`${M}[data-gh-pill] .gh-source`, 'visibility:hidden'),
+        `${M}[data-gh-pill] .gh-x-pill { transform:var(--pill-from); opacity:1; }`,
+        `${MT}[data-gh-pill] .gh-x-pill { transform:none; transition:${move}; }`,
+        `${M}[data-gh-pill] .gh-x-family { transform:translateY(-50%) var(--pill-from,translate(0px,0px)); }`,
+        `${MT}[data-gh-pill] .gh-x-family { transform:translateY(-50%); transition:${move}; }`,
+        '.gh-root.gh-bridge[data-gh-pill][data-gh-opening][data-gh-phase] .gh-x-pill { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-pill][data-gh-opening][data-gh-phase] .gh-x-family { transform:translateY(-50%); animation:none; transition:none; }',
+        rule(`${MT}:not([data-gh-pill]) .gh-x-pill`, late('gh-open-extras-in')),
         // A new game's Play time column (Home shows its Added chip instead), as the page draws it, at its place.
         rule(`${X} .gh-x-played`, `display: none; position: absolute; ${inCard('played')}; flex-direction: column; gap: ${dd(L.stats.rowGap)}`),
         rule('.gh-root[data-gh-extras~="played"] .gh-x-played', 'display: flex'),

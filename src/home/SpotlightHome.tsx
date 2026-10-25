@@ -1,3 +1,5 @@
+import { InfoCardPanel } from '../components/InfoCard';
+import { HltbCard } from '../components/HltbCard';
 import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
 import type { GamepadEvent } from '@decky/ui';
@@ -29,7 +31,7 @@ import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemor
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { HomePills } from './HomePills';
 import { useFamilyCopies } from '../hooks/useFamilyCopies';
-import { loadStoreVersions } from '../data/storeVersions';
+import { loadStoreVersions, peekStoreVersions } from '../data/storeVersions';
 import { useAsync } from '../hooks/useAsync';
 import { GameStatusBar } from '../components/GameStatusBar';
 import { RecentsRow } from './RecentsRow';
@@ -150,7 +152,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, heroFit, feedTabs } = useSettings();
+    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs } = useSettings();
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -496,7 +498,8 @@ export function SpotlightHome() {
     // A game from the family library: "Family Sharing · Lender" beside the store pill (data/family).
     const copies = useFamilyCopies(game?.appId ?? 0, !onLibrary && !cycle.holding);
     const family = copies.label;
-    const versions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId)) ?? [];
+    const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
+    const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
     // A Unifideck game's size, as its page shows it right after Played (not during a fast run): the open draws that column
     // (OpenExtras), in Unifideck's own word once a page has shown it, so nothing shifts or pops in at the hand-over.
@@ -590,7 +593,7 @@ export function SpotlightHome() {
                                 {!onLibrary && data.source && (
                                     <HomePills appId={game.appId} source={data.source} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} />
                                 )}
-                                <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
+                                <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} grayUninstalled={homeGrayUninstalled} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
                                 {hasFeed && <FeedSheet
                                         data={data}
                                         tabs={feedShown}
@@ -614,6 +617,10 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
+            {game && !cycle.holding && <div className="gh-normal-cards">
+                <InfoCardPanel prefix="gh-normal" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn).filter((s) => s.key !== 'hltb')} description={data.description} />
+                <HltbCard prefix="gh-normal" result={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} restyle />
+            </div>}
             {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn)} />}
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
             <div className="gh-open-ring" data-i="0" />

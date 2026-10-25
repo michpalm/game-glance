@@ -1,3 +1,5 @@
+import { prepareNormalOpen } from './normalOpen';
+import { preparePillOpen } from './pillOpen';
 import { prepareCleanOpen } from './cleanOpen';
 import { Navigation } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
@@ -190,11 +192,13 @@ function startHome(c: OpenContext): (() => void) | null {
                 } catch (error) {
                     console.warn(`${LOG_PREFIX} Home: could not set up the text twins`, error);
                 }
-                const undoClean = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : null;
+                const undoCards = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : prepareNormalOpen(root, home, page, scale);
+                let undoPills: (() => void) | null = null;
                 try {
-                    const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoClean ? twins.filter((t) => !t.card) : twins);
-                    return () => { undoOpen(); undoClean?.(); };
-                } catch (error) { undoClean?.(); throw error; }
+                    undoPills = preparePillOpen(root, page);
+                    const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoCards ? twins.filter((t) => !t.card) : twins);
+                    return () => { undoOpen(); undoPills?.(); undoCards?.(); };
+                } catch (error) { undoPills?.(); undoCards?.(); throw error; }
             }
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: could not set up the morph`, error);

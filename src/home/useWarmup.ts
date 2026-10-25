@@ -6,6 +6,9 @@ import { lookupHltb } from '../data/hltb';
 import { settings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getDescription, getSteamLanguage } from '../data/steam';
+import { getSourceLabel } from '../data/source';
+import { loadFamilyCopyCount } from '../data/familyCopies';
+import { heroicStoreLabel } from '../logic/heroic';
 import type { HeroicRef } from '../logic/heroic';
 import { artKnown, resolveArt } from './HeroBackground';
 import { rowShowsWideCards } from './recentsLayout';
@@ -67,6 +70,18 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
             const { games: list, centre: at, info: infoOf, onChange: changed } = latest.current;
             const shortcut = (appId: number) => infoOf(appId).isShortcut;
             const ordered = warmOrder(list, at);
+            // These are local metadata reads, independent of online preloading. Keep them ahead of selection.
+            const pills = (async () => {
+                for (const game of ordered) {
+                    if (cancelled) return;
+                    const meta = infoOf(game.appId);
+                    await Promise.all([
+                        getSourceLabel(game.appId, meta.isShortcut, undefined, heroicStoreLabel(meta.heroic)),
+                        loadFamilyCopyCount(game.appId).catch(() => undefined),
+                    ]);
+                }
+                if (!cancelled) changed();
+            })().catch((error) => console.warn(`${LOG_PREFIX} Home: pill warm-up failed`, error));
             // The art at once, from the game shown outward (Home's own load of the shown game's art is shared, not repeated):
             // its hero, and the wide card's own art.
             const ids = ordered.map((g) => g.appId);
@@ -117,6 +132,7 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
                 await warmDescriptions(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), lang, descriptionDeps, isCancelled, changed);
             };
             await Promise.all([
+                pills,
                 descriptions(),
                 art,
                 warmHltb(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), hltbDeps, isCancelled, changed),

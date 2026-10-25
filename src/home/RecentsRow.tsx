@@ -83,15 +83,15 @@ export function capsuleBlur(i: number, selected: number, firstWide = false): boo
  * Whether a card is drawn greyed out: a game not installed on this device (as Steam's library shows them). Non-Steam
  * shortcuts never are (Steam's `installed` does not describe them). The selected card shows its colours (homeCss).
  */
-export function greyedOut(game: Pick<HomeGame, 'installed' | 'shortcut'>): boolean {
-    return !game.installed && game.shortcut !== true;
+export function greyedOut(game: Pick<HomeGame, 'installed' | 'shortcut'>, enabled = true): boolean {
+    return enabled && !game.installed && game.shortcut !== true;
 }
 
 /**
  * One recents card. Memoized on plain props, so an L1/R1 step re-renders only the cards whose place or state changed;
  * its art urls are read from Steam's stores only when the game or its expanded state changes.
  */
-const GameCapsule = memo(function GameCapsule({ game, index, left, width, dim, wide, selected, hover, blur, box, onTap }: { game: HomeGame; index: number; left: number; width: number; dim: boolean; wide: boolean; selected: boolean; hover: boolean; blur: boolean; box: ArtBox; onTap(index: number, event: MouseEvent): void }) {
+const GameCapsule = memo(function GameCapsule({ game, index, left, width, dim, wide, selected, hover, blur, box, onTap, grayUninstalled }: { game: HomeGame; index: number; left: number; width: number; dim: boolean; wide: boolean; selected: boolean; hover: boolean; blur: boolean; box: ArtBox; onTap(index: number, event: MouseEvent): void; grayUninstalled: boolean }) {
     const appId = game.appId;
     const cover = useMemo(() => urls(() => capsuleUrls(appId, browserStores)), [appId]);
     const list = useMemo(
@@ -100,7 +100,7 @@ const GameCapsule = memo(function GameCapsule({ game, index, left, width, dim, w
     );
     const art = useCardArt(appId, list, box);
     return (
-        <div className={`gh-cap${wide ? ' gh-cap-wide' : ''}${selected ? ' gh-cap-sel' : ''}${hover ? ' gh-cap-hover' : ''}${greyedOut(game) ? ' gh-cap-off' : ''}`} data-hover={`g${index}`} style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }} onClick={(event) => onTap(index, event)}>
+        <div className={`gh-cap${wide ? ' gh-cap-wide' : ''}${selected ? ' gh-cap-sel' : ''}${hover ? ' gh-cap-hover' : ''}${greyedOut(game, grayUninstalled) ? ' gh-cap-off' : ''}`} data-hover={`g${index}`} style={{ left: `${left}px`, width: `${width}px`, opacity: dim ? 0.35 : 1 }} onClick={(event) => onTap(index, event)}>
             <CapsuleArt cover={cover} art={art} blur={blur} />
             {/* A game new to the library, as Steam's Home marks it, and a demo: side by side on the wide card, stacked on a capsule. */}
             {(game.isNew || game.demo) && (
@@ -144,7 +144,7 @@ export interface RecentsRowNav {
  * browser's click) on another card selects it, on the selected card opens it (rowDrag.cardTap); a ghost selects its game. Rendered only with games. `geometry` is the card scale's sizes
  * (handheld or docked), the same SpotlightHome gives homeCss.
  */
-export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlight', viewport = 0, expand = true, snap = false }: { games: HomeGame[]; selected: number; geometry: RecentsGeometry; nav: RecentsRowNav; rowStyle?: RowStyle; viewport?: number; expand?: boolean; snap?: boolean }) {
+export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlight', viewport = 0, expand = true, snap = false, grayUninstalled = true }: { games: HomeGame[]; selected: number; geometry: RecentsGeometry; nav: RecentsRowNav; rowStyle?: RowStyle; viewport?: number; expand?: boolean; snap?: boolean; grayUninstalled?: boolean }) {
     const count = games.length;
     const at = clampFocus(count, selected);
     // Steam's style: the first game is the wide card and the selection moves to the middle (`viewport`); a fast run
@@ -208,6 +208,7 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
                     <GameCapsule
                         key={game.appId}
                         game={game}
+                        grayUninstalled={grayUninstalled}
                         index={i}
                         onTap={onTap}
                         left={layout.items[i].left}
@@ -235,7 +236,7 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
                 {layout.ghosts.map((ghost, j) => (
                     <div
                         key={`ghost-${games[j].appId}`}
-                        className={`gh-cap gh-ghost${greyedOut(games[j]) ? ' gh-cap-off' : ''}${hover.hovered === `x${j}` ? ' gh-cap-hover' : ''}`}
+                        className={`gh-cap gh-ghost${greyedOut(games[j], grayUninstalled) ? ' gh-cap-off' : ''}${hover.hovered === `x${j}` ? ' gh-cap-hover' : ''}`}
                         data-hover={`x${j}`}
                         aria-hidden="true"
                         style={{ left: `${ghost.left}px`, width: `${geometry.capsuleW}px`, opacity: ghost.opacity }}

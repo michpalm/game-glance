@@ -5,7 +5,7 @@ const on = { spotlightHome: true, homeStatusBar: true, feedTabs: { news: true, f
 
 describe('spotlightRows (Quick Access: a row shows while the row it depends on is on)', () => {
     it('lists every row in order with everything on and a collection row', () =>
-        expect(spotlightRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'news', 'friends', 'recommended', 'wishlistDeals', 'statusBar', 'statusAvatar']));
+        expect(spotlightRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended', 'wishlistDeals', 'statusBar', 'statusAvatar']));
     it('has no sort for the recent games row', () => expect(spotlightRows(on, false)).not.toContain('rowSort'));
     it('shows only the main toggle with Spotlight Home off', () =>
         expect(spotlightRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome']));

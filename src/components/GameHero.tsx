@@ -7,7 +7,7 @@ import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
-import { getSourceLabel } from '../data/source';
+import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { accentFor } from '../home/accent';
@@ -162,9 +162,11 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const loadedLang = useAsync(knownLang ? null : 'lang', getSteamLanguage);
     const lang = knownLang ?? loadedLang;
     const locale = steamLanguageToLocale(lang ?? 'english');
-    const source = useAsync(`src:${game.appId}`, () =>
+    const knownSource = peekSourceLabel(game.appId, game.isShortcut);
+    const fetchedSource = useAsync(knownSource === undefined ? `src:${game.appId}` : null, () =>
         getSourceLabel(game.appId, game.isShortcut, undefined, heroicStoreLabel(game.heroic)),
     );
+    const source = knownSource ?? fetchedSource;
     // Wait for the language so the description is fetched once, in the right language.
     const fetchedDescription = useAsync(lang === undefined ? null : `desc:${game.appId}:${lang}`, () =>
         game.isShortcut ? getShortcutDescription(game, lang ?? 'english') : getDescription(game.appId, lang ?? 'english'),

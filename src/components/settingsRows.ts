@@ -10,6 +10,7 @@ export type SpotlightRow =
     | 'gamesRow'
     | 'rowSort'
     | 'rowStyle'
+    | 'grayUninstalled'
     | 'news'
     | 'friends'
     | 'recommended'
@@ -23,7 +24,7 @@ export function spotlightRows(s: Pick<Settings, 'spotlightHome' | 'homeStatusBar
     if (!s.spotlightHome) return rows;
     rows.push('gamesRow');
     if (collectionRow) rows.push('rowSort');
-    rows.push('rowStyle', 'news', 'friends', 'recommended');
+    rows.push('rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended');
     if (s.feedTabs.recommended) rows.push('wishlistDeals');
     rows.push('statusBar');
     if (s.homeStatusBar) rows.push('statusAvatar');

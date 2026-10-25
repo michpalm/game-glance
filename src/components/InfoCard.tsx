@@ -16,30 +16,26 @@ interface Props {
 }
 
 export function InfoCard({ game, locale, description, size = null, onPress }: Props) {
+    const stats = [
+        { key: 'played', label: tr('played'), value: formatHours(minutesToHours(game.playedMinutes), locale) },
+        ...(size ? [size] : []),
+        ...(game.achievements ? [{ key: 'achievements', label: tr('achievements'), value: formatAchievements(game.achievements) }] : []),
+    ];
+    return <InfoCardPanel stats={stats} description={description} onPress={onPress} />;
+}
+
+export function InfoCardPanel({ stats, description, prefix = 'gg', onPress }: { stats: { key: string; label: string; value: string }[]; description: string | null | undefined; prefix?: string; onPress?(card: HTMLElement): void }) {
     const desc = descriptionState(description);
     return (
-        <CardShell className="gg-card" onPress={onPress}>
-            <div className="gg-stats">
-                <div data-stat="played">
-                    <div className="gg-label">{tr('played')}</div>
-                    <div className="gg-value">{formatHours(minutesToHours(game.playedMinutes), locale)}</div>
-                </div>
-                {/* Right after Played: Played stays first in every game (Home's open lands on it). */}
-                {size && (
-                    <div data-stat="size">
-                        <div className="gg-label">{size.label}</div>
-                        <div className="gg-value">{size.value}</div>
-                    </div>
-                )}
-                {game.achievements && (
-                    <div data-stat="achievements">
-                        <div className="gg-label">{tr('achievements')}</div>
-                        <div className="gg-value">{formatAchievements(game.achievements)}</div>
-                    </div>
-                )}
+        <CardShell className={`${prefix}-card`} onPress={onPress}>
+            <div className={`${prefix}-stats`}>
+                {stats.map((s) => <div key={s.key} data-stat={s.key}>
+                    <div className={`${prefix}-label`}>{s.label}</div>
+                    <div className={`${prefix}-value`}>{s.value}</div>
+                </div>)}
             </div>
-            {desc.kind === 'loading' && <p className="gg-desc"><span className="gg-skeleton" /></p>}
-            {desc.kind === 'text' && <p className="gg-desc">{desc.text}</p>}
+            {desc.kind === 'loading' && <p className={`${prefix}-desc`}><span className={`${prefix}-skeleton`} /></p>}
+            {desc.kind === 'text' && <p className={`${prefix}-desc`}>{desc.text}</p>}
         </CardShell>
     );
 }

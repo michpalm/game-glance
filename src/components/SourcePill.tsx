@@ -26,12 +26,11 @@ export function StoreIcon({ label, className }: { label: string; className?: str
  * The store pill (icon + name): the game page's (`gg-pill`) and Spotlight Home's (`gh-source`); both are styled from
  * styles/sourcePill.ts.
  */
-export function SourcePill({ label, className = 'gg-pill', iconClassName = 'gg-pill-icon', children, plus = false }: { label: string; className?: string; iconClassName?: string; children?: ReactNode; plus?: boolean }) {
+export function SourcePill({ label, className = 'gg-pill', iconClassName = 'gg-pill-icon', children, plus = false, selectableClassName = 'gg-store-selectable', controlClassName = 'gg-store-choice', plusClassName = 'gg-copy-plus', renderControl }: { label: string; className?: string; iconClassName?: string; children?: ReactNode; plus?: boolean; selectableClassName?: string; controlClassName?: string; plusClassName?: string; renderControl?(content: ReactNode): ReactNode }) {
+    const content = <><StoreIcon label={label} className={iconClassName} />{label}{plus && <svg className={plusClassName} aria-hidden="true" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}</>;
     return (
-        <span className={className}>
-            <StoreIcon label={label} className={iconClassName} />
-            {label}
-            {plus && <svg className="gh-x-copy-plus" aria-hidden="true" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}
+        <span className={`${className}${plus ? ` ${selectableClassName}` : ''}`}>
+            {plus ? renderControl ? renderControl(content) : <span className={controlClassName}>{content}</span> : content}
             {children}
         </span>
     );

@@ -2,6 +2,12 @@ import { callable } from '@decky/api';
 
 const getStore = callable<[appid: number], string | null>('get_store');
 const memo = new Map<number, Promise<string>>();
+const labels = new Map<number, string>();
+
+/** Known on the selection render; a cached promise alone still creates a loading frame. */
+export function peekSourceLabel(appId: number, isShortcut: boolean): string | undefined {
+    return isShortcut ? labels.get(appId) : 'Steam';
+}
 
 export function getSourceLabel(
     appId: number,
@@ -14,7 +20,11 @@ export function getSourceLabel(
     let pending = memo.get(appId);
     if (!pending) {
         pending = lookup(appId)
-            .then((label) => (typeof label === 'string' && label.length > 0 ? label : otherwise))
+            .then((label) => {
+                const value = typeof label === 'string' && label.length > 0 ? label : otherwise;
+                labels.set(appId, value);
+                return value;
+            })
             .catch(() => {
                 memo.delete(appId); // backend not ready yet: try again next time
                 return otherwise;

@@ -6,7 +6,7 @@ import { cache, overrides, TTL } from '../data/cache';
 import { hltbCacheKey, HltbResult, lookupHltb } from '../data/hltb';
 import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
-import { getSourceLabel } from '../data/source';
+import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo, steamPlayedMinutes } from '../data/steam';
@@ -666,9 +666,11 @@ export function useHomeData(focusIndex = 0): HomeData {
         },
     );
     const description = cleanPage ? null : (warmedDescription ?? liveDescription ?? null);
-    const source = useAsync(info ? `src:${info.appId}` : null, () =>
+    const knownSource = info ? peekSourceLabel(info.appId, info.isShortcut) : undefined;
+    const fetchedSource = useAsync(info && knownSource === undefined ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
+    const source = knownSource ?? fetchedSource;
     // Unifideck's or Lutris's own play time for the selected game once it rests (one request, cached), for their games only.
     const launcher = useLauncherPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, info?.lutris ?? null, resting !== null);
     // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and

@@ -22,7 +22,7 @@ const HERO_FIT_COPY: Record<HeroFit, string> = {
 };
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, heroFit, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -103,6 +103,14 @@ export function SettingsPanel() {
                 onChange={(option) => settings.setHomeRowStyle(option.data as RowStyle)}
             />
         ),
+        grayUninstalled: (
+            <ToggleField
+                label="Gray out uninstalled games"
+                description="Shows uninstalled Steam games in gray until selected. Turn off to keep their artwork in color."
+                checked={homeGrayUninstalled}
+                onChange={(value) => settings.setHomeGrayUninstalled(value)}
+            />
+        ),
         wishlistDeals: (
             <ToggleField
                 label="Show wishlist deals"
@@ -157,7 +165,7 @@ export function SettingsPanel() {
         <>
             <PanelSection title="Game page">
                 <PanelSectionRow>
-                    <ToggleField label="Game Glance page" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
+                    <ToggleField label="Game Glance" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
                 </PanelSectionRow>
                 {enabled && (
                     <PanelSectionRow>
@@ -170,7 +178,7 @@ export function SettingsPanel() {
                     </PanelSectionRow>
                 )}
             </PanelSection>
-            <PanelSection title="Spotlight Home">
+            <PanelSection title="Home page">
                 {spotlightRows({ spotlightHome, homeStatusBar, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
                     <PanelSectionRow key={row}>{spotlightRow[row]}</PanelSectionRow>
                 ))}

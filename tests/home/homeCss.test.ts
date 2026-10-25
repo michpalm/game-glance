@@ -642,11 +642,11 @@ describe('homeCss open transition', () => {
         const all = rules(css);
         const body = (sel: string) => all.find(([s]) => s === sel)?.[1] ?? '';
         const dd = (n: number) => `calc(${n}px * var(--gho-x-d))`;
-        expect(body('.gh-open-extras .gh-x-pill')).toContain(sourcePillLook(dd).split(';')[1].trim());
-        for (const decl of ['left: var(--gho-x-pill-x)', 'top: var(--gho-x-pill-y)', 'transform: translateX(-100%)']) expect(body('.gh-open-extras .gh-x-pill')).toContain(decl);
-        expect(body('.gh-open-extras .gh-x-family')).toContain(`right: calc(100% + ${dd(10)})`);
+        expect(body('.gh-x-pill')).toContain(sourcePillLook(dd).split(';')[1].trim());
+        for (const decl of ['left: var(--gho-x-pill-x)', 'top: var(--gho-x-pill-y)', 'transform: translateX(-100%)']) expect(body('.gh-x-pill')).toContain(decl);
+        expect(body('.gh-x-family')).toContain(`right: calc(100% + ${dd(10)})`);
         expect(all.some(([sel, b]) => sel === '.gh-root[data-gh-extras~="pills"] .gh-x-pill' && b.includes('display: inline-flex'))).toBe(true);
-        expect(body('.gh-open-extras .gh-x-pill')).toContain('var(--gho-x-pill-from');
+        expect(body('.gh-x-pill')).toContain('var(--gho-x-pill-from');
         const mover = body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-x-pill');
         expect(mover).toContain('transform: translateX(-100%)');
         expect(mover).toContain(`transform ${OPEN_TIMINGS.morph}ms`);
@@ -811,7 +811,7 @@ describe('the way back (B from a page)', () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
         expect(blurred.length).toBeGreaterThan(0);
         for (const sel of blurred) {
-            if (['.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
+            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
             const last = sel.split(',').map((p) => p.trim().split(/[\s>+~]+/).pop()!);
             for (const compound of last) expect(HOME_GLASS.some((g) => compound.includes(g)), sel).toBe(true);
         }

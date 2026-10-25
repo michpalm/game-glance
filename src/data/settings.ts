@@ -19,13 +19,14 @@ export interface Settings {
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
+    homeGrayUninstalled: boolean; // gray treatment for uninstalled Steam games in Home's row
     heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', heroFit: 'fill', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -57,6 +58,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
+                homeGrayUninstalled: pick('homeGrayUninstalled'),
                 heroFit: heroFitOf(raw?.heroFit),
                 feedTabs: feedTabsOf(raw?.feedTabs),
                 screensaver: readScreensaverOptions(raw?.screensaver),
@@ -103,6 +105,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, homeRowStyle };
             emit();
             await persist({ homeRowStyle });
+        },
+        async setHomeGrayUninstalled(homeGrayUninstalled: boolean): Promise<void> {
+            current = { ...current, homeGrayUninstalled };
+            emit();
+            await persist({ homeGrayUninstalled });
         },
         async setHeroFit(heroFit: HeroFit): Promise<void> {
             current = { ...current, heroFit };
