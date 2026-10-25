@@ -202,7 +202,7 @@ The accent variables `--glance-accent`, `--gg-accent` and (after the menu rebase
 
 These are the only intended visible changes to Home, the game page, the screensaver and the status bar:
 
-1. Home info cards, feed cards and Recents capsules: focus changes from an edge (1 px accent on info cards and capsules, a brighter white edge on feed cards) to the 2 px white ring; lift, glow and accent bar unchanged.
+1. Home info cards, feed cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring; lift, glow and accent bar unchanged.
 2. Small capital labels unify to 11 px / 800 / .16em.
 3. Status pill weight changes from 600 to 700.
 4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 14 → 16).
