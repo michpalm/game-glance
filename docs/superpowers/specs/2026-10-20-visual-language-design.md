@@ -1,8 +1,8 @@
 # Game Glance visual language
 
-Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review; re-reviewed on 3.6 on 2026-10-25 (Q19–Q27). No code has changed.
+Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review. Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
 
-Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions are Q1–Q14 (2026-10-20) and Q19–Q27 (re-review, 2026-10-25); Q15–Q18 on that page belong to the Deck Shelves spec. The approved option is marked "Proposed", or "Chosen" where Michael picked another.
+Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
 ## Identity: the focus is games
 
@@ -32,22 +32,22 @@ Recorded cases:
 
 ## Purpose and success criteria
 
-Give every Game Glance surface one consistent visual language, so a control looks and behaves the same wherever it appears. Surfaces: Spotlight Home, the game page, the screensaver and the floating menu. The status bar is part of the surface it sits on (Home's `StatusBar`, the game page's `GameStatusBar`). The plugin settings panel keeps Steam's own look (see below).
+Give every Game Glance surface one consistent visual language, so a control looks and behaves the same wherever it appears. Surfaces: Spotlight Home, the game page, the screensaver and the floating menu. The status bar is part of the surface it sits on (Home's `StatusBar`, the game page's `GameStatusBar`). The plugin settings panel keeps Steam's own look (Section 5).
 
 Spotlight Home is the reference. Home may receive small fixes (merging near-duplicate values, resolving its own inconsistencies) but stays recognisably the same.
 
 The work succeeds when:
 
 - One module, `src/styles/tokens.ts`, holds every shared colour, glass, edge, radius, type, spacing and motion value, and every surface reads from it.
-- The 55 distinct `rgba()` colours, 10 radii and 9 blur strengths in 3.6's style files (plus the floating menu's when it is rebased) collapse to the named sets below. Values that remain outside the module are listed in an allowlist with a reason.
+- The 55 distinct `rgba()` colours, 10 radii, 9 blur strengths and 7 timings in 3.6's style files (plus the floating menu's when it is rebased) collapse to the named sets below. Values that stay outside the module are on the allowlist (Section 5) with a reason.
 - Focus, current, on and unavailable states look the same on every surface.
-- Released surfaces (Home, game page, screensaver, status bar) show no visible change on the Ally apart from the small fixes listed under "Approved changes to released surfaces".
+- Released surfaces (Home, game page, screensaver, status bar) show no visible change on the Ally apart from the approved changes listed in Section 5.
 
-The floating menu's polish is a separate, later deliverable. It is built on these tokens after this work ships.
+The floating menu's polish is a separate, later deliverable, built on these tokens after this work ships.
 
-## Audit baseline (2026-10-25, branch `feature/3.6-hero-scale-whatsnew` at 751e7ed)
+## Audit baseline
 
-Redone on 3.6, which this work builds on. 3.6 has no floating menu; its numbers are added when `codex/floating-menu` is rebased (the 2026-10-20 audit on that branch counted menu 10 `rgba()` values, a soft-glass focus, a Steam blue fallback and `--gg-menu-accent`). Values are counted by number, whatever unit helper writes them (`unit(3)`, `dd(3)` and `3px` are one radius). 3.6's own work added no new values: one radius variable, `--gho-ring-r`.
+Taken 2026-10-25 on `feature/3.6-hero-scale-whatsnew` at 751e7ed, which this work builds on. 3.6 has no floating menu; its numbers are added when `codex/floating-menu` is rebased (the 2026-10-20 audit on that branch counted 10 menu `rgba()` values, a soft-glass focus, a Steam blue fallback and `--gg-menu-accent`). Values are counted by number, whatever unit helper writes them (`unit(3)`, `dd(3)` and `3px` are one radius). 3.6's own work added no new values, only one radius variable, `--gho-ring-r`.
 
 | Measure | Count | Notes |
 |---|---|---|
@@ -56,7 +56,9 @@ Redone on 3.6, which this work builds on. 3.6 has no floating menu; its numbers 
 | Distinct blur values | 9 | 0, 10, 12, 14, 16, 22, 24, 28, 42 px; plus the screensaver's computed card blur |
 | Font weights | 4 | 400, 600, 700 (20 uses), 800 (8 uses) |
 | Transition durations | 7 | 120, 150, 200, 220, 250, 300, 400 ms, mostly 250 ms; 220 is the capsule state (`CAP_STATE_MS`) |
-| Focus treatments | 2 | Home buttons: white ring; Home cards: 1 px accent edge |
+| Small-capital styles | 12 | 8.5 to 13 px, letter-spacing .12 to .2em, weights 700 and 800 |
+| Focus treatments | 2 | Home buttons: white ring; Home info cards, feed cards and capsules: 1 px accent edge |
+| Text on accent fills | 2 | White (Play pills); dark `#0b0d10` (Library button, feed pills) |
 | Fallback accents | 1 | Home teal `#5fd1ae` (`DEFAULT_ACCENT`, `src/home/accent.ts`) |
 | Accent variable names | 5 | `--glance-accent`, `--glance-accent-text`, `--gg-accent`, `--gh-card-accent`, `--gh-on-accent` |
 
@@ -70,20 +72,23 @@ Home's original handoff values (comment in `src/home/homeCss.ts`): ink `#07090c`
 |---|---|---|
 | `glass` | `rgba(12,16,22,.40)`, backdrop blur 16 px | Cards, chips, buttons, menu bar and panel, status pill |
 | `glass-strong` | `rgba(12,16,22,.55)` | Anything layered on glass: focused rows, avatar rings |
-| `glass-solid` | `rgba(12,16,22,.75)` | Small badges that must read on any artwork, including the feed card pills with `edge-raised` and white text (visual reference Q24, approved 2026-10-25: pills carry no accent) |
+| `glass-solid` | `rgba(12,16,22,.75)` | Small badges that must read on any artwork, including the feed card pills (with `edge-raised` and white text) |
 | `ink` | `#07090c` | Unchanged |
 | `scrim` | `rgb(5,7,10)` | Page fades; unchanged |
 | `art-fill` | `blur(42px) saturate(1.25) brightness(.8)` on a copy of the art, drawn larger than its box | Blurred artwork that stands alone: the hero's whole-art mode, Home's hero fallback (`.gh-hero-blur`), the Recents capsule fill (`.gh-cap-blur`) |
-| `art-fill-dim` | `blur(42px) saturate(.7) brightness(.5)`, drawn the same way | Blurred artwork that carries text: the feed's friend backdrops (`.gh-card-backdrop`) and news fills (`.gh-card-fit-blur`) (visual reference Q23, approved 2026-10-25) |
+| `art-fill-dim` | `blur(42px) saturate(.7) brightness(.5)`, drawn the same way | Blurred artwork that carries text: the feed's friend backdrops (`.gh-card-backdrop`) and news fills (`.gh-card-fit-blur`) |
+| `empty-fill` | `linear-gradient(160deg, rgba(255,255,255,.10) 0%, rgba(12,16,22,.35) 75%)` | A feed card with no art or avatar (`.gh-card-backdrop-none`) |
 
-One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own tokens: `art-fill`, Home's existing hero fill, and `art-fill-dim` for art that carries text. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
+One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred artwork is a different job: it must erase the art's detail so it reads as a backdrop, not as a smeared copy (16 px left shapes legible behind Home's cards on the Ally, 2026-10-23), so it has its own two tokens, one blur strength (42 px), split by what sits on the art. The floating menu's Gamescope compositor blur over a running game is a separate mechanism measured in Steam's compositor units; it is unaffected.
+
+`glass-strong` only shows over artwork or glass; on an opaque panel it matches the background, so focus there is the ring alone.
 
 ### Edges
 
 | Token | Value | Use |
 |---|---|---|
 | `edge` | `rgba(255,255,255,.12)` | Resting surfaces |
-| `edge-raised` | `rgba(255,255,255,.18)` | Pressable controls (buttons) |
+| `edge-raised` | `rgba(255,255,255,.18)` | Pressable controls (buttons), feed card pills |
 | `edge-active` | `rgba(255,255,255,.35)` | Selected or focused surfaces |
 
 ### Text and tracks
@@ -98,15 +103,17 @@ One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred a
 
 ### Accent
 
-One live accent per screen, from the existing artwork pipeline (`src/home/accent.ts`):
+One live accent per screen, from the existing artwork pipeline (`src/home/accent.ts`). Nothing takes a per-card or per-game accent of its own: feed pills are neutral glass and empty feed cards use `empty-fill`.
 
 | Token | Value |
 |---|---|
 | `accent` | Raw artwork colour; fills (Play pill, slider fill, on toggles, chosen segments, glows) |
 | `accent-text` | `legibleAccent(accent)`; accent used as text |
-| `on-accent` | `#fff`; text, icon or thumb on an accent fill (visual reference Q20, approved 2026-10-25: white everywhere, as on Play today, for one consistent look; accepted trade-off: bright accents read lower, 3.1:1 on Dorfromantik's `#c88437`, 1.9:1 on the teal fallback) |
+| `on-accent` | `#fff`; text, icon or thumb on an accent fill |
 
-The fallback is Home's teal `#5fd1ae` on every surface, including the floating menu. This supersedes the floating-menu spec's Steam blue fallback. The same accent is used everywhere; it is not brightened per surface.
+`on-accent` is white everywhere, as on Play today, for one consistent look. Accepted trade-off: bright accents read lower (3.1:1 on Dorfromantik's `#c88437`, 1.9:1 on the teal fallback, against 8.2:1 on Ori's `#3d33cd`).
+
+The fallback is Home's teal `#5fd1ae` on every surface, including the floating menu; this supersedes the floating-menu spec's Steam blue fallback. The same accent is used everywhere; it is not brightened per surface.
 
 ## 2. Interaction states
 
@@ -114,7 +121,7 @@ Four states, one meaning and one look each. Focus is always added on top of the 
 
 | State | Meaning | Look |
 |---|---|---|
-| Focus | Where the controller is | 2 px white ring `rgba(255,255,255,.9)` plus accent glow below (`0 14px 40px -8px accent`). Compact controls (buttons, tiles, rows, segments) scale to 1.04; cards lift 4 px instead and show their 3 px accent bar. |
+| Focus | Where the controller is | 2 px white ring `rgba(255,255,255,.9)` plus accent glow below (`0 14px 40px -8px accent`). Compact controls (buttons, tiles, rows, segments) scale to 1.04; cards (info cards, feed cards, capsules) lift 4 px instead and show their 3 px accent bar. |
 | Current | Where you are in navigation | Home's tab row: inactive `text-dim`, no box; current `text` with a 3 px accent underline at 55% opacity; focused tab: underline at full opacity with a `0 0 14px 2px accent` glow. Tabs do not use the focus ring. |
 | On | A value that is set | Accent fill with `on-accent` text or thumb: toggle on track, slider fill, chosen segment |
 | Unavailable | Steam reports the control unavailable | Home's ghost: `filter: grayscale(.6) brightness(.75)`, edge `rgba(255,255,255,.06)`. Visible, but cannot be operated. |
@@ -128,40 +135,44 @@ Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabl
 | Token | Value | Use |
 |---|---|---|
 | `r-small` | 8 | Capsules, small badges |
-| `r-card` | 12 | Cards, tiles, setting rows |
+| `r-card` | 12 | Cards (including the game page's info cards), tiles, setting rows |
 | `r-panel` | 16 | Panels and sheets, including the floating menu bar and panel (26 today) |
-| `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls, slider tracks and thin bars |
+| `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls, slider tracks, thin bars, circles |
 
-A shape nested inside another uses the outer radius minus the gap between them. Every radius snaps to its role's token (visual reference Q21, approved 2026-10-25): the game page's info cards move from 10 to `r-card` 12. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round and use `r-pill`, which leaves them unchanged. The Library card's tiny grid icon keeps its own 2-unit cells and is on the allowlist.
+Every radius uses its role's token. A shape nested inside another uses the outer radius minus the gap between them. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round, so `r-pill` leaves them unchanged.
 
 ### Type
 
-Two weights only: 700 and 800.
+Two weights only: 700 and 800. Font family stays Steam's loaded Motiva Sans with the existing fallbacks.
 
-| Role | Spec | Replaces |
+| Role | Spec | Use |
 |---|---|---|
-| `title` | Home's game title: 800, letter-spacing −.02em | — |
+| `title` | Home's game title: 800, letter-spacing −.02em | Game titles |
 | `heading` | 20 / 800 | Menu panel headings where they remain |
 | `body` | 16 / 700 | Button, row and card text; menu labels move from 13 to 16 |
-| `label` | 11 / 800, letter-spacing .16em, uppercase, `text-dim` | Every small capital except the tabs: Home's "Last played" (12), chip labels (10), pills (10), card lines (10.5), ghost and Library labels, the screensaver's labels (9), the game page's card labels (8.5); menu section headers, slider notch labels |
-| `tab` | 13 / 700, letter-spacing .16em, uppercase | The feed tabs: navigation, shown in the "current" state of Section 2, so they keep today's size (visual reference Q25, approved 2026-10-25) |
+| `label` | 11 / 800, letter-spacing .16em, uppercase, `text-dim` | Every small capital except the tabs: Home's "Last played" (12 today), chip labels (10), feed pills (10), card lines (10.5), ghost and Library labels, the screensaver's labels (9), the game page's card labels (8.5); menu section headers, slider notch labels |
+| `tab` | 13 / 700, letter-spacing .16em, uppercase | The feed tabs. They are navigation (the "current" state), not labels, so they keep today's size. |
 | `value` | 20 / 700, tabular figures | Chip values, slider readouts |
 
-Font family stays Steam's loaded Motiva Sans with the existing fallbacks.
+At 800 with .16em spacing, small capitals run wider than today: the "Recently updated" lines on Home cut off sooner, and implementation checks every `label` use for truncation.
 
 ### Spacing and units
 
-Gaps and padding use one 4-point scale: 4, 8, 12, 16, 24, 32. Token sizes are written in Home's design unit (`--gg-d`, the 1440×810 handoff canvas, 1280×800 on 16:10 screens). 3.6's larger default (#55) is built into that unit, so tokens grow with it and need no size of their own. Snapping spacing to the 4-point scale must not change the height of Home's lower stack: `giveWay.ts` measures it, and a test keeps those numbers equal to `homeCss`. Each surface keeps its own conversion from that unit to screen pixels; the floating menu's approved on-screen size does not change, only the unit its sizes are written in.
+Gaps and padding use one 4-point scale: 4, 8, 12, 16, 24, 32.
+
+Token sizes are written in Home's design unit (`--gg-d`: the 1440×810 handoff canvas, 1280×800 on 16:10 screens). 3.6's larger default (#55) is built into that unit, so tokens grow with it and need no size of their own. Each surface keeps its own conversion from that unit to screen pixels; the floating menu's approved on-screen size does not change, only the unit its sizes are written in.
+
+Snapping spacing to the 4-point scale must not change the height of Home's lower stack: `giveWay.ts` measures it, and a test keeps those numbers equal to `homeCss`.
 
 ### Motion
 
 | Token | Duration | Use |
 |---|---|---|
-| `fast` | 150 ms | Press feedback, small colour changes |
-| `base` | 250 ms | Focus and state changes |
+| `fast` | 150 ms | Press feedback, small colour changes (today 120 and 200 ms) |
+| `base` | 250 ms | Focus and state changes (today 220 ms on capsules, 300 ms on feed cards) |
 | `accent` | 500 ms | Accent colour fades (existing `ACCENT_MS`) |
 
-Timings move to the tokens by job (visual reference Q22, approved 2026-10-25): press and colour changes (120, 200 ms) become `fast`; focus and state changes (capsule 220, feed card 300 ms) become `base`. Tuned motion keeps its own timing and is on the allowlist: the page (300 ms), the tab strip (300 ms), the feed sheet (400 ms) and the open transitions. `prefers-reduced-motion` disables all of them.
+Tuned motion keeps its own timing and is on the allowlist: the page (300 ms), the tab strip (300 ms), the feed sheet (400 ms) and the open transitions. `prefers-reduced-motion` disables all of it.
 
 ## 4. Components
 
@@ -179,14 +190,12 @@ Toggles, tiles, cards, tabs and sliders take the tokens above with no further de
 
 - The token values in Sections 1–3 as typed constants.
 - `tokenCss(selector)`: a CSS block declaring every token as a `--gg-*` custom property on `selector`, plus `@property --gg-accent` (syntax `<color>`) so accent changes can animate.
-- Recipes returning CSS declarations: `glassSurface(level)`, `focusRing(kind)` for compact controls and cards, `currentUnderline()`, `onFill()`, `ghost()`.
+- Recipes returning CSS declarations: `glassSurface(level)`, `artFill(dim)`, `focusRing(kind)` for compact controls and cards, `currentUnderline()`, `onFill()`, `ghost()`.
 - `applyAccent(root, colour | null)`: sets `--gg-accent` and `--gg-accent-text` on a surface root, falling back to teal for null.
 
 `src/styles/homeGlass.ts` (on `codex/floating-menu`; not on 3.6) is folded into the module when the menu is rebased; its exports remain as re-exports until callers move.
 
 ### Surfaces
-
-The plugin settings panel (`SettingsPanel.tsx`) is built only from Decky's components and keeps Steam's Quick Access look, matching the tabs around it (visual reference Q19, approved 2026-10-25: tokens there would bring a per-game accent among Steam's blue toggles, and `glass-strong` does not show on Steam's solid panel). Its one style of its own, the dimmed HowLongToBeat match line, moves to `text-dim` and the `label` size.
 
 Each surface writes `tokenCss()` into its own document once:
 
@@ -197,28 +206,47 @@ Each surface writes `tokenCss()` into its own document once:
 | Screensaver | `ScreensaverView` |
 | Floating menu | `src/menu/host.tsx`, both the owner document and the popup document |
 
-The accent variables `--glance-accent`, `--gg-accent` and (after the menu rebase) `--gg-menu-accent` become `--gg-accent`; `--glance-accent-text` becomes `--gg-accent-text`, and `--gh-on-accent` becomes the `on-accent` token. `--gh-card-accent` (each feed card's game accent) is removed: Q24 took its pill and Q26 its last use. Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
+The plugin settings panel (`SettingsPanel.tsx`) is built only from Decky's components and keeps Steam's Quick Access look, matching the tabs around it: tokens there would bring a per-game accent among Steam's blue toggles, and `glass-strong` does not show on Steam's solid panel. Its one style of its own, the dimmed HowLongToBeat match line, moves to `text-dim` and the `label` size.
+
+### Accent names
+
+| Today | Becomes |
+|---|---|
+| `--glance-accent`, `--gg-accent`, `--gg-menu-accent` (after the menu rebase) | `--gg-accent` |
+| `--glance-accent-text` | `--gg-accent-text` |
+| `--gh-on-accent` | the `on-accent` token |
+| `--gh-card-accent` | removed: feed pills are neutral glass and empty cards use `empty-fill` |
+
+Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
 
 ### Approved changes to released surfaces
 
 These are the only intended visible changes to Home, the game page, the screensaver and the status bar:
 
 1. Home info cards, feed cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring; lift, glow and accent bar unchanged.
-2. Small capital labels unify to 11 px / 800 / .16em; the feed tabs keep 13 / 700 as the `tab` role (Q25). Seen on the Ally: the wider, heavier text cuts the "Recently updated" lines off sooner, so those lines are checked for truncation in implementation.
+2. Small capitals unify to the `label` role (11 / 800 / .16em): "Last played" 12 → 11, chip labels and pills 10 → 11, card lines 10.5 → 11, the screensaver's labels 9 → 11. The feed tabs keep 13 / 700 as the `tab` role.
 3. Status pill weight changes from 600 to 700.
-4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 14 → 16).
+4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 12 and 14 → 16).
 5. Any 400/500/600 weights move to 700.
-6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role (11 / 800 / .16em), matching Home's small capitals; their height stays the same on screen, the spacing widens and the weight rises (Q21).
-7. Text on accent fills is white: Home's Library button changes from `#0b0d10` to white (Q20). The feed pills are covered by 9.
-8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150 (Q22).
-9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent to `glass-solid` with a raised edge and white text (Q24).
-10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the look stays as calm as today (Q23).
-11. A feed card without art or avatar shows a neutral gradient (`rgba(255,255,255,.10)` to glass) instead of one in its game's accent (Q26).
-12. Feed cards take the white focus ring like every other card (Q27; already in Section 2 and change 1).
+6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role. Their labels keep today's height on screen; the spacing widens and the weight rises.
+7. Home's Library button: text changes from `#0b0d10` to white.
+8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150.
+9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent with dark text to `glass-solid` with a raised edge and white text.
+10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the feed looks as calm as today.
+11. A feed card with no art or avatar shows `empty-fill` instead of a gradient in its game's accent.
+
+### Allowlist
+
+Values that stay outside `tokens.ts`, each with its reason:
+
+- Artwork effects: gradient scrims and shades, the download fill.
+- The Library card's grid icon: its 2-unit cells are a drawing, not a shape role.
+- Friend status colours (`FRIEND_COLOURS`) on avatar rings and the status bar: they carry meaning (online, away), not style.
+- Tuned timings: the page (300 ms), the tab strip (300 ms), the feed sheet (400 ms) and the open transitions.
 
 ### Branch and release
 
-Work happens on the local branch `design/visual-language`, in the worktree `../game-glance-visual-language`, rebased on 2026-10-25 onto `feature/3.6-hero-scale-whatsnew` (751e7ed, which contains v3.4.2 and v3.5.0). Order: token module, then Home, game page, screensaver and status bar. This ships as release 4.0.0, after 3.6.0. 3.6.0 contains nothing from this spec; if 3.6 gains commits before it ships, this branch is rebased onto its final state. The floating menu branch `codex/floating-menu` is then rebased onto it and polished using only tokens.
+Work happens on the local branch `design/visual-language`, in the worktree `../game-glance-visual-language`, based on `feature/3.6-hero-scale-whatsnew` (751e7ed, which contains v3.4.2 and v3.5.0). Order: token module, then Home, game page, screensaver and status bar. This ships as release 4.0.0, after 3.6.0. 3.6.0 contains nothing from this spec; if 3.6 gains commits before it ships, this branch is rebased onto its final state. The floating menu branch `codex/floating-menu` is then rebased onto it and polished using only tokens.
 
 No fetch, push, pull request or release is part of this spec; those are separate steps.
 
@@ -227,13 +255,44 @@ No fetch, push, pull request or release is part of this spec; those are separate
 - Unit tests for `tokenCss()`: every token name is emitted, the accent `@property` is registered, and values match this spec.
 - Unit tests for each recipe and for `applyAccent()` (fallback, legible text variant).
 - Each surface's CSS builder includes the token block (assert on presence of `--gg-` declarations, not full snapshots).
-- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius`, `font-weight` or `ms` duration literals outside `tokens.ts`, except entries in a reviewed allowlist: artwork effects such as gradient scrims and download fill, the Library card's grid icon, and the tuned timings named in Motion. Blurred artwork uses `art-fill` or `art-fill-dim`.
-- Existing tests stay green; typecheck passes.
-- Device: a full Gamescope compositor screenshot (mode 3) of Home, a game page and the screensaver on the Ally, docked and handheld, compared against the visual reference and against before-screenshots, to confirm only the approved changes are visible.
+- A guard test scans `src/**/*Css.ts`, `src/menu/styles.ts` and component inline styles and fails on raw `rgba()`, `blur()`, `border-radius`, `font-weight` or `ms` duration literals outside `tokens.ts`, except allowlist entries.
+- Existing tests stay green, including the `giveWay.ts` / `homeCss` stack test; typecheck passes.
+- Truncation: every `label` use is checked at the new width (the "Recently updated" lines first).
+- Device: a full Gamescope compositor screenshot (mode 3) of Home (rest and feed open), a game page and the screensaver on the Ally, docked and handheld, compared against the visual reference and against before-screenshots, to confirm only the approved changes are visible.
 
 ## Out of scope
 
 - Floating menu layout and polish (next deliverable, built on these tokens).
 - New colour themes or a user-selectable theme.
-- Changes to Steam-owned native panels, including the Quick Access panel that holds Game Glance's settings (beyond the one line above).
+- Changes to Steam-owned native panels, including the Quick Access panel that holds Game Glance's settings (beyond its one line in Section 5).
 - Changing Home's layout, its size (settled in 3.6, #55) or its open transitions.
+
+## Decision log
+
+All on the visual reference page. Q1–Q14 decided 2026-10-20 on `codex/floating-menu`; Q19–Q27 decided 2026-10-25 in the re-review on 3.6.
+
+| Q | Decision |
+|---|---|
+| Q1 | Focus is the 2 px white ring plus accent glow, on every surface |
+| Q2 | Home cards move from the accent edge to the white ring |
+| Q3 | "Current" reuses Home's tab row (dim, underline, glow when focused) |
+| Q4 | A chosen value is an accent fill |
+| Q5 | Unavailable controls use Home's ghost look |
+| Q6 | Menu corners use the panel radius 16, not 26 |
+| Q7 | Menu text moves from 13 to Home's 16 body size |
+| Q8 | One small-capital style (refined by Q25: the tabs keep their own) |
+| Q9 | Status pill weight 700 |
+| Q10 | Three durations: 150, 250, 500 ms (refined by Q22) |
+| Q11 | Action buttons are pills |
+| Q12 | Setting rows are bare at rest |
+| Q13 | Named options use a segmented control; numeric scales a slider |
+| Q14 | The language ships first as its own release, then the menu (now 4.0.0 on 3.6) |
+| Q19 | The settings panel keeps Steam's Quick Access look |
+| Q20 | Text on accent fills is white (chosen over "per accent" for consistency) |
+| Q21 | The game page's info cards take `r-card`, glass blur and the `label` role |
+| Q22 | Timings move to the tokens by job; the page, tab strip, feed sheet and open transitions keep theirs |
+| Q23 | Blurred artwork: one strength, `art-fill` for art alone, `art-fill-dim` under text |
+| Q24 | Feed card pills are neutral glass (chosen over the screen's accent) |
+| Q25 | Small capitals at 11; the feed tabs keep 13 as the `tab` role |
+| Q26 | A feed card without art gets a neutral tint (`empty-fill`) |
+| Q27 | Feed cards take the white focus ring (a check of Section 2) |
