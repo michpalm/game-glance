@@ -1,8 +1,8 @@
 # Game Glance visual language
 
-Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review; re-reviewed on 3.6 on 2026-10-25 (Q19–Q24). No code has changed.
+Date: 2026-10-20. Status: design approved section by section in review; written spec awaiting review; re-reviewed on 3.6 on 2026-10-25 (Q19–Q27). No code has changed.
 
-Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions are Q1–Q14 (2026-10-20) and Q19–Q24 (re-review, 2026-10-25); Q15–Q18 on that page belong to the Deck Shelves spec. The approved option is marked "Proposed", or "Chosen" where Michael picked another.
+Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions are Q1–Q14 (2026-10-20) and Q19–Q27 (re-review, 2026-10-25); Q15–Q18 on that page belong to the Deck Shelves spec. The approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
 ## Identity: the focus is games
 
@@ -143,7 +143,8 @@ Two weights only: 700 and 800.
 | `title` | Home's game title: 800, letter-spacing −.02em | — |
 | `heading` | 20 / 800 | Menu panel headings where they remain |
 | `body` | 16 / 700 | Button, row and card text; menu labels move from 13 to 16 |
-| `label` | 11 / 800, letter-spacing .16em, uppercase, `text-dim` | Home's six label styles (9.5–12 px), menu section headers, slider notch labels |
+| `label` | 11 / 800, letter-spacing .16em, uppercase, `text-dim` | Every small capital except the tabs: Home's "Last played" (12), chip labels (10), pills (10), card lines (10.5), ghost and Library labels, the screensaver's labels (9), the game page's card labels (8.5); menu section headers, slider notch labels |
+| `tab` | 13 / 700, letter-spacing .16em, uppercase | The feed tabs: navigation, shown in the "current" state of Section 2, so they keep today's size (visual reference Q25, approved 2026-10-25) |
 | `value` | 20 / 700, tabular figures | Chip values, slider readouts |
 
 Font family stays Steam's loaded Motiva Sans with the existing fallbacks.
@@ -196,14 +197,14 @@ Each surface writes `tokenCss()` into its own document once:
 | Screensaver | `ScreensaverView` |
 | Floating menu | `src/menu/host.tsx`, both the owner document and the popup document |
 
-The accent variables `--glance-accent`, `--gg-accent` and (after the menu rebase) `--gg-menu-accent` become `--gg-accent`; `--glance-accent-text` becomes `--gg-accent-text`, and `--gh-on-accent` becomes the `on-accent` token. `--gh-card-accent` (each feed card's game accent) loses its pill after Q24. Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
+The accent variables `--glance-accent`, `--gg-accent` and (after the menu rebase) `--gg-menu-accent` become `--gg-accent`; `--glance-accent-text` becomes `--gg-accent-text`, and `--gh-on-accent` becomes the `on-accent` token. `--gh-card-accent` (each feed card's game accent) is removed: Q24 took its pill and Q26 its last use. Old names stay as aliases pointing at the new one until every surface has moved, then are removed.
 
 ### Approved changes to released surfaces
 
 These are the only intended visible changes to Home, the game page, the screensaver and the status bar:
 
 1. Home info cards, feed cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring; lift, glow and accent bar unchanged.
-2. Small capital labels unify to 11 px / 800 / .16em.
+2. Small capital labels unify to 11 px / 800 / .16em; the feed tabs keep 13 / 700 as the `tab` role (Q25). Seen on the Ally: the wider, heavier text cuts the "Recently updated" lines off sooner, so those lines are checked for truncation in implementation.
 3. Status pill weight changes from 600 to 700.
 4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 14 → 16).
 5. Any 400/500/600 weights move to 700.
@@ -212,6 +213,8 @@ These are the only intended visible changes to Home, the game page, the screensa
 8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150 (Q22).
 9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent to `glass-solid` with a raised edge and white text (Q24).
 10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the look stays as calm as today (Q23).
+11. A feed card without art or avatar shows a neutral gradient (`rgba(255,255,255,.10)` to glass) instead of one in its game's accent (Q26).
+12. Feed cards take the white focus ring like every other card (Q27; already in Section 2 and change 1).
 
 ### Branch and release
 
