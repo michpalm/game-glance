@@ -4,6 +4,32 @@ Date: 2026-10-20. Status: design approved section by section in review; written 
 
 Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact; Q1–Q14 with the approved option marked "Proposed").
 
+## Identity: the focus is games
+
+Added 2026-10-23. In Michael's words:
+
+> I have a clear goal and vision for this plugin. Things should be simple, they should just work and you (and me) as a user should just be able to focus on what matters most, to play games and have a good time.
+>
+> The focus is games.
+>
+> That is why I have been adding some options to how the plugin behaves and some integrations with game related plugins (Unifideck, etc), but not that many on the cosmetic customization part. To enable the plugin to feel and work as it does, it reworks a lot of the standard way CSS Loader updates the OS look and feel. This makes it quite hard to ensure support across the available themes there... so my approach is to deliver an experience that just feel nice enough you don't want to change it too much, besides letting you pick some stuff of what it shows you on screen.
+
+What this means for every surface and every setting:
+
+- **Games first.** A surface earns its space by helping the player pick, start or follow a game. Decoration supports the art; it never competes with it.
+- **The look is the product, not a setting.** This visual language is Game Glance's look. Colours, radii, type, blur and spacing are not offered as options, and CSS Loader themes are not promised to apply on restyled surfaces.
+- **Options choose what you see, not how it looks.** An option is added when it lets players show or hide content they care about (a feed, a stat, a section), change how the plugin behaves, or connect a game-related plugin. Granular customisation for its own sake is not a goal.
+- **One switch per thing the player cares about.** Choosing content can be as fine as the player's interests are: each kind of content (What's new, Friends, Recommended) can have its own switch. An option is named after the content, not the mechanism, and covers that content everywhere it appears, rather than one switch per surface or per element. The line is drawn at styling, never at content.
+- **The default needs no change.** Every option's default is the intended experience; turning an option on or off never leaves a surface looking unfinished (no empty frames, no gaps where hidden content was).
+
+Test for a proposed option: it passes all of (1) it changes what is shown or what happens, not a surface's styling; (2) it is one switch for one thing the player cares about; (3) the default is the experience we would ship without it. A borderline case is decided in the open and recorded here.
+
+Recorded cases:
+
+- **Hero art Fill/Fit** (3.6): about how much of the game's own art is seen, not the plugin's styling, so it is one global choice with Fill as the default. Accepted.
+- **Home feed tabs** (#56, 3.6): a switch each for What's new, Friends and Recommended, all on; all off removes the feed. The game page's news is game-specific, so it is separate content with its own switch. Settings rows show only while the row they depend on is on (Profile picture under Status bar, wishlist deals under Recommended). Accepted.
+- **Size** (#55, 3.6): no size option and no following Steam's display scale (tried, then dropped: every larger scale needed Home and the game page to give way identically for the open transition). Instead one better default for everyone: about 8.6% larger on 16:9, 7.3% on 16:10, as far as fits with only the air above the title giving way. Accepted: the default needs no change.
+
 ## Purpose and success criteria
 
 Give every Game Glance surface one consistent visual language, so a control looks and behaves the same wherever it appears. Surfaces: Spotlight Home, the game page, the status bar, the screensaver, the plugin settings panel and the floating menu.
