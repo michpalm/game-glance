@@ -103,7 +103,7 @@ One live accent per screen, from the existing artwork pipeline (`src/home/accent
 |---|---|
 | `accent` | Raw artwork colour; fills (Play pill, slider fill, on toggles, chosen segments, glows) |
 | `accent-text` | `legibleAccent(accent)`; accent used as text |
-| `on-accent` | `#0b0d10`; text or thumb on an accent fill |
+| `on-accent` | `#fff`; text, icon or thumb on an accent fill (visual reference Q20, approved 2026-10-25: white everywhere, as on Play today, for one consistent look; accepted trade-off: bright accents read lower, 3.1:1 on Dorfromantik's `#c88437`, 1.9:1 on the teal fallback) |
 
 The fallback is Home's teal `#5fd1ae` on every surface, including the floating menu. This supersedes the floating-menu spec's Steam blue fallback. The same accent is used everywhere; it is not brightened per surface.
 
@@ -131,7 +131,7 @@ Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabl
 | `r-panel` | 16 | Panels and sheets, including the floating menu bar and panel (26 today) |
 | `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls |
 
-A shape nested inside another uses the outer radius minus the gap between them.
+A shape nested inside another uses the outer radius minus the gap between them. Every radius snaps to its role's token (visual reference Q21, approved 2026-10-25): the game page's info cards move from 10 to `r-card` 12. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round and use `r-pill`, which leaves them unchanged. The Library card's tiny grid icon keeps its own 2-unit cells and is on the allowlist.
 
 ### Type
 
@@ -159,7 +159,7 @@ Gaps and padding use one 4-point scale: 4, 8, 12, 16, 24, 32. Token sizes are wr
 | `base` | 250 ms | Focus and state changes |
 | `accent` | 500 ms | Accent colour fades (existing `ACCENT_MS`) |
 
-Existing tuned page and open transitions keep their own timings. `prefers-reduced-motion` disables all of them.
+Timings move to the tokens by job (visual reference Q22, approved 2026-10-25): press and colour changes (120, 200 ms) become `fast`; focus and state changes (capsule 220, feed card 300 ms) become `base`. Tuned motion keeps its own timing and is on the allowlist: the page (300 ms), the tab strip (300 ms), the feed sheet (400 ms) and the open transitions. `prefers-reduced-motion` disables all of them.
 
 ## 4. Components
 
@@ -206,6 +206,9 @@ These are the only intended visible changes to Home, the game page, the screensa
 3. Status pill weight changes from 600 to 700.
 4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 14 → 16).
 5. Any 400/500/600 weights move to 700.
+6. The game page's info cards: radius 10 → 12, backdrop blur 10 → 16, labels 8.5 / 700 / .12em → the `label` role (11 / 800 / .16em), matching Home's labels (Q21).
+7. Text on accent fills is white: Home's Library button and the feed card pills change from `#0b0d10` to white (Q20).
+8. Timings: a capsule's focus settles in 250 ms instead of 220, a feed card's in 250 instead of 300, the game page's card press in 150 instead of 120, and 200 ms colour changes in 150 (Q22).
 
 ### Branch and release
 
