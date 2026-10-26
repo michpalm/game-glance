@@ -14,7 +14,7 @@ export function MorePanel({ state, preferences, handoff, dispatch }: { state: Me
         <p>Choose 1–4 menus. Other menus stay in More; a running game gets its own space.</p>
         <Focusable className="gg-menu-switches" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>{PINNABLE.map(section => {
             const checked = state.pins.includes(section);
-            return <div key={section} data-gg-focus={`configure:${section}`}><ToggleField label={SECTION_LABELS[section]} checked={checked} disabled={checked ? state.pins.length === 1 : state.pins.length === 4} onChange={value => {
+            return <div key={section} className="gg-menu-setting gg-menu-setting-toggle" data-gg-focus={`configure:${section}`}><ToggleField highlightOnFocus={false} label={SECTION_LABELS[section]} checked={checked} disabled={checked ? state.pins.length === 1 : state.pins.length === 4} onChange={value => {
                 const pins = value ? [...state.pins, section] : state.pins.filter(id => id !== section);
                 void preferences.setPins(pins).then(() => setError(''), () => setError('Could not save menu choices. Try again.'));
             }} /></div>;

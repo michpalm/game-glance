@@ -11,6 +11,25 @@ function harness(){
     return {c,bindings,host,order,releaseHooks,releaseGame,replay,state:()=>state,handlers:()=>handlers,disable:()=>{state=reduceMenu(state,{type:'enable',value:false});}};
 }
 describe('floating menu coordinator',()=>{
+    it('lets the menu paint hidden before running expensive close teardown', async () => {
+        const h = harness(); let painted!: () => void;
+        const concealed = new Promise<void>(resolve => { painted = resolve; });
+        h.bindings.attachHost = () => ({ ...h.host, conceal: () => concealed });
+        h.c.start(); await h.c.open('home'); h.c.close();
+        expect(h.host.close).not.toHaveBeenCalled();
+        expect(h.bindings.closeMenuHost).not.toHaveBeenCalled();
+        painted(); await Promise.resolve(); await Promise.resolve();
+        expect(h.state().phase).toBe('closed');
+        expect(h.host.close).toHaveBeenCalledOnce(); expect(h.bindings.closeMenuHost).toHaveBeenCalledOnce();
+    });
+    it('does not close a native handoff when an earlier conceal fence completes', async () => {
+        const h = harness(); let painted!: () => void;
+        h.bindings.attachHost = () => ({ ...h.host, conceal: () => new Promise<void>(resolve => { painted = resolve; }) });
+        h.c.start(); await h.c.open('home'); h.c.close();
+        await h.c.handoff({ kind: 'main-menu' }); painted(); await Promise.resolve();
+        expect(h.state().phase).toBe('native-handoff');
+        expect(h.bindings.closeMenuHost).not.toHaveBeenCalled();
+    });
     it('opens and toggles the custom host, preserving native handoff ordering',async()=>{
         const h=harness(),stop=h.c.start();await h.c.open('home');expect(h.state().phase).toBe('custom-open');
         await h.c.open('quick-access');expect(h.state().section).toBe('quick-settings');

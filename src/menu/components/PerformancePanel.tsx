@@ -5,6 +5,7 @@ import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import { PERFORMANCE_OVERLAY_LEVELS, type createPerformance, type PerformanceValue } from '../steam/performance';
 import { MenuAction } from './MenuAction';
+import { SettingSegments } from './SettingSegments';
 
 type Performance = ReturnType<typeof createPerformance>;
 const SECTIONS = ['Display', 'Scaling', 'Power & GPU', 'Overlay'] as const;
@@ -39,6 +40,9 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
     if (typeof s.value === 'boolean') {
         field = <ToggleField highlightOnFocus={false} label={label} checked={s.value}
             disabled={s.disabled || s.pending} onChange={set} />;
+    } else if ((id === 'scalingMode' || id === 'scalingFilter') && s.options?.length && s.options.length <= 5) {
+        field = <><div className="gg-menu-setting-header">{label}</div><SettingSegments id={`performance:${id}`} label={LABELS[id]}
+            options={s.options} value={s.value} labels={OPTIONS[id]} disabled={s.disabled || s.pending} onSelect={set} /></>;
     } else {
         const values = s.options?.filter((value): value is number => typeof value === 'number');
         const index = (value: number) => values?.reduce((best, v, i) =>
@@ -59,7 +63,8 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
                 if (nextValue !== undefined) { setDraft(nextValue); set(nextValue); }
             }} />;
     }
-    return <div className={`gg-menu-setting ${typeof s.value === 'boolean' ? 'gg-menu-setting-toggle' : 'gg-menu-setting-slider'}${s.disabled ? ' gg-menu-setting-disabled' : ''}`}
+    const named = id === 'scalingMode' || id === 'scalingFilter';
+    return <div className={`gg-menu-setting ${named ? 'gg-menu-setting-segments' : typeof s.value === 'boolean' ? 'gg-menu-setting-toggle' : 'gg-menu-setting-slider'}${s.disabled ? ' gg-menu-setting-disabled' : ''}`}
         data-gg-focus={`performance:${id}`} aria-description={s.reason}>
         {field}{s.error && <p className="gg-menu-error" role="alert">{s.error}</p>}
     </div>;
@@ -79,13 +84,9 @@ function ProfilePill({ performance }: { performance: Performance }) {
     const s = useSyncExternalStore(adapter.subscribe, adapter.get);
     if (!s.available) return null;
     return <div className="gg-menu-performance-profile"><h3>Performance profile</h3>
-        <Focusable className="gg-menu-profile-pill" flow-children="row" aria-label="Performance profile">
-            {s.options?.map(value => <MenuAction key={String(value)} id={`performance:profile:${value}`}
-                selected={s.value === value} disabled={s.pending || s.disabled}
-                onAction={() => { void adapter.set(value).catch(() => {}); }}>
-                {PROFILES[String(value)] ?? String(value)}
-            </MenuAction>)}
-        </Focusable>{s.error && <p className="gg-menu-error" role="alert">{s.error}</p>}
+        <SettingSegments id="performance:profile" label="Performance profile" options={s.options ?? []} value={s.value} labels={PROFILES}
+            disabled={s.pending || s.disabled} onSelect={value => { void adapter.set(value).catch(() => {}); }} />
+        {s.error && <p className="gg-menu-error" role="alert">{s.error}</p>}
     </div>;
 }
 

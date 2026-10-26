@@ -18,6 +18,7 @@ import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './motion';
 import { steamEnterOffCss } from '../styles/theme';
 import { legibleAccent } from './accent';
+import { shownAccent } from './shownAccent';
 import { solveRaiseDelta } from './raised';
 import { watchLegendHeight, legendReserve } from './legend';
 import { FEED_SHEET, homeCss, stackShift } from './homeCss';
@@ -158,6 +159,8 @@ export function SpotlightHome() {
     const heldAccent = useRef(data.accent);
     if (!cycle.holding) heldAccent.current = data.accent;
     const accent = heldAccent.current;
+    useEffect(() => { shownAccent.set(accent); }, [accent]);
+    useEffect(() => () => shownAccent.set(undefined), []);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.
     const [zone, setZone] = useState<Zone>('recents');
     // Set once Home has had focus in this mount: until then the game cards claim Steam's preferred focus (Home opens on

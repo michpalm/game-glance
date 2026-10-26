@@ -2,7 +2,8 @@ import * as ReactDOM from 'react-dom';
 import { findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
-import { frostMenuSurfaces } from './frosting';
+import { prepareMenuPresentation } from './presentation';
+import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
 
@@ -39,63 +40,10 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
     };
 }
 
-/** Steam pages use our scoped CSS glass; only actual game overlays need compositor frosting. */
-export function needsNativeMenuBlur(owner: Pick<NativeOwner, 'BIsOverlayPath' | 'MainRunningAppID'>): boolean {
-    try {
-        if (typeof owner.BIsOverlayPath === 'function') return owner.BIsOverlayPath();
-    } catch { /* Older clients may not expose the route classifier. */ }
-    return Number.isFinite(owner.MainRunningAppID) && Number(owner.MainRunningAppID) > 0;
-}
-
-interface NativeBlurService { SetBlurEnabled(enabled: boolean): void; ApplyBlurState?(): void }
-interface BlurReply { BSuccess?(): boolean; GetEResult?(): number }
-interface NativeBlurAPI { SetBlurParams(params: { mode: number; radius: number; fade_duration_ms: number }): Promise<BlurReply> | void }
-/** Borrow one game-only conditional blur hold; leave Steam's counters and suppression policy intact. */
-export function borrowNativeMenuBlur(service: NativeBlurService | undefined = findModuleExport(value =>
-    typeof value?.SetBlurEnabled === 'function' && typeof value.SetForceSuppressBlur === 'function' && typeof value.ApplyBlurState === 'function',
-), api: NativeBlurAPI | undefined = findModuleExport(value => typeof value?.SetBlurParams === 'function' &&
-    value.SetBlurParams.toString().includes('Gamescope.SetBlurParams#1'))): Stop {
-    if (!service) return () => {};
-    let stopped = false, conditional = true;
-    let releaseApply: Stop | undefined;
-    if (api && typeof service.ApplyBlurState === 'function') {
-        try {
-            releaseApply = ownMethod(service, 'ApplyBlurState', next => function(this: NativeBlurService) {
-                if (stopped || !conditional) return next?.call(this);
-                const fallback = (error: unknown) => {
-                    if (conditional) {
-                        conditional = false;
-                        console.warn('[Game Glance] conditional menu blur unavailable', error);
-                    }
-                    service.ApplyBlurState?.();
-                };
-                try {
-                    // Gamescope conditional mode blurs only under non-transparent overlay pixels.
-                    // No 300ms whole-scene transition, and no mutation of Steam's suppression flag.
-                    void Promise.resolve(api.SetBlurParams({ mode: 1, radius: 32, fade_duration_ms: 0 })).then(reply => {
-                        if (reply?.BSuccess?.() === false || reply?.GetEResult && reply.GetEResult() !== 1) throw Error('Gamescope rejected menu blur');
-                        // A late IPC response must not leave game blur enabled after our menu closed.
-                        if (stopped) service.ApplyBlurState?.();
-                    }).catch(fallback);
-                } catch (error) { fallback(error); }
-            });
-        } catch (error) { console.warn('[Game Glance] native blur hook unavailable', error); }
-    }
-    try { service.SetBlurEnabled(true); }
-    catch (error) { stopped = true; releaseApply?.(); throw error; }
-    return () => {
-        if (stopped) return;
-        stopped = true;
-        // Restore the current native implementation first, including later third-party patches.
-        releaseApply?.();
-        service.SetBlurEnabled(false);
-    };
-}
-
-export interface HostSnapshot { active: boolean; node: ReactNode }
-interface HostSurface { verifyPresentation?(): Promise<void>; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
+export interface HostSnapshot { active: boolean; node: ReactNode; closing?: boolean }
+interface HostSurface { verifyPresentation?(): Promise<void>; conceal?(): Promise<void>; resume?(): void; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
 export function createNativeHost(surface: HostSurface): HostAttachment {
-    let state: HostSnapshot = { active: false, node: null };
+    let state: HostSnapshot = { active: false, node: null, closing: false };
     let disposed = false;
     let failure: Error | null = null;
     const listeners = new Set<Stop>(), failures = new Set<(error: Error) => void>();
@@ -103,22 +51,24 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
     const release = surface.install(() => state, listener => { listeners.add(listener); return () => { listeners.delete(listener); }; }, error => {
         if (disposed || failure) return;
         console.warn('[Game Glance] menu host failed', error);
-        failure = error; state = { active: false, node: null }; emit();
+        failure = error; state = { active: false, node: null, closing: false }; emit();
         failures.forEach(listener => listener(error));
     });
     return {
+        conceal: surface.conceal ? () => surface.conceal!() : undefined,
         async present(node) {
             if (disposed) throw new Error('Menu host was disposed');
             if (failure) throw failure;
-            state = { active: true, node }; emit();
+            surface.resume?.();
+            state = { active: true, node, closing: false }; emit();
             await surface.verifyPresentation?.();
             if (disposed || failure) throw failure ?? new Error('Menu host was disposed');
         },
-        suspend() { if (!disposed) { state = { ...state, active: false }; emit(); } },
-        close() { if (!disposed) { state = { active: false, node: null }; emit(); } },
+        suspend() { if (!disposed) { state = { ...state, active: false, closing: false }; emit(); } },
+        close() { if (!disposed) { state = { active: false, node: null, closing: true }; emit(); } },
         dispose() {
             if (disposed) return;
-            disposed = true; state = { active: false, node: null }; emit();
+            disposed = true; state = { active: false, node: null, closing: false }; emit();
             try { release(); } finally { listeners.clear(); failures.clear(); }
         },
         onFailure(listener) { failures.add(listener); if (failure) listener(failure); return () => { failures.delete(listener); }; },
@@ -127,14 +77,14 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
 
 type Tree = ReactElement<Record<string, unknown>>;
 export function renderMenuSlot(nativeTree: ReactNode, state: HostSnapshot, fault: (error: Error) => void): ReactNode {
-    if (!state.active) return nativeTree;
+    if (!state.active && !state.closing) return nativeTree;
     if (!isValidElement(nativeTree)) { fault(new Error('Native menu root is unavailable')); return nativeTree; }
     const tree = nativeTree as Tree;
     const provider = tree.props.children;
     if (tree.props.navID !== 'MainNavMenuContainer' || !tree.props.navTreeRef || typeof tree.props.onActivated !== 'function' || typeof tree.props.onDeactivated !== 'function' || !isValidElement(provider)) {
         fault(new Error('Native menu navigation shape changed')); return nativeTree;
     }
-    return cloneElement(tree, { className: 'BasicUI gg-menu-native-host' }, cloneElement(provider as Tree, {}, state.node));
+    return cloneElement(tree, { className: 'BasicUI gg-menu-native-host' }, cloneElement(provider as Tree, {}, state.closing ? null : state.node));
 }
 
 /** Transform only the verified native portal child, keeping ownership/context/portal target. */
@@ -180,26 +130,78 @@ export function installMenuPortalHook(api: PortalAPI, wrap: (native: ComponentTy
     });
 }
 
-export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document): Stop {
+/** Hide the departing native container until its closed state has actually painted.
+ * Restoring Steam's 70% black glass during its 300ms close hold flashes the whole scene.
+ */
+export function retireMenuBackdrop(document: Document, backdrop: HTMLElement, visibleClass: string): Stop {
+    const view = document.defaultView;
+    const style = document.createElement('style');
+    style.dataset.ggMenuCloseGuard = 'true';
+    style.textContent = '[data-gg-menu-retiring]{opacity:0!important;visibility:hidden!important;transition:none!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}';
+    backdrop.dataset.ggMenuRetiring = 'true'; document.head.append(style);
+    let finished = false, frame: number | undefined;
+    const finish = () => {
+        if (finished) return;
+        finished = true; observer?.disconnect();
+        if (frame !== undefined) view?.cancelAnimationFrame(frame);
+        style.remove(); delete backdrop.dataset.ggMenuRetiring;
+    };
+    const check = () => {
+        if (finished || frame !== undefined || backdrop.classList.contains(visibleClass)) return;
+        if (!view?.requestAnimationFrame) { finish(); return; }
+        // Keep the zero-opacity style through a paint before restoring the native transition.
+        frame = view.requestAnimationFrame(() => { frame = view.requestAnimationFrame(finish); });
+    };
+    const observer = view?.MutationObserver ? new view.MutationObserver(check) : undefined;
+    observer?.observe(backdrop, { attributes: true, attributeFilter: ['class'] });
+    check();
+    return finish;
+}
+
+type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void };
+export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document): ViewportRelease {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
     const style = document.createElement('style');
     style.dataset.ggMenuViewport = 'true';
     style.textContent = `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
+    const backdropStyle = document.createElement('style');
+    backdropStyle.dataset.ggMenuBackdrop = 'true';
     // Steam's MainMenuBrowserView adds a separate 70%-black/8px-blur scrim.
     // The parent scrim composites the translucent child BrowserView as opaque black in-game.
-    // Clear it and let Steam's gamescope blur service blur the actual game, not a CEF window.
+    // Clear it so the glass-only custom menu has no background-blur layer.
     // Native Steam menus regain their original scrim on release.
     const backdropStyles = findModule(value => typeof value?.BackgroundGlass === 'string' && typeof value.DrawBackground === 'string' && typeof value.Blur === 'string');
     const backdrop = backdropStyles?.BackgroundGlass;
-    if (typeof backdrop !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(backdrop) || !document.getElementsByClassName(placeholder)[0]?.closest(`.${backdrop}`)) throw new Error('Native menu backdrop shape changed');
-    style.textContent += `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}`;
-    document.head.appendChild(style);
+    const visible = backdropStyles?.Visible;
+    const background = typeof backdrop === 'string' && /^[-_a-zA-Z0-9]+$/.test(backdrop) ? document.getElementsByClassName(placeholder)[0]?.closest<HTMLElement>(`.${backdrop}`) : null;
+    if (!background || typeof visible !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(visible)) throw new Error('Native menu backdrop shape changed');
+    // The popup's glass is the only menu visual; do not fade a separate native scrim.
+    backdropStyle.textContent = `.${backdrop}:has(.${placeholder}){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;opacity:1!important;transition:none!important}`;
+    document.head.append(style, backdropStyle);
+    const releaseTokens: Stop[] = [];
     try {
-        const releaseFrost = source ? frostMenuSurfaces(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement) : undefined;
-        return () => { try { releaseFrost?.(); } finally { style.remove(); } };
-    } catch (error) { style.remove(); throw error; }
+        const selector = '.gg-menu,.gg-menu-status-host';
+        releaseTokens.push(installTokenCss(document, selector));
+        if (source && source !== document) releaseTokens.push(installTokenCss(source, selector));
+        const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement) : undefined;
+        let stopped = false;
+        const release = (closing = false) => {
+            if (stopped) return;
+            stopped = true;
+            const finish = closing ? retireMenuBackdrop(document, background, visible) : undefined;
+            try { presentation?.(); } finally {
+                backdropStyle.remove();
+                // Keep the external BrowserView at full size while it hides. Restoring
+                // native dimensions now stretches its last submitted custom-menu frame.
+                if (!closing) style.remove();
+                for (const release of releaseTokens) release();
+            }
+            return closing ? () => { finish?.(); style.remove(); } : undefined;
+        };
+        return Object.assign(release, { conceal: () => presentation?.conceal() ?? Promise.resolve(), resume: () => presentation?.resume() });
+    } catch (error) { style.remove(); backdropStyle.remove(); for (const release of releaseTokens) release(); throw error; }
 }
 
 /** Native portal/window/context stay owned by Steam; no mounted React internals are modified. */
@@ -212,24 +214,31 @@ export function registerDiscoveredMenuHost(): Stop | null {
         if (owner.IsAnyVRWindow()) throw new Error('VR menu host is unsupported');
         const document = owner.BrowserWindow?.document;
         if (!document?.head) throw new Error('Steam menu owner window is unavailable');
-        let stopViewport: Stop | undefined;
+        let stopViewport: ViewportRelease | undefined;
+        let stopClosingBackdrop: Stop | undefined;
         let stopChrome: Stop | undefined;
         let stopPageStatus: Stop | undefined;
-        let stopBlur: Stop | undefined;
         const releaseEffects = () => {
-            const blur = stopBlur, chrome = stopChrome, pageStatus = stopPageStatus;
-            stopBlur = stopChrome = stopPageStatus = undefined;
-            try { blur?.(); } finally { try { chrome?.(); } finally { pageStatus?.(); } }
+            const chrome = stopChrome, pageStatus = stopPageStatus;
+            stopChrome = stopPageStatus = undefined;
+            try { chrome?.(); } finally { pageStatus?.(); }
         };
-        const releaseViewport = () => { stopViewport?.(); stopViewport = undefined; };
+        const releaseViewport = (closing = false) => {
+            if (!stopViewport) return;
+            const release = stopViewport; stopViewport = undefined;
+            stopClosingBackdrop?.(); stopClosingBackdrop = release(closing);
+        };
         function stretchViewport(tree: Tree, popup?: Window) {
             if (!popup?.document) throw new Error('Native menu popup is unavailable');
+            stopClosingBackdrop?.(); stopClosingBackdrop = undefined;
             if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document);
         }
         let read: () => HostSnapshot;
         let confirmed: ReactNode;
         const pending = new Set<{ resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
         return createNativeHost({
+            conceal: () => stopViewport?.conceal() ?? Promise.resolve(),
+            resume: () => stopViewport?.resume(),
             verifyPresentation() {
                 if (read().active && confirmed === read().node) return Promise.resolve();
                 return new Promise<void>((resolve, reject) => {
@@ -246,8 +255,12 @@ export function registerDiscoveredMenuHost(): Stop | null {
                         if (get().active) {
                             stopChrome ??= hideNativeMenuChrome(owner);
                             stopPageStatus ??= hideBackgroundStatus(document!);
-                            if (needsNativeMenuBlur(owner)) stopBlur ??= borrowNativeMenuBlur();
-                        } else releaseEffects();
+                        } else {
+                            // A native handoff may arrive after close consumed the viewport lease.
+                            // Clear its pending guard even though there is no viewport left to release.
+                            if (!get().closing) { stopClosingBackdrop?.(); stopClosingBackdrop = undefined; }
+                            releaseEffects();
+                        }
                     } catch (error) { fault(error as Error); }
                 });
                 const wrapped = new WeakMap<object, ComponentType<Record<string, unknown>>>();
@@ -263,7 +276,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                             if (!snapshot.active || !usingCustomSlot) { releaseViewport(); return; }
                             try { stretchViewport(tree as Tree, popup); }
                             catch (error) { fault(error as Error); return; }
-                            return releaseViewport;
+                            return () => releaseViewport(get().closing === true);
                         }, [snapshot.active, usingCustomSlot, popup]);
                         // A newly presented node still needs acknowledgement even when its viewport is reused.
                         useLayoutEffect(() => {
@@ -285,6 +298,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     try { release(); }
                     finally {
                         releaseViewport();
+                        stopClosingBackdrop?.(); stopClosingBackdrop = undefined;
                         releaseChromeSubscription(); releaseEffects();
                         for (const request of pending) { clearTimeout(request.timer); request.reject(new Error('Menu host was disposed')); }
                         pending.clear();

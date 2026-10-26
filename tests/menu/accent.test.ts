@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveMenuAccent } from '../../src/menu/accent';
+import { pickMenuAccent, resolveMenuAccent } from '../../src/menu/accent';
 
 const deps = () => ({ memo: new Map<number, string>(), version: vi.fn(() => 0), cache: { get: vi.fn<() => Promise<unknown>>(async () => null) } });
 describe('reuse Home accent in the menu', () => {
@@ -28,5 +28,19 @@ describe('reuse Home accent in the menu', () => {
         const pending = resolveMenuAccent(7, d); d.memo.set(7, '#123456'); finish({ color: '#ee6633' });
         expect(await pending).toBe('#123456');
         d.memo.clear(); d.cache.get.mockRejectedValue(Error('offline')); expect(await resolveMenuAccent(7, d)).toBeUndefined();
+    });
+});
+
+describe('one accent for the visible screen', () => {
+    it('follows Home artwork while a different game is running in the background', () => {
+        expect(pickMenuAccent('#112233', '#3d33cd', false)).toBe('#3d33cd');
+    });
+    it('follows the running game in its overlay and uses teal when its artwork has no accent', () => {
+        expect(pickMenuAccent('#112233', '#3d33cd', true)).toBe('#112233');
+        expect(pickMenuAccent(undefined, '#3d33cd', true)).toBe('#5fd1ae');
+    });
+    it('uses teal without valid screen artwork', () => {
+        expect(pickMenuAccent(undefined, undefined, false)).toBe('#5fd1ae');
+        expect(pickMenuAccent('bad', 'red;display:none', false)).toBe('#5fd1ae');
     });
 });

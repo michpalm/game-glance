@@ -1,5 +1,5 @@
 import { cache } from '../data/cache';
-import { accentKey } from '../home/accent';
+import { accentKey, DEFAULT_ACCENT } from '../home/accent';
 import { accentMemo } from '../home/accentMemo';
 import { accentVersion } from '../home/accentSample';
 
@@ -10,6 +10,12 @@ interface AccentDependencies {
 }
 const defaults: AccentDependencies = { memo: accentMemo, cache, version: accentVersion };
 const valid = (value: unknown): value is string => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
+
+/** Screen context, rather than a background game's existence, determines the visible artwork accent. */
+export function pickMenuAccent(running: string | undefined, home: string | undefined, gameSurface: boolean): string {
+    if (gameSurface) return valid(running) ? running : DEFAULT_ACCENT;
+    return valid(home) ? home : valid(running) ? running : DEFAULT_ACCENT;
+}
 
 /** Read Home's existing persisted color; never resample art or invent a game color. */
 export async function resolveMenuAccent(appId: number, deps: AccentDependencies = defaults): Promise<string | undefined> {

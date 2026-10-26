@@ -23,10 +23,17 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
     }
     const close = () => {
         if (!alive) return;
-        dispatch({ type: 'close' });
-        generation++;
-        host?.close();
-        bindings.closeMenuHost();
+        const ticket = ++generation;
+        const finish = () => {
+            if (!alive || ticket !== generation) return;
+            dispatch({ type: 'close' });
+            host?.close();
+            bindings.closeMenuHost();
+        };
+        // Hide the popup before React/native teardown can block a frame or resize
+        // the external BrowserView's cached texture.
+        if (host?.conceal) void host.conceal().then(finish, finish);
+        else finish();
     };
     async function openWithFallback(entry: Entry, replay: () => void | Promise<void>) {
         if (!alive) return;

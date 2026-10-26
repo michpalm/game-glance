@@ -1,11 +1,27 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideBackgroundStatus, hideNativeMenuChrome, needsNativeMenuBlur, borrowNativeMenuBlur, type HostSnapshot } from '../../src/menu/host';
-const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, hideBackgroundStatus, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
+const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', Visible: 'nativeVisible', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
 describe('native menu host',()=>{
+    it('mounts the popup without adding any separate background-blur panes', () => {
+        const owner = parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div></body></html>');
+        const popup = parseHTML('<html><head></head><body><div class="gg-menu"><div class="gg-menu-bar"></div><div class="gg-menu-panel"></div></div></body></html>');
+        const viewport = owner.document.querySelector('.nativePlaceholder')!;
+        viewport.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 480 } as DOMRect);
+        const stop = stretchMenuViewport(owner.document as unknown as Document, ['nativeContainer'], popup.document as unknown as Document);
+        expect(owner.document.querySelector('[data-gg-menu-frost]')).toBeNull(); stop();
+    });
+    it('keeps the native popup blank during custom close instead of repainting Steam menu content', () => {
+        const tree = nativeTree();
+        const closed = renderMenuSlot(tree, { active: false, node: null, closing: true }, vi.fn()) as ReactElement<Record<string, unknown>>;
+        expect(closed).not.toBe(tree);
+        expect(closed.props.className).toBe('BasicUI gg-menu-native-host');
+        expect((closed.props.children as ReactElement<{children: unknown}>).props.children).toBeNull();
+        expect(renderMenuSlot(tree, { active: false, node: null, closing: false }, vi.fn())).toBe(tree);
+    });
     it('preserves native identity and focus callbacks when replacing only owned content',()=>{
         const tree=nativeTree(),content=createElement('section',{},'Custom menu');
         expect(renderMenuSlot(tree,{active:false,node:content},vi.fn())).toBe(tree);
@@ -30,6 +46,15 @@ describe('native menu host',()=>{
         expect(read().active).toBe(false);await host.present('menu');expect(read()).toMatchObject({active:true,node:'menu'});
         host.suspend();expect(read().active).toBe(false);await host.present('next');host.close();expect(read().node).toBeNull();
         host.dispose();host.dispose();expect(release).toHaveBeenCalledTimes(1);await expect(host.present('late')).rejects.toThrow();
+    });
+    it('distinguishes closing from a native handoff even when the custom node has already been cleared', async () => {
+        let read!: () => HostSnapshot;
+        const host = createNativeHost({ install: get => { read = get; return () => {}; } });
+        await host.present('menu'); host.close();
+        expect(read()).toMatchObject({ active: false, node: null, closing: true });
+        host.suspend();
+        expect(read()).toMatchObject({ active: false, node: null, closing: false });
+        host.dispose();
     });
     it('does not report presentation success before the native render confirms it', async () => {
         let confirm!: () => void;
@@ -86,6 +111,16 @@ it('finds the stylesheet module and restores only the owned viewport rule', () =
     stop(); stop(); expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull(); expect(foreign.isConnected).toBe(true);
 });
 
+it('preserves popup dimensions through close until native handoff, reopen or disposal releases the retained lease', () => {
+    const { document } = parseHTML('<html><head></head><body><div class="nativeBackdrop nativeVisible"><div class="nativePlaceholder"></div></div></body></html>');
+    const stop = stretchMenuViewport(document as unknown as Document, ['nativeContainer']);
+    const finish = stop(true);
+    expect(document.querySelector('[data-gg-menu-viewport]')).not.toBeNull();
+    expect(finish).toBeTypeOf('function'); finish!();
+    expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
+    expect(document.querySelector('[data-gg-menu-close-guard]')).toBeNull();
+});
+
 describe('borrowed native menu chrome', () => {
     it('balances only its own header/footer holds and releases once on handoff or close', () => {
         let header = 2, footer = 3;
@@ -107,28 +142,11 @@ describe('borrowed native menu chrome', () => {
 it('removes only the backdrop surrounding the borrowed menu viewport and restores it with the viewport lease', () => {
     const { document } = parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div><div class="nativeBackdrop other-native-menu"></div></body></html>');
     const stop = stretchMenuViewport(document as unknown as Document, ['nativeContainer']);
-    const rule = document.querySelector('[data-gg-menu-viewport]')!.textContent;
+    const rule = document.querySelector('[data-gg-menu-backdrop]')!.textContent;
     expect(rule).toContain('.nativeBackdrop:has(.nativePlaceholder)');
     expect(rule).toContain('backdrop-filter:none!important');
     expect(document.querySelector('.other-native-menu')?.getAttribute('style')).toBeNull();
     stop(); expect(document.querySelector('[data-gg-menu-viewport]')).toBeNull();
-});
-
-
-describe('borrowed native compositor blur', () => {
-    it('releases only its own hold and never suppresses another Steam view', () => {
-        let holds = 2;
-        const service = { SetBlurEnabled: vi.fn((enabled: boolean) => { holds += enabled ? 1 : -1; }), SetForceSuppressBlur: vi.fn() };
-        const stop = borrowNativeMenuBlur(service);
-        expect(holds).toBe(3);
-        stop(); stop();
-        expect(holds).toBe(2);
-        expect(service.SetBlurEnabled.mock.calls).toEqual([[true], [false]]);
-        expect(service.SetForceSuppressBlur).not.toHaveBeenCalled();
-    });
-    it('leaves unsupported compositor services untouched', () => {
-        expect(() => borrowNativeMenuBlur(undefined)()).not.toThrow();
-    });
 });
 
 
@@ -148,35 +166,4 @@ it('hides only the background Game Glance status copies for the custom-menu leas
     expect(rule).toContain('visibility:hidden!important');expect(rule).toContain('transition:none!important');
     expect(document.querySelector('#unrelated')?.getAttribute('style')).toBeNull();
     stop();stop();expect(document.querySelector('[data-gg-menu-page-status]')).toBeNull();expect(foreign.isConnected).toBe(true);
-});
-
-
-it('uses compositor blur only for the native game overlay, never Steam pages even with a game running',()=>{
-    expect(needsNativeMenuBlur({BIsOverlayPath:()=>false,MainRunningAppID:1057090})).toBe(false);
-    expect(needsNativeMenuBlur({BIsOverlayPath:()=>true,MainRunningAppID:1057090})).toBe(true);
-    expect(needsNativeMenuBlur({})).toBe(false);
-    expect(needsNativeMenuBlur({MainRunningAppID:1057090})).toBe(true);
-    expect(needsNativeMenuBlur({BIsOverlayPath:()=>{throw Error('unavailable');},MainRunningAppID:1057090})).toBe(true);
-});
-
-it('uses conditional game blur without changing native suppression or taking other holds', async()=>{
-    let holds=2;const nativeApply=vi.fn();
-    const service={m_bForceSuppressBlur:true,SetForceSuppressBlur:vi.fn(),ApplyBlurState:nativeApply,
-        SetBlurEnabled(enabled:boolean){holds+=enabled?1:-1;this.ApplyBlurState();}};
-    const api={SetBlurParams:vi.fn(async()=>({BSuccess:()=>true}))};
-    const stop=borrowNativeMenuBlur(service,api);
-    expect(holds).toBe(3);expect(api.SetBlurParams).toHaveBeenCalledWith({mode:1,radius:32,fade_duration_ms:0});
-    expect(nativeApply).not.toHaveBeenCalled();expect(service.m_bForceSuppressBlur).toBe(true);
-    await Promise.resolve();await Promise.resolve();
-    const owned=service.ApplyBlurState;const later=vi.fn(()=>owned());service.ApplyBlurState=later;
-    stop();stop();expect(holds).toBe(2);expect(service.ApplyBlurState).toBe(later);
-    expect(nativeApply).toHaveBeenCalled();expect(service.SetForceSuppressBlur).not.toHaveBeenCalled();
-});
-it('reapplies current native blur state if a conditional request finishes after close', async()=>{
-    let finish!:(value:{BSuccess():boolean})=>void;
-    const service={ApplyBlurState:vi.fn(),SetBlurEnabled:vi.fn(function(this:{ApplyBlurState():void}){this.ApplyBlurState();})};
-    const api={SetBlurParams:vi.fn(()=>new Promise<{BSuccess():boolean}>(resolve=>{finish=resolve;}))};
-    const nativeApply=service.ApplyBlurState,stop=borrowNativeMenuBlur(service,api);stop();nativeApply.mockClear();
-    finish({BSuccess:()=>true});await Promise.resolve();await Promise.resolve();
-    expect(nativeApply).toHaveBeenCalled();expect(api.SetBlurParams).toHaveBeenCalledTimes(1);
 });

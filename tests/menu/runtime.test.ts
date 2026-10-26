@@ -20,6 +20,15 @@ function native(){
     return {owner,menu,keyboardDismissals:()=>keyboardDismissals,restoreConfigurator:()=>{restoreConfig=true;}};
 }
 describe('native menu ownership',()=>{
+    it('releases custom presentation ownership for a programmatic main-menu reopen', () => {
+        const n = native(), bindings = discoverMenuRuntime()!, suspended = vi.fn();
+        stops.push(bindings.installIntentHandlers({ open: vi.fn(), closed: vi.fn(), suspended }));
+        bindings.showMenuHost(); expect(suspended).not.toHaveBeenCalled();
+        bindings.closeMenuHost();
+        n.menu.OpenSideMenu(1);
+        expect(suspended).toHaveBeenCalledWith(true);
+        expect(n.menu.state).toBe(1);
+    });
     it('refuses discovery without a verified host and does not patch during discovery',()=>{
         expect(discoverMenuRuntime()).toBeNull();const n=native(),original=n.owner.OnHomeButtonPressed;
         expect(discoverMenuRuntime()).not.toBeNull();expect(n.owner.OnHomeButtonPressed).toBe(original);

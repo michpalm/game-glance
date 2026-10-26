@@ -9,6 +9,16 @@ export function menuInputActive(owner: NativeInputOwner | undefined): boolean {
     return !!owner && !owner.GetShowingGlobalModal?.() && !owner.ModalManager?.active_modal && !owner.VirtualKeyboardManager?.IsShowingVirtualKeyboard?.Value;
 }
 
+/** B returns to the same friend before a second B closes Social. Keyboard ownership is checked by the caller. */
+export function leaveSocialConversation(state: MenuState, social: { get(): { selectedId: string | null }; leave(): void } | undefined, dispatch: (event: MenuEvent) => void): boolean {
+    if (!social || state.section !== 'social' || state.stack[state.stack.length - 1] !== 'social-chat') return false;
+    const id = social.get().selectedId;
+    social.leave();
+    if (id) dispatch({ type: 'focus', section: 'social', key: `social:friend:${id}` });
+    dispatch({ type: 'back' });
+    return true;
+}
+
 /** Called only by this menu's native Focusable subtree, never a global controller listener. */
 export function handleMenuButton(detail: { button: number; is_repeat?: boolean }, state: MenuState, dispatch: (event: MenuEvent) => void, inputActive: boolean): boolean {
     if (!inputActive || state.phase !== 'custom-open' || ![2, 5, 6].includes(detail.button)) return false;

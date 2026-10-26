@@ -15,6 +15,7 @@ export type NativeRequest =
     | { kind: 'friend-chat'; steamId: string };
 export interface HostAttachment {
     present(node: ReactNode): Promise<void>;
+    conceal?(): Promise<void>;
     suspend(): void;
     close(): void;
     dispose(): void;
@@ -131,7 +132,7 @@ export function discoverMenuRuntime(): NativeBindings | null {
             try {
                 stops.push(ownMethod(menu, 'OpenSideMenu', next => function(this: NativeMenu, kind) {
                     if (intercept(() => next.call(this, kind))) return;
-                    if (!bypass && kind === 2) handlers.suspended(true);
+                    if (!bypass && (kind === 1 || kind === 2)) handlers.suspended(true);
                     return next.call(this, kind);
                 }));
                 stops.push(ownMethod(menu, 'CloseSideMenus', next => function(this: NativeMenu) {

@@ -3,6 +3,7 @@ import { memoryKv } from '../../src/data/kv';
 import { createMenuPreferences } from '../../src/menu/preferences';
 import { startMenu, isMenuServiceCurrent, subscribeMenuService } from '../../src/menu/startMenu';
 import type { IntentHandlers, NativeBindings } from '../../src/menu/steam/runtime';
+import * as socialModule from '../../src/menu/steam/social';
 vi.mock('../../src/menu/host', () => ({ registerDiscoveredMenuHost: vi.fn() }));
 vi.mock('../../src/menu/components/MenuShell', () => ({ MenuShell: () => null }));
 function harness(enabled = true) {
@@ -21,6 +22,15 @@ function harness(enabled = true) {
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 describe('floating menu startup', () => {
+    it('owns and releases the Social service on disable and unload', async () => {
+        const h = harness(); await h.kv.set('menu:preferences', { enabled: true });
+        const dispose = vi.fn();
+        const factory = vi.spyOn(socialModule, 'createSocial').mockReturnValue({ dispose } as unknown as ReturnType<typeof socialModule.createSocial>);
+        try {
+            const stop = startMenu(h); await tick(); expect(factory).toHaveBeenCalledOnce();
+            h.master(false); stop(); expect(dispose).toHaveBeenCalledOnce();
+        } finally { factory.mockRestore(); }
+    });
     it('waits for loaded preferences and master readiness; Spotlight Home is independent', async () => {
         const h = harness(); await h.kv.set('menu:preferences', { enabled: true });
         let ready!: () => void;
