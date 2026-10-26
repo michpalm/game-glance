@@ -2,7 +2,8 @@ import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
-import { homeCanvas } from '../home/scale';
+import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
+import { defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
@@ -34,7 +35,6 @@ export function nativeUnavailableMessageSelectors({ root, play }: ThemeClasses):
     const label = cls(play, 'DetailsSectionStatus');
     return { container: cls(root, 'ActionRow'), message: status && unavailable && label ? `${status}${unavailable} ${label}` : null };
 }
-
 
 /**
  * A focused pill's scale: 4% taller as a focused circle, but only as much wider as a circle grows (its height's share), not
@@ -205,15 +205,11 @@ export function pageType(role: TypeRole, unit: (n: number) => string, important 
     return decls.map((x) => `${x}${imp};`).join(' ');
 }
 
-/** A card's max-width for its outer width `outer` (handoff px): the cards are content-box, so less the padding and the rings (1 d unit). */
-const cardContentMax = (outer: number) => d(outer - 2 * PAGE_LAYOUT.cards.padX - 2);
-/** A card's width filling its grid column, content-box as above: a plain 100% overflowed the column by the padding and borders. */
-const CARD_FILL_WIDTH = `calc(100% - ${d(2 * PAGE_LAYOUT.cards.padX + 2)})`;
-
-/** The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px, as --gg-d: Home's scale. */
+/** The page's d unit (CSS px per handoff px) for a Big Picture window of `width` x `height` CSS px, as --gg-d: Home's scale (with its default growth). */
 export function pageDUnit(width: number, height: number): number {
     return homeCanvas(width, height).scale;
 }
+
 
 /**
  * How much brighter the page's glass rings are drawn to look like Home's, on a screen of `dpr` device px per CSS px and
@@ -241,6 +237,8 @@ const ring = (alpha: number) => `rgba(255, 255, 255, calc(${alpha} * var(--gg-ri
 export interface ThemeOptions {
     /** Spotlight Home's look (both toggles on, homeMode().restyleDetails): only appends rules to the 1.1.1 theme. */
     restyle?: boolean;
+    /** The hero art's framing in the restyle (settings heroFit): Fit shows Steam's header image whole, over the art fill. */
+    heroFit?: HeroFit;
 }
 
 /**
@@ -303,21 +301,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
         }`,
         // Our elements (stacked fallback position; the layout below overlays them).
         `.gg-hero { position: relative; margin: 1vh var(--gg-side); font-family: inherit; color: #fff; }`,
-        `.gg-cards { display: flex; gap: ${u(14)}; align-items: stretch; }`,
-        `.gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
-            border-radius: ${u(10)}; padding: ${u(9)} ${u(12)}; backdrop-filter: blur(${u(10)}); }`,
-        `.gg-card.gg-hltb { flex: 0.95 1 0; }`,
-        `.gg-label { font-size: ${u(8.5)}; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }`,
-        `.gg-value { font-size: ${u(17)}; font-weight: 700; white-space: nowrap; }`,
-        `.gg-stats { display: flex; gap: ${u(18)}; margin-top: ${u(2)}; }`,
-        `.gg-goal .gg-value { color: var(--gg-accent); }`,
-        `.gg-desc { margin: ${u(6)} 0 0; font-size: ${u(10.5)}; line-height: 1.4; color: rgba(255, 255, 255, 0.85);
-            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }`,
-        `.gg-muted { margin-top: ${u(8)}; font-size: ${u(10)}; color: var(--gg-muted); }`,
-        `.gg-bar { margin-top: ${u(8)}; height: ${u(4)}; border-radius: ${u(2)}; background: rgba(255, 255, 255, 0.14); overflow: hidden; }`,
-        `.gg-bar > div { height: 100%; border-radius: ${u(2)}; background: var(--gg-accent); }`,
-        `.gg-caption { margin-top: ${u(5)}; font-size: ${u(10)}; color: var(--gg-muted); }`,
-        `.gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: ${u(4)}; background: rgba(255, 255, 255, 0.12); }`,
+        cardBaseCss('gg', u),
         `.gg-pill { position: absolute; right: 0; top: calc(-1 * ${u(60)}); height: ${u(24)}; display: inline-flex; align-items: center; padding: 0 ${u(10)};
             border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: ${u(11)}; }`,
         `.gg-pill-icon { flex: 0 0 auto; width: ${u(12)}; height: ${u(12)}; margin-right: ${u(6)}; }`,
@@ -401,7 +385,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
                 margin: 0 !important; `),
         );
     }
-    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout)));
+    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout), options.heroFit ?? 'fill'));
     return rules.filter((r) => r.length > 0).join('\n');
 }
 
@@ -491,6 +475,68 @@ const TV_CARDS_GAP = PAGE_LAYOUT.playTop.tvGap;
 const CLEAN_MIN_BELOW_ROW = PAGE_LAYOUT.clean.minBelowRow;
 const CLEAN_GAP = PAGE_LAYOUT.clean.gap;
 
+/** The native card content rules, shared by the page and its non-interactive Home copy. */
+export function cardBaseCss(prefix: string, unit: (n: number) => string): string {
+    return [
+        `.gg-cards { display: flex; gap: ${unit(14)}; align-items: stretch; }`,
+        `.gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
+            border-radius: ${unit(10)}; padding: ${unit(9)} ${unit(12)}; backdrop-filter: blur(${unit(10)}); }`,
+        `.gg-card.gg-hltb { flex: 0.95 1 0; }`,
+        `.gg-label { font-size: ${unit(8.5)}; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }`,
+        `.gg-value { font-size: ${unit(17)}; font-weight: 700; white-space: nowrap; }`,
+        `.gg-stats { display: flex; gap: ${unit(18)}; margin-top: ${unit(2)}; }`,
+        `.gg-goal .gg-value { color: var(--gg-accent); }`,
+        `.gg-desc { margin: ${unit(6)} 0 0; font-size: ${unit(10.5)}; line-height: 1.4; color: rgba(255, 255, 255, 0.85);
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }`,
+        `.gg-muted { margin-top: ${unit(8)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
+        `.gg-bar { margin-top: ${unit(8)}; height: ${unit(4)}; border-radius: ${unit(2)}; background: rgba(255, 255, 255, 0.14); overflow: hidden; }`,
+        `.gg-bar > div { height: 100%; border-radius: ${unit(2)}; background: var(--gg-accent); }`,
+        `.gg-caption { margin-top: ${unit(5)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
+        `.gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: ${unit(4)}; background: rgba(255, 255, 255, 0.12); }`,
+    ].join('\n').split('.gg-').join(`.${prefix}-`);
+}
+
+export function normalCardsCss(prefix: string, unit: (n: number) => string): string {
+    const cardContentMax = (outer: number) => unit(outer - 2 * PAGE_LAYOUT.cards.padX - 2);
+    const CARD_FILL_WIDTH = `calc(100% - ${unit(2 * PAGE_LAYOUT.cards.padX + 2)})`;
+    return [
+        `.gg-cards { display: grid; grid-template-columns: minmax(0, ${PAGE_LAYOUT.cards.split[0]}fr) minmax(0, ${PAGE_LAYOUT.cards.split[1]}fr); gap: ${unit(PAGE_LAYOUT.cards.gridGap)}; }`,
+        `.gg-card { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.cards.colGap)}; padding: ${unit(PAGE_LAYOUT.cards.padY)} ${unit(PAGE_LAYOUT.cards.padX)}; border-radius: ${unit(16)};
+            background: rgba(12, 16, 22, 0.38); border-color: ${ring(0.12)}; border-style: solid; border-width: ${unit(1)}; backdrop-filter: blur(${unit(16)});
+            min-height: ${unit(PAGE_LAYOUT.playTop.tvCards - 2 * PAGE_LAYOUT.cards.padY - 2)}; max-width: ${cardContentMax(cardMaxWidths()[0])}; }`,
+        // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
+        // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
+        // them shorter, which the open transition's panels (openTargets, the same height) then shrank to after the hand-over.)
+        `.gg-card.gg-hltb { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
+        // (9/5: cards.equalFromAspect as a media query ratio.)
+        `@media (min-aspect-ratio: 9/5) { .gg-card { max-width: ${cardContentMax(cardMaxWidths(PAGE_LAYOUT.cards.equalFromAspect)[0])}; } }`,
+        `.gg-label { ${pageType('label', unit)} color: rgba(255, 255, 255, 0.62); }`,
+        `.gg-value { ${pageType('value', unit)} }`,
+        `.gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapInfo)}; margin-top: 0; }`,
+        `.gg-hltb .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
+        `.gg-stats > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }`,
+        `.gg-desc { margin: 0; font-size: ${unit(PAGE_LAYOUT.cardText.desc)}; line-height: ${PAGE_LAYOUT.cardText.descLine}; color: rgba(255, 255, 255, 0.84); }`,
+        `.gg-bar { margin-top: 0; height: ${unit(PAGE_LAYOUT.cardText.bar)}; border-radius: ${unit(3)}; }`,
+        `.gg-bar > div { border-radius: ${unit(3)}; }`,
+        `.gg-caption, .gg-muted { margin-top: 0; font-size: ${unit(PAGE_LAYOUT.cardText.caption)}; color: rgba(255, 255, 255, 0.72); }`,
+        // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
+        `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
+        `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
+    ].join('\n').split('.gg-').join(`.${prefix}-`);
+}
+
+/** The actual Clean card skin and flex layout, shared with its moving Home copy. */
+export function cleanInfoCss(panel: string, unit: (n: number) => string, prefix = 'gg'): string {
+    return `
+${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; background: rgba(12,16,22,.38); backdrop-filter: blur(${unit(16)}); color: #fff; }
+${panel} > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }
+${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; color: rgba(255,255,255,.62); }
+${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
+${panel} .${prefix}-bar { width: ${unit(PAGE_LAYOUT.cleanInfo.barW)}; height: ${unit(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${unit(PAGE_LAYOUT.cleanInfo.barTop)}; border-radius: ${unit(3)}; background: rgba(255,255,255,.14); overflow: hidden; }
+${panel} .${prefix}-bar > div { height: 100%; border-radius: ${unit(3)}; background: var(--gg-accent); }
+`;
+}
+
 /**
  * The Game Glance page's Clean look (homeMode().cleanDetails, on top of the restyled page): the art takes the screen;
  * the eyebrow and title sit just above one row at the bottom, which holds Steam's Play row (Play, controller, settings,
@@ -511,12 +557,7 @@ export function buildCleanCss({ header, details, root }: ThemeClasses): string {
         // No description or HowLongToBeat cards in this look.
         `.gg-cards { display: none !important; }`,
         // The info card at the right end of the row, vertically centred on the Play pill; the glass of the other cards.
-        `.gg-clean-info { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${d(PAGE_LAYOUT.cleanInfo.colGap)};
-            padding: ${d(PAGE_LAYOUT.cleanInfo.padY)} ${d(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${d(16)}; border: ${d(1)} solid ${ring(0.12)}; background: rgba(12, 16, 22, 0.38);
-            backdrop-filter: blur(${d(16)}); color: #fff; }`,
-        `.gg-clean-info > div { display: flex; flex-direction: column; gap: ${d(PAGE_LAYOUT.stats.rowGap)}; }`,
-        `.gg-clean-info .gg-value { ${pageType('cleanValue', d)} }`,
-        `.gg-clean-info .gg-bar { width: ${d(PAGE_LAYOUT.cleanInfo.barW)}; height: ${d(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${d(PAGE_LAYOUT.cleanInfo.barTop)}; }`,
+        cleanInfoCss('.gg-clean-info', d),
         // The store pill above the row, at its right edge.
         `.gg-pill { top: auto; bottom: calc(100% + ${d(PAGE_LAYOUT.clean.storeGap)}); }`,
         // The eyebrow and title just above the row, at the left (their bottom CLEAN_GAP above the Play pill).
@@ -568,6 +609,16 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
     }
     return out;
 }
+
+/** Steam's header image on the game page (the hero art); null without its class. */
+export function heroImageSelector({ header }: ThemeClasses): string | null {
+    const topCapsule = cls(header, 'TopCapsule');
+    // Not Steam's blurred placeholder (as arrivalSelectors' headerImg).
+    return topCapsule ? `${topCapsule} img:not([src*="_blur"])` : null;
+}
+
+/** Fit's fade for the standard hero shape in any wider box, in CSS units: the art's height is 100vw / 3.1. */
+const STANDARD_FIT_MASK = `linear-gradient(180deg, #000 calc(100vw / ${STANDARD_HERO_ASPECT} * ${1 - FIT_FADE}), transparent calc(100vw / ${STANDARD_HERO_ASPECT}))`;
 
 /** Steam's Play row on the game page (the Play pill with its arrow, the circles, the cloud): logic/cardNav's `play`; null without its classes. */
 export function playRowSelector({ root, play, shared }: ThemeClasses): string | null {
@@ -623,7 +674,7 @@ const actionFocusShadow = `box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0
 const actionFocused = `${actionFocusShadow} transform: scale(${PAGE_LAYOUT.focusScale}) !important;`;
 const actionTransition = 'transition: transform 250ms, box-shadow 250ms !important;';
 
-function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean): string[] {
+function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean, heroFit: HeroFit): string[] {
     // Play focused, as Home's: a white ring and accent glow, grown by the focus scale (by the controller or DOM focus).
     const pillFocused = ` box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--glance-accent) !important; transform: scale(${PILL_FOCUS.x}, ${PILL_FOCUS.y}) !important; `;
     const topCapsule = cls(header, 'TopCapsule');
@@ -652,8 +703,8 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The game's accent (buildAccentCss sets it on the page container) becomes the theme's accent:
         // the Play pill, the HLTB goal value and bar. Registered so it can animate, as on Home.
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
-        `:root { --gg-d: min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})); }`,
-        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})); } }`,
+        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)}); }`,
+        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)}); } }`,
         rule(inner, ` --gg-accent: var(--glance-accent); transition: --glance-accent ${ACCENT_MS}ms ease; `),
 
         // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
@@ -763,14 +814,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Cards: grid 1.1fr / 1fr, gap 18; padding 20x24, radius 16, the handoff's glass (its ring 1 d unit, as Home's: see the
         // menu circles); its type sizes. Each card at most
         // its own width (cardMaxWidths): with room to spare the info card stays left, HowLongToBeat at the right edge.
-        `.gg-cards { display: grid; grid-template-columns: minmax(0, ${PAGE_LAYOUT.cards.split[0]}fr) minmax(0, ${PAGE_LAYOUT.cards.split[1]}fr); gap: ${d(PAGE_LAYOUT.cards.gridGap)}; }`,
-        `.gg-card { display: flex; flex-direction: column; gap: ${d(PAGE_LAYOUT.cards.colGap)}; padding: ${d(PAGE_LAYOUT.cards.padY)} ${d(PAGE_LAYOUT.cards.padX)}; border-radius: ${d(16)};
-            background: rgba(12, 16, 22, 0.38); border-color: ${ring(0.12)}; border-width: ${d(1)}; backdrop-filter: blur(${d(16)});
-            min-height: ${d(PAGE_LAYOUT.playTop.tvCards - 2 * PAGE_LAYOUT.cards.padY - 2)}; max-width: ${cardContentMax(cardMaxWidths()[0])}; }`,
-        // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
-        // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
-        // them shorter, which the open transition's panels (openTargets, the same height) then shrank to after the hand-over.)
-        `.gg-card.gg-hltb { gap: ${d(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
+        normalCardsCss('gg', d),
         // A card that responds to a tap (#24, components/cardActions) gives a little under the finger.
         `.gg-card-tap { transition: transform 120ms ease, box-shadow 120ms ease; }`,
         `.gg-card-tap:active { transform: scale(0.98); }`,
@@ -790,20 +834,6 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // of the scene) blurred it (probed on the Ally). Every container down to them keeps the scene going.
         `.gg-hero, .gg-cards { transform-style: preserve-3d; }`,
         rule(playSection && menuButton && [`${playSection}:has(${menuButton})`, `${playSection} :has(${menuButton})`], ' transform-style: preserve-3d !important; '),
-        // (9/5: cards.equalFromAspect as a media query ratio.)
-        `@media (min-aspect-ratio: 9/5) { .gg-card { max-width: ${cardContentMax(cardMaxWidths(PAGE_LAYOUT.cards.equalFromAspect)[0])}; } }`,
-        `.gg-label { ${pageType('label', d)} color: rgba(255, 255, 255, 0.62); }`,
-        `.gg-value { ${pageType('value', d)} }`,
-        `.gg-stats { gap: ${d(PAGE_LAYOUT.stats.colGapInfo)}; margin-top: 0; }`,
-        `.gg-hltb .gg-stats { gap: ${d(PAGE_LAYOUT.stats.colGapHltb)}; }`,
-        `.gg-stats > div { display: flex; flex-direction: column; gap: ${d(PAGE_LAYOUT.stats.rowGap)}; }`,
-        `.gg-desc { margin: 0; font-size: ${d(PAGE_LAYOUT.cardText.desc)}; line-height: ${PAGE_LAYOUT.cardText.descLine}; color: rgba(255, 255, 255, 0.84); }`,
-        `.gg-bar { margin-top: 0; height: ${d(PAGE_LAYOUT.cardText.bar)}; border-radius: ${d(3)}; }`,
-        `.gg-bar > div { border-radius: ${d(3)}; }`,
-        `.gg-caption, .gg-muted { margin-top: 0; font-size: ${d(PAGE_LAYOUT.cardText.caption)}; color: rgba(255, 255, 255, 0.72); }`,
-        // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
-        `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
-        `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
         // No chevron hint (handoff has none). The source pill stays, expanded, level with the Play row at the right.
         `.gg-more { display: none; }`,
         `.gg-pill { top: calc(-1 * ${d(PAGE_LAYOUT.storePillTop)}); ${sourcePillLook(d)} }`,
@@ -830,7 +860,25 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rules.push(
             // Steam's header crops the hero at 50% 50%, Home at 50% 30%: the same image then sits the same on both screens,
             // so the open transition's hand-over shows no jump (identical for standard heroes; taller custom art differs).
-            rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `),
+            ...(heroFit === 'fit'
+                ? [
+                      // Fit (home/heroFit): the whole art at the top centre, fading (--gg-hero-mask) into the art fill under it, a
+                      // blurred copy of the same image (--gg-hero-fill; both set by GameHero), as Home draws it. This replaces the
+                      // 50% 30% crop: left beside it, that rule would push the fitted art down by 30% of the leftover height.
+                      // The fill sits behind the art (z-index -1 in the isolated header) and the art keeps Steam's order, so the
+                      // header's scrims (its ::after) still shade it, as Home's scrims shade Home's art; the fill's blurred edges
+                      // are clipped to the header, not drawn over Steam's tabs below it.
+                      rule(topCapsule, ` isolation: isolate !important; overflow: clip !important; `),
+                      rule(topCapsule && `${topCapsule}::before`, ` content: "" !important; position: absolute !important; inset: -120px !important; z-index: -1 !important;
+                          background: var(--gg-hero-fill, none) center / cover no-repeat !important; filter: ${ART_FILL_FILTER} !important; pointer-events: none !important; `),
+                      // Steam draws its low-resolution blur as an image or a canvas (including custom heroes). Keep both only as loading fallbacks.
+                      rule(topCapsule && `${topCapsule} img[src*="_blur"]`, ` visibility: var(--gg-hero-placeholder, visible) !important; `),
+                      rule(topCapsule && `${topCapsule} canvas`, ` visibility: var(--gg-hero-placeholder, visible) !important; `),
+                      // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
+                      rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` object-fit: contain !important; object-position: center top !important;
+                          -webkit-mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; `),
+                  ]
+                : [rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `)]),
             // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the
             // Play row on every screen (the row sits lower on a TV, --gg-play-top's media query): title, eyebrow, row and
             // cards stay one stack, the eyebrow always the same distance above the row, and a longer title grows upward.

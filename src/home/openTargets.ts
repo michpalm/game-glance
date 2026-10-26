@@ -1,4 +1,5 @@
-import { cardMaxWidths, PAGE_LAYOUT, pageDUnit, STEAM_LEGEND_PX } from '../styles/themeCss';
+import { cardMaxWidths, PAGE_LAYOUT, pageDUnit, ringBoost, STEAM_LEGEND_PX } from '../styles/themeCss';
+import { baseCanvas } from './scale';
 
 /**
  * Where the Game Glance page (restyled, Spotlight or Clean look) puts the things Spotlight Home morphs into during the
@@ -13,6 +14,9 @@ export type StatKey = 'size' | 'played' | 'achievements' | 'hltb';
 /** One of the page's stat columns, in page order; `bar`: the column has a progress bar under its value (Clean). */
 export interface PageStat { key: StatKey; label: string; value: string; bar?: boolean }
 export interface PageTargets {
+    /** The page cards' ring as Chromium draws it (cardBorder: whole device px), in CSS px; and its brightness (themeCss ringBoost, --gg-ring). */
+    border?: number;
+    ring?: number;
     /** The title's bottom-left corner (it grows upward), and the eyebrow's under it. */
     titleBottomLeft: { x: number; y: number };
     eyebrowBottomLeft: { x: number; y: number };
@@ -81,13 +85,14 @@ const CAPTION_LINE = 1.45;
 const CARDS_H = PAGE_LAYOUT.playTop.tvCards;
 
 export function pageTargets(
-    look: PageLook, screen: { width: number; height: number; dpr?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
+    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
     lines?: LineMeasure,
 ): PageTargets {
     const L = PAGE_LAYOUT;
     const W = screen.width;
     const H = screen.height;
-    const d = pageDUnit(W, H);
+    // The page's unit, with Home's default growth (#55); `grow` overrides it (pages recorded before it: 1).
+    const d = typeof screen.grow === 'number' ? baseCanvas(W, H).scale * screen.grow : pageDUnit(W, H);
     const BORDER = cardBorder(screen.dpr, d);
     // The cards' widths allow 1 d unit for each ring (themeCss.cardContentMax, CARD_FILL_WIDTH): a thinner one as drawn
     // makes them this much narrower.
@@ -205,7 +210,7 @@ export function pageTargets(
         shells = cards.map(snapBox);
         store = { x: W - side - storeSize.w, y: playTop - L.clean.storeGap * d - storeSize.h, w: storeSize.w, h: storeSize.h };
     }
-    return { titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, d, stats: out, extras };
+    return { titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, d, border: BORDER, ring: ringBoost(screen.dpr ?? 0, W, H), stats: out, extras };
 }
 
 /** The page card (`cards`: PageTargets.shells) that point `p` is in, edges included, or null. Pure. */

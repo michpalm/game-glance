@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { applyOpening, extrasFlags, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
+import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
+import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
 import type { TwinSpec } from '../../src/home/openTwins';
 import { BRIDGE_FADE_EASE, mountOpenBridge } from '../../src/home/openBridge';
 
@@ -55,6 +56,28 @@ function home(withPlay = true) {
         '.gh-chip': [chip('played', 25, false), chip('achievements', 144, true), chip(null, 288, true)],
     });
 }
+
+describe('measureCanvasScale', () => {
+    const rootFor = (width: string, drawn = 1499.988037109375) => ({
+        ownerDocument: { defaultView: { getComputedStyle: () => ({ width }) } },
+        querySelector: () => ({ offsetWidth: 1326, getBoundingClientRect: () => ({ width: drawn }) }),
+    }) as unknown as Element;
+
+    it('keeps the grown canvas fractional width so the glass lands on its unscaled crisp border', () => {
+        // Recorded Ally: growth makes the logical canvas fractional; offsetWidth rounds it up.
+        const scale = measureCanvasScale(rootFor('1325.5px'));
+        const ringX = 1037.5;
+        expect(scale).toBeCloseTo(1.1316394093620332, 12);
+        expect((ringX / scale) * (1499.988037109375 / 1325.5)).toBeCloseTo(ringX, 8);
+        expect(Math.abs((ringX / (1499.988037109375 / 1326)) * scale - ringX)).toBeGreaterThan(0.39);
+    });
+    it('keeps whole-width canvases and rejects missing, hidden or invalid geometry', () => {
+        expect(measureCanvasScale(rootFor('1440px', 1500))).toBeCloseTo(1500 / 1440, 12);
+        for (const width of ['0px', 'auto', 'NaN', '-1px']) expect(measureCanvasScale(rootFor(width))).toBe(0);
+        expect(measureCanvasScale(rootFor('1325.5px', 0))).toBe(0);
+        expect(measureCanvasScale({ querySelector: () => null } as unknown as Element)).toBe(0);
+    });
+});
 
 describe('measureHome', () => {
     it("reads Home's boxes: circles in order with the info button's index, chips by data-chip", () => {
@@ -119,6 +142,13 @@ describe('applyOpening', () => {
         const f = fakeRoot();
         applyOpening(f.root, 'heroFade', [], 'https://steamloopback.host/assets/10/library_hero.jpg');
         expect(f.props.get('--gho-hero')).toBe('url("https://steamloopback.host/assets/10/library_hero.jpg")');
+    });
+    it("a feed card's game in Fit: the standard hero fade beside its art (its size is not known yet), gone on undo", () => {
+        const f = fakeRoot();
+        const undo = applyOpening(f.root, 'heroFade', [], 'https://steamloopback.host/assets/10/library_hero.jpg');
+        expect(f.props.get('--gho-hero-mask')).toBe(fitMask(STANDARD_HERO_ASPECT, 16 / 9));
+        undo();
+        expect(f.props.has('--gho-hero-mask')).toBe(false);
     });
     it("marks the parts Home draws as it turns into the page (data-gh-extras), none when it has none", () => {
         const f = fakeRoot();
@@ -564,5 +594,18 @@ describe('lineMeasure', () => {
     });
     it('nothing measurable: 0, so pageTargets keeps its constants', () => {
         expect(lineMeasure({ ownerDocument: null } as unknown as Element)('label', 9)).toBe(0);
+    });
+});
+
+describe('hidden chips (#55: Steam\'s scale hid them)', () => {
+    const hidden = (key: string) => el(0, 0, 0, 0, { 'data-chip': key }, { '.gh-chip-label': el(0, 0, 0, 0), '.gh-chip-value': el(0, 0, 0, 0) });
+    it('are not measured, so no stat twin flies in from the corner', () => {
+        const root = home();
+        const withHidden = { ...root, querySelectorAll: (s: string) => (s === '.gh-chip' ? [hidden('played'), hidden('hltb')] : root.querySelectorAll(s)) };
+        expect(measureHome(withHidden as unknown as Element)!.chips).toEqual([]);
+    });
+    it('are not read as Home\'s stats, so the page\'s own columns fade in', () => {
+        const root = { querySelectorAll: (s: string) => (s === '.gh-chip' ? [hidden('played')] : []) };
+        expect(readChipTexts(root as unknown as Element)).toEqual([]);
     });
 });

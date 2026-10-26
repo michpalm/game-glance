@@ -1,4 +1,5 @@
 import type { HomeRects, MotionVar } from './openMotion';
+import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
 import type { Box, ExtraColumn, ExtrasAsked, LineMeasure, Measure, PageLook, PageStat, StatKey } from './openTargets';
 import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
@@ -49,6 +50,20 @@ export function missingStats(chipKeys: string[], drawn = ''): string[] {
     return ['played', 'achievements', 'hltb'].filter((key) => !chipKeys.includes(key) && !extras.includes(key));
 }
 
+/**
+ * Screen px per canvas px, preserving the fractional layout width. Default growth makes the logical canvas fractional;
+ * offsetWidth rounds it to an integer and shifts the moving glass away from the page's crisp ring (about 0.4 px on Ally).
+ * Use the measured width, as the old card-origin/raster fixes require, rather than rounding the canvas before conversion.
+ */
+export function measureCanvasScale(root: Element): number {
+    const canvas = root.querySelector('.gh-canvas');
+    const win = root.ownerDocument?.defaultView;
+    if (!canvas || !win) return 0;
+    const width = parseFloat(win.getComputedStyle(canvas).width);
+    const drawn = canvas.getBoundingClientRect().width;
+    return Number.isFinite(width) && width > 0 && Number.isFinite(drawn) && drawn > 0 ? drawn / width : 0;
+}
+
 /** Home's boxes for openMotion (CSS px), or null when anything required is missing (no game selected, nothing laid out). */
 export function measureHome(root: Element | null): HomeRects | null {
     try {
@@ -60,7 +75,7 @@ export function measureHome(root: Element | null): HomeRects | null {
         if (!canvas || !titleSlot || !eyebrow || !play) return null;
         const circleEls = [...root.querySelectorAll('.gh-actions .gh-btn-circle')];
         const info = circleEls.findIndex((c) => c.getAttribute('data-action') === 'info');
-        const chips = [...root.querySelectorAll('.gh-chip')].map((chip) => ({
+        const chips = drawnChips(root).map((chip) => ({
             key: chip.getAttribute('data-chip') ?? '',
             shell: boxOf(chip)!,
             label: boxOf(chip.querySelector('.gh-chip-label'))!,
@@ -171,6 +186,7 @@ export function restTwinsOnExtras(root: HTMLElement) {
     }
 }
 
+
 /**
  * At the page's ready, in the bridge `copy`: each text twin glides onto its counterpart on the page (`targets`, by twin
  * name: themeCss.twinTargets) as measured in the page's `doc`, within openTwins.settleDelta's guards (homeCss: the copy's
@@ -218,7 +234,11 @@ export function applyOpening(root: HTMLElement, variant: OpenVariant, vars: Moti
         names.push(name);
     };
     for (const v of vars) set(v.name, v.value);
-    if (heroUrl) set('--gho-hero', `url("${heroUrl.replace(/"/g, '%22')}")`);
+    if (heroUrl) {
+        set('--gho-hero', `url("${heroUrl.replace(/"/g, '%22')}")`);
+        // Its fade in Fit (homeCss .gh-fit .gh-hero-open): the standard hero shape, as the other game's art is not decoded yet.
+        set('--gho-hero-mask', fitMask(STANDARD_HERO_ASPECT, windowAspect(root.ownerDocument?.defaultView)));
+    }
     const shells = vars.find((v) => v.name === '--gho-shell-count')?.value;
     if (shells) root.setAttribute('data-gh-shells', shells);
     // The page's parts Home draws as it turns into it (extrasParts): homeCss shows only those.
@@ -352,9 +372,20 @@ export function readExtrasSize(root: Element): { label: string; value: string } 
     return label && value ? { label, value } : null;
 }
 
+/**
+ * Home's chips as drawn: a chip with no box (hidden by CSS) is skipped, so the open transition never flies a stat twin
+ * in from the corner nor counts a page column as covered by it.
+ */
+function drawnChips(root: Element): Element[] {
+    return [...root.querySelectorAll('.gh-chip')].filter((chip) => {
+        const r = chip.getBoundingClientRect?.();
+        return !r || (r.width > 0 && r.height > 0);
+    });
+}
+
 /** Home's chips as shown (data-chip, label, value, bar), for pageStatsFromChips. */
 export function readChipTexts(root: Element): ChipText[] {
-    return [...root.querySelectorAll('.gh-chip')].map((chip) => ({
+    return drawnChips(root).map((chip) => ({
         key: chip.getAttribute('data-chip') ?? '',
         label: chip.querySelector('.gh-chip-label')?.textContent?.trim() ?? '',
         value: chip.querySelector('.gh-chip-value')?.textContent?.trim() ?? '',

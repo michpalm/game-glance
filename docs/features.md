@@ -15,7 +15,8 @@ This is the full description of what Game Glance does. The [README](../README.md
 
 </details>
 
-- **Full-screen art.** The game's hero art fills the screen (your custom SteamGridDB art when you have set some).
+- **Full-screen art.** The game's hero art fills the screen by default (your custom SteamGridDB art when you have set some).
+  Choose **Fit** under Appearance → Hero art to show the whole image over a blurred art backdrop, on Home and both game-page layouts.
   Steam's Activity, Your stuff, Community and Game info tabs are one press down.
 - **HowLongToBeat.** Main story, Main + Extras and 100% times, a bar toward the next one you have not reached, and
   how many hours are left.
@@ -82,12 +83,14 @@ An optional new Home screen, off by default (Quick Access → Game Glance → Sp
   under 20%), Wi-Fi or wired, and a dot for your own online status, at the top right, on Home and the game page. It steps
   aside for Steam's own top bar when you move up to it or open a Steam menu.
 - **Press down for more.** Home itself stays clean; one press down brings up three tabs (L1 and R1 switch between them,
-  with Steam's tab sound):
+  with Steam's tab sound). Each tab can be turned off in Quick Access; a tab that is off loads nothing, and with all three
+  off Home has no feed at all:
   - **What's new:** news for your games, and the games recently updated on this device.
   - **Friends:** your friends, in game first, then online, away and offline; A on a friend in a game you can join asks,
     then joins them. Under them, the games popular among your friends, with their pictures.
   - **Recommended:** Play next from your library, and, with Show wishlist deals on, up to six wishlist games on sale
     (the new price, then the old one struck through).
+- **A comfortable size.** Text, cards and buttons are drawn a little larger than in earlier versions (about 8.6% on 16:9 screens, 7.3% on the Deck), on Home, the game page and the screensaver alike.
 - **Safe.** If anything in Spotlight Home fails, you get Steam's own Home instead of a broken screen.
 
 ## Screensaver
@@ -113,14 +116,17 @@ Quick Access (…) → Game Glance:
 
 | Setting | Default | What it does |
 |---|---|---|
-| Game Glance page | On | The full-screen game page. Off gives Steam's own game page. |
+| Game Glance | On | The full-screen game page. Off gives Steam's own game page. |
 | Clean look | Off | The game page with only the art and one row at the bottom. |
 | Spotlight Home | Off | The new Home, and its look on the game page. Off returns Steam's Home at once. |
 | Status bar | On | The clock, battery, connection and online status at the top right. |
 | Game logo | Off | The game's logo in place of its name, on Home and the game page. A game without a logo keeps its name. Each logo is cropped to its artwork and sized so that wide and compact logos look about equally big. |
+| Hero art | Fill | Appearance → Hero art. Fill covers the screen; Fit shows the whole image over its blurred art backdrop on Home and both game-page layouts. |
 | Games row | Recent Games | What Home's row shows: your recent games, or one of your Steam collections (Favorites, Locally Installed Games and your own). With a collection, **Sort By** offers Last Played, Alphabetical or Date Added to Library, and the line under the title starts with the collection's name. |
-| Games row style | Steam | How the row moves. Steam: the last played game is the wide card and the selection moves to the middle of the screen, as on Steam's Home. Spotlight: the selected game widens and the row slides it to the left edge (Game Glance's row before 3.3.0). |
-| Show wishlist deals | Off | Wishlist games on sale in the Recommended tab (see [Privacy](../README.md#privacy)). |
+| Games row style | Steam | How the row moves. Steam: the last played game is the wide card and the selection moves to the middle of the screen, as on Steam's Home. Spotlight: the selected game widens and the row slides it to the left edge. Minimal: small portrait cards throughout, with Steam-style scrolling. |
+| Gray out uninstalled games | On | Unselected, uninstalled Steam games appear in gray in every Home row style. Off keeps their artwork in color. Selected games remain in color. |
+| What's new, Friends, Recommended | On | Home's feed tabs. A tab that is off is not shown and loads nothing; all three off removes the feed (Down does nothing). |
+| Show wishlist deals | Off | Wishlist games on sale in the Recommended tab (see [Privacy](../README.md#privacy)). Shown while Recommended is on; with Recommended off nothing is sent. |
 | Pre-load new games automatically | On | Fetches times and descriptions for new installs, every 30 minutes. |
 | Game Glance screensaver | On | Steam's screensaver (Game Slideshow) with your Games row and its art. Off returns Steam's own. |
 | Logo, Status bar, Stats (Screensaver) | On | The screensaver's logo, status bar and stats card. All three off: only the art. |
@@ -141,9 +147,18 @@ juego" in Spanish, the collection and sort names, the cloud states and more). Un
 few words with no Steam equivalent stay in English: the HowLongToBeat column names and this Quick Access panel (see
 [localization.md](localization.md)).
 
-## In development for 3.5.0
+## New in 3.6.0
+
+- **Hero art: Fill or Fit:** show the whole artwork on Home and both game-page layouts, including the opening transition.
+- **Home content controls:** choose which feed tabs appear and whether uninstalled games use gray artwork. Settings that depend on another switch appear only while it is enabled.
+- **Larger default layout:** Home, game pages, the status bar and screensaver use a fixed larger layout, with adjustments for different screen shapes.
+- **Transition and browsing polish:** shared information-card layout through the Home-to-page handoff, stable store/Family Sharing pills while browsing, and one moving pill pair when opening a game.
+
+See the [3.6.0 release notes](release-notes/3.6.0.md) for details.
+
+## Included from 3.5.0
 
 - **Cloud status badge (#64):** the cloud circle on Home and the game page shows one white cloud, like the other buttons, with the sync state as a small dot at its top right: green synced, yellow syncing, red failed, grey offline. Unifideck games keep Unifideck's own look, and the page without Spotlight Home keeps its coloured icon.
 - **Controller battery:** each connected Bluetooth controller's battery in the status bar, before the system battery (lowest first, at most two, then +n; red at 20% or below), read from the system's Bluetooth service so it matches Steam's Bluetooth settings. The built-in controller and USB controllers are not shown, and charging is not shown. Checked on the Ally with an 8BitDo Ultimate 2C.
-- **Version choice:** select an installable stable release from 3.5.0 onward in Quick Access → Game Glance → Updates. Decky asks before an upgrade or downgrade. Original release assets are preserved. Device round-trip validation is still pending.
-- **Minimal games row:** a third style with small portrait cards throughout and Steam-style scrolling. The existing Steam and Spotlight styles remain available. Device acceptance is still pending.
+- **Version choice:** select an installable stable release from 3.5.0 onward in Quick Access → Game Glance → Updates. Decky asks before an upgrade or downgrade. Original release assets are preserved. The 3.5 upgrade/downgrade round trip and cancellation were checked on the Ally.
+- **Minimal games row:** a third style with small portrait cards throughout and Steam-style scrolling. The existing Steam and Spotlight styles remain available; all three were checked on the Ally.

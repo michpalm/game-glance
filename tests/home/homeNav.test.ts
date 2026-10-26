@@ -1,6 +1,6 @@
 import { Navigation } from '@decky/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cancelOpen, focusElement, newsWebUrl, openGame, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { cancelOpen, focusElement, holdsFocus, newsWebUrl, openGame, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
 import { playNavSound } from '../../src/home/navSound';
 
 vi.mock('../../src/home/navSound', () => ({ playNavSound: vi.fn() }));
@@ -161,4 +161,12 @@ describe('openGame', () => {
         openGame(620, source);
         expect(intoGame()).toBe(2);
     });
+});
+
+describe('holdsFocus', () => {
+    const active = { id: 'card' };
+    const root = (inside: boolean) => ({ ownerDocument: { activeElement: active }, contains: (n: unknown) => inside && n === active }) as unknown as Element;
+    it('is true while focus is inside Home', () => expect(holdsFocus(root(true))).toBe(true));
+    it('is false while focus is elsewhere (Quick Access over Home)', () => expect(holdsFocus(root(false))).toBe(false));
+    it('is false without a root', () => expect(holdsFocus(null)).toBe(false));
 });

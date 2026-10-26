@@ -1,3 +1,6 @@
+import { prepareNormalOpen } from './normalOpen';
+import { preparePillOpen } from './pillOpen';
+import { prepareCleanOpen } from './cleanOpen';
 import { Navigation } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { browserStores, heroUrls } from './artwork';
@@ -6,7 +9,7 @@ import { playNavSound } from './navSound';
 import { listenOpenCancel, showCancelReturn } from './openCancel';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
-import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, settleTwins, viewportSize } from './openHome';
+import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, measureCanvasScale, settleTwins, viewportSize } from './openHome';
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
 import { pageTargets, PageLook } from './openTargets';
@@ -102,6 +105,15 @@ export function openLibrary() {
 }
 
 /**
+ * Focus (DOM) is inside `root`, Home's own element. False while Quick Access, a menu or another window holds it: a
+ * change made from there (a feed tab turned off) must not pull the controller back to Home behind it.
+ */
+export function holdsFocus(root: Element | null | undefined): boolean {
+    const active = root?.ownerDocument?.activeElement;
+    return !!root && !!active && root.contains(active);
+}
+
+/**
  * Moves gamepad focus to a Home element (the handoff's "focus item 0 via a ref"): the one mechanism used by the
  * restore, the Library card hand-off and every B step (tabs -> the Play pill, feed -> tabs), so there is a single fix point.
  * Steam's gamepad focus normally follows DOM focus; when it does not (Steam's window without system focus), the
@@ -163,9 +175,8 @@ function startHome(c: OpenContext): (() => void) | null {
     if (c.variant === 'morph') {
         try {
             const home = measureHome(root);
-            const canvasEl = root.querySelector('.gh-canvas') as HTMLElement | null;
             const win = root.ownerDocument?.defaultView;
-            const scale = home && canvasEl && canvasEl.offsetWidth > 0 ? home.canvas.w / canvasEl.offsetWidth : 0;
+            const scale = measureCanvasScale(root);
             const screen = win ? viewportSize(win) : { width: 0, height: 0 };
             if (home && scale > 0 && screen.width > 0 && screen.height > 0) {
                 // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
@@ -181,7 +192,13 @@ function startHome(c: OpenContext): (() => void) | null {
                 } catch (error) {
                     console.warn(`${LOG_PREFIX} Home: could not set up the text twins`, error);
                 }
-                return applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, twins);
+                const undoCards = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : prepareNormalOpen(root, home, page, scale);
+                let undoPills: (() => void) | null = null;
+                try {
+                    undoPills = preparePillOpen(root, page);
+                    const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoCards ? twins.filter((t) => !t.card) : twins);
+                    return () => { undoOpen(); undoPills?.(); undoCards?.(); };
+                } catch (error) { undoPills?.(); undoCards?.(); throw error; }
             }
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: could not set up the morph`, error);
@@ -241,7 +258,9 @@ function controller(): OpenTransition {
             // Home's game row, tabs and feed have left (or faded with the rest) by the hand-over: the copy goes without them.
             // At the page's ready the copy's text twins glide onto the page's text as measured (openHome.settleTwins).
             const look = c.intent.look;
-            const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => settleTwins(copy, doc, pageTwinTargets(look)));
+            const bridge = mountOpenBridge(c.root, steamEnterOffCss(), extras, ['.gh-recents', '.gh-tabs', '.gh-feed'], (copy) => {
+                settleTwins(copy, doc, pageTwinTargets(look));
+            });
             if (c.intent.look !== 'steam') return bridge;
             // Steam's own page draws no status bar of ours: Steam's top bar is given back as the copy starts to fade (it fades in under it).
             return withSteamBarBack(bridge, () => handBarBack(doc));

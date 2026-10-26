@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanStats } from '../../src/logic/cleanInfo';
+import { cleanStats, homeCleanStats } from '../../src/logic/cleanInfo';
 
 const game = { playedMinutes: 108, achievements: { achieved: 4, total: 31 } };
 const found = { status: 'found' as const, gameId: 1, times: { main: 12, mainExtras: 15, completionist: 22 } };
@@ -31,5 +31,16 @@ describe('cleanStats with a Unifideck size', () => {
         expect(withSize.map((s) => s.key)).toEqual(['played', 'size', 'achievements', 'hltb']);
         expect(withSize[1]).toEqual({ key: 'size', label: 'Installed size', value: '3.2 GB' });
         expect(cleanStats(game, found, 'en-US', null).map((s) => s.key)).toEqual(['played', 'achievements', 'hltb']);
+    });
+});
+
+
+describe('Home uses the same Clean content', () => {
+    it('matches page stats including new games, loading HLTB, rounded progress and size ordering', () => {
+        for (const hltb of [found, undefined, { status: 'notFound' as const }]) {
+            const size = { key: 'size' as const, label: 'Installed size', value: '3.2 GB' };
+            const chips = [{ key: 'added', label: 'Added', value: 'Today' }, { key: 'achievements', label: 'Achievements', value: '4 / 31', progress: 4 / 31 }];
+            expect(homeCleanStats(chips, 108, hltb, 'en-US', size)).toEqual(cleanStats(game, hltb, 'en-US', size));
+        }
     });
 });

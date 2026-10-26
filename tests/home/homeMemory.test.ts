@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-    clampTab, DEFAULT_MEMORY, markLeaving, noteHome, recentIndexFor, recentRefFor, resetHomeMemory, RESTORE_MAX_AGE_MS, restoreStep, takeRestore,
+    DEFAULT_MEMORY, markLeaving, noteHome, recentIndexFor, recentRefFor, resetHomeMemory, RESTORE_MAX_AGE_MS, restoreStep, takeRestore,
 } from '../../src/home/homeMemory';
 
 describe('recent refs', () => {
@@ -18,16 +18,6 @@ describe('recent refs', () => {
         expect(recentIndexFor({ kind: 'game', appId: 20 }, ids)).toBe(1);
         expect(recentIndexFor({ kind: 'game', appId: 99 }, ids)).toBe(0);
         expect(recentIndexFor({ kind: 'library' }, ids)).toBe(3);
-    });
-});
-
-describe('clampTab', () => {
-    it('keeps a tab in range', () => {
-        expect(clampTab(2, 3)).toBe(2);
-        expect(clampTab(5, 3)).toBe(2);
-        expect(clampTab(-1, 3)).toBe(0);
-        expect(clampTab(NaN, 3)).toBe(0);
-        expect(clampTab(1, 0)).toBe(0);
     });
 });
 
@@ -57,18 +47,18 @@ describe('session memory', () => {
         expect(takeRestore(1001)).toBeNull();
     });
     it('restores what was noted after leaving for a page, once', () => {
-        noteHome({ zone: 'feed', tab: 2, feedKey: 'deal:5' });
+        noteHome({ zone: 'feed', tab: 'recommended', feedKey: 'deal:5' });
         noteHome({ recent: { kind: 'game', appId: 7 }, action: 3 });
         markLeaving(1000);
-        expect(takeRestore(2000)).toEqual({ zone: 'feed', recent: { kind: 'game', appId: 7 }, action: 3, tab: 2, feedKey: 'deal:5' });
+        expect(takeRestore(2000)).toEqual({ zone: 'feed', recent: { kind: 'game', appId: 7 }, action: 3, tab: 'recommended', feedKey: 'deal:5' });
         expect(takeRestore(2001)).toBeNull();
     });
     it('does not restore a visit that did not leave for a page', () => {
-        noteHome({ zone: 'tabs', tab: 1 });
+        noteHome({ zone: 'tabs', tab: 'friends' });
         expect(takeRestore(2000)).toBeNull();
     });
     it('does not restore after a long absence or a clock that went backwards', () => {
-        noteHome({ tab: 1 });
+        noteHome({ tab: 'friends' });
         markLeaving(1000);
         expect(takeRestore(1000 + RESTORE_MAX_AGE_MS + 1)).toBeNull();
         markLeaving(5000);
@@ -79,20 +69,24 @@ describe('session memory', () => {
         expect(DEFAULT_MEMORY.action).toBe(0);
     });
     it('restores the selected Library card with the zone and tab (bumper navigation)', () => {
-        noteHome({ zone: 'actions', recent: { kind: 'library' }, action: 0, tab: 1 });
+        noteHome({ zone: 'actions', recent: { kind: 'library' }, action: 0, tab: 'friends' });
         markLeaving(100);
         const got = takeRestore(200)!;
         expect(got.zone).toBe('actions');
         expect(recentIndexFor(got.recent, [10, 20])).toBe(2);
-        expect(got.tab).toBe(1);
+        expect(got.tab).toBe('friends');
     });
     it('partial updates merge over the defaults and the returned copy is detached', () => {
-        noteHome({ tab: 1 });
+        noteHome({ tab: 'friends' });
         markLeaving(10);
         const got = takeRestore(11);
-        expect(got).toEqual({ ...DEFAULT_MEMORY, tab: 1 });
-        got!.tab = 9;
+        expect(got).toEqual({ ...DEFAULT_MEMORY, tab: 'friends' });
+        got!.tab = 'news';
         markLeaving(12);
-        expect(takeRestore(13)?.tab).toBe(1);
+        expect(takeRestore(13)?.tab).toBe('friends');
     });
+});
+
+describe('the remembered tab', () => {
+    it('starts with no tab remembered', () => expect(DEFAULT_MEMORY.tab).toBeNull());
 });

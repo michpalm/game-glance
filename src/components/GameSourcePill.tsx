@@ -2,11 +2,12 @@ import { Focusable } from '@decky/ui';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { findStoreSwitcher, openStoreSwitcher } from '../logic/storeSwitcher';
 import { focusElement } from '../home/homeNav';
-import { SourcePill, StoreIcon } from './SourcePill';
+import { SourcePill } from './SourcePill';
+import { peekStoreVersions } from '../data/storeVersions';
 
 /** Unifideck's selector lives behind the Store pill; the family pill remains a separate sibling action. */
 export function GameSourcePill({ label, doc, appId, active, children }: { label: string; doc: Document | null; appId: number; active: boolean; children?: ReactNode }) {
-    const [button, setButton] = useState<HTMLElement | null>(null);
+    const [button, setButton] = useState<HTMLElement | null>(() => doc && active ? findStoreSwitcher(doc, appId) : null);
     const anchor = useRef<HTMLElement | null>(null);
     useEffect(() => {
         if (!doc || !active) return;
@@ -36,13 +37,10 @@ export function GameSourcePill({ label, doc, appId, active, children }: { label:
             }
         };
     }, [doc, appId, active]);
-    if (!active || !button) return <SourcePill label={label}>{children}</SourcePill>;
-    const open = () => { if (anchor.current) openStoreSwitcher(button, anchor.current.getBoundingClientRect()); };
-    return <span className="gg-pill gg-store-selectable">
-        <Focusable ref={(el: HTMLDivElement | null) => { anchor.current = el; }} className="gg-store-choice" focusClassName="gg-store-focus" noFocusRing onActivate={open} onClick={open} aria-label={`${label}: Choose store version`}>
-            <StoreIcon label={label} className="gg-pill-icon" />{label}
-            <svg className="gg-copy-plus" aria-hidden="true" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-        </Focusable>
-        {children}
-    </span>;
+    if (!active || (!button && (peekStoreVersions(appId)?.length ?? 0) < 2)) return <SourcePill label={label}>{children}</SourcePill>;
+    const open = () => {
+        const native = button ?? (doc ? findStoreSwitcher(doc, appId) : null);
+        if (native && anchor.current) openStoreSwitcher(native, anchor.current.getBoundingClientRect());
+    };
+    return <SourcePill label={label} plus renderControl={(content) => <Focusable ref={(el: HTMLDivElement | null) => { anchor.current = el; }} className="gg-store-choice" focusClassName="gg-store-focus" noFocusRing onActivate={open} onClick={open} aria-label={`${label}: Choose store version`}>{content}</Focusable>}>{children}</SourcePill>;
 }

@@ -21,7 +21,7 @@ export const SOURCE_PILL = {
 export function sourcePillLook(unit: (px: number) => string): string {
     const p = SOURCE_PILL;
     // The height includes the 1px border on both (Steam's page sizes content boxes by default: its pill was 2 px taller).
-    return `box-sizing: border-box; height: ${unit(p.height)}; padding: 0 ${unit(p.padX)}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; backdrop-filter: blur(${unit(p.blur)});
+    return `box-sizing: border-box; height: ${unit(p.height)}; padding: 0 ${unit(p.padX)}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; line-height: 1; backdrop-filter: blur(${unit(p.blur)});
             background: ${p.background}; border-color: ${p.border};`;
 }
 

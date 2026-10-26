@@ -15,9 +15,10 @@ https://github.com/user-attachments/assets/00f502ad-51dd-49a8-80a1-b986f4b49a0e
 ## Features
 
 - **Game page.** Full-screen art, how long the game takes to beat ([HowLongToBeat](https://howlongtobeat.com)), your play
-  time and achievements, and where the game comes from. An optional **Clean look** shows less.
+  time and achievements, and where the game comes from. An optional **Clean look** shows less. Choose **Fill** or **Fit**
+  for the hero artwork on Home and the game page.
 - **Spotlight Home.** An optional new Home screen (off by default): one game at a time over its art, a row of your
-  recent games or a collection, and Friends, News and Recommended tabs one press down.
+  recent games or a collection, and optional Friends, News and Recommended tabs one press down.
 - **Touch.** On a handheld's touchscreen, tap a game to select it and again to open it, swipe the games row and the tabs'
   rows, swipe up for the tabs, and tap the game page's cards. A mouse clicks and drags the same way, scrolls the rows
   with the wheel and lights whatever you can click under the cursor.

@@ -18,3 +18,12 @@ describe('greyedOut', () => {
         expect(greyedOut({ installed: false, shortcut: true })).toBe(false);
     });
 });
+
+describe('optional uninstalled-game gray treatment', () => {
+    it('keeps uninstalled Steam cards in color when disabled, including loop previews', () => {
+        expect(greyedOut({ installed: false }, false)).toBe(false);
+        expect(greyedOut({ installed: true }, false)).toBe(false);
+        expect(greyedOut({ installed: false, shortcut: true }, false)).toBe(false);
+        expect(greyedOut({ installed: false }, true)).toBe(true);
+    });
+});

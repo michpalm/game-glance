@@ -6,7 +6,7 @@ import { cache, overrides, TTL } from '../data/cache';
 import { hltbCacheKey, HltbResult, lookupHltb } from '../data/hltb';
 import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
-import { getSourceLabel } from '../data/source';
+import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo, steamPlayedMinutes } from '../data/steam';
@@ -572,9 +572,11 @@ let lastGamesMemo: LastGames | null = null;
  * game while Home is open is remembered; written back only when something changed.
  * Starts from the session memo (or empty) and never blocks or throws.
  */
-function useFriendLastGames(raw: RawFriend[]): LastGames {
+/** The friends' last played games (a 7-day cache); not read while `enabled` is false (the Friends tab is off). */
+function useFriendLastGames(raw: RawFriend[], enabled: boolean): LastGames {
     const [last, setLast] = useState<LastGames>(() => lastGamesMemo ?? {});
     useEffect(() => {
+        if (!enabled) return undefined;
         let active = true;
         (async () => {
             const stored = lastGamesMemo ?? parseLastGames(await attempt('friend cache read', () => cache.get<unknown>(LAST_GAMES_KEY), null));
@@ -587,7 +589,7 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
             active = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [raw]);
+    }, [raw, enabled]);
     return last;
 }
 
@@ -597,7 +599,7 @@ function useFriendLastGames(raw: RawFriend[]): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeRow, homeRowSort, cleanPage } = useSettings();
+    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs } = useSettings();
     const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -664,9 +666,11 @@ export function useHomeData(focusIndex = 0): HomeData {
         },
     );
     const description = cleanPage ? null : (warmedDescription ?? liveDescription ?? null);
-    const source = useAsync(info ? `src:${info.appId}` : null, () =>
+    const knownSource = info ? peekSourceLabel(info.appId, info.isShortcut) : undefined;
+    const fetchedSource = useAsync(info && knownSource === undefined ? `src:${info.appId}` : null, () =>
         getSourceLabel(info?.appId ?? 0, info?.isShortcut ?? false, undefined, heroicStoreLabel(info?.heroic ?? null)),
     );
+    const source = knownSource ?? fetchedSource;
     // Unifideck's or Lutris's own play time for the selected game once it rests (one request, cached), for their games only.
     const launcher = useLauncherPlaytime(focused ? focused.appId : null, info?.isShortcut ?? false, info?.lutris ?? null, resting !== null);
     // A known accent changes on the step itself; an unknown one is looked up once the selection rests (accentNow), and
@@ -714,20 +718,21 @@ export function useHomeData(focusIndex = 0): HomeData {
         () => guarded('library chips', () => libraryChips({ ...readLibraryCounts(), storageBytes: readStorageBytes() }, locale), []),
         [locale],
     );
-    // Read once per mount (and again if the bottom section is turned back on while Home is open).
+    // A feed tab that is off (settings feedTabs) loads nothing. What's new is read once per mount, and again when its
+    // tab is turned back on while Home is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const news = useMemo(() => guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []), []);
-    const updated = useRecentlyUpdated(true);
-    const rawFriends = useLiveFriends(true);
-    const lastGames = useFriendLastGames(rawFriends);
+    const news = useMemo(() => (feedTabs.news ? guarded('what\'s new', () => mapWhatsNew(readWhatsNew(), appName, nowSeconds), []) : []), [feedTabs.news]);
+    const updated = useRecentlyUpdated(feedTabs.news);
+    const rawFriends = useLiveFriends(feedTabs.friends);
+    const lastGames = useFriendLastGames(rawFriends, feedTabs.friends);
     const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
-    const steamTrending = useSteamTrending(true);
-    const derivedTrending = useMemo(() => guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []), [rawFriends, lastGames]);
+    const steamTrending = useSteamTrending(feedTabs.friends);
+    const derivedTrending = useMemo(() => (feedTabs.friends ? guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []) : []), [rawFriends, lastGames, feedTabs.friends]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
-    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, true);
+    const { cards: recommended, deals } = useRecommended(games, wishlistDeals, feedTabs.recommended);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
