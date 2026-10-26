@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Focusable } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { withKnownAchievements } from '../home/detailsMemo';
@@ -7,7 +7,7 @@ import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
-import { getSourceLabel } from '../data/source';
+import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
 import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } from '../data/steam';
 import { accentFor } from '../home/accent';
@@ -31,7 +31,8 @@ import { useOpenArrival } from '../hooks/useOpenArrival';
 import { openPending } from '../data/openIntent';
 import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '../home/warmup';
 import { accentMemo, knownAccent } from '../home/accentMemo';
-import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, ringCss, themeCss, unifideckCss } from '../styles/theme';
+import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
+import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
 import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
 import { pageNavParts } from '../logic/cardNav';
@@ -60,6 +61,72 @@ interface Props {
 
 
 /** The game's accent (same source and cache as Spotlight Home), only while restyled; undefined until known. */
+/**
+ * The page's hero in Fit (home/heroFit, themeCss): Steam's header image (`src`, its shape `artAspect`, the standard hero
+ * shape until known) as the art fill's url and the fade for a box of `boxAspect`. Nothing in Fill or without the image. Pure.
+ */
+export function heroFitVars(fit: HeroFit, src: string | null, artAspect: number | null, boxAspect: number): Record<string, string> {
+    if (fit !== 'fit' || !src) return {};
+    return { '--gg-hero-fill': `url("${src.replace(/"/g, '%22')}")`, '--gg-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) };
+}
+
+/** Steam's low-resolution placeholder remains a fallback until the full hero has usable pixels. */
+export function pageHeroFitVars(fit: HeroFit, img: Pick<HTMLImageElement, 'src' | 'currentSrc' | 'complete' | 'naturalWidth' | 'naturalHeight'> | null, boxAspect: number): Record<string, string> {
+    const aspect = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : null;
+    const vars = heroFitVars(fit, img ? img.currentSrc || img.src : null, aspect, boxAspect);
+    if (!('--gg-hero-fill' in vars)) return vars;
+    return { ...vars, '--gg-hero-placeholder': img?.complete && aspect !== null ? 'hidden' : 'visible' };
+}
+
+type VarStyle = { getPropertyValue(name: string): string; removeProperty(name: string): string };
+
+/**
+ * Removes the variables this page set, unless another page has set them since: Steam keeps a leaving page mounted
+ * through its exit, after the next page has set its own on the same document.
+ */
+export function removeOwnVars(style: VarStyle, own: Record<string, string>) {
+    for (const [name, value] of Object.entries(own)) if (style.getPropertyValue(name) === value) style.removeProperty(name);
+}
+
+/**
+ * Keeps heroFitVars on the page's document while the restyled page shows (the header image's own url, so the fill is
+ * the same art), following the image as it loads or changes and the setting; removed when the page goes.
+ */
+function usePageHeroFit(doc: Document | null, fit: HeroFit, active: boolean) {
+    // Before paint, so the page never shows a frame without them (themeCss also falls back to the standard fade).
+    useLayoutEffect(() => {
+        const root = doc?.documentElement;
+        const selector = pageHeroImage();
+        if (!doc || !root || !active || !selector) return undefined;
+        let applied: Record<string, string> = {};
+        const apply = () => {
+            const img = doc.querySelector<HTMLImageElement>(selector);
+            const win = doc.defaultView;
+            const vars = pageHeroFitVars(fit, img, windowAspect(win));
+            removeOwnVars(root.style, Object.fromEntries(Object.entries(applied).filter(([name]) => !(name in vars))));
+            for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
+            applied = vars;
+        };
+        apply();
+        // The header image arrives (or changes, for custom art) after the page: its load events reach the document in the capture phase.
+        const onLoad = (event: Event) => {
+            if ((event.target as Element | null)?.matches?.(selector)) apply();
+        };
+        doc.addEventListener('load', onLoad, true);
+        doc.addEventListener('error', onLoad, true);
+        // A replacement source can start loading after a ready image: restore the fallback immediately.
+        const observer = new MutationObserver(apply);
+        const image = doc.querySelector(selector);
+        observer.observe(image?.parentElement ?? doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'srcset'] });
+        return () => {
+            observer.disconnect();
+            doc.removeEventListener('load', onLoad, true);
+            doc.removeEventListener('error', onLoad, true);
+            removeOwnVars(root.style, applied);
+        };
+    }, [doc, fit, active]);
+}
+
 function useGameAccent(appId: number, active: boolean): string | undefined {
     const loaded = useAsync(active && appId !== 0 ? `accent:${appId}` : null, async () => {
         const color = await accentFor(appId, { cache, sample: sampleAccent, version: accentVersion });
@@ -95,9 +162,11 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const loadedLang = useAsync(knownLang ? null : 'lang', getSteamLanguage);
     const lang = knownLang ?? loadedLang;
     const locale = steamLanguageToLocale(lang ?? 'english');
-    const source = useAsync(`src:${game.appId}`, () =>
+    const knownSource = peekSourceLabel(game.appId, game.isShortcut);
+    const fetchedSource = useAsync(knownSource === undefined ? `src:${game.appId}` : null, () =>
         getSourceLabel(game.appId, game.isShortcut, undefined, heroicStoreLabel(game.heroic)),
     );
+    const source = knownSource ?? fetchedSource;
     // Wait for the language so the description is fetched once, in the right language.
     const fetchedDescription = useAsync(lang === undefined ? null : `desc:${game.appId}:${lang}`, () =>
         game.isShortcut ? getShortcutDescription(game, lang ?? 'english') : getDescription(game.appId, lang ?? 'english'),
@@ -120,7 +189,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const { homeStatusBar: statusBar, gameLogo } = useSettings();
+    const { homeStatusBar: statusBar, gameLogo, heroFit } = useSettings();
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -134,6 +203,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => setPageDoc(heroRef.current?.ownerDocument ?? null), [game.appId]);
     // Hover looks follow a mouse (home/mouseMode), here as on Home.
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
+    // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
+    usePageHeroFit(pageDoc, heroFit, restyle);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
     const navParts = pageNavParts(restyle, clean);
     useCardNav(pageDoc, navParts.dpad);
@@ -185,7 +256,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>
-                <style>{themeCss({ restyle })}</style>
+                <style>{themeCss({ restyle, heroFit })}</style>
                 <style>{unifideckCss({ restyle })}</style>
                 {ringStyle && <style>{ringStyle}</style>}
                 {cleanStyle && <style>{cleanStyle}</style>}

@@ -7,8 +7,9 @@ import { browserStores, capsuleUrls, heroUrls, landscapeUrls, storeHeaderUrl } f
 import { FeedCard } from './FeedCards';
 import { claimsPreferredFocus, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle } from './feedLayout';
 import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from './focusZones';
-import { focusElement } from './homeNav';
-import { clampTab, HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
+import { focusElement, holdsFocus } from './homeNav';
+import { HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
+import { nextTabId, restoreTabId } from './feedTabs';
 import { useCardAccents } from './useHomeData';
 import { playNavSound, shoulderSound } from './navSound';
 import { useRowDrag } from './useRowDrag';
@@ -65,8 +66,10 @@ function cancel(zone: 'tabs' | 'feed', step: () => void) {
  * L1/R1 anywhere in the tabs or feed switch the tab, as on Steam's own tabbed pages (focusZones.tabForButton);
  * on the game cards and the action row L1/R1 select the game instead, so the off-screen feed never changes from there.
  */
-export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames, scale = () => 1, restore = null, onRestored }: {
+export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackToGames, scale = () => 1, restore = null, onRestored }: {
     data: FeedData;
+    /** The tabs that are on, in strip order (feedTabs.shownTabs); never empty (Home draws no sheet without a tab). */
+    tabs: FeedTab[];
     raised: boolean;
     viewport: number;
     /** Height the raised sheet's rows may use (feedLayout.feedSpace of the canvas height). */
@@ -80,7 +83,13 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
     /** The restore is done (or given up), so Home stops holding its first focus back. */
     onRestored?(): void;
 }) {
-    const [tab, setTab] = useState(() => clampTab(restore?.tab ?? 0, TABS.length));
+    // The strip's tabs: the ones that are on. The selected tab is kept by id, so a tab turned on or off before it does
+    // not change the selection; when the selected tab itself is turned off, the first shown tab takes its place.
+    const shown = TABS.filter((t) => tabs.includes(t.id));
+    const [tabId, setTabId] = useState<FeedTab>(() => restoreTabId(restore?.tab, tabs) ?? tabs[0]);
+    const tab = Math.max(0, shown.findIndex((t) => t.id === tabId));
+    // The remembered card belongs to the remembered tab: a restore that fell back to another tab drops it.
+    const restoreKey = useRef(restore && restore.tab !== null && tabs.includes(restore.tab) ? restore.feedKey : null).current;
     // The selected card of each row (the second row: What's new's recently updated, Recommended's wishlist deals) and
     // the row that last had focus.
     const [at, setAt] = useState<[number, number]>([0, 0]);
@@ -98,10 +107,10 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
     const tabRefs = useRef<Array<HTMLDivElement | null>>([]);
     const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
     // Set by L1/R1 from the feed: once the new tab's cards are committed, focus its first card (its tab when empty).
-    const focusAfterSwitch = useRef(false);
+    // 'tab': the selected tab was turned off while focus was in the sheet; focus the tab that took its place.
+    const focusAfterSwitch = useRef<'card' | 'tab' | null>(null);
 
     const { news, updated, friends, trending, recommended, deals } = data;
-    const tabId = TABS[tab].id;
     const items = useMemo(() => feedItems(tabId, { news, updated, friends, trending, recommended, deals }, art, space), [tabId, news, updated, friends, trending, recommended, deals, space]);
     const geometry = feedRows(tabId, space, hasSecondRow(tabId, { news, updated, friends, trending, recommended, deals }));
     const rows: [FeedItem[], FeedItem[]] = [items.filter((i) => i.row === 0), items.filter((i) => i.row === 1)];
@@ -169,10 +178,10 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
     // wait is bounded); focus moves into the tabs or feed only while the user has not left them meanwhile.
     useEffect(() => {
         if (!restoring || !restore) return undefined;
-        const step = restoreStep(items.map((i) => i.key), restore.feedKey, TABS[tab].id !== 'recommended', waited);
+        const step = restoreStep(items.map((i) => i.key), restoreKey, tabId !== 'recommended', waited);
         if (step === 'wait') {
             // Focus the selected tab meanwhile, so Home is not left without focus.
-            if (restore.zone === 'feed' && raised) focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
+            if (restore.zone === 'feed' && raised) focusElement(tabRefs.current[tab], `${tabId} tab`);
             const timer = setTimeout(() => setWaited(true), RESTORE_WAIT_MS);
             return () => clearTimeout(timer);
         }
@@ -183,10 +192,10 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
         // Restoring a hidden tab/card does not enter the sheet. The raised effect above claims
         // preferred focus only after focus actually moves into the tabs or feed.
         if (restore.zone === 'feed' && raised) {
-            if (step === 'tab') focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
+            if (step === 'tab') focusElement(tabRefs.current[tab], `${tabId} tab`);
             else focusElement(cardRefs.current[step.card], `feed card ${step.card}`);
         } else if (restore.zone === 'tabs' && raised) {
-            focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
+            focusElement(tabRefs.current[tab], `${tabId} tab`);
         }
         setRestoring(false);
         onRestored?.();
@@ -196,24 +205,35 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
     // Remember the tab and card for the way back (not while the restore is still reading them).
     const feedKey = items[flat(selRow, sel[selRow])]?.key ?? null;
     useEffect(() => {
-        if (!restoring) noteHome({ tab, feedKey });
-    }, [restoring, tab, feedKey]);
+        if (!restoring) noteHome({ tab: tabId, feedKey });
+    }, [restoring, tabId, feedKey]);
+    // A switch in Quick Access turned the selected tab off while Home is open: select the first shown tab instead.
+    useEffect(() => {
+        const next = nextTabId(tabId, tabs);
+        if (next === null || next === tabId) return;
+        // Focus follows only while Home holds it (not while Quick Access, where the switch is, does).
+        if (raised && holdsFocus(tabRefs.current[0]?.closest('.gh-root'))) focusAfterSwitch.current = 'tab';
+        setTabId(next);
+        reset();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tabs.join()]);
 
     const selectTab = (i: number) => {
         onZone('tabs');
-        if (i === tab) return;
-        setTab(i);
+        if (i === tab || !shown[i]) return;
+        setTabId(shown[i].id);
         reset();
     };
     const enterFeed = () => {
         if (rows[0].length > 0) focusElement(cardRefs.current[flat(0, sel[0])], `feed card ${sel[0]}`);
     };
     useLayoutEffect(() => {
-        if (!focusAfterSwitch.current) return;
-        focusAfterSwitch.current = false;
-        if (items.length > 0) focusElement(cardRefs.current[0], `${TABS[tab].id} card 0`);
-        else focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
-    }, [tab, items]);
+        const target = focusAfterSwitch.current;
+        if (!target) return;
+        focusAfterSwitch.current = null;
+        if (target === 'card' && items.length > 0) focusElement(cardRefs.current[0], `${tabId} card 0`);
+        else focusElement(tabRefs.current[tab], `${tabId} tab`);
+    }, [tabId, items]);
     /**
      * L1/R1 (Steam's own tab pattern: handled, then stopped so nothing else acts on them). In the tabs, focusing
      * the new tab selects it through its own focus handler (selectTab). In the feed, the tab switches and focus moves
@@ -222,7 +242,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
      */
     const shoulder = (zone: 'tabs' | 'feed') => (evt: GamepadEvent) => {
         try {
-            const next = tabForButton(tab, Number(evt?.detail?.button), TABS.length);
+            const next = tabForButton(tab, Number(evt?.detail?.button), shown.length);
             if (next === null) return;
             evt.preventDefault?.();
             evt.stopPropagation?.();
@@ -230,11 +250,11 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
             if (sound) playNavSound(sound);
             if (next === tab) return;
             if (zone === 'tabs') {
-                focusElement(tabRefs.current[next], `${TABS[next].id} tab`);
+                focusElement(tabRefs.current[next], `${shown[next].id} tab`);
                 return;
             }
-            focusAfterSwitch.current = true;
-            setTab(next);
+            focusAfterSwitch.current = 'card';
+            setTabId(shown[next].id);
             reset();
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: tab switch from the ${zone} failed`, error);
@@ -245,13 +265,13 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
         if (onBack('tabs') === 'recents') onBackToGames();
     });
     const backFromFeed = cancel('feed', () => {
-        if (onBack('feed') === 'tabs') focusElement(tabRefs.current[tab], `${TABS[tab].id} tab`);
+        if (onBack('feed') === 'tabs') focusElement(tabRefs.current[tab], `${tabId} tab`);
     });
 
     return (
         <>
             <Focusable className="gh-tabs" flow-children="row" navEntryPreferPosition={entry} onCancel={backFromTabs} onButtonDown={shoulder('tabs')}>
-                {TABS.map((t, i) => (
+                {shown.map((t, i) => (
                     <Focusable
                         key={t.id}
                         ref={(el: HTMLDivElement | null) => {
@@ -319,7 +339,7 @@ export function FeedSheet({ data, raised, viewport, space, onZone, onBackToGames
                         </div>
                     ))
                 ) : (
-                    <div className="gh-feed-empty">{TABS[tab].empty()}</div>
+                    <div className="gh-feed-empty">{shown[tab].empty()}</div>
                 )}
             </div>
         </>

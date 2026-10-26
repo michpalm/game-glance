@@ -1,30 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { cardScale, CARD_MIN_SCALE, screensaverCanvas, screensaverCss, shuffled, SS_CANVAS, SS_MIN_WIDTH } from '../../src/screensaver/screensaverCss';
+import { defaultGrowth } from '../../src/home/scale';
+import { cardScale, CARD_MIN_SCALE, screensaverBaseCanvas, screensaverCanvas, screensaverCss, shuffled, SS_CANVAS, SS_MIN_WIDTH } from '../../src/screensaver/screensaverCss';
 
-describe('screensaverCanvas', () => {
+describe('screensaverBaseCanvas (before the default growth)', () => {
     it('16:9 is the canvas, scaled', () => {
-        expect(screensaverCanvas(1920, 1080)).toEqual({ logicalWidth: 1440, logicalHeight: 810, scale: 4 / 3 });
+        expect(screensaverBaseCanvas(1920, 1080)).toEqual({ logicalWidth: 1440, logicalHeight: 810, scale: 4 / 3 });
     });
     it('21:9 keeps the height and grows the width, so nothing is cut', () => {
-        const c = screensaverCanvas(2560, 1080);
+        const c = screensaverBaseCanvas(2560, 1080);
         expect(c.logicalHeight).toBeCloseTo(810, 6);
         expect(c.logicalWidth).toBeCloseTo(1920, 6);
         expect(c.scale).toBeCloseTo(4 / 3, 6);
     });
     it('16:10 (Steam Deck) keeps the height: the same size as at 16:9, the width grows', () => {
-        const c = screensaverCanvas(1280, 800);
+        const c = screensaverBaseCanvas(1280, 800);
         expect(c.logicalHeight).toBeCloseTo(810, 6);
         expect(c.logicalWidth).toBeCloseTo(1296, 6);
     });
     it('a square screen scales by width only below the bottom row\'s width, so the text stays readable', () => {
-        const c = screensaverCanvas(845, 845);
+        const c = screensaverBaseCanvas(845, 845);
         expect(c.logicalWidth).toBeCloseTo(SS_MIN_WIDTH, 6);
         expect(c.scale).toBeCloseTo(845 / SS_MIN_WIDTH, 6);
         expect(c.scale).toBeGreaterThan(845 / 1440);
     });
     it('a bad size gives the canvas at scale 1', () => {
-        expect(screensaverCanvas(0, 0)).toEqual({ logicalWidth: SS_CANVAS.width, logicalHeight: SS_CANVAS.height, scale: 1 });
-        expect(screensaverCanvas(NaN, 800).scale).toBe(1);
+        expect(screensaverBaseCanvas(0, 0)).toEqual({ logicalWidth: SS_CANVAS.width, logicalHeight: SS_CANVAS.height, scale: 1 });
+        expect(screensaverBaseCanvas(NaN, 800).scale).toBe(1);
     });
 });
 
@@ -72,5 +73,13 @@ describe('cardScale', () => {
     it('a bad scale changes nothing', () => {
         expect(cardScale(0)).toBe(1);
         expect(cardScale(NaN)).toBe(1);
+    });
+});
+
+describe('screensaverCanvas: the default growth (#55)', () => {
+    it('grows by the same factor as Home', () => {
+        const c = screensaverCanvas(1920, 1080);
+        expect(c.scale).toBeCloseTo((4 / 3) * defaultGrowth(810), 6);
+        expect(c.logicalHeight).toBeCloseTo(810 / defaultGrowth(810), 6);
     });
 });

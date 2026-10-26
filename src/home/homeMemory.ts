@@ -1,3 +1,4 @@
+import type { FeedTab } from './feedLayout';
 import type { Zone } from './focusZones';
 
 /**
@@ -16,13 +17,13 @@ export interface HomeMemory {
     recent: RecentRef;
     /** Which action button was focused (0 = the first, the Play pill), when the zone is the actions. */
     action: number;
-    /** The selected feed tab. */
-    tab: number;
+    /** The selected feed tab, by id (the shown tabs can change while Home is away); null before one is noted. */
+    tab: FeedTab | null;
     /** The selected feed card's key (feedLayout FeedItem.key), null when the tab has none. */
     feedKey: string | null;
 }
 
-export const DEFAULT_MEMORY: HomeMemory = { zone: 'recents', recent: { kind: 'game', appId: 0 }, action: 0, tab: 0, feedKey: null };
+export const DEFAULT_MEMORY: HomeMemory = { zone: 'recents', recent: { kind: 'game', appId: 0 }, action: 0, tab: null, feedKey: null };
 
 /** How long after leaving Home a return still restores it (a longer absence is a fresh visit). */
 export const RESTORE_MAX_AGE_MS = 30 * 60_000;
@@ -41,13 +42,6 @@ export function recentIndexFor(ref: RecentRef, appIds: number[]): number {
     if (ref.kind === 'library') return appIds.length;
     const at = appIds.indexOf(ref.appId);
     return at >= 0 ? at : 0;
-}
-
-/** A tab index inside 0..count-1. */
-export function clampTab(tab: number, count: number): number {
-    const last = Math.floor(count) - 1;
-    if (!Number.isFinite(tab) || last < 0) return 0;
-    return Math.min(last, Math.max(0, Math.round(tab)));
 }
 
 /** What a restore does next with the feed: wait for the card, select (and maybe focus) it, or settle for the tab. */

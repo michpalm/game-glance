@@ -1,14 +1,17 @@
+import { SCALE_UNIT_CSS } from '../styles/screenScale';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
+import { GiveWay, giveWay, roomMissing } from './giveWay';
 import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
 import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePill';
 import { CLOUD_COLOURS, CLOUD_DOT, CloudTone } from './cloud';
+import { ART_FILL_FILTER } from './heroFit';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
+import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -154,6 +157,21 @@ export const FEED_SHEET = {
 /** The mouse's sheet toggle (a chevron): its box, its icon, and how far its top sits above the games row's. */
 export const SHEET_TOGGLE = { w: 44, h: 24, lift: 18 + 24, icon: { w: 28, h: 12 } } as const;
 
+/** Home's root variable for the give-way (home/giveWay, #55): the page moves up by `need` (--gh-give). */
+export function giveWayVars(g: GiveWay): Record<string, string> {
+    return { '--gh-give': `${g.need > 0 ? -g.need : 0}px` };
+}
+
+/**
+ * The stack's two offsets on a canvas `logicalHeight` tall: what the air above the title gives for the room the default
+ * growth takes (home/giveWay, #55), and stackShift computed on the stack as it is after that, so a legend taller than the
+ * reserve (which stackShift already answers by moving up) is not counted twice. With room to spare: today's shift.
+ */
+export function homeStack(logicalHeight: number, legendReserve: number, feed: boolean): { shift: number; give: GiveWay } {
+    const give = giveWay(roomMissing(logicalHeight, legendReserve));
+    return { shift: stackShift(logicalHeight + give.need, legendReserve, feed), give };
+}
+
 /** The most the stack moves down, whatever the screen. */
 export const MAX_STACK_SHIFT = 120;
 /** ...and the most it moves up when Steam's legend is taller than the 46 reserve (handheld: 72 logical px). */
@@ -261,6 +279,13 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-hero-layer.gh-hero-settled', 'animation: none; opacity: 1'),
         rule('.gh-hero-none', 'background: var(--gh-ink)'),
         rule('.gh-hero-full', 'position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat'),
+        // Fit (settings heroFit): the whole art at the top centre, fading (heroFit.fitMask, --gh-hero-mask) into a blurred copy
+        // of it (the visual language's art-fill), drawn past the box so its blurred edges stay off screen.
+        rule('.gh-hero-full.gh-hero-fit', 'isolation: isolate'),
+        rule('.gh-hero-full.gh-hero-fit::before', `content: ""; position: absolute; inset: -120px; background-image: inherit; background-size: cover; background-position: center;
+            background-repeat: no-repeat; filter: ${ART_FILL_FILTER}; pointer-events: none`),
+        rule('.gh-hero-full.gh-hero-fit::after', `content: ""; position: absolute; inset: 0; background-image: inherit; background-size: contain; background-position: center top;
+            background-repeat: no-repeat; -webkit-mask-image: var(--gh-hero-mask); mask-image: var(--gh-hero-mask); pointer-events: none`),
         rule('.gh-hero-blur', 'position: absolute; inset: -60px; background-size: cover; background-position: center; filter: blur(42px) saturate(1.25) brightness(.8)'),
         rule('.gh-hero-sharp', `position: absolute; right: 0; top: 0; height: 100%; width: 62%; background-size: cover; background-position: center 30%;
             background-repeat: no-repeat; opacity: .92;
@@ -277,13 +302,13 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-safe', 'position: absolute; left: 0; right: 0; top: var(--gh-top); bottom: var(--gh-bottom)'),
         // The page holds the whole stack; it sits --gh-shift lower (stackShift, set inline by SpotlightHome), so every
         // element moves as one unit and keeps its gaps.
-        rule('.gh-page', `position: absolute; left: 0; right: 0; top: var(--gh-shift); height: 100%; transform: none; transition: transform ${SHEET}, opacity 300ms`),
+        rule('.gh-page', `position: absolute; left: 0; right: 0; top: calc(var(--gh-shift) + var(--gh-give, 0px)); height: 100%; transform: none; transition: transform ${SHEET}, opacity 300ms`),
         // Focus in the tabs or feed: the page rises 440 plus the shift, so the raised sheet keeps its place (tabs at 260, cards at 316).
         // The tab strip (reachable with Down) is out of sight until the sheet is raised; it fades in with the rise. The stack sits where the
         // tab strip would have been (stackShift without the feed), so the recents row ends there.
         rule('.gh-page .gh-tabs', 'transition: opacity 300ms'),
         rule('.gh-page:not(.gh-page-up) .gh-tabs', 'opacity: 0'),
-        rule('.gh-page.gh-page-up', `transform: translateY(calc(-1 * var(--gh-raise, ${FEED_SHEET.raise}px) - var(--gh-shift)))`),
+        rule('.gh-page.gh-page-up', `transform: translateY(calc(-1 * var(--gh-raise, ${FEED_SHEET.raise}px) - var(--gh-shift) - var(--gh-give, 0px)))`),
 
         // Title block (handoff: left 56, top 118 from the screen top, width 620, gap 18): title slot, eyebrow, chips, actions.
         rule('.gh-title-block', `position: absolute; left: var(--gh-side, ${SIDE_INSET.handheld}px); top: calc(${t.top}px - var(--gh-top)); width: 620px; display: flex; flex-direction: column; gap: ${t.gap}px; margin: 0; padding: 0`),
@@ -604,6 +629,12 @@ export function openingRules(): string[] {
         rule(`${M}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]`, `display: block; left: calc(var(--gho-shell-${i}-x) * 1px); top: calc(var(--gho-shell-${i}-y) * 1px);
             width: calc(var(--gho-shell-${i}-w) * 1px); height: calc(var(--gho-shell-${i}-h) * 1px); transform: var(--gho-shell-${i}-from); opacity: var(--gho-shell-${i}-o0)`),
         rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]`, `transform: none; opacity: 1; transition: ${move}, opacity ${T.morph}ms ease`),
+        rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-shell[data-i="${i}"]::before`, `opacity: 0; transition: opacity ${T.morph}ms ease`),
+        // The page card's crisp ring, outside the canvas (.gh-open-ring): it grows with the panel and fades in as the panel's
+        // soft ring fades out, so the hand-over shows the ring the page draws.
+        rule(`${M}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-ring[data-i="${i}"]`, `display: block; left: calc(var(--gho-ring-${i}-x) * 1px); top: calc(var(--gho-ring-${i}-y) * 1px);
+            width: calc(var(--gho-ring-${i}-w) * 1px); height: calc(var(--gho-ring-${i}-h) * 1px); transform: var(--gho-ring-${i}-from); opacity: 0`),
+        rule(`${MT}${i === 1 ? '[data-gh-shells="2"]' : ''} .gh-open-ring[data-i="${i}"]`, `transform: none; opacity: 1; transition: ${move}, opacity ${T.morph}ms ease`),
     ];
     // Fades that start late in the morph are keyframe animations over the whole morph that hold their start value until
     // then, never delayed transitions: on Steam's browser the GPU draws a delayed opacity transition at its end value
@@ -638,11 +669,23 @@ export function openingRules(): string[] {
         lateFade('gh-open-settle', 0, 1, T.settle, 'ease-in-out'),
         // Always there, hidden: the page's scrims over Home's, the opened game's hero (heroFade), the glass panels.
         rule('.gh-hero-open', 'position: absolute; inset: 0; pointer-events: none; background-image: var(--gho-hero, none); background-size: cover; background-position: center 30%; background-repeat: no-repeat; opacity: 0'),
+        // In Fit (settings heroFit, .gh-fit on the root) the other game's hero arrives framed as Home and the page draw it: the
+        // art fill behind, the whole art at the top with its fade (--gho-hero-mask, set beside --gho-hero by applyOpening).
+        rule('.gh-fit .gh-hero-open', 'isolation: isolate; background-image: none'),
+        rule('.gh-fit .gh-hero-open::before', `content: ""; position: absolute; inset: -120px; background-image: var(--gho-hero, none); background-size: cover;
+            background-position: center; background-repeat: no-repeat; filter: ${ART_FILL_FILTER}; pointer-events: none`),
+        rule('.gh-fit .gh-hero-open::after', `content: ""; position: absolute; inset: 0; background-image: var(--gho-hero, none); background-size: contain;
+            background-position: center top; background-repeat: no-repeat; -webkit-mask-image: var(--gho-hero-mask); mask-image: var(--gho-hero-mask); pointer-events: none`),
         // The glass: the page's cards and Clean panel, their tint, border and blur, so the page's arrive as they are (Michael,
         // on the Ally: moving blurred felt more seamless than a blur growing in after the hand-over). 16 canvas px is the page's
         // 16 d units. Its ring is Home's 1px, so it looks like the chips' all the way: Chromium snaps a border to whole device px
         // in the canvas's own units, before the scale, so the page's 1 device px drawn in here came out half as bright on the Ally.
-        rule('.gh-open-shell', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(16px)'),
+        // The page cards' ring drawn as the page draws it (openMotion --gho-ring-*): outside the scaled canvas, so Chromium
+        // snaps it to whole device px as it does the page's; brightened by the page's --gg-ring (ringBoost).
+        rule('.gh-open-ring', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; box-sizing: border-box; background: none; border-radius: var(--gho-ring-r, 16px); border: var(--gho-ring-w, 1px) solid rgba(255,255,255,calc(.12 * var(--gho-ring-boost, 1)))'),
+        rule('.gh-open-shell', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; background: rgba(12,16,22,.38); border: 1px solid transparent; backdrop-filter: blur(16px)'),
+        // Its soft canvas ring, as Home's chips draw theirs: fades out as the crisp ring (.gh-open-ring) fades in.
+        rule('.gh-open-shell::before', 'content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid rgba(255,255,255,.12); pointer-events: none; opacity: 1'),
         // A Unifideck game's page has a fourth circle (Uninstall) Home has no button for: one is drawn at its place as Home's
         // circles look at the page's size, and fades in late as the page's other parts do, so it does not pop in after the
         // hand-over. Its own fade, not the extras layer's: a backdrop blur inside a fading parent sees nothing behind it.
@@ -764,6 +807,35 @@ export function openingRules(): string[] {
         // higher than in a default one, so the twin's text landed 0.65 px low and stepped up at the end (Ally, docked).
         soft('.gh-twin[data-role="playLabel"]', `${pageType('playLabel', dd)} line-height: ${STEAM_PLAY_LINE}px`),
         soft('.gh-twin[data-accent]', 'color: var(--glance-accent-text)'),
+        cardBaseCss('gh-normal', (n) => `calc(${n} * var(--gg-u))`),
+        normalCardsCss('gh-normal', dd),
+        `.gh-normal-cards { display:none; position:absolute; margin:0; padding:0; color:#fff; pointer-events:none; transform-style:preserve-3d; --gg-u:${SCALE_UNIT_CSS}; --gg-accent:var(--glance-accent); --gg-ring:var(--gho-ring-boost,1); }`,
+        rule('.gh-normal-card', 'box-sizing:content-box'),
+        `${M}[data-gh-normal] .gh-normal-cards { display:grid; }`,
+        // Keep native text layout outside the glass's nonuniform scale (as the Play pill's foreground).
+        rule(`${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`, 'position:relative; z-index:0; background:transparent; border-color:transparent; backdrop-filter:none'),
+        `${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { content:""; position:absolute; inset:calc(-1 * var(--normal-border)); box-sizing:border-box; border:var(--normal-border) solid var(--normal-ring); border-radius:inherit; background:var(--normal-bg); backdrop-filter:var(--normal-blur); pointer-events:none; z-index:-1; transform-origin:0 0; transform:var(--normal-from); }`,
+        `${MT}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { transform:none; transition:${move}; }`,
+        `${M}[data-gh-normal] [data-normal-move] { transform-origin:0 0; transform:var(--normal-from); opacity:0; }`,
+        `${MT}[data-gh-normal] [data-normal-move] { transform:none; transition:${move}; animation:gh-twin-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-normal] [data-normal-move="extra"], ${MT}[data-gh-normal] [data-normal-empty] { animation:gh-open-extras-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-normal] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { animation:gh-twin-out ${T.morph}ms linear both; }`,
+        rule(`${M}[data-gh-normal] :is(.gh-open-shell,.gh-open-ring)[data-i], ${M}[data-gh-normal] :is(.gh-x-card,.gh-x-desc)`, 'display:none'),
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] .gh-normal-card { transform:none; transition:none; opacity:1; animation:none; }',
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] [data-normal-move] { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-normal][data-gh-opening][data-gh-phase] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { opacity:0; animation:none; }',
+        cleanInfoCss('.gh-clean-info', dd, 'gh-clean'),
+        '.gh-clean-info { display:none; pointer-events:none; --gg-accent:var(--glance-accent); --gg-ring:var(--gho-ring-boost,1); }',
+        `${M}[data-gh-clean] .gh-clean-info { display:flex; transform-origin:0 0; transform:translateY(-50%) var(--clean-from); }`,
+        `${MT}[data-gh-clean] .gh-clean-info { transform:translateY(-50%); transition:${move}; }`,
+        `${M}[data-gh-clean] .gh-clean-info [data-clean-move] { transform-origin:0 0; transform:var(--clean-from); opacity:0; }`,
+        `${MT}[data-gh-clean] .gh-clean-info [data-clean-move] { transform:none; transition:${move}; animation:gh-twin-in ${T.morph}ms linear both; }`,
+        `${MT}[data-gh-clean] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { animation:gh-twin-out ${T.morph}ms linear both; }`,
+        rule(`${M}[data-gh-clean] :is(.gh-open-shell,.gh-open-ring)[data-i]`, 'display:none'),
+        rule(`${M}[data-gh-clean] .gh-x-card:is([data-for="played"],[data-for="size"])`, 'display:none'),
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info { transform:translateY(-50%); transition:none; }',
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info [data-clean-move] { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { opacity:0; animation:none; }',
         ...twinOut.map(([name, sel]) => soft(`${MT}[data-gh-twins~="${name}"] ${sel}`, `animation: gh-twin-out ${T.morph}ms linear both`)),
         // The bridge (nothing animates in it): the twins at their end, Home's twinned text hidden, stated above the live rules.
         soft(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-twin`, `opacity: 1; transform: var(--t-to); animation: none; transition: translate ${T.settleGlide}ms ease-out !important`),
@@ -781,15 +853,28 @@ export function openingRules(): string[] {
         rule(`${X} .gh-x-hltb`, `display: none; position: absolute; ${inCard('hltb')}; width: var(--gho-x-hltb-w); flex-direction: column; gap: ${dd(L.cards.hltbGap)}`),
         rule('.gh-root[data-gh-extras~="hltb"] .gh-x-hltb', 'display: flex'),
         // The page's store pill (and family pill in it), right-aligned where the page draws it, as themeCss draws .gg-pill
-        // and .gg-family; Home's own (moving, scaled) fades out as it fades in.
-        rule(`${X} .gh-x-pill`, `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%); align-items: center;
+        // and .gg-family. The legacy path crossfades; measured openings use one translated pair below.
+        rule('.gh-x-pill', `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%) var(--gho-x-pill-from, translate(0px, 0px)); align-items: center;
             border-radius: 999px; border: 1px solid; color: #fff; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule('.gh-root[data-gh-extras~="pills"] .gh-x-pill', 'display: inline-flex'),
-        rule(`${X} .gh-x-pill-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
-        rule(`${X} .gh-x-family`, `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+        rule(`${MT} .gh-x-pill`, `transform: translateX(-100%); transition: ${move}`),
+        rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-x-pill', 'transform: translateX(-100%); transition: none'),
+        rule('.gh-x-pill-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
+        rule('.gh-x-family', `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),
-        rule(`${X} .gh-x-family-icon`, `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
-        rule(`${X} .gh-x-copy-plus`, `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
+        rule('.gh-x-family-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
+        rule('.gh-x-copy-plus', `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
+
+        rule('.gh-x-pill.gh-x-selectable', 'padding:0; border:0; background:transparent; backdrop-filter:none'),
+        rule('.gh-x-store-choice', `display:inline-flex; align-items:center; border:1px solid; border-radius:999px; color:#fff; ${sourcePillLook(dd)}`),
+        rule(`${M}[data-gh-pill] .gh-source`, 'visibility:hidden'),
+        `${M}[data-gh-pill] .gh-x-pill { transform:var(--pill-from); opacity:1; }`,
+        `${MT}[data-gh-pill] .gh-x-pill { transform:none; transition:${move}; }`,
+        `${M}[data-gh-pill] .gh-x-family { transform:translateY(-50%) var(--pill-from,translate(0px,0px)); }`,
+        `${MT}[data-gh-pill] .gh-x-family { transform:translateY(-50%); transition:${move}; }`,
+        '.gh-root.gh-bridge[data-gh-pill][data-gh-opening][data-gh-phase] .gh-x-pill { transform:none; opacity:1; animation:none; transition:none; }',
+        '.gh-root.gh-bridge[data-gh-pill][data-gh-opening][data-gh-phase] .gh-x-family { transform:translateY(-50%); animation:none; transition:none; }',
+        rule(`${MT}:not([data-gh-pill]) .gh-x-pill`, late('gh-open-extras-in')),
         // A new game's Play time column (Home shows its Added chip instead), as the page draws it, at its place.
         rule(`${X} .gh-x-played`, `display: none; position: absolute; ${inCard('played')}; flex-direction: column; gap: ${dd(L.stats.rowGap)}`),
         rule('.gh-root[data-gh-extras~="played"] .gh-x-played', 'display: flex'),

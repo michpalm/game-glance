@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets } from './themeCss';
+import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets, heroImageSelector } from './themeCss';
 import { viewportSize } from '../home/openHome';
 import type { ReadySelectors } from './pageReady';
 
@@ -94,6 +94,11 @@ export function steamFooter(): string | null {
 }
 
 /** Steam's Play row on the game page (themeCss.playRowSelector), for logic/cardNav; null without its classes. */
+/** Steam's header image on the game page (the hero art): styles/themeCss.heroImageSelector. */
+export function pageHeroImage(): string | null {
+    return heroImageSelector(themeClasses());
+}
+
 export function playRow(): string | null {
     return playRowSelector(themeClasses());
 }

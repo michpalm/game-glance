@@ -1,10 +1,11 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
 import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
-import { homeCanvas } from '../../src/home/scale';
+import { defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
+import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
-import { cardMaxWidths, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
+import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -549,6 +550,52 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // Not in the 1.1.1 output.
         expect(buildThemeCss(steam)).not.toContain('#5cf2b4');
     });
+    it("hero Fit: Steam's header image fitted at the top with its fade, over the art fill; it replaces the 50% 30% crop", () => {
+        const fit = buildThemeCss(steam, { restyle: true, heroFit: 'fit' });
+        // Only the hero, not Steam's blurred placeholder (as arrivalSelectors).
+        const img = rulesFor(fit, '.hd_Top img:not([src*="_blur"])');
+        expect(img).toContain('object-fit: contain !important; object-position: center top !important;');
+        // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
+        expect(img).toContain('-webkit-mask-image: var(--gg-hero-mask, linear-gradient(180deg, #000 calc(100vw / 3.1 * 0.78), transparent calc(100vw / 3.1))) !important;');
+        // The art stays in Steam's order, under the header's scrims (::after), as Home's art is under its scrims.
+        expect(img).not.toContain('z-index');
+        expect(img).not.toMatch(/(^|[\s;{])position:/);
+        expect(img).not.toContain('50% 30%');
+        const fill = rulesFor(fit, '.hd_Top::before');
+        expect(fill).toContain('background: var(--gg-hero-fill, none) center / cover no-repeat !important;');
+        expect(fill).toContain(`filter: ${ART_FILL_FILTER} !important;`);
+        expect(fill).toContain('inset: -120px !important;');
+        expect(fill).toContain('z-index: -1 !important;');
+        // Its blurred edges stay inside the header, not over Steam's tabs below it.
+        const box = rulesFor(fit, '.hd_Top');
+        expect(box).toContain('isolation: isolate !important;');
+        expect(box).toContain('overflow: clip !important;');
+    });
+    it('Fit also gates Steam canvas blur and its reflection with the full-hero readiness state', () => {
+        const selector = '.hd_Top canvas';
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fit' }), selector)).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fill' }), selector)).toBe('');
+        expect(rulesFor(buildThemeCss(steam, { heroFit: 'fit' }), selector)).toBe('');
+    });
+
+    it('Fit hides Steam blurred placeholders only when the full hero is ready, preserving loading visibility', () => {
+        const selector = '.hd_Top img[src*="_blur"]';
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fit' }), selector)).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
+        expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fill' }), selector)).toBe('');
+        expect(rulesFor(buildThemeCss(steam), selector)).toBe('');
+    });
+    it('hero Fill: the page as before; the 1.1.1 output is the same for both', () => {
+        expect(buildThemeCss(steam, { restyle: true, heroFit: 'fill' })).toBe(buildThemeCss(steam, { restyle: true }));
+        expect(rulesFor(buildThemeCss(steam, { restyle: true }), '.hd_Top img')).toContain('object-position: 50% 30% !important;');
+        expect(buildThemeCss(steam, { heroFit: 'fit' })).toBe(buildThemeCss(steam));
+        expect(buildThemeCss(steam, { restyle: true })).not.toContain('--gg-hero-fill');
+        // Clean look is added on top of the restyle and never touches the header image: Fit carries into it.
+        expect(buildCleanCss(steam)).not.toContain('.hd_Top img');
+    });
+    it("heroImageSelector: Steam's header image; null without its class", () => {
+        expect(heroImageSelector(steam)).toBe('.hd_Top img:not([src*="_blur"])');
+        expect(heroImageSelector({ ...steam, header: undefined })).toBeNull();
+    });
     it('restyle: the cloud is one white cloud with its state in a badge at the top right, as on Home (#64)', () => {
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('color: #ffffff !important;');
         expect(rulesFor(restyled, '.ps_Cloud svg')).toContain('display: none !important;');
@@ -677,11 +724,12 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_CloudIcon')).toContain(`height: calc(${PAGE_LAYOUT.cloudIcon} * var(--gg-d)) !important;`);
     });
     it("ringBoost: Home's ring as drawn on screen over the page's, both on whole device px", () => {
-        // The Ally handheld (2.32, 828x466: d 0.575): Home's 1 canvas px is 2 device px scaled to 1.15; the page's 1 d unit is 1.
+        // The Ally handheld (2.32, 828x466: d 0.575 grown by the default growth to 0.625): Home's 1 canvas px is 2 device
+        // px scaled by d; the page's 1 d unit is 1 (floor(0.625 x 2.32)).
         const d = pageDUnit(828.0172, 466.3793);
         expect(ringBoost(2.32, 828.0172, 466.3793)).toBeCloseTo(2 * d, 3);
-        // The Deck (1, 1280x800: d 1): both 1 device px.
-        expect(ringBoost(1, 1280, 800)).toBe(1);
+        // The Deck (1, 1280x800: d 1 grown to 1.073): Home's 1.073 device px against the page's 1.
+        expect(ringBoost(1, 1280, 800)).toBeCloseTo(pageDUnit(1280, 800), 3);
         // A 1080p screen at 1 (d 1.333): Home's 1.333 device px, soft, against the page's 1.
         expect(ringBoost(1, 1920, 1080)).toBeCloseTo(pageDUnit(1920, 1080), 3);
         // Unknown ratio: no change.
@@ -739,8 +787,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ad_Inner')).toContain('transition: --glance-accent 500ms ease;');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('var(--glance-accent)');
         // handoff px scaled like Home: its 1440 canvas on 16:9, its 1280 canvas on 16:10
-        expect(restyled).toContain(':root { --gg-d: min(calc(100vw / 1440), calc(100vh / 810)); }');
-        expect(restyled).toContain('@media (max-aspect-ratio: 17/10) { :root { --gg-d: min(calc(100vw / 1280), calc(100vh / 800)); } }');
+        expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
+        expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
         // eyebrow and 64px/800 title
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: var(--glance-accent-text)');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('text-transform: uppercase');
@@ -903,7 +951,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's, and in
         // the d unit's height limit, the shared scale rule with Home: home/scale.ts)
         // (z-index only on our own hero, lifted over Steam's page panel so the tappable cards get touches, #24)
-        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: min\([^;]*\);/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '')).not.toMatch(/z-index|100vh/);
+        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: [^;]*;/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '')).not.toMatch(/z-index|100vh/);
     });
 });
 
@@ -970,13 +1018,14 @@ describe('buildDownloadCss (restyled Play pill fill)', () => {
 
 describe('the page layout constants', () => {
     it('pageDUnit follows --gg-d: a 1440 wide canvas on 16:9, 1280 on 16:10 and narrower', () => {
-        expect(pageDUnit(1500, 844)).toBeCloseTo(1500 / 1440);
-        expect(pageDUnit(1280, 800)).toBeCloseTo(1);
-        expect(pageDUnit(828, 466)).toBeCloseTo(828 / 1440);
+        // With Home's default growth (#55): 810 tall canvases x defaultGrowth(810), 800 tall x defaultGrowth(800).
+        expect(pageDUnit(1500, 844)).toBeCloseTo((1500 / 1440) * defaultGrowth(810));
+        expect(pageDUnit(1280, 800)).toBeCloseTo(defaultGrowth(800));
+        expect(pageDUnit(828, 466)).toBeCloseTo((828 / 1440) * defaultGrowth(810));
     });
     it('pageDUnit scales a screen wider than 16:9 by its height, as Home does (one rule keeps the open transition aligned)', () => {
-        expect(pageDUnit(1500, 643)).toBeCloseTo(643 / 810);
-        expect(pageDUnit(2560, 1080)).toBeCloseTo(1080 / 810);
+        expect(pageDUnit(1500, 643)).toBeCloseTo((643 / 810) * defaultGrowth(810));
+        expect(pageDUnit(2560, 1080)).toBeCloseTo((1080 / 810) * defaultGrowth(810));
         for (const [w, h] of [[1920, 1080], [1280, 800], [1500, 844], [1500, 643], [2560, 1080], [3440, 1440], [1024, 768]]) {
             expect(pageDUnit(w, h)).toBeCloseTo(homeCanvas(w, h).scale, 10);
         }
@@ -1187,5 +1236,14 @@ describe('the Spotlight cards have one height', () => {
         expect(content).toBeCloseTo(L.stats.label * 1.5 + L.stats.rowGap + L.stats.value * 1.2 + L.cards.colGap + L.cardText.desc * L.cardText.descLine * L.cardText.descLines, 5);
         expect(css).toContain(`min-height: calc(${content} * var(--gg-d))`);
         expect(css).toMatch(/\.gg-card \{[^}]*min-height: calc\(/);
+    });
+});
+
+describe('the page takes the default growth (#55)', () => {
+    it('gives the page the same unit as Home', () => expect(pageDUnit(1920, 1080)).toBeCloseTo(homeCanvas(1920, 1080).scale, 10));
+    it('multiplies the page unit by Home\'s growth for each canvas shape', () => {
+        const css = buildThemeCss(full, { restyle: true });
+        expect(css).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
+        expect(css).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
     });
 });
