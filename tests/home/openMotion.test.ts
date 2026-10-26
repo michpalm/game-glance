@@ -5,6 +5,8 @@ import { HomeRects, MotionVar, openMotion } from '../../src/home/openMotion';
 import type { Box, PageTargets } from '../../src/home/openTargets';
 import { MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS } from '../../src/home/motion';
 import { PAGE_LAYOUT, pillFocusScale } from '../../src/styles/themeCss';
+import { measureCanvasScale } from '../../src/home/openHome';
+import { homeCanvas } from '../../src/home/scale';
 import { HOME_PILL } from '../../src/home/homeCss';
 
 const raw = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/openLayout/home-1500x844.json'), 'utf8')) as { canvasScale: number; rects: Record<string, Box> };
@@ -51,6 +53,36 @@ function parse(t: string | undefined) {
 }
 
 describe('openMotion', () => {
+    it('keeps the glass on the crisp ring with fractional grown canvases across aspect ratios and both looks', () => {
+        for (const [width, height] of [[1500, 844.53125], [1280, 800], [1920, 1080], [2560, 1080], [3840, 1080]]) {
+            const layout = homeCanvas(width, height);
+            // Chromium quantizes layout width but offsetWidth further rounds it to a whole CSS px.
+            const logical = Math.floor(layout.logicalWidth * 64) / 64;
+            const drawn = logical * layout.scale;
+            const root = {
+                ownerDocument: { defaultView: { getComputedStyle: () => ({ width: `${logical}px` }) } },
+                querySelector: () => ({ offsetWidth: Math.round(logical), getBoundingClientRect: () => ({ width: drawn }) }),
+            } as unknown as Element;
+            for (const look of ['clean', 'spotlight'] as const) {
+                const home = { ...homeRects(), canvas: box(0, 0, drawn, height) };
+                const v = vars(openMotion(home, spotlight(), look, measureCanvasScale(root)));
+                for (const axis of ['x', 'y', 'w', 'h']) {
+                    expect(Math.abs(Number(v[`--gho-shell-0-${axis}`]) * layout.scale - Number(v[`--gho-ring-0-${axis}`]))).toBeLessThan(0.0002);
+                }
+            }
+        }
+    });
+
+    it('starts the page pill at Home’s right edge so its crossfade follows the moving pill', () => {
+        const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+        const target = spotlight();
+        const v = vars(openMotion(home, target, 'clean', s));
+        const start = parse(v['--gho-x-pill-from']);
+        expect(start.tx + target.store.x + target.store.w).toBeCloseTo(home.store!.x + home.store!.w, 3);
+        expect(start.ty + target.store.y).toBeCloseTo(home.store!.y, 3);
+        expect(vars(openMotion({ ...home, store: null }, target, 'clean', s))['--gho-x-pill-from']).toBe('translate(0px, 0px)');
+    });
+
     it('the title block moves by its bottom-left corner, in canvas px', () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         const t = parse(v['--gho-title']);
@@ -363,5 +395,33 @@ describe('return timings (B from a page: Home is just there)', () => {
         expect(RETURN_TIMINGS.fade).toBe(200);
         expect(RETURN_TIMINGS.hold).toBeGreaterThanOrEqual(1200);
         expect(RETURN_TIMINGS.hold).toBeLessThanOrEqual(2000);
+    });
+});
+
+describe('the cards\' crisp ring crossfades in over the morph (soft canvas ring -> page ring)', () => {
+    const page = { ...spotlight(), border: 0.78125, ring: 1.45 };
+    const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+    const v = vars(openMotion(home, page, 'spotlight', s));
+    it('places a ring at each page card, in the root\'s px (outside the scaled canvas)', () => {
+        expect(Number(v['--gho-ring-0-x'])).toBeCloseTo(25 - 10, 3);
+        expect(Number(v['--gho-ring-0-y'])).toBeCloseTo(593.1 - 20, 3);
+        expect(Number(v['--gho-ring-1-w'])).toBeCloseTo(681.6, 3);
+        expect(Number(v['--gho-ring-1-h'])).toBeCloseTo(185.4, 3);
+    });
+    it('starts it on the chips it grows from, as the panel does', () => {
+        const from = parse(v['--gho-ring-0-from']);
+        const chips = [r['chip:chip0'], r['chip:chip1']];
+        const x = Math.min(...chips.map((c) => c.x));
+        expect(from.tx).toBeCloseTo(x - 25, 2);
+    });
+    it('draws it as the page does: the page card\'s width in device px and its brightness', () => {
+        expect(v['--gho-ring-w']).toBe('0.78125px');
+        expect(v['--gho-ring-boost']).toBe('1.45');
+        expect(v['--gho-ring-r']).toBe(`${Math.round(16 * (page.d ?? s) * 10000) / 10000}px`);
+    });
+    it('has no ring without page targets for it', () => {
+        const none = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        expect(none['--gho-ring-w']).toBe('1px');
+        expect(none['--gho-ring-boost']).toBe('1');
     });
 });

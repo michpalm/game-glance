@@ -168,8 +168,11 @@ export function recentsLayout(count: number, focused: number, geometry: RecentsG
 }
 
 /** How Home's games row moves (Quick Access → Games row style): Steam's own Home, or Game Glance's Spotlight. */
-export const ROW_STYLES = ['steam', 'spotlight'] as const;
+export const ROW_STYLES = ['steam', 'spotlight', 'minimal'] as const;
 export type RowStyle = (typeof ROW_STYLES)[number];
+
+/** Whether the style ever draws a wide card: Minimal never does, so Home does not warm the wide card art for it. */
+export const rowShowsWideCards = (style: RowStyle): boolean => style !== 'minimal';
 
 /** A stored style, else Steam's (the default, and what an unknown value reads as). */
 export function rowStyleOf(value: unknown): RowStyle {
@@ -198,4 +201,9 @@ export function steamRowLayout(count: number, focused: number, geometry: Recents
     const ghostStart = (n + 1) * step + firstGrow + ghostGap;
     const ghosts = Array.from({ length: ghostCount(n) }, (_, j) => ({ left: ghostStart + j * step, opacity: ghostOpacity(j, onLibrary) }));
     return { items, scrollX: scroll > 0 ? -scroll : 0, ghostStart, ghosts };
+}
+
+/** Steam-style selection and scrolling, with no extra width reserved for a landscape card. */
+export function minimalRowLayout(count: number, focused: number, geometry: RecentsGeometry, viewport: number): RecentsLayout {
+    return steamRowLayout(count, focused, { ...geometry, wideW: geometry.capsuleW, grow: 0 }, viewport);
 }

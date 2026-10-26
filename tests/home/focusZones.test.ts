@@ -46,8 +46,11 @@ describe('focusZones', () => {
             expect(recentsButton(13, 1, 3)).toBe('menu');
             expect(recentsButton(14, 1, 3)).toBe('menu');
         });
-        it('A, B, up and down are Steam\'s; no games: nothing', () => {
-            for (const b of [1, 2, 9, 10]) expect(recentsButton(b, 1, 3)).toBeNull();
+        it('Up enters the action row explicitly so the new selector pills cannot steal entry', () => {
+            expect(recentsButton(9, 1, 3)).toBe('actions');
+        });
+        it('A, B and down are Steam\'s; no games: nothing', () => {
+            for (const b of [1, 2, 10]) expect(recentsButton(b, 1, 3)).toBeNull();
             expect(recentsButton(RIGHT, 0, 0)).toBeNull();
             expect(recentsButton(5, 0, Number.NaN)).toBeNull();
         });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    claimsPreferredFocus, FEED_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
+    claimsPreferredFocus, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
 } from '../../src/home/feedLayout';
 
 // Handoff: featured news 600, news 320, friend 230, recommended 187; gap 14; viewport 1440 - 2 x 44 = 1352.
@@ -336,4 +336,26 @@ describe('feedItems placeholders', () => {
         expect(items).toHaveLength(1);
         expect(items[0].backdrop).toEqual({ url: null, tone: null });
     });
+});
+
+describe('feedRows on a short canvas (#55: Steam\'s scale)', () => {
+    it('drops the second row when even the smallest rows do not fit', () => {
+        const r = feedRows('news', 300, true);
+        expect(r.row2).toBe(0);
+        expect(r.total).toBe(FEED_ROW1_H);
+    });
+    it('keeps the second row from the smallest size that fits', () => expect(feedRows('news', FEED_ROW1_MIN_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H, true).row2).toBe(FEED_ROW2_MIN_H));
+});
+
+describe('feedRows at the growth cap (#55, found on the Ally at Steam 1.5)', () => {
+    it('shrinks row 1 to the room when there is no second row, never below its minimum', () => {
+        expect(feedRows('news', 265, false).row1).toBe(265);
+        expect(feedRows('news', 255, false).row1).toBe(255);
+        expect(feedRows('news', 200, false).row1).toBe(FEED_ROW1_MIN_H);
+    });
+    it('gives a short canvas its real room, down to row 1\'s minimum', () => {
+        expect(feedSpace(600, 30, 0)).toBe(Math.floor(600 - 30 - 12 - FEED_TOP_RAISED)); // 242: between the minimum and the old 260 floor
+        expect(feedSpace(400, 46, 0)).toBe(FEED_ROW1_MIN_H);
+    });
+    it('keeps row 1 at full size with room to spare', () => expect(feedRows('news', 420, false).row1).toBe(FEED_ROW1_H));
 });

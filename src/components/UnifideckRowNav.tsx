@@ -29,6 +29,7 @@ export function UnifideckRowNav() {
         if (!doc) return undefined;
         const onDirection = (event: Event) => {
             try {
+                if (event.defaultPrevented) return;
                 const button = Number((event as CustomEvent<{ button?: unknown }>).detail?.button);
                 if (button !== LEFT && button !== RIGHT) return;
                 const target = event.target as Element | null;

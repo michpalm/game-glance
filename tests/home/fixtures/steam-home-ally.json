@@ -1,0 +1,919 @@
+{
+  "device": "1500x844",
+  "steamHomeCode": "unchanged",
+  "lists": {
+    "recent": [
+      {
+        "appid": 1,
+        "display_name": "G1",
+        "app_type": 1073741824,
+        "rt_last_time_played": 451253731,
+        "rt_last_time_locally_played": 451253796,
+        "rt_recent_activity_time": 451253731,
+        "rt_last_time_played_or_installed": 451253731,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 2,
+        "display_name": "G2",
+        "app_type": 1,
+        "rt_last_time_played": 451245768,
+        "rt_last_time_locally_played": 451245770,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451245768,
+        "rt_last_time_played_or_installed": 451245768,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 819
+      },
+      {
+        "appid": 3,
+        "display_name": "G3",
+        "app_type": 1,
+        "rt_last_time_played": 451161793,
+        "rt_last_time_locally_played": 451161792,
+        "rt_purchased_time": 432309097,
+        "rt_recent_activity_time": 451161793,
+        "rt_last_time_played_or_installed": 451161793,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 1
+      },
+      {
+        "appid": 4,
+        "display_name": "G4",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451161698,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 451161708,
+        "rt_last_time_played_or_installed": 451161708,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 5,
+        "display_name": "G5",
+        "app_type": 1,
+        "rt_last_time_played": 451161686,
+        "rt_last_time_locally_played": 451161685,
+        "rt_purchased_time": 327808600,
+        "rt_recent_activity_time": 451161686,
+        "rt_last_time_played_or_installed": 451161686,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 131
+      },
+      {
+        "appid": 6,
+        "display_name": "G6",
+        "app_type": 1,
+        "rt_last_time_played": 451152285,
+        "rt_last_time_locally_played": 451152285,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451152285,
+        "rt_last_time_played_or_installed": 451152285,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 128
+      },
+      {
+        "appid": 7,
+        "display_name": "G7",
+        "app_type": 1,
+        "rt_last_time_played": 451099060,
+        "rt_purchased_time": 330405159,
+        "rt_recent_activity_time": 451099060,
+        "rt_last_time_played_or_installed": 451099060,
+        "local_per_client_data": {
+          "installed": false
+        },
+        "minutes_playtime_forever": 49
+      },
+      {
+        "appid": 8,
+        "display_name": "G8",
+        "app_type": 1,
+        "rt_last_time_played": 451083846,
+        "rt_last_time_locally_played": 450887324,
+        "rt_purchased_time": 449599840,
+        "rt_recent_activity_time": 451083846,
+        "rt_last_time_played_or_installed": 451083846,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 2
+      },
+      {
+        "appid": 9,
+        "display_name": "G9",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451071995,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 451071994,
+        "rt_last_time_played_or_installed": 451071994,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 10,
+        "display_name": "G10",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451071995,
+        "rt_purchased_time": 336588204,
+        "rt_recent_activity_time": 451071994,
+        "rt_last_time_played_or_installed": 451071994,
+        "local_per_client_data": {
+          "installed": false
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 11,
+        "display_name": "G11",
+        "app_type": 1073741824,
+        "rt_last_time_played": 451066972,
+        "rt_last_time_locally_played": 451068643,
+        "rt_recent_activity_time": 451066972,
+        "rt_last_time_played_or_installed": 451066972,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 27
+      },
+      {
+        "appid": 12,
+        "display_name": "G12",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932691,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932691,
+        "rt_last_time_played_or_installed": 450932691,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 13,
+        "display_name": "G13",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932688,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932688,
+        "rt_last_time_played_or_installed": 450932688,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 14,
+        "display_name": "G14",
+        "app_type": 8,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450808264,
+        "rt_purchased_time": 450304588,
+        "rt_recent_activity_time": 450808264,
+        "rt_last_time_played_or_installed": 450808264,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 15,
+        "display_name": "G15",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450678714,
+        "rt_purchased_time": 450678556,
+        "rt_recent_activity_time": 450678713,
+        "rt_last_time_played_or_installed": 450678713,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 16,
+        "display_name": "G16",
+        "app_type": 1,
+        "rt_last_time_played": 450628173,
+        "rt_last_time_locally_played": 450628173,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 450628173,
+        "rt_last_time_played_or_installed": 450628173,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 523
+      },
+      {
+        "appid": 17,
+        "display_name": "G17",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450579844,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 450579843,
+        "rt_last_time_played_or_installed": 450579843,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 18,
+        "display_name": "G18",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450579844,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 450579843,
+        "rt_last_time_played_or_installed": 450579843,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 19,
+        "display_name": "G19",
+        "app_type": 8,
+        "rt_last_time_played": 0,
+        "rt_purchased_time": 450304544,
+        "rt_recent_activity_time": 450304544,
+        "rt_last_time_played_or_installed": 0,
+        "local_per_client_data": {
+          "installed": false
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 20,
+        "display_name": "G20",
+        "app_type": 1,
+        "rt_last_time_played": 450238292,
+        "rt_purchased_time": 429201733,
+        "rt_recent_activity_time": 450238292,
+        "rt_last_time_played_or_installed": 450238292,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 111
+      }
+    ],
+    "localPlayed": [
+      {
+        "appid": 1,
+        "display_name": "G1",
+        "app_type": 1073741824,
+        "rt_last_time_played": 451253731,
+        "rt_last_time_locally_played": 451253796,
+        "rt_recent_activity_time": 451253731,
+        "rt_last_time_played_or_installed": 451253731,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 2,
+        "display_name": "G2",
+        "app_type": 1,
+        "rt_last_time_played": 451245768,
+        "rt_last_time_locally_played": 451245770,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451245768,
+        "rt_last_time_played_or_installed": 451245768,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 819
+      },
+      {
+        "appid": 3,
+        "display_name": "G3",
+        "app_type": 1,
+        "rt_last_time_played": 451161793,
+        "rt_last_time_locally_played": 451161792,
+        "rt_purchased_time": 432309097,
+        "rt_recent_activity_time": 451161793,
+        "rt_last_time_played_or_installed": 451161793,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 1
+      },
+      {
+        "appid": 4,
+        "display_name": "G4",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451161698,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 451161708,
+        "rt_last_time_played_or_installed": 451161708,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 5,
+        "display_name": "G5",
+        "app_type": 1,
+        "rt_last_time_played": 451161686,
+        "rt_last_time_locally_played": 451161685,
+        "rt_purchased_time": 327808600,
+        "rt_recent_activity_time": 451161686,
+        "rt_last_time_played_or_installed": 451161686,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 131
+      },
+      {
+        "appid": 6,
+        "display_name": "G6",
+        "app_type": 1,
+        "rt_last_time_played": 451152285,
+        "rt_last_time_locally_played": 451152285,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451152285,
+        "rt_last_time_played_or_installed": 451152285,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 128
+      },
+      {
+        "appid": 9,
+        "display_name": "G9",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451071995,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 451071994,
+        "rt_last_time_played_or_installed": 451071994,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 10,
+        "display_name": "G10",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 451071995,
+        "rt_purchased_time": 336588204,
+        "rt_recent_activity_time": 451071994,
+        "rt_last_time_played_or_installed": 451071994,
+        "local_per_client_data": {
+          "installed": false
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 11,
+        "display_name": "G11",
+        "app_type": 1073741824,
+        "rt_last_time_played": 451066972,
+        "rt_last_time_locally_played": 451068643,
+        "rt_recent_activity_time": 451066972,
+        "rt_last_time_played_or_installed": 451066972,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 27
+      },
+      {
+        "appid": 12,
+        "display_name": "G12",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932691,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932691,
+        "rt_last_time_played_or_installed": 450932691,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 13,
+        "display_name": "G13",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932688,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932688,
+        "rt_last_time_played_or_installed": 450932688,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 8,
+        "display_name": "G8",
+        "app_type": 1,
+        "rt_last_time_played": 451083846,
+        "rt_last_time_locally_played": 450887324,
+        "rt_purchased_time": 449599840,
+        "rt_recent_activity_time": 451083846,
+        "rt_last_time_played_or_installed": 451083846,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 2
+      },
+      {
+        "appid": 14,
+        "display_name": "G14",
+        "app_type": 8,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450808264,
+        "rt_purchased_time": 450304588,
+        "rt_recent_activity_time": 450808264,
+        "rt_last_time_played_or_installed": 450808264,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 15,
+        "display_name": "G15",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450678714,
+        "rt_purchased_time": 450678556,
+        "rt_recent_activity_time": 450678713,
+        "rt_last_time_played_or_installed": 450678713,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 16,
+        "display_name": "G16",
+        "app_type": 1,
+        "rt_last_time_played": 450628173,
+        "rt_last_time_locally_played": 450628173,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 450628173,
+        "rt_last_time_played_or_installed": 450628173,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 523
+      },
+      {
+        "appid": 17,
+        "display_name": "G17",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450579844,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 450579843,
+        "rt_last_time_played_or_installed": 450579843,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 18,
+        "display_name": "G18",
+        "app_type": 4,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450579844,
+        "rt_purchased_time": 1000000,
+        "rt_recent_activity_time": 450579843,
+        "rt_last_time_played_or_installed": 450579843,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      }
+    ],
+    "recentPurchased": [
+      {
+        "appid": 12,
+        "display_name": "G12",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932691,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932691,
+        "rt_last_time_played_or_installed": 450932691,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 13,
+        "display_name": "G13",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932688,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932688,
+        "rt_last_time_played_or_installed": 450932688,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 15,
+        "display_name": "G15",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450678714,
+        "rt_purchased_time": 450678556,
+        "rt_recent_activity_time": 450678713,
+        "rt_last_time_played_or_installed": 450678713,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      }
+    ],
+    "localGames": [
+      {
+        "appid": 21,
+        "display_name": "G21",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_purchased_time": 439399488,
+        "rt_recent_activity_time": 439399488,
+        "rt_last_time_played_or_installed": 0,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 15,
+        "display_name": "G15",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450678714,
+        "rt_purchased_time": 450678556,
+        "rt_recent_activity_time": 450678713,
+        "rt_last_time_played_or_installed": 450678713,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 14,
+        "display_name": "G14",
+        "app_type": 8,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450808264,
+        "rt_purchased_time": 450304588,
+        "rt_recent_activity_time": 450808264,
+        "rt_last_time_played_or_installed": 450808264,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 22,
+        "display_name": "G22",
+        "app_type": 1,
+        "rt_last_time_played": 446213340,
+        "rt_purchased_time": 157404990,
+        "rt_recent_activity_time": 446213340,
+        "rt_last_time_played_or_installed": 446213340,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 89
+      },
+      {
+        "appid": 6,
+        "display_name": "G6",
+        "app_type": 1,
+        "rt_last_time_played": 451152285,
+        "rt_last_time_locally_played": 451152285,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451152285,
+        "rt_last_time_played_or_installed": 451152285,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 128
+      },
+      {
+        "appid": 23,
+        "display_name": "G23",
+        "app_type": 1,
+        "rt_last_time_played": 449377334,
+        "rt_purchased_time": 448728879,
+        "rt_recent_activity_time": 449377334,
+        "rt_last_time_played_or_installed": 449377334,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 5
+      },
+      {
+        "appid": 24,
+        "display_name": "G24",
+        "app_type": 1,
+        "rt_last_time_played": 404286834,
+        "rt_purchased_time": 325439614,
+        "rt_recent_activity_time": 404286834,
+        "rt_last_time_played_or_installed": 404286834,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 28
+      },
+      {
+        "appid": 25,
+        "display_name": "G25",
+        "app_type": 1,
+        "rt_last_time_played": 433032486,
+        "rt_purchased_time": 431915202,
+        "rt_recent_activity_time": 433032486,
+        "rt_last_time_played_or_installed": 433032486,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 95
+      },
+      {
+        "appid": 26,
+        "display_name": "G26",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_purchased_time": 449599840,
+        "rt_recent_activity_time": 449599840,
+        "rt_last_time_played_or_installed": 0,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 20,
+        "display_name": "G20",
+        "app_type": 1,
+        "rt_last_time_played": 450238292,
+        "rt_purchased_time": 429201733,
+        "rt_recent_activity_time": 450238292,
+        "rt_last_time_played_or_installed": 450238292,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 111
+      },
+      {
+        "appid": 3,
+        "display_name": "G3",
+        "app_type": 1,
+        "rt_last_time_played": 451161793,
+        "rt_last_time_locally_played": 451161792,
+        "rt_purchased_time": 432309097,
+        "rt_recent_activity_time": 451161793,
+        "rt_last_time_played_or_installed": 451161793,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 1
+      },
+      {
+        "appid": 27,
+        "display_name": "G27",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_purchased_time": 441215563,
+        "rt_recent_activity_time": 441215563,
+        "rt_last_time_played_or_installed": 0,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 28,
+        "display_name": "G28",
+        "app_type": 1,
+        "rt_last_time_played": 447724986,
+        "rt_purchased_time": 446659650,
+        "rt_recent_activity_time": 447724986,
+        "rt_last_time_played_or_installed": 447724986,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 1
+      },
+      {
+        "appid": 29,
+        "display_name": "G29",
+        "app_type": 1,
+        "rt_last_time_played": 449645376,
+        "rt_purchased_time": 330581835,
+        "rt_recent_activity_time": 449645376,
+        "rt_last_time_played_or_installed": 449645376,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 1
+      },
+      {
+        "appid": 16,
+        "display_name": "G16",
+        "app_type": 1,
+        "rt_last_time_played": 450628173,
+        "rt_last_time_locally_played": 450628173,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 450628173,
+        "rt_last_time_played_or_installed": 450628173,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 523
+      },
+      {
+        "appid": 2,
+        "display_name": "G2",
+        "app_type": 1,
+        "rt_last_time_played": 451245768,
+        "rt_last_time_locally_played": 451245770,
+        "rt_purchased_time": 449810567,
+        "rt_recent_activity_time": 451245768,
+        "rt_last_time_played_or_installed": 451245768,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 819
+      },
+      {
+        "appid": 5,
+        "display_name": "G5",
+        "app_type": 1,
+        "rt_last_time_played": 451161686,
+        "rt_last_time_locally_played": 451161685,
+        "rt_purchased_time": 327808600,
+        "rt_recent_activity_time": 451161686,
+        "rt_last_time_played_or_installed": 451161686,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 131
+      },
+      {
+        "appid": 12,
+        "display_name": "G12",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932691,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932691,
+        "rt_last_time_played_or_installed": 450932691,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 13,
+        "display_name": "G13",
+        "app_type": 1,
+        "rt_last_time_played": 0,
+        "rt_last_time_locally_played": 450932688,
+        "rt_purchased_time": 450925865,
+        "rt_recent_activity_time": 450932688,
+        "rt_last_time_played_or_installed": 450932688,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 0
+      },
+      {
+        "appid": 8,
+        "display_name": "G8",
+        "app_type": 1,
+        "rt_last_time_played": 451083846,
+        "rt_last_time_locally_played": 450887324,
+        "rt_purchased_time": 449599840,
+        "rt_recent_activity_time": 451083846,
+        "rt_last_time_played_or_installed": 451083846,
+        "local_per_client_data": {
+          "installed": true
+        },
+        "minutes_playtime_forever": 2
+      }
+    ]
+  },
+  "steam": [
+    {
+      "appid": 1,
+      "app_type": 1073741824
+    },
+    {
+      "appid": 2,
+      "app_type": 1
+    },
+    {
+      "appid": 3,
+      "app_type": 1
+    },
+    {
+      "appid": 5,
+      "app_type": 1
+    },
+    {
+      "appid": 6,
+      "app_type": 1
+    },
+    {
+      "appid": 8,
+      "app_type": 1
+    },
+    {
+      "appid": 10,
+      "app_type": 1
+    },
+    {
+      "appid": 11,
+      "app_type": 1073741824
+    },
+    {
+      "appid": 12,
+      "app_type": 1
+    },
+    {
+      "appid": 13,
+      "app_type": 1
+    },
+    {
+      "appid": 14,
+      "app_type": 8
+    },
+    {
+      "appid": 15,
+      "app_type": 1
+    },
+    {
+      "appid": 16,
+      "app_type": 1
+    },
+    {
+      "appid": 7,
+      "app_type": 1
+    },
+    {
+      "appid": 19,
+      "app_type": 8
+    },
+    {
+      "appid": 20,
+      "app_type": 1
+    },
+    {
+      "appid": 29,
+      "app_type": 1
+    },
+    {
+      "appid": 26,
+      "app_type": 1
+    },
+    {
+      "appid": 23,
+      "app_type": 1
+    },
+    {
+      "appid": 28,
+      "app_type": 1
+    }
+  ]
+}

@@ -38,3 +38,19 @@ describe('getSourceLabel for games Heroic added', () => {
         expect(await getSourceLabel(3000000007, true, async () => { throw new Error('x'); }, 'Amazon')).toBe('Amazon');
     });
 });
+
+describe('source labels on the selection render', () => {
+    it('knows Steam synchronously and exposes a resolved shortcut without another loading frame', async () => {
+        const { peekSourceLabel } = await import('../../src/data/source');
+        expect(peekSourceLabel(292030, false)).toBe('Steam');
+        expect(peekSourceLabel(3000000101, true)).toBeUndefined();
+        await getSourceLabel(3000000101, true, async () => 'GOG');
+        expect(peekSourceLabel(3000000101, true)).toBe('GOG');
+        expect(peekSourceLabel(3000000102, true)).toBeUndefined();
+    });
+    it('does not preserve a temporary failure as a known shortcut store', async () => {
+        const { peekSourceLabel } = await import('../../src/data/source');
+        await getSourceLabel(3000000103, true, async () => { throw Error('offline'); });
+        expect(peekSourceLabel(3000000103, true)).toBeUndefined();
+    });
+});

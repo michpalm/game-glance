@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets } from './themeCss';
+import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets, heroImageSelector } from './themeCss';
 import { viewportSize } from '../home/openHome';
 import type { ReadySelectors } from './pageReady';
 
@@ -94,11 +94,54 @@ export function steamFooter(): string | null {
 }
 
 /** Steam's Play row on the game page (themeCss.playRowSelector), for logic/cardNav; null without its classes. */
+/** Steam's header image on the game page (the hero art): styles/themeCss.heroImageSelector. */
+export function pageHeroImage(): string | null {
+    return heroImageSelector(themeClasses());
+}
+
 export function playRow(): string | null {
     return playRowSelector(themeClasses());
+}
+
+/** Steam's compatibility/feedback prompt and its focusable confirmation after answering. */
+export function pageFeedbackSelector(): string | null {
+    const root = themeClasses().root;
+    const classes = [root?.DeckVerifiedFeedbackContainer, root?.DeckVerifiedFeedbackConfirmationContainer].filter((name): name is string => !!name);
+    return classes.length ? classes.map((name) => `.${name}`).join(', ') : null;
+}
+
+/** Steam aligns the submenu's container below its own header padding. */
+export function pageTabsSection(): { selector: string; inset: number } | null {
+    const root = themeClasses().root;
+    if (!root?.AppDetailsContainer) return null;
+    const inset = Number.parseFloat(root.headerPadding ?? '');
+    return { selector: `.${root.AppDetailsContainer}`, inset: Number.isFinite(inset) && inset >= 0 ? inset : 0 };
 }
 
 /** Each open-transition text twin's counterpart on the page (themeCss.twinTargets). */
 export function pageTwinTargets(look: 'spotlight' | 'clean' | 'steam'): Record<string, string> {
     return twinTargets(themeClasses(), look);
+}
+
+/** Play, its circles, the cloud button, and the library selection pill. */
+export function playRowControlSelector(): string | null {
+    const t = themeClasses();
+    const parts = [
+        t.root?.PlaySection ? `.${t.root.PlaySection} [role="button"]` : '',
+        t.play?.CloudStatusRow ? `.${t.play.CloudStatusRow}` : '',
+        '.gg-copy-pill, .gg-store-choice',
+        '.unifideck-hide-native-play :is(.unifideck-play-btn, .unifideck-install-btn, .unifideck-resume-btn, .unifideck-update-btn, .unifideck-icon-btn)',
+    ].filter((s) => s.length > 0);
+    return parts.length > 0 ? parts.join(', ') : null;
+}
+
+/** The preferred-version link, once Steam's library-line class is known. */
+export function versionLinkSelector(): string | null {
+    const row = themeClasses().shared?.SharedLibrary;
+    return row ? `.${row} a[role="button"]` : null;
+}
+
+/** Steam's unavailable message, for the shared Last played / availability metadata line. */
+export function unavailableMessageSelectors(): { container: string | null; message: string | null } {
+    return nativeUnavailableMessageSelectors(themeClasses());
 }

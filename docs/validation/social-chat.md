@@ -35,7 +35,7 @@ Groups, voice and uploads remain available through Steam rather than a custom co
 
 The new worktree is attached to this chat. All feature changes are local. The authorized Ally preview was installed as recorded below; no remote push, PR or publication occurred.
 
-The original floating-menu worktree and its unfinished accent changes are untouched. This branch contains the committed floating-menu baseline plus Social and the subsequent [QAM VDL preview](qam-vdl.md). The 3.6/visual-language rebase and wider release integration remain separate work for the planned release.
+The original floating-menu worktree and its unfinished accent changes are untouched. This branch contains the committed floating-menu baseline plus Social and the subsequent [QAM VDL preview](qam-vdl.md). Current main and the full 3.6 candidate are now [integrated locally](menu-3.6-integration.md); the wider visual-language migration and release integration remain separate work for the planned release.
 
 ## Ally deployment attempt — 26 October 2026
 

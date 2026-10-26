@@ -3,9 +3,10 @@ import { memoLookup } from './moduleLookup';
 
 /**
  * Steam's navigation sound names used here (its enum, probed on the Ally: ChangeTabs for L1/R1 tabs, FailedNav at an
- * end, BasicNav for a d-pad move).
+ * end, BasicNav for a d-pad move). OutOfGameDetail is its "back out of a game page" sound (enum 14, probed 2026-10-21),
+ * played when B cancels an open.
  */
-export type NavSoundName = 'ChangeTabs' | 'FailedNav' | 'BasicNav' | 'IntoGameDetail' | 'LaunchGame';
+export type NavSoundName = 'ChangeTabs' | 'FailedNav' | 'BasicNav' | 'IntoGameDetail' | 'OutOfGameDetail' | 'LaunchGame';
 
 interface NavSoundParts {
     player: { PlayNavSound(sound: number): void };
@@ -60,5 +61,51 @@ export function playNavSound(name: NavSoundName) {
         if (found && typeof sound === 'number') found.player.PlayNavSound(sound);
     } catch {
         // a missing sound is not worth breaking navigation for
+    }
+}
+
+/** Puts the player's own method back, if there is a skip pending; set by skipSteamSound. */
+let endSkip: (() => void) | null = null;
+
+/**
+ * Drops the next play of one of Steam's sounds, by anyone (Steam's own code included), for `ms` at most. Home's Play
+ * plays LaunchGame itself, then Steam's Play handler opens the game's page for its launch screen, and in Game Mode
+ * Steam's `Navigator.App` plays IntoGameDetail for that: a second sound for one press. The player's `PlayNavSound`
+ * is wrapped; every other sound passes through, and the original is put back (as it was: an own property or the
+ * prototype's) on the first skipped call or after `ms`; the wrapper then only passes through, even if something else
+ * wrapped the method after it. A second call while one is pending replaces it. Nothing happens when Steam's player
+ * cannot be found.
+ */
+export function skipSteamSound(name: NavSoundName, ms: number) {
+    try {
+        const found = parts();
+        const sound = found?.names[name];
+        if (!found || typeof sound !== 'number') return;
+        endSkip?.();
+        const { player } = found;
+        const original = player.PlayNavSound;
+        const own = Object.prototype.hasOwnProperty.call(player, 'PlayNavSound');
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        // Once ended the wrapper only passes through: someone may have wrapped the method after us,
+        // and then we cannot unhook.
+        let done = false;
+        const wrapper = function (this: unknown, ...args: [number]) {
+            if (!done && args[0] === sound) return end();
+            return original.apply(this, args);
+        };
+        const end = () => {
+            done = true;
+            clearTimeout(timer);
+            if (player.PlayNavSound === wrapper) {
+                if (own) player.PlayNavSound = original;
+                else delete (player as { PlayNavSound?: unknown }).PlayNavSound;
+            }
+            if (endSkip === end) endSkip = null;
+        };
+        player.PlayNavSound = wrapper;
+        endSkip = end;
+        timer = setTimeout(end, ms);
+    } catch {
+        // a sound played twice is not worth breaking the press for
     }
 }

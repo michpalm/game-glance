@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { copyPlan, createCopyCache, displayInfo, isPngUrl, logoCopy, logoWorkSize, noteDisplay, resetDisplay } from '../../src/home/artShrink';
+import { copyPlan, createCopyCache, displayInfo, isPngUrl, keepIfDecoded, logoCopy, logoWorkSize, noteDisplay, resetDisplay } from '../../src/home/artShrink';
 import { logoFit } from '../../src/home/logo';
 
 describe('copyPlan (art drawn with background-size: cover in `box`, device px)', () => {
@@ -142,5 +142,18 @@ describe('createCopyCache', () => {
         for (const u of ['a', 'b', 'c']) await cache(u, size, 'image/jpeg');
         await cache('a', size, 'image/jpeg');
         expect(make).toHaveBeenCalledTimes(4);
+    });
+});
+
+describe('keepIfDecoded (a fresh blob copy, kept only when it decodes)', () => {
+    it('returns the url and keeps it when it decodes', async () => {
+        const revoke = vi.fn();
+        expect(await keepIfDecoded('blob:a', async () => ({}), revoke)).toBe('blob:a');
+        expect(revoke).not.toHaveBeenCalled();
+    });
+    it('revokes the url and returns null when it does not decode', async () => {
+        const revoke = vi.fn();
+        expect(await keepIfDecoded('blob:b', async () => null, revoke)).toBeNull();
+        expect(revoke).toHaveBeenCalledWith('blob:b');
     });
 });

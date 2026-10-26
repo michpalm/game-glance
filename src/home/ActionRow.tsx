@@ -2,21 +2,21 @@ import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ComponentType, CSSProperties, ReactNode, useRef, useState } from 'react';
 import { UnifideckCloudGlyph } from '../components/UnifideckCloudGlyph';
-import { IoCloudDoneOutline, IoCloudOfflineOutline, IoCloudOutline, IoCloudUploadOutline, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
+import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { markLaunch } from '../data/launchIntent';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
-import { pressCloud, steamCloudIcon } from './steamCloud';
+import { pressCloud } from './steamCloud';
 import { steamCheckIcon, steamControllerIcon, steamGearIcon, steamStreamMenuClasses } from './steamIcons';
 import { readSteamPill } from './steamPill';
 import { StreamChoice, streamChoices, StreamOverview } from './streaming';
 import { openGame, openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
-import { playNavSound } from './navSound';
+import { playNavSound, skipSteamSound } from './navSound';
 import type { HomeGame } from './useHomeData';
 import { pillWord, tr } from '../i18n/steamText';
 
@@ -31,6 +31,8 @@ const apps = (): AppsApi | undefined => (globalThis as { SteamClient?: { Apps?: 
 const LAUNCH_SOURCE = 100;
 /** A and a touch can both arrive for one press; one action per press. */
 const REPEAT_GUARD_MS = 1000;
+/** How long Steam's page-open sound is held back after Play: its handler opened the page 83 ms after the press on the Ally. */
+const PLAY_PAGE_SOUND_MS = 1500;
 
 /** The game's "Play from" choices (home/streaming), or null: one device only, or Steam's store unreadable. */
 function readStreamChoices(appId: number): StreamChoice[] | null {
@@ -180,14 +182,9 @@ function ActionButton({ className, label, onPress, preferredFocus, fill, setRef,
     );
 }
 
-/** Steam's own cloud icon in the state's variant (as the game page draws it); ours if Steam's is not found. */
-export function CloudIcon({ cloud }: { cloud: CloudState }) {
-    const Steam = steamCloudIcon();
-    if (Steam) return <Steam {...cloud.icon} />;
-    if (cloud.tone === 'off') return <IoCloudOfflineOutline />;
-    if (cloud.icon.uploaded) return <IoCloudDoneOutline />;
-    if (cloud.icon.save) return <IoCloudUploadOutline />;
-    return <IoCloudOutline />;
+/** The cloud circle's glyph: the same solid cloud in every state (#64); the state is the circle's badge (homeCss). */
+export function CloudIcon(_props: { cloud: CloudState }) {
+    return <IoCloud />;
 }
 
 /** Steam's own icon for a circle (as the game page draws it), ours if Steam's is not found. */
@@ -314,6 +311,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                             if (steamPill.action === 'Play') {
                                 markLaunch(appId);
                                 playNavSound('LaunchGame'); // Steam's game-start sound, as on the game page
+                                skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // Steam's handler then opens the page
                             }
                             steamPill.run(el?.ownerDocument?.defaultView ?? window);
                             return;

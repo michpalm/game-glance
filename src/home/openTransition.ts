@@ -31,6 +31,10 @@ export interface OpenDeps {
     markOpen(): void;
     /** Hears when the page is ready (data/openIntent.onOpenReady for this game); returns the unsubscribe. */
     onReady(cb: () => void): () => void;
+    /** Controller Back while Home is animating; removed before navigation. */
+    listenForCancel?(cancel: () => void): () => void;
+    /** B cancelled the open (listenForCancel's callback only, never another finish): Home's return look and sound. */
+    onCancelled?(): void;
     setTimer(fn: () => void, ms: number): unknown;
     clearTimer(id: unknown): void;
     /** Optional diagnostics; the controller never throws. */
@@ -40,6 +44,8 @@ export interface OpenDeps {
 export interface OpenTransition {
     open(appId: number, variant: OpenVariant): void;
     cancel(): void;
+    /** True from open() until the open ends (finished, cancelled or failed): a press then is ignored. */
+    isRunning(): boolean;
 }
 
 /** How long the copy fades in over live Home before the page opens: the morph's (its moved text is drawn soft live). */
@@ -56,6 +62,7 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
     let running = false;
     let undoHome: (() => void) | null = null;
     let bridge: OpenBridge | null = null;
+    let stopCancel: (() => void) | null = null;
     let stopReady: (() => void) | null = null;
     let timers: unknown[] = [];
 
@@ -83,8 +90,15 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
         }
     };
 
+    const clearCancel = () => {
+        const stop = stopCancel;
+        stopCancel = null;
+        if (stop) safely('could not stop listening for Back', stop);
+    };
+
     /** Clears every timer and listener and takes the bridge down; Home is usable again. */
     const finish = (undo: boolean) => {
+        clearCancel();
         for (const id of timers) safely('could not clear a transition timer', () => deps.clearTimer(id));
         timers = [];
         const stop = stopReady;
@@ -101,6 +115,7 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
 
     const navigate = (path: string): boolean => {
         try {
+            clearCancel();
             deps.navigate(path);
             return true;
         } catch (error) {
@@ -137,13 +152,17 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
 
     const openPage = (path: string) => {
         safely('could not mark the open', () => deps.markOpen());
-        if (!navigate(path)) return finish(true);
-        if (!bridge) return finish(false);
-        try {
-            stopReady = deps.onReady(() => leave(true));
-        } catch (error) {
-            warn('could not listen for the page', error);
+        // Subscribe before navigation: a warm page can report ready during Navigate itself.
+        if (bridge) {
+            try {
+                stopReady = deps.onReady(() => leave(true));
+            } catch (error) {
+                warn('could not listen for the page', error);
+            }
         }
+        if (!navigate(path)) return finish(true);
+        // A missing bridge is a fallback, not a reason to leave Home's text and chips mid-morph.
+        if (!bridge) return finish(true);
         if (!later(() => leave(false), OPEN_TIMINGS.readyCap)) leave(false);
     };
 
@@ -165,6 +184,12 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
                 navigate(path);
                 return;
             }
+            safely('could not listen for Back', () => {
+                stopCancel = deps.listenForCancel?.(() => {
+                    finish(true);
+                    safely('could not show the cancel', () => deps.onCancelled?.());
+                }) ?? null;
+            });
             if (!later(() => handOver(path, bridgeInFor(variant)), handOverAt(variant))) {
                 finish(true);
                 navigate(path);
@@ -172,6 +197,9 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
         },
         cancel() {
             finish(true);
+        },
+        isRunning() {
+            return running;
         },
     };
 }

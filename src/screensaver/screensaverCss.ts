@@ -1,4 +1,6 @@
 
+import { defaultGrowth } from '../home/scale';
+
 /**
  * Game Glance's screensaver: its timings, its canvas and its stylesheet. Pure. Steam's Game Slideshow (probed on the
  * Ally, 2026-10-16) shows a slide for 20 s, crossfades over 2 s, drifts the art over 30 s (scale 1.035) and draws it in
@@ -31,12 +33,20 @@ export interface ScreensaverCanvas { logicalWidth: number; logicalHeight: number
 export const SS_MIN_WIDTH = 1040;
 
 /** The canvas scaled by the screen's height (SS_CANVAS.height tall), or by its width when narrower than SS_MIN_WIDTH; the other side grown to fill the screen. Scale 1 for a bad size. */
-export function screensaverCanvas(width: number, height: number): ScreensaverCanvas {
+export function screensaverBaseCanvas(width: number, height: number): ScreensaverCanvas {
     if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) {
         return { logicalWidth: SS_CANVAS.width, logicalHeight: SS_CANVAS.height, scale: 1 };
     }
     const scale = Math.min(height / SS_CANVAS.height, width / SS_MIN_WIDTH);
     return { logicalWidth: width / scale, logicalHeight: height / scale, scale };
+}
+
+/** The screensaver's canvas grown by Home's default growth (home/scale defaultGrowth, #55); a window of unknown size is not grown. */
+export function screensaverCanvas(width: number, height: number): ScreensaverCanvas {
+    const base = screensaverBaseCanvas(width, height);
+    if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) return base;
+    const g = defaultGrowth(SS_CANVAS.height);
+    return { logicalWidth: base.logicalWidth / g, logicalHeight: base.logicalHeight / g, scale: base.scale * g };
 }
 
 /**

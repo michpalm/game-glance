@@ -1,6 +1,9 @@
 import { Navigation } from '@decky/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { focusElement, newsWebUrl, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { cancelOpen, focusElement, holdsFocus, newsWebUrl, openGame, openNews, openStorePage, storeSteamUrl, storeWebUrl } from '../../src/home/homeNav';
+import { playNavSound } from '../../src/home/navSound';
+
+vi.mock('../../src/home/navSound', () => ({ playNavSound: vi.fn() }));
 
 const nav = vi.mocked(Navigation);
 
@@ -66,33 +69,25 @@ describe('openNews', () => {
     };
     beforeEach(() => app.mockReset());
 
-    it('opens the event on the game page as Game Mode does (Navigator.App with gidPartnerEvent), with no tracking call', () => {
+    it('opens just the article in the external web view, never the game page under it', () => {
         steamUi({ appid: 570 });
         openNews(570, '123');
-        expect(app).toHaveBeenCalledWith(570, { gidPartnerEvent: '123' });
-        expect(nav.NavigateToExternalWeb).not.toHaveBeenCalled();
+        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
+        expect(app).not.toHaveBeenCalled();
     });
-    it('falls back to the store news page when the game is not in the library', () => {
+    it('opens the same article when the game is not in the library', () => {
         steamUi(undefined);
         openNews(570, '123');
         expect(app).not.toHaveBeenCalled();
         expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
     });
-    it('falls back to the store news page without Steam\'s navigator, or when it throws', () => {
-        openNews(570, '123');
-        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
-        steamUi({ appid: 570 });
-        app.mockImplementationOnce(() => {
-            throw new Error('nope');
-        });
-        nav.NavigateToExternalWeb.mockClear();
-        expect(() => openNews(570, '123')).not.toThrow();
-        expect(nav.NavigateToExternalWeb).toHaveBeenCalledWith('https://store.steampowered.com/news/app/570/view/123');
-    });
-    it('opens the game page when the event has no gid', () => {
+    it('opens the game page when the event has no gid, or one that is not a number', () => {
         steamUi({ appid: 570 });
         openNews(570, '');
+        openNews(570, 'abc');
         expect(app).not.toHaveBeenCalled();
+        expect(nav.NavigateToExternalWeb).not.toHaveBeenCalled();
+        expect(nav.Navigate).toHaveBeenCalledTimes(2);
         expect(nav.Navigate).toHaveBeenCalledWith('/library/app/570');
     });
 });
@@ -130,4 +125,48 @@ describe('focusElement', () => {
         focusElement(null, 'test', steam);
         expect(steam).not.toHaveBeenCalled();
     });
+});
+
+describe('openGame', () => {
+    // A Home root just real enough for the open's fade: openGame measures nothing off it for a plain fade.
+    const home = () => {
+        const doc = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const root = {
+            ownerDocument: doc,
+            style: { setProperty: vi.fn(), removeProperty: vi.fn() },
+            setAttribute: vi.fn(),
+            removeAttribute: vi.fn(),
+            hasAttribute: () => false,
+            querySelector: () => null,
+        };
+        return { closest: () => root } as unknown as HTMLElement;
+    };
+    const intoGame = () => vi.mocked(playNavSound).mock.calls.filter(([name]) => name === 'IntoGameDetail').length;
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+        cancelOpen();
+        vi.useRealTimers();
+    });
+
+    it('a second A while the first open runs plays the sound once in total', () => {
+        const source = home();
+        openGame(620, source);
+        openGame(620, source);
+        expect(intoGame()).toBe(1);
+    });
+    it('A after B cancelled the open opens again, with its sound', () => {
+        const source = home();
+        openGame(620, source);
+        cancelOpen();
+        openGame(620, source);
+        expect(intoGame()).toBe(2);
+    });
+});
+
+describe('holdsFocus', () => {
+    const active = { id: 'card' };
+    const root = (inside: boolean) => ({ ownerDocument: { activeElement: active }, contains: (n: unknown) => inside && n === active }) as unknown as Element;
+    it('is true while focus is inside Home', () => expect(holdsFocus(root(true))).toBe(true));
+    it('is false while focus is elsewhere (Quick Access over Home)', () => expect(holdsFocus(root(false))).toBe(false));
+    it('is false without a root', () => expect(holdsFocus(null)).toBe(false));
 });

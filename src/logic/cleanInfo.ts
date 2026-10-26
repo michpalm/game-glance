@@ -40,3 +40,11 @@ export function cleanStats(
     }
     return stats;
 }
+
+/** Home already has formatted achievement/size chips; the other columns use the page's own data formatter. */
+export function homeCleanStats(chips: { key: string; label: string; value: string; progress?: number }[], playedMinutes: number, hltb: HltbResult | undefined, locale: string, size: SizeStat | null): CleanStat[] {
+    const base = cleanStats({ playedMinutes, achievements: null }, hltb, locale, size);
+    const at = base.length - 1;
+    const extra = chips.filter((c) => c.key === 'achievements' || (c.key === 'size' && !size)) as CleanStat[];
+    return [...base.slice(0, at), ...extra.sort((a, b) => Number(a.key !== 'size') - Number(b.key !== 'size')), base[at]];
+}

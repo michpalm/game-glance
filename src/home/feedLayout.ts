@@ -57,7 +57,8 @@ export const FEED_WIDE_ASPECT = 460 / 215;
 export function feedSpace(logicalHeight: number, legendReserve: number = LEGEND_FALLBACK, raiseDelta = 0): number {
     const h = Number.isFinite(logicalHeight) ? logicalHeight : 800;
     const legend = Number.isFinite(legendReserve) ? legendReserve : LEGEND_FALLBACK;
-    return Math.max(FEED_CARD_H, Math.floor(h - legend - BOTTOM_ROOM - (FEED_TOP_RAISED - (Number.isFinite(raiseDelta) ? raiseDelta : 0))));
+    // Floored at row 1's own minimum: a short canvas (a tall legend, a short window) gets its real room.
+    return Math.max(FEED_ROW1_MIN_H, Math.floor(h - legend - BOTTOM_ROOM - (FEED_TOP_RAISED - (Number.isFinite(raiseDelta) ? raiseDelta : 0))));
 }
 
 export interface FeedRows {
@@ -78,11 +79,17 @@ export interface FeedRows {
  * than row 1.
  */
 export function feedRows(tab: FeedTab, space: number, secondRow: boolean): FeedRows {
-    const room = Math.max(FEED_CARD_H, Math.floor(Number.isFinite(space) ? space : FEED_CARD_H));
+    const room = Math.max(FEED_ROW1_MIN_H, Math.floor(Number.isFinite(space) ? space : FEED_CARD_H));
     const row1Full = tab === 'friends' ? FEED_CARD_H : FEED_ROW1_H;
-    if (!secondRow) return { row1: row1Full, row2: 0, row2Top: 0, total: row1Full };
     // Row 2 needs at least FEED_ROW2_MIN_H; when the room is short of that (a tall legend), row 1 gives up the
-    // difference, down to FEED_ROW1_MIN_H. Below that the sheet is accepted as is (row 2 stays at its minimum).
+    // difference, down to FEED_ROW1_MIN_H. Below that (a short canvas) row 2 drops, so the
+    // sheet never reaches under Steam's legend.
+    const smallest = FEED_ROW1_MIN_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H;
+    if (!secondRow || room < smallest) {
+        // Alone, row 1 also yields to a short room (found on the Ally at a large scale), down to FEED_ROW1_MIN_H.
+        const row1 = Math.max(FEED_ROW1_MIN_H, Math.min(row1Full, room));
+        return { row1, row2: 0, row2Top: 0, total: row1 };
+    }
     const lacking = row1Full + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MIN_H - room;
     const row1 = lacking > 0 ? Math.max(FEED_ROW1_MIN_H, row1Full - lacking) : row1Full;
     const row2Top = row1 + FEED_ROW_GAP + FEED_ROW2_HEADER;
@@ -253,7 +260,7 @@ export function secondRowTitle(tab: FeedTab): string {
  * deal's store page, a play-next or updated game's page; nothing on a friend. `space`: the height the raised
  * sheet's rows may use (feedSpace); sizes follow feedRows.
  */
-export function feedItems(tab: FeedTab, data: FeedData, art: FeedArt, space = FEED_CARD_H): FeedItem[] {
+export function feedItems(tab: FeedTab, data: FeedData, art: FeedArt, space = FEED_ROW1_H + FEED_ROW_GAP + FEED_ROW2_HEADER + FEED_ROW2_MAX_H): FeedItem[] {
     // Every card has a placeholder under its art (a soft accent gradient; a friend keeps their avatar backdrop), so a
     // game with no art, or art that fails to load (tools such as Steamworks Common Redistributables), is never a dark box.
     return feedItemsRaw(tab, data, art, space).map((item) => (item.backdrop ? item : { ...item, backdrop: { url: null, tone: null } }));

@@ -29,7 +29,7 @@ These checks establish the Home-context Quick settings layout and Scaling contro
 
 Continued the user's authorized frontend-only Ally preview. Backup before the VDL update: `/home/deck/gg-vdl-backup-20261026-075839/` (private settings backup). Restore its `index.js` into the plugin's `dist/` and reload through Decky to roll back.
 
-Current local and installed frontend SHA-256: `ff9300acf44f0dcd1f7eecfccd28cdac1d6c52a9f889a7fbdea5a286a4122033`.
+Glass-only frontend installed on the Ally before the 3.6 integration, SHA-256: `ff9300acf44f0dcd1f7eecfccd28cdac1d6c52a9f889a7fbdea5a286a4122033`. The current local build and merged baseline are recorded in [the integration report](menu-3.6-integration.md); that combined build has not been installed on the device.
 
 Saved settings and menu preferences fingerprint remained `41f45a9655c8c863088c98335a3da19fed8f0f3e7609bbe1677a09f5d54815d3`. Backend and package metadata remain 3.6.0. Changes are local and the device has a test frontend; no push, PR, release or publication occurred.
 

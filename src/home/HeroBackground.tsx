@@ -1,8 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
+import { useSettings } from '../data/settings';
 import { browserStores, capsuleUrls, heroUrls } from './artwork';
 import { displayInfo, loadArt } from './artShrink';
 import { HeroLayer, nextHeroLayers, settledHeroLayers } from './heroLayers';
+import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
 import { heroSources, shouldMemoArt } from './homeView';
 import { HERO_FADE_MS, HERO_PRELOAD_DELAY_MS } from './motion';
 
@@ -120,12 +122,66 @@ const sameArt = (a: Art | undefined, b: Art) =>
 
 const bg = (url: string) => ({ backgroundImage: `url("${url.replace(/"/g, '%22')}")` });
 
+/**
+ * The full-art hero's style: the art, and in Fit the fade where it meets the art fill (heroFit.fitMask), for the art's
+ * shape (the standard hero shape until it is known) in a box of `boxAspect`. Pure.
+ */
+export function heroFullStyle(url: string, fit: HeroFit, artAspect: number | null, boxAspect: number): CSSProperties {
+    if (fit === 'fill') return bg(url);
+    return { ...bg(url), '--gh-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) } as CSSProperties;
+}
+
+const artAspects = new Map<string, number>();
+
+/** The art's width / height once known (its file is already decoded by then, so this is quick); null before. */
+function useArtAspect(url: string | null): number | null {
+    const [aspect, setAspect] = useState<number | null>(() => (url ? artAspects.get(url) ?? null : null));
+    useEffect(() => {
+        if (!url) return setAspect(null);
+        const known = artAspects.get(url);
+        if (known) return setAspect(known);
+        setAspect(null);
+        let live = true;
+        const img = new Image();
+        img.onload = () => {
+            if (!(img.naturalWidth > 0 && img.naturalHeight > 0)) return;
+            const value = img.naturalWidth / img.naturalHeight;
+            artAspects.set(url, value);
+            if (live) setAspect(value);
+        };
+        img.src = url;
+        return () => {
+            live = false;
+        };
+    }, [url]);
+    return aspect;
+}
+
+/** The shape of the screen `ref`'s element is drawn on (heroFit.windowAspect), following resizes (a Deck docked to a TV). */
+function useScreenAspect(ref: { current: HTMLElement | null }, active: boolean): number {
+    const [aspect, setAspect] = useState(16 / 9);
+    useLayoutEffect(() => {
+        const win = ref.current?.ownerDocument?.defaultView;
+        if (!active || !win) return undefined;
+        const read = () => setAspect(windowAspect(win));
+        read();
+        win.addEventListener('resize', read);
+        return () => win.removeEventListener('resize', read);
+    }, [ref, active]);
+    return aspect;
+}
+
 function Layer({ art, settled }: { art: Art; settled: boolean }) {
     const cls = `gh-hero-layer${settled ? ' gh-hero-settled' : ''}`;
+    const { heroFit } = useSettings();
+    const fit = art.mode === 'full' ? heroFit : 'fill';
+    const ref = useRef<HTMLDivElement>(null);
+    const aspect = useArtAspect(art.mode === 'full' && fit === 'fit' ? art.url : null);
+    const screen = useScreenAspect(ref, fit === 'fit');
     if (art.mode === 'full') {
         return (
-            <div className={cls}>
-                <div className="gh-hero-full" style={bg(art.url)} />
+            <div className={cls} ref={ref}>
+                <div className={`gh-hero-full${fit === 'fit' ? ' gh-hero-fit' : ''}`} style={heroFullStyle(art.url, fit, aspect, screen)} />
             </div>
         );
     }

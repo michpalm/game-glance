@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PERSONA_DOT_COLOURS, STATUS_BAR, avatarView, statusAway, batteryColour, downloadStatus, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, statusPlacement, statusScale, toBytes } from '../../src/home/statusItems';
+import { PERSONA_DOT_COLOURS, STATUS_BAR, avatarView, statusAway, batteryColour, downloadStatus, connectionKind, formatClock, msToNextMinute, personaDot, prefers24Hour, protoFields, readBattery, readConnectivity, readNetworkDevices, readSelfPersona, statusPlacement, statusScale, toBytes, controllerItems, readControllerBatteries } from '../../src/home/statusItems';
 
 // Minimal protobuf encoder for the fixtures (varint and length-delimited fields).
 const varint = (n: number): number[] => {
@@ -257,5 +257,31 @@ describe('statusAway (#15: the bar stays while Quick Access is open)', () => {
         expect(statusAway(true, true)).toBe(false);
         expect(statusAway(false, false)).toBe(false);
         expect(statusAway(false, true)).toBe(false);
+    });
+});
+
+describe('readControllerBatteries (the backend controller list, for the status pill)', () => {
+    it('sorts lowest first, then by name, and marks low at 20 but not 21', () => {
+        expect(readControllerBatteries([{ name: 'B', percent: 21 }, { name: 'A', percent: 20 }, { name: 'C', percent: 20 }])).toEqual([
+            { name: 'A', percent: 20, low: true },
+            { name: 'C', percent: 20, low: true },
+            { name: 'B', percent: 21, low: false },
+        ]);
+    });
+    it('drops entries without a numeric percent and anything that is not a list', () => {
+        expect(readControllerBatteries([{ name: 'A', percent: 'x' }, null, { percent: 50 }])).toEqual([{ name: 'Controller', percent: 50, low: false }]);
+        expect(readControllerBatteries(null)).toEqual([]);
+    });
+    it('rounds and clamps the percent', () => {
+        expect(readControllerBatteries([{ name: 'A', percent: 140 }, { name: 'B', percent: -3 }, { name: 'C', percent: 17.6 }]).map((c) => c.percent)).toEqual([0, 18, 100]);
+    });
+});
+
+describe('controllerItems', () => {
+    it('shows at most two and counts the rest', () => {
+        const list = readControllerBatteries([{ name: 'A', percent: 10 }, { name: 'B', percent: 50 }, { name: 'C', percent: 90 }]);
+        expect(controllerItems(list)).toEqual({ shown: list.slice(0, 2), more: 1 });
+        expect(controllerItems(list.slice(0, 1))).toEqual({ shown: list.slice(0, 1), more: 0 });
+        expect(controllerItems([])).toEqual({ shown: [], more: 0 });
     });
 });

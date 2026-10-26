@@ -1,13 +1,31 @@
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
+import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
+import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
 import {
     statusCss, HOME_GLASS, HOME_PILL,
-    FEED_SHEET, hexAlpha, homeCss, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
+    FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
+
+/** Splits a selector list at the commas outside parentheses (`:is(a, b)` stays one selector). */
+function topLevelCommas(list: string): string[] {
+    const parts: string[] = [];
+    let depth = 0, from = 0;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i] === '(') depth++;
+        else if (list[i] === ')') depth--;
+        else if (list[i] === ',' && depth === 0) {
+            parts.push(list.slice(from, i));
+            from = i + 1;
+        }
+    }
+    parts.push(list.slice(from));
+    return parts;
+}
 
 /** Selector lists of every style rule, @-rule preludes (keyframes, @property) excluded. */
 function selectors(css: string): string[] {
@@ -20,12 +38,23 @@ function selectors(css: string): string[] {
     while ((m = re.exec(noKeyframes)) !== null) {
         const prelude = m[1].trim();
         if (prelude.startsWith('@')) continue;
-        out.push(...prelude.split(',').map((s) => s.trim()).filter(Boolean));
+        out.push(...topLevelCommas(prelude).map((s) => s.trim()).filter(Boolean));
     }
     return out;
 }
 
 describe('homeCss', () => {
+    it('matches the action buttons’ focus ring and glow on both selector pills', () => {
+        const css = homeCss();
+        expect(/!important\s+!important/.test(css)).toBe(false);
+        const focus = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-copy-choice.gh-pill-focus'));
+        expect(focus?.[1]).toContain('.gh-store-choice.gh-pill-focus');
+        const button = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-btn.gh-focus'));
+        const shadow = (body: string) => /box-shadow:\s*([^;]+)/.exec(body)?.[1];
+        expect(shadow(focus?.[2] ?? '')).toBe(shadow(button?.[2] ?? ''));
+        expect(focus?.[2]).not.toContain('background:');
+        expect(css).toContain(`transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`);
+    });
     it('homeCss prefixes every class with gh-', () => {
         const css = homeCss();
         const list = selectors(css);
@@ -124,7 +153,10 @@ describe('homeCss', () => {
         // The panels are drawn in the scaled canvas with Home's own 1px ring, so it looks the same as the chips' all the way.
         // (Chromium snaps a border to whole device px in the canvas's own units before the scale: the page's 1 device px,
         // 0.75 canvas px on the Ally, became 1 device px there and 0.575 on screen, half as bright as both ends.)
-        expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        // (The ring is drawn by its ::before, which fades out as the page's crisp ring, outside the canvas, fades in; the
+        // panel keeps a transparent 1px border so its box and edges stay the page card's.)
+        expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid transparent/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
         expect(css).not.toContain('--gho-x-border');
         // The pill's layers that grow into the page pill start at its outer edge (its 1px border), as openMotion's scales assume.
         expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: -1px[^}]*top: -1px[^}]*width: calc\(100% \+ 2px\)[^}]*height: calc\(100% \+ 2px\)/);
@@ -328,8 +360,8 @@ describe('homeCss', () => {
         it('the CSS moves the page as one unit and the raised sheet keeps its old place (rise 440 + shift)', () => {
             const css = homeCss();
             expect(css).toMatch(/\.gh-root\s*\{[^}]*--gh-shift:\s*0px/);
-            expect(css).toMatch(/\.gh-page\s*\{[^}]*top:\s*var\(--gh-shift\)\s*!important[^}]*height:\s*100%/);
-            expect(css).toMatch(/\.gh-page\.gh-page-up\s*\{[^}]*transform:\s*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\)\)\)/);
+            expect(css).toMatch(/\.gh-page\s*\{[^}]*top:\s*calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)\s*!important[^}]*height:\s*100%/);
+            expect(css).toMatch(/\.gh-page\.gh-page-up\s*\{[^}]*transform:\s*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
             expect(css).toMatch(/\.gh-tabs\s*\{[^}]*top:\s*calc\(700px - var\(--gh-top\)\)/);
         });
         it('Home handles a finger itself: no browser panning, and a dragged feed row follows the finger', () => {
@@ -351,17 +383,46 @@ describe('homeCss', () => {
             }
         });
     });
+    it('hero Fit: the art fill behind, the whole art at the top with its fade; Fill unchanged', () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        expect(body('.gh-hero-full.gh-hero-fit')).toMatch(/isolation:\s*isolate/);
+        const fill = body('.gh-hero-full.gh-hero-fit::before');
+        for (const part of ['inset: -120px', 'background-image: inherit', 'background-size: cover', `filter: ${ART_FILL_FILTER}`]) expect(fill).toContain(part);
+        const art = body('.gh-hero-full.gh-hero-fit::after');
+        for (const part of ['inset: 0', 'background-image: inherit', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gh-hero-mask)']) expect(art).toContain(part);
+        expect(body('.gh-hero-full')).toContain('background-size: cover');
+        expect(body('.gh-hero-full')).toContain('background-position: center 30%');
+    });
+    it("hero Fit: another game's hero fades in with Fit's framing; without Fit as before", () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        const open = body('.gh-fit .gh-hero-open');
+        expect(open).toMatch(/isolation:\s*isolate/);
+        expect(open).toMatch(/background-image:\s*none/);
+        const fill = body('.gh-fit .gh-hero-open::before');
+        for (const part of ['background-image: var(--gho-hero', 'background-size: cover', `filter: ${ART_FILL_FILTER}`, 'inset: -120px']) expect(fill).toContain(part);
+        const art = body('.gh-fit .gh-hero-open::after');
+        for (const part of ['background-image: var(--gho-hero', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gho-hero-mask)']) expect(art).toContain(part);
+        expect(body('.gh-hero-open')).toContain('background-size: cover');
+    });
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
     });
-    it('the cloud circle is the same circle as the others; only its icon takes the state colour, with a halo', () => {
+    it('the cloud circle is the same circle as the others: a white cloud with a halo, its state in a badge at the top right (#64)', () => {
         const css = homeCss();
         expect(css).not.toMatch(/\.gh-btn-cloud\s*\{/);
         expect(css).toMatch(/\.gh-btn-cloud svg\s*\{[^}]*width:\s*26px[^}]*drop-shadow/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{\s*color:\s*#5cf2b4\s*!important/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-busy\s*\{\s*color:\s*#ffd84d/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-bad\s*\{\s*color:\s*#ff8585/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-off\s*\{\s*color:\s*#c4c9d1/);
+        for (const [tone, colour] of Object.entries(CLOUD_COLOURS)) {
+            expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-${tone}\\s*\\{\\s*--gh-cloud-dot:\\s*${colour}`));
+        }
+        expect(css).not.toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{[^}]*color:\s*#5cf2b4/);
+        expect(css).toMatch(/\.gh-btn-cloud:not\(\.gh-cloud-uni\)\s*\{[^}]*position:\s*relative/);
+        expect(css).toMatch(
+            new RegExp(
+                `\\.gh-btn-cloud:not\\(\\.gh-cloud-uni\\)::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+            ),
+        );
     });
     it('feed rows: card height from the row (inline variable), rows and their header placed inline, compact wide cards', () => {
         const css = homeCss();
@@ -487,7 +548,8 @@ describe('homeCss open transition', () => {
         const shell = body((sel) => sel === '.gh-open-shell');
         expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.38\)/);
         expect(shell).toContain('backdrop-filter: blur(16px)');
-        expect(all.some(([sel]) => sel.includes('.gh-open-shell::'))).toBe(false);
+        // No backdrop blur on a pseudo-element of the panel (it would see nothing behind it); its ::before draws only the ring.
+        expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
         const pill = body((sel) => sel.includes('data-gh-opening="morph"') && !sel.includes('data-gh-phase') && sel.endsWith('[data-action="play"]::after'));
         expect(pill).toContain('width: calc((100% + 2px) * var(--gho-play-sx))');
@@ -534,6 +596,14 @@ describe('homeCss open transition', () => {
         // The arrow button itself fades with the info button.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-stream') && /opacity:\s*0/.test(body))).toBe(true);
     });
+    it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
+        const all = rules(css);
+        for (const i of [0, 1, 2, 3]) {
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`));
+            expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
+        }
+        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud:not(.gh-cloud-uni)::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
+    });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);
         // Picked among the circles (openHome measures .gh-btn-circle in order), so the stream arrow before them shifts nothing.
@@ -572,10 +642,14 @@ describe('homeCss open transition', () => {
         const all = rules(css);
         const body = (sel: string) => all.find(([s]) => s === sel)?.[1] ?? '';
         const dd = (n: number) => `calc(${n}px * var(--gho-x-d))`;
-        expect(body('.gh-open-extras .gh-x-pill')).toContain(sourcePillLook(dd).split(';')[1].trim());
-        for (const decl of ['left: var(--gho-x-pill-x)', 'top: var(--gho-x-pill-y)', 'transform: translateX(-100%)']) expect(body('.gh-open-extras .gh-x-pill')).toContain(decl);
-        expect(body('.gh-open-extras .gh-x-family')).toContain(`right: calc(100% + ${dd(10)})`);
+        expect(body('.gh-x-pill')).toContain(sourcePillLook(dd).split(';')[1].trim());
+        for (const decl of ['left: var(--gho-x-pill-x)', 'top: var(--gho-x-pill-y)', 'transform: translateX(-100%)']) expect(body('.gh-x-pill')).toContain(decl);
+        expect(body('.gh-x-family')).toContain(`right: calc(100% + ${dd(10)})`);
         expect(all.some(([sel, b]) => sel === '.gh-root[data-gh-extras~="pills"] .gh-x-pill' && b.includes('display: inline-flex'))).toBe(true);
+        expect(body('.gh-x-pill')).toContain('var(--gho-x-pill-from');
+        const mover = body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-x-pill');
+        expect(mover).toContain('transform: translateX(-100%)');
+        expect(mover).toContain(`transform ${OPEN_TIMINGS.morph}ms`);
         // Home's own pill (moving into place) fades out as the page's fades in, still moving.
         const home = body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"][data-gh-extras~="pills"] .gh-source');
         expect(home).toContain(`animation: gh-open-pill-out ${OPEN_TIMINGS.morph}ms linear both`);
@@ -726,14 +800,18 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-back:not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-back:not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+    });
+    it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\) \.gh-safe :is\(/);
+        expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
     it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
         expect(blurred.length).toBeGreaterThan(0);
         for (const sel of blurred) {
-            if (['.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
+            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
             const last = sel.split(',').map((p) => p.trim().split(/[\s>+~]+/).pop()!);
             for (const compound of last) expect(HOME_GLASS.some((g) => compound.includes(g)), sel).toBe(true);
         }
@@ -775,7 +853,7 @@ describe('delayed fades in the open transition', () => {
     });
     it("the bridge's freeze outranks every animation rule: the late fades and Home's way-back fade (opened soon after B)", () => {
         // Home's way-back fade never applies in the copy.
-        expect(css).toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\)/);
         for (const target of ['\\.gh-open-extras', '\\.gh-source', '\\[data-action="play"\\]::after']) {
             expect(css).toMatch(new RegExp(`\\.gh-root\\.gh-bridge\\[data-gh-opening\\]\\[data-gh-phase\\][^{]*${target}\\s*\\{[^}]*animation: none`));
         }
@@ -969,5 +1047,42 @@ describe('homeCss open transition: text twins', () => {
     });
     it('no !important on transform or opacity in any twin rule', () => {
         for (const m of css.matchAll(/[^{}]*gh-twin[^{]*\{([^}]*)\}/g)) expect(m[1]).not.toMatch(/(?:transform|opacity|translate):[^;]*!important/);
+    });
+});
+
+describe('the stack under the default growth (#55)', () => {
+    const top = (h: number, legend: number) => { const s = homeStack(h, legend, false); return s.shift - s.give.need; };
+    it('places the stack as before at 810 and 800 (nothing missing)', () => {
+        for (const h of [810.75, 800]) expect(homeStack(h, 46, false)).toEqual({ shift: stackShift(h, 46, false), give: { need: 0 } });
+    });
+    it('moves the stack up by the room the growth takes, out of the air', () => {
+        const s = homeStack(745.6, 46, false);
+        expect(s.give.need).toBe(52);
+        expect(s.shift).toBe(stackShift(745.6 + 52, 46, false));
+    });
+    it('does not count a tall legend twice (stackShift already moves up for it)', () => expect(top(810.75, 72)).toBe(stackShift(810.75, 72, false)));
+    it('writes the move as --gh-give', () => {
+        expect(giveWayVars({ need: 0 })).toEqual({ '--gh-give': '0px' });
+        expect(giveWayVars({ need: 40 })).toEqual({ '--gh-give': '-40px' });
+    });
+    it('moves the page by the give-way and keeps the raised sheet in place', () => {
+        const css = homeCss();
+        expect(css).toMatch(/\.gh-page \{[^}]*top: calc\(var\(--gh-shift\) \+ var\(--gh-give, 0px\)\)/);
+        expect(css).toMatch(/\.gh-page\.gh-page-up \{[^}]*translateY\(calc\(-1 \* var\(--gh-raise, 440px\) - var\(--gh-shift\) - var\(--gh-give, 0px\)\)\)/);
+    });
+});
+
+describe('the cards\' crisp ring in the open transition', () => {
+    const css = homeCss();
+    it('draws it as the page\'s card ring, outside the canvas', () => {
+        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(255,255,255,calc\(\.12 \* var\(--gho-ring-boost, 1\)\)\)/);
+    });
+    it('starts on the chips, transparent, and grows to the card as it fades in', () => {
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-open-ring\[data-i="0"\] \{[^}]*display: block[^}]*transform: var\(--gho-ring-0-from\)[^}]*opacity: 0/);
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-ring\[data-i="0"\] \{[^}]*transform: none[^}]*opacity: 1[^}]*transition: transform/);
+    });
+    it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
     });
 });

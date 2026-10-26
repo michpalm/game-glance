@@ -110,6 +110,20 @@ export const CLOUD_COLOURS: Record<CloudTone, string> = {
     off: '#c4c9d1',
 };
 
+/**
+ * The cloud circle's glyph (#64): one solid white cloud in every state (Ionicons' IoCloud, as Home draws it), so only the
+ * badge carries the state. The page draws it as a background image (a mask would clip the halo).
+ */
+export const CLOUD_GLYPH_PATH =
+    'M396 432H136c-36.44 0-70.36-12.57-95.51-35.41C14.38 372.88 0 340 0 304c0-36.58 13.39-68.12 38.72-91.22 18.11-16.53 42.22-28.25 69.18-33.87a16 16 0 0 0 11.37-9.15 156.24 156.24 0 0 1 42.05-56C187.76 91.69 220.5 80 256 80a153.57 153.57 0 0 1 107.14 42.9c24.73 23.81 41.5 55.28 49.18 92a16 16 0 0 0 12.12 12.39C470 237.42 512 270.43 512 328c0 33.39-12.24 60.78-35.41 79.23C456.23 423.43 428.37 432 396 432';
+export const CLOUD_GLYPH_URL = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='#ffffff' d='${CLOUD_GLYPH_PATH}'/></svg>`)}")`;
+
+/**
+ * The state badge at the cloud circle's top right (#64), in Home canvas px (the page's d units): a dot in the state's
+ * colour (CLOUD_COLOURS) with a dark ring so it reads over bright art, its outer edge on the circle's bounding box.
+ */
+export const CLOUD_DOT = { size: 12, ring: 2, inset: 0, ringColour: 'rgba(0, 0, 0, 0.75)' } as const;
+
 /** The icon on a focused (white) cloud circle on the game page, which only takes focus on a sync problem: 6.6:1 on white. */
 export const CLOUD_FOCUS_BAD = '#b3261e';
 
