@@ -25,3 +25,19 @@ def test_max_scale_reads_only_the_single_desktop_compositor(tmp_path):
     assert read_max_scale(tmp_path, os.getuid()) == 2
     (process / 'cmdline').write_bytes(b'gamescope\0--max-scale=garbage\0')
     assert read_max_scale(tmp_path, os.getuid()) is None
+
+
+def test_native_resource_is_not_destroyed_before_armed_callback_is_consumed():
+    from types import SimpleNamespace
+    from gameglance.frost.native import NativeConnection
+    n=object.__new__(NativeConnection)
+    calls=[]
+    n.display=1;n.xdisplay=n.proxy=n.registry=None;n.armed_path='pending.fx'
+    n.on_guard=lambda:calls.append('guard')
+    def poll(timeout,retiring=False):
+        assert retiring
+        calls.append('ready');n.armed_path=None
+    n.poll=poll
+    n.wl=SimpleNamespace(wl_display_disconnect=lambda display:calls.append('disconnect'))
+    n.close()
+    assert calls==['guard','ready','disconnect']

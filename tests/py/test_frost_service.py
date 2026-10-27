@@ -38,3 +38,20 @@ def test_missing_wayland_environment_discovers_only_one_owned_gamescope_socket(t
                 session_environment(str(tmp_path),{'DISPLAY':':0','XDG_RUNTIME_DIR':runtime})
         finally:
             first.close();second.close()
+
+
+def test_unload_never_force_kills_a_native_callback_guard(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    async def run():
+        calls=[]
+        async def wait():
+            await asyncio.sleep(10)
+        async def timeout(awaitable,seconds):
+            awaitable.close()
+            raise asyncio.TimeoutError
+        process=SimpleNamespace(stdin=SimpleNamespace(close=lambda:None),wait=wait,terminate=lambda:calls.append('terminate'),kill=lambda:calls.append('kill'))
+        service=FrostService(str(tmp_path),str(tmp_path));service.process=process
+        monkeypatch.setattr(asyncio,'wait_for',timeout)
+        await service.close()
+        assert calls==['terminate']
+    asyncio.run(run())

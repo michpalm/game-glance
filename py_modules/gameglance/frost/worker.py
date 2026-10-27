@@ -26,6 +26,7 @@ class FrostWorker:
         self.prepared, self.cancelled, self.files = {}, set(), {}
         self.active = self.warm = self.owned = None
         self.prepared_owner = None
+        self.retiring = None
         self.previous_technique = None
         self.closed = False
 
@@ -46,6 +47,17 @@ class FrostWorker:
         return self._still_owned()
 
     def _clear(self, reason="cancelled"):
+        if self.warm and self.owned and self._still_owned():
+            # The upstream server captures its resource in the ready callback.
+            # Keep it alive until a zero-mask execution consumes that callback.
+            warm,self.warm=self.warm,None
+            self._uniforms()
+            self.retiring={"path":self.owned,"deadline":self.clock()+1}
+            self.reply(warm["rpc"],unavailable(reason))
+            return
+        self._finish_clear(reason)
+
+    def _finish_clear(self, reason="cancelled"):
         if self.owned and self._still_owned() and self._uniforms():
             # Restore the borrowed technique while our effect is still present;
             # do not write a global property after releasing the slot.
@@ -55,6 +67,7 @@ class FrostWorker:
                 self.native.disable()
         self.owned = self.active = None
         self.prepared_owner = None
+        self.retiring = None
         for record in self.prepared.values():
             record["ready"] = False
         if self.warm:
@@ -112,7 +125,7 @@ class FrostWorker:
     def _prepare(self, rpc, request_id, frame):
         if request_id in self.cancelled:
             return unavailable("cancelled")
-        if self.active or self.warm or self.prepared_owner:
+        if self.active or self.warm or self.prepared_owner or self.retiring:
             return unavailable("not-ready")
         if self.native.snapshot().effect:
             return unavailable("owned-elsewhere")
@@ -194,8 +207,8 @@ class FrostWorker:
             self._clear()
         return None
 
-    def tick(self):
-        ready = self.native.poll(0)
+    def tick(self, ready=None):
+        ready = self.native.poll(0) if ready is None else ready
         now = self.clock()
         self.prepared = {k: v for k, v in self.prepared.items() if v["expires"] > now}
         if not self.owned and self.native.snapshot().effect:
@@ -205,6 +218,9 @@ class FrostWorker:
             for record in self.prepared.values():
                 record["ready"] = False
             self._clear("owned-elsewhere")
+        elif self.retiring:
+            if self.retiring["path"] in ready or self.retiring["deadline"]<=now:
+                self._finish_clear()
         elif self.active and self.active["deadline"] <= now:
             self._clear()
         elif self.prepared_owner and self.prepared_owner["deadline"] <= now:
@@ -231,6 +247,11 @@ class FrostWorker:
         self.closed = True
         try:
             self._clear("connection")
+            deadline=time.monotonic()+1
+            while self.retiring and time.monotonic()<deadline:
+                self.tick(self.native.poll(.025))
+            if self.retiring:
+                self._finish_clear()
         finally:
             self.native.close()
             directory = Path(self.home) / ".local/share/gamescope/reshade/Shaders"
@@ -292,7 +313,12 @@ def main():
     def reply(rpc, value):
         print(json.dumps({"id": rpc, "value": value}, allow_nan=False), flush=True)
     try:
-        native = NativeConnection()
+        def guarding():
+            try:
+                print(json.dumps({"event":"callback-guard"}),flush=True)
+            except (BrokenPipeError,OSError):
+                pass
+        native = NativeConnection(on_guard=guarding)
     except (OSError, ValueError):
         return
     serve(native, os.environ["HOME"], sys.stdin.fileno(), reply, lambda: running)

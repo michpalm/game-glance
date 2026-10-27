@@ -74,11 +74,13 @@ class Array(C.Structure):
 
 
 class NativeConnection:
-    def __init__(self):
+    def __init__(self,on_guard=None):
         self.display = self.registry = self.proxy = self.xdisplay = None
         self.callbacks = []
         self.ready = set()
         self.removed = False
+        self.armed_path = None
+        self.on_guard = on_guard or (lambda:None)
         try:
             self._connect()
         except Exception:
@@ -123,7 +125,13 @@ class NativeConnection:
         self.proxy = self.wl.wl_proxy_marshal_flags(self.registry, 0, C.byref(self.interface), 1, 0,
                                                   C.c_uint(self.global_id), self.interface.name, C.c_uint(1), C.c_void_p())
         Ready = C.CFUNCTYPE(None, C.c_void_p, C.c_void_p, C.c_char_p)
-        self.effect_callback = Ready(lambda data, proxy, path: self.ready.add(path.decode("utf-8", errors="replace")) if path else None)
+        def effect_ready(data,proxy,path):
+            if path:
+                value=path.decode("utf-8",errors="replace")
+                self.ready.add(value)
+                if value==self.armed_path:
+                    self.armed_path=None
+        self.effect_callback = Ready(effect_ready)
         self.effect_listener = (C.c_void_p * 1)(C.cast(self.effect_callback, C.c_void_p))
         if not self.proxy or self.wl.wl_proxy_add_listener(self.proxy, self.effect_listener, None) != 0:
             raise OSError("Gamescope binding failed")
@@ -190,6 +198,7 @@ class NativeConnection:
             raise OSError("Gamescope connection lost")
 
     def set_effect(self, relative_name):
+        self.armed_path=relative_name
         self.wl.wl_proxy_marshal_flags(self.proxy, 1, None, 1, 0, C.c_char_p(relative_name.encode()))
         self._sync()
         self.ready.clear()  # discard delivery attributable to the previous arm
@@ -211,8 +220,8 @@ class NativeConnection:
         self.wl.wl_proxy_marshal_flags(self.proxy, 4, None, 1, 0)
         self._sync()
 
-    def poll(self, timeout_seconds):
-        if self.removed:
+    def poll(self, timeout_seconds, retiring=False):
+        if self.removed and not retiring:
             raise OSError("Gamescope interface removed")
         while self.wl.wl_display_prepare_read(self.display) != 0:
             if self.wl.wl_display_dispatch_pending(self.display) < 0:
@@ -236,6 +245,17 @@ class NativeConnection:
         return self.wl.wl_display_get_fd(self.display)
 
     def close(self):
+        if self.display and self.armed_path:
+            # Never free the server-side resource while its callback still
+            # captures `this` (WaylandServer/Reshade.h). Normally the worker
+            # drains it before here. If rendering failed, retain only the client
+            # connection, with the effect disabled, until delivery or server EOF.
+            self.on_guard()
+            while self.armed_path:
+                try:
+                    self.poll(.5,retiring=True)
+                except OSError:
+                    break
         if self.xdisplay:
             self.x.XCloseDisplay(self.xdisplay)
             self.xdisplay = None

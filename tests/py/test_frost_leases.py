@@ -144,6 +144,26 @@ def test_ready_zero_mask_lease_expires_when_frontend_never_activates(tmp_path):
     assert n.state == NativeState("",7)
 
 
+def test_cancelled_cold_prepare_drains_callback_before_disabling_the_owned_effect(tmp_path):
+    w,n,_,replies=fixture(tmp_path)
+    w.command(1,'prepare',{'request_id':'cold','frame':frame()})
+    w.command(2,'cancel',{'request_id':'cold'})
+    assert n.state.effect  # zero masks while the native callback is still armed
+    assert replies[1]['reason']=='cancelled'
+    n.ready.add(n.path)
+    w.tick()
+    assert n.state==NativeState('',7)
+
+
+def test_unresponsive_callback_stops_zero_mask_composition_after_one_second(tmp_path):
+    w,n,now,replies=fixture(tmp_path)
+    w.command(1,'prepare',{'request_id':'cold','frame':frame()})
+    w.command(2,'cancel',{'request_id':'cold'})
+    now[0]=1
+    w.tick()
+    assert n.state==NativeState('',7)
+
+
 def test_cancelled_late_ready_does_not_block_a_later_rearmed_warmup(tmp_path):
     w, n, _, replies = fixture(tmp_path)
     w.command(1, "prepare", {"request_id": "old", "frame": frame()})

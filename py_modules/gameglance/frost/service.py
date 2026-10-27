@@ -67,6 +67,7 @@ class FrostService:
         self.start_lock = asyncio.Lock()
         self.write_lock = asyncio.Lock()
         self.closed = False
+        self.guarding = set()
 
     async def _start(self):
         async with self.start_lock:
@@ -92,6 +93,9 @@ class FrostService:
         try:
             while line := await process.stdout.readline():
                 message = json.loads(line)
+                if message=={"event":"callback-guard"}:
+                    self.guarding.add(process)
+                    continue
                 if set(message) != {"id", "value"} or type(message["id"]) is not int:
                     raise ValueError("invalid worker response")
                 future = pending.pop(message["id"], None)
@@ -173,8 +177,11 @@ class FrostService:
                     try:
                         await asyncio.wait_for(process.wait(), 1)
                     except asyncio.TimeoutError:
-                        process.kill()
-                        await process.wait()
+                        # SIGKILL can destroy a native resource whose callback
+                        # is still held by Gamescope. A retiring worker owns no
+                        # effect and stays read-only until callback/server EOF.
+                        self.process=None
+                        return
             if self.reader:
                 await self.reader
             self.process = None
