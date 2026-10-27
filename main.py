@@ -5,6 +5,7 @@ import os
 import decky
 
 from gameglance.bluetooth import read_controllers
+from gameglance.frost.service import FrostService
 from gameglance.heroic import HeroicLibrary, heroic_cache_dirs
 from gameglance.home_errors import FILE_NAME, append_log, start_entry
 from gameglance.kv import KvStore
@@ -25,6 +26,29 @@ LUTRIS = LutrisLibrary(lambda flatpak: lutris_db_paths(decky.DECKY_USER_HOME, fl
 
 
 class Plugin:
+    def _frost_service(self):
+        if not getattr(self, "_frost", None):
+            self._frost = FrostService(decky.DECKY_USER_HOME, os.path.dirname(os.path.abspath(__file__)))
+        return self._frost
+
+    async def frost_prepare(self, request_id: str, frame):
+        return await self._frost_service().prepare(request_id, frame)
+
+    async def frost_activate(self, request_id: str, key: str, sequence: int, frame):
+        return await self._frost_service().activate(request_id, key, sequence, frame)
+
+    async def frost_update(self, token: str, sequence: int, frame):
+        return await self._frost_service().update(token, sequence, frame)
+
+    async def frost_renew(self, token: str):
+        return await self._frost_service().renew(token)
+
+    async def frost_release(self, token: str):
+        await self._frost_service().release(token)
+
+    async def frost_cancel(self, request_id: str):
+        await self._frost_service().cancel(request_id)
+
     async def kv_get(self, key: str):
         return KV.get(key)
 
@@ -97,4 +121,6 @@ class Plugin:
             decky.logger.exception("[game-glance] start-up log entry failed")
 
     async def _unload(self):
+        if getattr(self, "_frost", None):
+            await self._frost.close()
         decky.logger.info("[game-glance] backend stopped")

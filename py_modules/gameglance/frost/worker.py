@@ -1,0 +1,277 @@
+"""Single-threaded native owner. stdin EOF and a monotonic watchdog clean up
+independently of the Decky event loop and frontend timers.
+"""
+import hashlib
+import json
+import os
+import secrets
+import select
+import signal
+import sys
+import time
+from pathlib import Path
+
+from .contracts import REGIONS, identifier, validate_frame
+from .native import NativeConnection, pack_uniform
+from .shader import build_shader, stage_shader
+
+
+def unavailable(reason):
+    return {"status": "unavailable", "reason": reason}
+
+
+class FrostWorker:
+    def __init__(self, native, home, clock, reply):
+        self.native, self.home, self.clock, self.reply = native, home, clock, reply
+        self.prepared, self.cache, self.cancelled, self.files = {}, set(), set(), {}
+        self.active = self.warm = self.owned = None
+        self.previous_technique = None
+        self.closed = False
+
+    def _still_owned(self):
+        state = self.native.snapshot()
+        return self.owned is not None and state.effect == self.owned and state.technique == 0
+
+    def _uniforms(self, frame=None):
+        for region in REGIONS:
+            name = region.capitalize()
+            r = frame["regions"][region] if frame else None
+            if not self._still_owned():
+                return False
+            self.native.set_uniform(name, pack_uniform(name, [r[k] for k in ("x", "y", "width", "height")] if r else [0, 0, 0, 0]))
+            if not self._still_owned():
+                return False
+            self.native.set_uniform(name + "Radius", pack_uniform(name + "Radius", [r["radiusX"], r["radiusY"]] if r else [0, 0]))
+        return self._still_owned()
+
+    def _clear(self, reason="cancelled"):
+        if self.owned and self._still_owned() and self._uniforms():
+            # Restore the borrowed technique while our effect is still present;
+            # do not write a global property after releasing the slot.
+            self.native.select_technique(self.previous_technique)
+            state = self.native.snapshot()
+            if state.effect == self.owned and state.technique == self.previous_technique:
+                self.native.disable()
+        self.owned = self.active = None
+        if self.warm:
+            self.reply(self.warm["rpc"], unavailable(reason))
+            self.warm = None
+
+    def _take(self, path):
+        state = self.native.snapshot()
+        if state.effect:
+            return False
+        self.previous_technique = state.technique
+        self.native.set_effect(path)
+        # No uniforms are sent until the effect path is ours, to avoid touching
+        # another client's runtime-uniform namespace while it owns the slot.
+        if self.native.snapshot().effect:
+            return False
+        self.native.select_technique(0)
+        self.native.enable()
+        self.owned = path
+        if not self._still_owned():
+            self.owned = None
+            return False
+        return True
+
+    @staticmethod
+    def _sequence(value):
+        if type(value) is not int or not 0 <= value < 2**53:
+            raise ValueError("invalid sequence")
+        return value
+
+    def command(self, rpc, operation, args):
+        expected = {"prepare": {"request_id", "frame"}, "activate": {"request_id", "key", "sequence", "frame"},
+                    "update": {"token", "sequence", "frame"}, "renew": {"token"}, "release": {"token"}, "cancel": {"request_id"}}
+        try:
+            if self.closed or operation not in expected or not isinstance(args, dict) or set(args) != expected[operation]:
+                raise ValueError("invalid operation")
+            if "request_id" in args:
+                identifier(args["request_id"])
+            if "token" in args:
+                identifier(args["token"])
+            if "sequence" in args:
+                self._sequence(args["sequence"])
+            if "frame" in args:
+                args = {**args, "frame": validate_frame(args["frame"])}
+            if "key" in args:
+                identifier(args["key"])
+            result = getattr(self, "_" + operation)(rpc, **args)
+        except (ValueError, TypeError, KeyError):
+            if operation == "update" and isinstance(args, dict) and self.active and args.get("token") == self.active["token"]:
+                self._clear("invalid-geometry")
+            result = unavailable("invalid-geometry") if operation in ("prepare", "activate") else False
+        if result is not _PENDING:
+            self.reply(rpc, result)
+
+    def _prepare(self, rpc, request_id, frame):
+        if request_id in self.cancelled:
+            return unavailable("cancelled")
+        if self.active or self.warm:
+            return unavailable("not-ready")
+        if self.native.snapshot().effect:
+            return unavailable("owned-elsewhere")
+        source, key = build_shader(frame)
+        path = stage_shader(self.home, source, key)
+        self.files[path] = key
+        cached = (key, frame["context"]["viewportId"])
+        record = {"key": key, "path": path, "cache": cached, "expires": self.clock() + 30, "generation": frame["generation"]}
+        self.prepared[request_id] = record
+        while len(self.prepared) > 8:
+            self.prepared.pop(next(iter(self.prepared)))
+        if cached in self.cache:
+            return {"status": "ready", "key": key}
+        if not self._take(path):
+            return unavailable("owned-elsewhere")
+        self.warm = {"rpc": rpc, "request": request_id, "record": record, "deadline": self.clock() + 5}
+        return _PENDING
+
+    def _activate(self, rpc, request_id, key, sequence, frame):
+        if request_id in self.cancelled:
+            return unavailable("cancelled")
+        record = self.prepared.get(request_id)
+        if not record or record["key"] != key or record["expires"] <= self.clock() or record["cache"] not in self.cache or record["generation"] != frame["generation"]:
+            return unavailable("not-ready")
+        if build_shader(frame)[1] != key or (key, frame["context"]["viewportId"]) != record["cache"]:
+            return unavailable("invalid-geometry")
+        if self.active or self.warm:
+            return unavailable("not-ready")
+        if not self._take(record["path"]):
+            return unavailable("owned-elsewhere")
+        if not self._uniforms(frame):
+            self._clear("owned-elsewhere")
+            return unavailable("owned-elsewhere")
+        token = secrets.token_hex(24)
+        self.active = {"token": token, "request": request_id, "sequence": sequence, "key": key, "cache": record["cache"], "generation": frame["generation"], "deadline": self.clock() + 1}
+        return {"status": "active", "token": token}
+
+    def _valid_token(self, token):
+        if not self.active or self.active["token"] != token:
+            return False
+        if self.active["deadline"] <= self.clock() or not self._still_owned():
+            self._clear()
+            return False
+        return True
+
+    def _update(self, rpc, token, sequence, frame):
+        if not self._valid_token(token) or sequence <= self.active["sequence"]:
+            return False
+        key = build_shader(frame)[1]
+        if key != self.active["key"] or (key, frame["context"]["viewportId"]) != self.active["cache"] or frame["generation"] != self.active["generation"]:
+            self._clear()
+            return False
+        if not self._uniforms(frame):
+            self._clear("owned-elsewhere")
+            return False
+        self.active["sequence"] = sequence
+        return True
+
+    def _renew(self, rpc, token):
+        if not self._valid_token(token):
+            return False
+        self.active["deadline"] = self.clock() + 1
+        return True
+
+    def _release(self, rpc, token):
+        if self.active and self.active["token"] == token:
+            self._clear()
+        return None
+
+    def _cancel(self, rpc, request_id):
+        self.cancelled.add(request_id)
+        self.prepared.pop(request_id, None)
+        if self.warm and self.warm["request"] == request_id or self.active and self.active["request"] == request_id:
+            self._clear()
+        return None
+
+    def tick(self):
+        ready = self.native.poll(0)
+        now = self.clock()
+        self.prepared = {k: v for k, v in self.prepared.items() if v["expires"] > now}
+        if self.owned and not self._still_owned():
+            self.cache.clear()
+            self._clear("owned-elsewhere")
+        elif self.active and self.active["deadline"] <= now:
+            self._clear()
+        elif self.warm:
+            if self.warm["record"]["path"] in ready:
+                warm, self.warm = self.warm, None
+                self.cache.add(warm["record"]["cache"])
+                self._clear()
+                self.reply(warm["rpc"], {"status": "ready", "key": warm["record"]["key"]})
+            elif self.warm["deadline"] <= now:
+                self._clear("not-ready")
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        try:
+            self._clear("connection")
+        finally:
+            self.native.close()
+            directory = Path(self.home) / ".local/share/gamescope/reshade/Shaders"
+            for path, key in self.files.items():
+                target = directory / path
+                try:
+                    if not target.is_symlink() and hashlib.sha256(target.read_bytes()).hexdigest() == key:
+                        target.unlink()
+                except OSError:
+                    pass
+
+
+_PENDING = object()
+
+
+def serve(native, home, input_fd, reply, running=lambda: True):
+    worker = None
+    buffer = b""
+    commands = 0
+    try:
+        worker = FrostWorker(native, home, time.monotonic, reply)
+        while running() and commands < 4096:
+            worker.tick()
+            readable, _, _ = select.select([input_fd], [], [], .025)
+            if not readable:
+                continue
+            data = os.read(input_fd, 16385)
+            if not data:
+                break
+            buffer += data
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                if len(line) > 16384:
+                    raise ValueError("oversized command")
+                command = json.loads(line)
+                if set(command) != {"id", "operation", "args"} or type(command["id"]) is not int:
+                    raise ValueError("invalid envelope")
+                worker.command(command["id"], command["operation"], command["args"])
+                commands += 1
+            if len(buffer) > 16384:
+                raise ValueError("oversized command")
+    except (OSError, ValueError, EOFError):
+        pass
+    finally:
+        if worker:
+            worker.close()
+
+
+def main():
+    running = True
+    def stop(*_):
+        nonlocal running
+        running = False
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    def reply(rpc, value):
+        print(json.dumps({"id": rpc, "value": value}, allow_nan=False), flush=True)
+    try:
+        native = NativeConnection()
+    except (OSError, ValueError):
+        return
+    serve(native, os.environ["HOME"], sys.stdin.fileno(), reply, lambda: running)
+
+
+if __name__ == "__main__":
+    main()
