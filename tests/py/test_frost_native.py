@@ -41,3 +41,23 @@ def test_native_resource_is_not_destroyed_before_armed_callback_is_consumed():
     n.wl=SimpleNamespace(wl_display_disconnect=lambda display:calls.append('disconnect'))
     n.close()
     assert calls==['guard','ready','disconnect']
+
+
+def test_uniform_ownership_checks_use_property_events_without_repeated_roundtrips():
+    from gameglance.frost.native import NativeConnection,NativeState
+    class X:
+        events=[]
+        def XPending(self,display):return len(self.events)
+        def XNextEvent(self,display,event):
+            event._obj.type=28;event._obj.xproperty.atom=self.events.pop(0)
+    n=object.__new__(NativeConnection)
+    n.x=X();n.xdisplay=1;n.effect_atom=10;n.technique_atom=11;n._snapshot_cache=None
+    values={10:'owned.fx',11:0};calls=[]
+    def read(atom):calls.append(atom);return values[atom]
+    n._property=read
+    assert n.snapshot()==NativeState('owned.fx',0)
+    for _ in range(12):assert n.snapshot()==NativeState('owned.fx',0)
+    assert calls==[10,11]
+    values[10]='foreign.fx';n.x.events.append(10)
+    assert n.snapshot()==NativeState('foreign.fx',0)
+    assert calls==[10,11,10,11]

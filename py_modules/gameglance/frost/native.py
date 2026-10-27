@@ -73,6 +73,15 @@ class Array(C.Structure):
     _fields_ = [("size", C.c_size_t), ("alloc", C.c_size_t), ("data", C.c_void_p)]
 
 
+class PropertyEvent(C.Structure):
+    _fields_=[("type",C.c_int),("serial",C.c_ulong),("send_event",C.c_int),("display",C.c_void_p),
+              ("window",C.c_ulong),("atom",C.c_ulong),("time",C.c_ulong),("state",C.c_int)]
+
+
+class XEvent(C.Union):
+    _fields_=[("type",C.c_int),("xproperty",PropertyEvent),("pad",C.c_long*24)]
+
+
 class NativeConnection:
     def __init__(self,on_guard=None):
         self.display = self.registry = self.proxy = self.xdisplay = None
@@ -81,6 +90,7 @@ class NativeConnection:
         self.removed = False
         self.armed_path = None
         self.on_guard = on_guard or (lambda:None)
+        self._snapshot_cache = None
         try:
             self._connect()
         except Exception:
@@ -142,6 +152,8 @@ class NativeConnection:
             ("XGetWindowProperty", C.c_int, [C.c_void_p,C.c_ulong,C.c_ulong,C.c_long,C.c_long,C.c_int,C.c_ulong,C.POINTER(C.c_ulong),C.POINTER(C.c_int),C.POINTER(C.c_ulong),C.POINTER(C.c_ulong),C.POINTER(C.c_void_p)]),
             ("XChangeProperty", C.c_int, [C.c_void_p,C.c_ulong,C.c_ulong,C.c_ulong,C.c_int,C.c_int,C.c_void_p,C.c_int]),
             ("XDeleteProperty", C.c_int, [C.c_void_p,C.c_ulong,C.c_ulong]),
+            ("XSelectInput",C.c_int,[C.c_void_p,C.c_ulong,C.c_long]),
+            ("XPending",C.c_int,[C.c_void_p]),("XNextEvent",C.c_int,[C.c_void_p,C.POINTER(XEvent)]),
         ]:
             fn = getattr(self.x, name)
             fn.restype, fn.argtypes = restype, args
@@ -152,6 +164,8 @@ class NativeConnection:
         self.effect_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_RESHADE_EFFECT", 0)
         self.technique_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_RESHADE_TECHNIQUE_IDX", 0)
         self.cardinal = self.x.XInternAtom(self.xdisplay, b"CARDINAL", 0)
+        self.x.XSelectInput(self.xdisplay,self.root,1<<22)  # PropertyChangeMask
+        self.x.XSync(self.xdisplay,0)
         self.hdr_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_DISPLAY_HDR_ENABLED", 0)
         import os
         self.max_scale = read_max_scale(Path("/proc"), os.getuid())
@@ -176,16 +190,34 @@ class NativeConnection:
                 self.x.XFree(data)
 
     def snapshot(self):
-        effect, technique = self._property(self.effect_atom), self._property(self.technique_atom)
-        if effect is not None and not isinstance(effect, str) or technique is not None and not isinstance(technique, int):
-            raise OSError("Unsupported Gamescope properties")
-        return NativeState(effect or "", technique)
+        self._property_events()
+        if self._snapshot_cache is None:
+            # Fetch once after a relevant notification. Repeated uniform writes
+            # still check ownership, but quiet checks don't each block on X11.
+            for _ in range(4):
+                effect,technique=self._property(self.effect_atom),self._property(self.technique_atom)
+                if effect is not None and not isinstance(effect,str) or technique is not None and not isinstance(technique,int):
+                    raise OSError("Unsupported Gamescope properties")
+                self._snapshot_cache=NativeState(effect or "",technique)
+                if not self._property_events():break
+            if self._snapshot_cache is None:
+                raise OSError("Gamescope ownership is changing")
+        return self._snapshot_cache
+
+    def _property_events(self):
+        changed=False
+        while self.x.XPending(self.xdisplay):
+            event=XEvent();self.x.XNextEvent(self.xdisplay,C.byref(event))
+            if event.type==28 and event.xproperty.atom in (self.effect_atom,self.technique_atom):
+                self._snapshot_cache=None;changed=True
+        return changed
 
     def environment(self):
         hdr = self._property(self.hdr_atom)
         return {"hdr": bool(hdr), "maxScale": self.max_scale} if type(hdr) is int and hdr in (0, 1) else None
 
     def select_technique(self, index):
+        self._snapshot_cache=None
         if index is None:
             self.x.XDeleteProperty(self.xdisplay, self.root, self.technique_atom)
         else:
@@ -198,6 +230,7 @@ class NativeConnection:
             raise OSError("Gamescope connection lost")
 
     def set_effect(self, relative_name):
+        self._snapshot_cache=None
         self.armed_path=relative_name
         self.wl.wl_proxy_marshal_flags(self.proxy, 1, None, 1, 0, C.c_char_p(relative_name.encode()))
         self._sync()
@@ -213,10 +246,12 @@ class NativeConnection:
         self.wl.wl_display_flush(self.display)
 
     def enable(self):
+        self._snapshot_cache=None
         self.wl.wl_proxy_marshal_flags(self.proxy, 2, None, 1, 0)
         self._sync()
 
     def disable(self):
+        self._snapshot_cache=None
         self.wl.wl_proxy_marshal_flags(self.proxy, 4, None, 1, 0)
         self._sync()
 

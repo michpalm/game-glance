@@ -14,6 +14,21 @@ function fixture() {
 async function flush(){for(let i=0;i<8;i++)await Promise.resolve();}
 afterEach(()=>vi.useRealTimers());
 describe('frost controller',()=>{
+    it('uses combined presentation when available and cancels it at a missed visibility deadline',async()=>{
+        const f=fixture(),active=deferred<Activated>();
+        f.bridge.present=vi.fn(()=>active.promise);
+        f.controller.begin(1);f.controller.frame(frame());
+        expect(f.bridge.present).toHaveBeenCalled();expect(f.bridge.prepare).not.toHaveBeenCalled();
+        f.controller.presented(1);expect(f.bridge.cancel).toHaveBeenCalled();
+        active.resolve({status:'active',token:'late'});await flush();expect(f.bridge.release).toHaveBeenCalledWith('late');await f.controller.dispose();
+    });
+    it('renews and releases an on-time combined presentation without a second activation call',async()=>{
+        vi.useFakeTimers();const f=fixture();f.bridge.present=vi.fn(async()=>({status:'active',token:'combined'}));
+        f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);
+        expect(f.bridge.activate).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(250);
+        expect(f.bridge.renew).toHaveBeenCalledWith('combined');await f.controller.end(1);
+        expect(f.bridge.release).toHaveBeenCalledWith('combined');
+    });
     it('keeps glass when preparation arrives after presentation, allowing later cache warmup',async()=>{
         const f=fixture(),ready=deferred<Prepared>(); vi.mocked(f.bridge.prepare).mockReturnValue(ready.promise);
         f.controller.begin(1);f.controller.frame(frame());f.controller.presented(1);

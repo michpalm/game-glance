@@ -37,6 +37,9 @@ class Plugin:
     async def frost_environment(self):
         return await self._frost_service().environment()
 
+    async def frost_present(self,request_id:str,frame):
+        return await self._frost_service().present(request_id,frame)
+
     async def frost_activate(self, request_id: str, key: str, sequence: int, frame):
         return await self._frost_service().activate(request_id, key, sequence, frame)
 

@@ -99,7 +99,7 @@ class FrostWorker:
         return value
 
     def command(self, rpc, operation, args):
-        expected = {"prepare": {"request_id", "frame"}, "activate": {"request_id", "key", "sequence", "frame"},
+        expected = {"prepare": {"request_id", "frame"}, "present": {"request_id", "frame"}, "activate": {"request_id", "key", "sequence", "frame"},
                     "update": {"token", "sequence", "frame"}, "renew": {"token"}, "release": {"token"}, "cancel": {"request_id"}, "environment": set()}
         try:
             if self.closed or operation not in expected or not isinstance(args, dict) or set(args) != expected[operation]:
@@ -118,7 +118,7 @@ class FrostWorker:
         except (ValueError, TypeError, KeyError):
             if operation == "update" and isinstance(args, dict) and self.active and args.get("token") == self.active["token"]:
                 self._clear("invalid-geometry")
-            result = unavailable("invalid-geometry") if operation in ("prepare", "activate") else False
+            result = unavailable("invalid-geometry") if operation in ("prepare", "present", "activate") else False
         if result is not _PENDING:
             self.reply(rpc, result)
 
@@ -129,6 +129,8 @@ class FrostWorker:
             return unavailable("not-ready")
         if self.native.snapshot().effect:
             return unavailable("owned-elsewhere")
+        if not self._context_supported(frame["context"]):
+            return unavailable("unsupported")
         source, key = build_shader(frame)
         path = stage_shader(self.home, source, key)
         self.files[path] = key
@@ -147,6 +149,20 @@ class FrostWorker:
     def _environment(self, rpc):
         return self.native.environment()
 
+    def _context_supported(self,context):
+        environment=self.native.environment()
+        if not isinstance(environment,dict) or type(environment.get("hdr")) is not bool:
+            return False
+        if context["colorMode"] != ("hdr" if environment["hdr"] else "sdr"):
+            return False
+        return context["fit"]!="auto" or environment.get("maxScale")==context.get("maxScale")
+
+    def _present(self,rpc,request_id,frame):
+        result=self._prepare(rpc,request_id,frame)
+        if result is _PENDING:
+            self.warm["activate_frame"]=frame
+        return result
+
     def _activate(self, rpc, request_id, key, sequence, frame):
         if request_id in self.cancelled:
             return unavailable("cancelled")
@@ -160,18 +176,21 @@ class FrostWorker:
         if not self.prepared_owner or self.prepared_owner["request"] != request_id or self.prepared_owner["deadline"] <= self.clock() or not self._still_owned():
             self._clear()
             return unavailable("not-ready")
+        if not self._context_supported(frame["context"]):
+            self._clear()
+            return unavailable("unsupported")
         if not self._uniforms(frame):
             self._clear("owned-elsewhere")
             return unavailable("owned-elsewhere")
         token = secrets.token_hex(24)
-        self.active = {"token": token, "request": request_id, "sequence": sequence, "key": key, "cache": record["cache"], "generation": frame["generation"], "deadline": self.clock() + 1}
+        self.active = {"token": token, "request": request_id, "sequence": sequence, "key": key, "cache": record["cache"], "generation": frame["generation"], "context": frame["context"], "deadline": self.clock() + 1}
         self.prepared_owner = None
         return {"status": "active", "token": token}
 
     def _valid_token(self, token):
         if not self.active or self.active["token"] != token:
             return False
-        if self.active["deadline"] <= self.clock() or not self._still_owned():
+        if self.active["deadline"] <= self.clock() or not self._still_owned() or not self._context_supported(self.active["context"]):
             self._clear()
             return False
         return True
@@ -237,7 +256,11 @@ class FrostWorker:
                 # when no effect is active. Hold only this current preparation,
                 # with zero masks and a one-second activation deadline.
                 self.prepared_owner = {"request": warm["request"], "deadline": now + 1}
-                self.reply(warm["rpc"], {"status": "ready", "key": warm["record"]["key"]})
+                if "activate_frame" in warm:
+                    result=self._activate(warm["rpc"],warm["request"],warm["record"]["key"],1,warm["activate_frame"])
+                else:
+                    result={"status":"ready","key":warm["record"]["key"]}
+                self.reply(warm["rpc"],result)
             elif self.warm["deadline"] <= now:
                 self._clear("not-ready")
 

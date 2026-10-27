@@ -31,6 +31,14 @@ export function createFrostController({bridge,home,clock=globalThis}:{bridge:Fro
     function prepare(s:Session,frame:FrostFrame){
         const request=`${nonce}:${s.generation}:${++attempt}`;s.request=request;
         void safely(async()=>{
+            if(bridge.present&&!s.presented){
+                s.activating=true;
+                const active=await bridge.present(request,frame);
+                s.activating=false;
+                if(active.status!=='active')return;
+                if(!current(s,request)||s.presented){await safely(()=>bridge.release(active.token));return;}
+                s.sequence=1;s.token=active.token;heartbeat(s);return;
+            }
             const ready=await bridge.prepare(request,frame);
             if(!current(s,request)||ready.status!=='ready'||s.presented)return;
             s.activating=true;

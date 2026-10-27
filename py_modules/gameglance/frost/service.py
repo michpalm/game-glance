@@ -139,7 +139,7 @@ class FrostService:
             finally:
                 pending.pop(rpc, None)
         except (OSError, ValueError, TypeError, asyncio.TimeoutError):
-            return {"status": "unavailable", "reason": "connection"} if operation in ("prepare", "activate") else False
+            return {"status": "unavailable", "reason": "connection"} if operation in ("prepare", "present", "activate") else False
 
     async def prepare(self, request_id, frame):
         return await self._call("prepare", {"request_id": request_id, "frame": frame})
@@ -147,6 +147,9 @@ class FrostService:
     async def environment(self):
         result = await self._call("environment", {})
         return result if isinstance(result, dict) and set(result) == {"hdr", "maxScale"} else None
+
+    async def present(self,request_id,frame):
+        return await self._call("present",{"request_id":request_id,"frame":frame})
 
     async def activate(self, request_id, key, sequence, frame):
         return await self._call("activate", {"request_id": request_id, "key": key, "sequence": sequence, "frame": frame})

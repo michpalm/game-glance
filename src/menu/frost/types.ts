@@ -12,6 +12,7 @@ export type UnavailableReason = 'unsupported'|'invalid-geometry'|'owned-elsewher
 export type Prepared = { status:'ready'; key:string } | { status:'unavailable'; reason:UnavailableReason };
 export type Activated = { status:'active'; token:string } | { status:'unavailable'; reason:UnavailableReason };
 export interface FrostBridge {
+    present?(requestId:string, frame:FrostFrame):Promise<Activated>;
     environment?():Promise<NativeFrostEnvironment|null>;
     prepare(requestId:string, frame:FrostFrame):Promise<Prepared>;
     activate(requestId:string, key:string, sequence:number, frame:FrostFrame):Promise<Activated>;

@@ -14,6 +14,10 @@ class FakeNative:
         self.path = ""
         self.calls = []
         self.ready = set()
+        self.environment_state={"hdr":False,"maxScale":2}
+
+    def environment(self):
+        return self.environment_state
 
     def snapshot(self):
         return self.state
@@ -162,6 +166,35 @@ def test_unresponsive_callback_stops_zero_mask_composition_after_one_second(tmp_
     now[0]=1
     w.tick()
     assert n.state==NativeState('',7)
+
+
+def test_present_activates_in_the_ready_dispatch_without_a_second_round_trip(tmp_path):
+    w,n,_,replies=fixture(tmp_path)
+    w.command(1,'present',{'request_id':'one-trip','frame':frame()})
+    assert 1 not in replies
+    n.ready.add(n.path);w.tick()
+    assert replies[1]['status']=='active'
+    assert sum(c[0]=='enable' for c in n.calls)==1
+
+
+def test_cancelled_present_cannot_activate_when_ready_arrives_later(tmp_path):
+    w,n,_,replies=fixture(tmp_path)
+    w.command(1,'present',{'request_id':'one-trip','frame':frame()})
+    w.command(2,'cancel',{'request_id':'one-trip'})
+    n.ready.add(n.path);w.tick()
+    assert replies[1]['status']=='unavailable'
+    assert n.state.effect==''
+
+
+def test_stale_frontend_color_or_auto_cap_cannot_enable_a_shader(tmp_path):
+    w,n,_,replies=fixture(tmp_path)
+    n.environment_state['hdr']=True
+    w.command(1,'present',{'request_id':'hdr-changed','frame':frame()})
+    assert replies[1]['status']=='unavailable' and n.calls==[]
+    n.environment_state['hdr']=False
+    f=frame(fit='auto');f['context']['maxScale']=1
+    w.command(2,'present',{'request_id':'cap-stale','frame':f})
+    assert replies[2]['status']=='unavailable' and n.calls==[]
 
 
 def test_cancelled_late_ready_does_not_block_a_later_rearmed_warmup(tmp_path):
