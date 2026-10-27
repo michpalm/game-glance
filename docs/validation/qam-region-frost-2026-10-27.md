@@ -8,11 +8,11 @@
 - Owner-document Home backdrop surfaces and cropped in-game shader with glass fallback.
 - Generation cancellation, ordered updates, 250 ms heartbeat and 1-second lease expiry. Preparation and activation share a bounded zero-mask lease.
 - Strict geometry-only RPCs plus one read-only native-environment query. No global force-composition writer, capture pipeline or persisted region telemetry.
-- 1,947 frontend tests; 95 Python tests; TypeScript and Rollup build pass.
+- 1,947 frontend tests; 99 Python tests; TypeScript and Rollup build pass.
 - Offline pinned compiler: 36 SDR contexts across 16:9/16:10 outputs, unequal game resolutions, Fit/Fill/Stretch and capped Auto. Each has a positive 72-byte uniform buffer, six cropped targets, one production technique and seven passes. A valid zero-uniform shader is explicitly rejected.
 - ZIP inspected: production FX template and six backend modules present; no debug shaders, captures, bytecode or source maps.
 
-Latest installed preview ZIP SHA-256: `58622d553825cb753f1ffcf6fe170d6170c9c408de8b626a13f70ef9881847f3`. A subsequent local diagnostic correction classifies valid unsupported HDR/Home shader requests as `unsupported`, rather than `invalid-geometry`; that correction has not been installed yet.
+Latest installed preview ZIP SHA-256: `78179f502c5b0bfe7d4da02a7282ba7905d39b13ea15e0fa4bb25424f3853323`. It includes deferred input-callback surface access, correct unsupported-mapping diagnostics and compositor HDR output feedback.
 
 ## Independent review and corrections
 
@@ -29,14 +29,17 @@ Native readiness is emitted from pipeline `update()`, called by `execute()`, aft
 ## Ally integration checks and recovery
 
 - Original frontend rollback hash: `924e3279894aeedbb441040c91ce82a8dc69e1680b427266767a0b01f3e43aa8`. The revised preview is currently installed; original frontend and backend were verified against their backup during recovery.
-- Native Wayland ABI/interface binding passed. Initial preflight reported HDR off; the latest external-TV game session reports HDR on and an Auto maximum scale of 2. These are observations of different output contexts, not a claim that the display configuration is unchanged.
+- Native Wayland ABI/interface binding passed. The former HDR read used `GAMESCOPE_DISPLAY_HDR_ENABLED`, which source inspection establishes is a saved request, not output feedback. Its value remained 1 on the built-in SDR screen. Do not infer that the earlier external-TV test actually emitted HDR from this property alone. Auto maximum scale is 2.
 - Steam's performance store omits `is_hdr_enabled`, and its process environment omits `WAYLAND_DISPLAY`. The implementation reads native HDR metadata and discovers one verified desktop-owned Gamescope socket; ambiguous sockets fail closed.
 - Initial native effect slot was empty, technique 0, global force-composition value 0. No test writes the global force-composition property.
 - Earlier integrated SDR openings missed the presentation deadline. A measured separate prepare/activate round trip was removed; early preparation now uses cached plain geometry and verifies it against the live allocation before activation. This has not yet established successful integrated SDR frost presentation.
 - An initial early-preparation experiment froze both Steam JS renderers. The compositor remained responsive; no effect or global force override remained active, and recent kernel checks showed no GPU reset/timeout. Precise cause is unproven. Synchronous cross-window reads in the native input callback are the leading hypothesis.
 - Restored the original frontend, restarted only Steam webhelper processes after graceful restart failed, and installed the complete baseline through Decky. Frontend/backend backup hashes and the settings fingerprint matched. The user confirmed normal screen updates and menu operation afterward.
 - The corrected session manager defers surface work out of native input callbacks. A frontend-only canary and then the full revised preview both remained responsive. The full preview completed two game-menu openings with both renderers responding. A foreground SSH recovery guard was armed and disarmed successfully; detached SSH child watchdogs did not survive and must not be relied on.
-- The latest full-preview run used the external TV with native HDR enabled. Its valid frame was rejected by the SDR-only shader path, leaving glass; the backend incorrectly labelled this `invalid-geometry`. A regression test reproduced that classification and the local correction passes. This run does not validate shader performance or SDR frost.
+- The earlier full-preview run read the saved HDR preference as active HDR. Its valid frame was rejected by the SDR-only shader path, leaving glass; the backend incorrectly labelled this `invalid-geometry`. Regression tests reproduced both the classification and preference-versus-feedback errors. Both corrections are now installed.
+- The built-in output is confirmed by Gamescope as BOE/eDP-1. `GAMESCOPE_HDR_OUTPUT_FEEDBACK` and `GAMESCOPE_DISPLAY_SUPPORTS_HDR` are both 0 while the saved enable preference is 1. The source publishes output feedback from HDR capability plus enablement/force flags; a positive value conservatively retains glass even if content-driven HDR is temporarily idle. Missing/invalid feedback fails closed. No HDR preference was changed.
+- Installing the corrected candidate with QAM open timed out before an acknowledgement; the recovery guard restored the original frontend and restarted Steam webhelpers. Full baseline rollback then succeeded. There was no observed active effect or recent kernel GPU error. No independent renderer-health result was captured before that guard fired, so this timeout does not establish a second freeze or its cause.
+- A controlled retry with QAM closed during installation succeeded. The corrected environment RPC reports SDR; two menu openings and both renderers remain responsive. Steam was on Home with Ori still running, so those openings verified presence of the three Home surfaces rather than the in-game shader. The documented `RaiseWindowForGame` request did not complete within 20 seconds while renderer health remained good; physical controller resume was requested.
 - Home previously exposed all three bounded 8px backdrop surfaces. Their presence and bounds are established; visual ordering/strength and transition acceptance remain pending.
 
 ## Rollback and settings

@@ -166,7 +166,7 @@ class NativeConnection:
         self.cardinal = self.x.XInternAtom(self.xdisplay, b"CARDINAL", 0)
         self.x.XSelectInput(self.xdisplay,self.root,1<<22)  # PropertyChangeMask
         self.x.XSync(self.xdisplay,0)
-        self.hdr_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_DISPLAY_HDR_ENABLED", 0)
+        self.hdr_output_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_HDR_OUTPUT_FEEDBACK", 0)
         import os
         self.max_scale = read_max_scale(Path("/proc"), os.getuid())
         self._sync()
@@ -213,7 +213,11 @@ class NativeConnection:
         return changed
 
     def environment(self):
-        hdr = self._property(self.hdr_atom)
+        # HDR_ENABLED is a saved request, including on an SDR-only connector.
+        # Output feedback includes connector capability and compositor force
+        # flags. Treat advertised HDR as unsupported even if content-driven
+        # output is currently idling in SDR; missing feedback fails closed.
+        hdr = self._property(self.hdr_output_atom)
         return {"hdr": bool(hdr), "maxScale": self.max_scale} if type(hdr) is int and hdr in (0, 1) else None
 
     def select_technique(self, index):

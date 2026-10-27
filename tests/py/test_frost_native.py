@@ -16,6 +16,15 @@ def test_only_verified_native_protocol_opcodes_are_exposed():
     assert protocol_description() == ("gamescope_reshade", 1, ("destroy", "set_effect", "enable_effect", "set_uniform_variable", "disable_effect"))
 
 
+@pytest.mark.parametrize('preference,feedback,expected', [(1, 0, False), (0, 1, True), (1, None, None), (0, 2, None)])
+def test_environment_uses_compositor_output_feedback_instead_of_saved_hdr_preference(preference, feedback, expected):
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    n.hdr_atom, n.hdr_output_atom, n.max_scale = 'preference', 'feedback', 2
+    n._property = lambda atom: {'preference': preference, 'feedback': feedback}[atom]
+    assert n.environment() == (None if expected is None else {'hdr': expected, 'maxScale': 2})
+
+
 def test_max_scale_reads_only_the_single_desktop_compositor(tmp_path):
     import os
     process = tmp_path / '123'
