@@ -3,6 +3,8 @@ import { findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { prepareMenuPresentation } from './presentation';
+import { createMenuFrostHost } from './frost/host';
+import { readFrostContext } from './frost/context';
 import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
@@ -41,7 +43,7 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
 }
 
 export interface HostSnapshot { active: boolean; node: ReactNode; closing?: boolean }
-interface HostSurface { verifyPresentation?(): Promise<void>; conceal?(): Promise<void>; resume?(): void; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
+interface HostSurface { setFrostSession?:HostAttachment['setFrostSession']; clearFrost?:HostAttachment['clearFrost']; verifyPresentation?(): Promise<void>; conceal?(): Promise<void>; resume?(): void; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
 export function createNativeHost(surface: HostSurface): HostAttachment {
     let state: HostSnapshot = { active: false, node: null, closing: false };
     let disposed = false;
@@ -55,6 +57,8 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
         failures.forEach(listener => listener(error));
     });
     return {
+        setFrostSession:surface.setFrostSession,
+        clearFrost:surface.clearFrost,
         conceal: surface.conceal ? () => surface.conceal!() : undefined,
         async present(node) {
             if (disposed) throw new Error('Menu host was disposed');
@@ -158,8 +162,8 @@ export function retireMenuBackdrop(document: Document, backdrop: HTMLElement, vi
     return finish;
 }
 
-type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void };
-export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document): ViewportRelease {
+type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void; setFrostSession:NonNullable<HostAttachment['setFrostSession']>; clearFrost:NonNullable<HostAttachment['clearFrost']> };
+export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:()=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null): ViewportRelease {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
@@ -185,11 +189,14 @@ export function stretchMenuViewport(document: Document, classes: readonly string
         const selector = '.gg-menu,.gg-menu-status-host';
         releaseTokens.push(installTokenCss(document, selector));
         if (source && source !== document) releaseTokens.push(installTokenCss(source, selector));
-        const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement) : undefined;
+        let frost:ReturnType<typeof createMenuFrostHost>|undefined;
+        try{if(source&&frostContext){frost=createMenuFrostHost(document,source,document.getElementsByClassName(placeholder)[0] as HTMLElement,frostContext);frost.setSession(initialFrostSession);}}catch{frost?.dispose();frost=undefined;}
+        const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement,()=>frost?.presented()) : undefined;
         let stopped = false;
         const release = (closing = false) => {
             if (stopped) return;
             stopped = true;
+            frost?.dispose();
             const finish = closing ? retireMenuBackdrop(document, background, visible) : undefined;
             try { presentation?.(); } finally {
                 backdropStyle.remove();
@@ -200,7 +207,9 @@ export function stretchMenuViewport(document: Document, classes: readonly string
             }
             return closing ? () => { finish?.(); style.remove(); } : undefined;
         };
-        return Object.assign(release, { conceal: () => presentation?.conceal() ?? Promise.resolve(), resume: () => presentation?.resume() });
+        return Object.assign(release, { conceal: () => presentation?.conceal() ?? Promise.resolve(), resume: () => presentation?.resume(),
+            setFrostSession:(value:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0])=>{try{frost?.setSession(value);}catch{/* Keep glass. */}},
+            clearFrost:(generation:number)=>frost?.clear(generation)??Promise.resolve() });
     } catch (error) { style.remove(); backdropStyle.remove(); for (const release of releaseTokens) release(); throw error; }
 }
 
@@ -218,6 +227,16 @@ export function registerDiscoveredMenuHost(): Stop | null {
         let stopClosingBackdrop: Stop | undefined;
         let stopChrome: Stop | undefined;
         let stopPageStatus: Stop | undefined;
+        let frostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null;
+        let contextId=0,contextFingerprint='';
+        const frostContext=()=>{
+            const view=document!.defaultView;if(!view)return null;
+            const current=readFrostContext(view,'context');
+            if(!current)return null;
+            const fingerprint=JSON.stringify([current,owner.MainRunningAppID,owner.MainRunningApp?.appid]);
+            if(fingerprint!==contextFingerprint){contextFingerprint=fingerprint;contextId++;}
+            return {...current,viewportId:`context-${contextId}`};
+        };
         const releaseEffects = () => {
             const chrome = stopChrome, pageStatus = stopPageStatus;
             stopChrome = stopPageStatus = undefined;
@@ -231,12 +250,16 @@ export function registerDiscoveredMenuHost(): Stop | null {
         function stretchViewport(tree: Tree, popup?: Window) {
             if (!popup?.document) throw new Error('Native menu popup is unavailable');
             stopClosingBackdrop?.(); stopClosingBackdrop = undefined;
-            if (!stopViewport) stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document);
+            if (!stopViewport) {
+                stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document,frostContext,frostSession);
+            }
         }
         let read: () => HostSnapshot;
         let confirmed: ReactNode;
         const pending = new Set<{ resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
         return createNativeHost({
+            setFrostSession(value){frostSession=value;stopViewport?.setFrostSession(value);},
+            clearFrost(generation){if(frostSession?.generation===generation)frostSession=null;return stopViewport?.clearFrost(generation)??Promise.resolve();},
             conceal: () => stopViewport?.conceal() ?? Promise.resolve(),
             resume: () => stopViewport?.resume(),
             verifyPresentation() {

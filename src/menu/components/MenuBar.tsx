@@ -7,7 +7,7 @@ export const SECTION_LABELS: Record<SectionId, string> = { navigate: 'Navigate',
 const ICONS = { navigate: LuCompass, 'quick-settings': LuSlidersHorizontal, performance: () => { const Icon = steamPerformanceIcon('performance'); return Icon ? <span aria-hidden="true" className="gg-menu-native-icon"><Icon/></span> : null; }, social: LuUsers, plugins: LuPuzzle, help: LuCircleHelp, soundtrack: LuMusic, 'in-game': LuGamepad2, more: LuEllipsis };
 export function MenuBar({ state, dispatch }: { state: MenuState; dispatch(event: MenuEvent): void }) {
     const active = selectedBarSection(state);
-    return <Focusable className="gg-menu-bar" flow-children="row" aria-label="Menu sections">
+    return <Focusable className="gg-menu-bar" data-gg-frost-region="bar" flow-children="row" aria-label="Menu sections">
         <span className="gg-menu-shoulder" aria-hidden="true">‹ L1</span>
         <div className="gg-menu-tabs">{visibleSections(state).map(section => {
             const Icon = ICONS[section];

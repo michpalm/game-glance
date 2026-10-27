@@ -14,6 +14,8 @@ export type NativeRequest =
     | { kind: 'guide-article'; appId: number; fileId: string }
     | { kind: 'friend-chat'; steamId: string };
 export interface HostAttachment {
+    setFrostSession?(session:{generation:number;enabled:boolean}|null):void;
+    clearFrost?(generation:number):Promise<void>;
     present(node: ReactNode): Promise<void>;
     conceal?(): Promise<void>;
     suspend(): void;

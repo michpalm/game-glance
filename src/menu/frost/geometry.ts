@@ -50,7 +50,9 @@ export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame
     for(const id of REGION_IDS) if(input.elements[id])observer?.observe(input.elements[id]);
     source.addEventListener('resize',invalidate); owner.addEventListener('resize',invalidate);
     source.visualViewport?.addEventListener('resize',invalidate); owner.visualViewport?.addEventListener('resize',invalidate);
-    invalidate();
+    // Initial bounds are already available in the host's layout effect. Publish
+    // them before the presentation RAF; subsequent changes remain coalesced.
+    publish(measureFrostFrame(input));
     return ()=>{
         if(stopped)return; stopped=true;
         if(frame!==undefined)source.cancelAnimationFrame(frame);

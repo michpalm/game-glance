@@ -2,10 +2,10 @@ import type { Stop } from './model';
 
 export type MenuPresentation = Stop & { conceal(): Promise<void>; resume(): void };
 
-/** All menu visuals live in the popup. Only wait for its native viewport resize,
- * never for a second renderer to paint a background blur surface.
+/** Wait only for native viewport agreement. Frost has the same visibility
+ * deadline and cannot delay this gate while a bridge prepares resources.
  */
-export function prepareMenuPresentation(owner: Document, source: Document, viewport: HTMLElement): MenuPresentation {
+export function prepareMenuPresentation(owner: Document, source: Document, viewport: HTMLElement, onReveal?:()=>void): MenuPresentation {
     const view = source.defaultView, ownerView = owner.defaultView;
     const root = source.querySelector<HTMLElement>('.gg-menu');
     if (!view || !root || !viewport.parentElement) throw new Error('Custom menu geometry is unavailable');
@@ -24,7 +24,10 @@ export function prepareMenuPresentation(owner: Document, source: Document, viewp
         const key = [bounds.left, bounds.top, bounds.width, bounds.height, view.innerWidth, view.innerHeight, r.left, r.top, r.width, r.height].join(',');
         samples = agrees && key === stable ? samples + 1 : agrees ? 1 : 0; stable = key;
         if (typeof view.requestAnimationFrame === 'function' && samples < 2) { gate.media = 'all'; schedule(); }
-        else gate.media = agrees ? 'not all' : 'all';
+        else {
+            if(agrees&&gate.media!=='not all')onReveal?.();
+            gate.media = agrees ? 'not all' : 'all';
+        }
     };
     const schedule = () => {
         if (stopped || concealed || frame !== undefined) return;

@@ -120,8 +120,8 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     }}>
         <style>{menuStyles}</style>
         <GameStatusBar menuOverlay />
-        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
+        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
-        <Focusable className="gg-menu-panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
+        <Focusable className="gg-menu-panel" data-gg-frost-region="panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
     </Focusable>;
 }

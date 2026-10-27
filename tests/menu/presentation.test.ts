@@ -22,6 +22,12 @@ function fixture() {
 }
 
 describe('single-window glass menu presentation', () => {
+    it('marks frost presentation immediately before the visible gate opens',async()=>{
+        const f=fixture(),seen:string[]=[];
+        const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,
+            f.owner.document.querySelector('#viewport') as unknown as HTMLElement,()=>seen.push(f.gate().media));
+        await f.frame();expect(seen).toEqual(['all']);expect(f.gate().media).toBe('not all');stop();
+    });
     it('reveals after viewport agreement without creating an owner blur surface or waiting for its paint', async () => {
         const f = fixture(), stop = f.start();
         expect(f.gate().media).not.toBe('not all');

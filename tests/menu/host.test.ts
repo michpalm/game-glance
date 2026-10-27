@@ -6,6 +6,12 @@ const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: '
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
 describe('native menu host',()=>{
+    it('forwards frost generations without coupling frost failure to native presentation',async()=>{
+        const setFrostSession=vi.fn(),clearFrost=vi.fn(async()=>{});
+        const host=createNativeHost({install:()=>()=>{},setFrostSession,clearFrost});
+        host.setFrostSession?.({generation:7,enabled:true});await host.clearFrost?.(7);await host.present('menu');
+        expect(setFrostSession).toHaveBeenCalledWith({generation:7,enabled:true});expect(clearFrost).toHaveBeenCalledWith(7);host.dispose();
+    });
     it('mounts the popup without adding any separate background-blur panes', () => {
         const owner = parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div></body></html>');
         const popup = parseHTML('<html><head></head><body><div class="gg-menu"><div class="gg-menu-bar"></div><div class="gg-menu-panel"></div></div></body></html>');
