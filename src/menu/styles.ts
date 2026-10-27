@@ -14,7 +14,7 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:is(:disabled,[aria-disabled=true]){${ghost()};transform:none}
 html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):hover{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:not(:disabled):active{transform:scale(.98);transition-duration:var(--gg-fast)}
-.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:var(--gg-glass);backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
+.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:var(--gg-glass-solid);backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:center;justify-content:center;gap:4px;padding:8px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex-shrink:0;min-height:44px;padding:8px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-dim);white-space:nowrap;box-shadow:none}
@@ -78,7 +78,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}.gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
 .gg-menu .gg-menu-error{color:#f6b5b5}
 .gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
-.gg-menu-status-host .gh-status-pill{background:var(--gg-glass);border-color:var(--gg-edge);border-radius:var(--gg-r-pill);backdrop-filter:none;font-weight:var(--gg-weight-body)}
+.gg-menu-status-host .gh-status-pill{background:var(--gg-glass-solid)!important;border-color:var(--gg-edge);border-radius:var(--gg-r-pill);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
 .gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu-tabs::-webkit-scrollbar{display:none}
 @media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *{transition:none!important;animation:none!important}}
