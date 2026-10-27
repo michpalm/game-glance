@@ -91,3 +91,58 @@ def test_auto_mapping_requires_verified_cap_and_changes_shader_when_cap_changes(
     assert "@" not in source
     f["context"]["maxScale"] = 1
     assert build_shader(f)[1] != key
+
+
+def _with_dpr(dpr):
+    f = frame()
+    f["context"]["dpr"] = dpr
+    return f
+
+
+def test_blur_matches_the_vdl_glass_blur_at_the_menu_scale():
+    from gameglance.frost.shader import GLASS_BLUR_CSS_PX, blur_taps, frost_geometry
+    assert GLASS_BLUR_CSS_PX == 16
+    geometry = frost_geometry(_with_dpr(2.32))
+    assert geometry["sigma"] == pytest.approx(16 * 2.32)
+    # The blur reaches 3 sigma past each region, so edges sample real game pixels.
+    assert geometry["pad"] == 112
+    assert geometry["tiles"]["panel"] == (-(-(int(.60 * 1920) + 2 * 112) // 8), -(-(int(.65 * 1080) + 2 * 112) // 8))
+    offsets, weights = blur_taps(geometry["sigma"] / 8)
+    # Centre tap plus one side; the shader mirrors each side tap.
+    assert weights[0] + 2 * sum(weights[1:]) == pytest.approx(1)
+    assert offsets[0] == 0 and offsets == sorted(offsets)
+    variance = 2 * sum(w * o * o for o, w in zip(offsets[1:], weights[1:]))
+    assert variance == pytest.approx((geometry["sigma"] / 8) ** 2, rel=.08)
+
+
+def test_blur_strength_and_padding_follow_the_display_scale():
+    from gameglance.frost.shader import frost_geometry
+    small, large = frost_geometry(_with_dpr(1)), frost_geometry(_with_dpr(2.32))
+    assert small["sigma"] == pytest.approx(16) and small["pad"] == 48
+    assert large["tiles"]["bar"][0] > small["tiles"]["bar"][0]
+    assert build_shader(_with_dpr(1))[1] != build_shader(_with_dpr(2.32))[1]
+
+
+def test_shader_downsamples_every_pixel_and_fades_in_from_the_first_visible_frame():
+    source, _ = build_shader(_with_dpr(2.32))
+    assert 'source = "timer"' in source
+    assert "#define FadeMs 150.0" in source
+    # Persistent 1x1 state, copied then updated each frame, remembers when masks appeared.
+    assert source.count("Format = RGBA32F") == 2
+    assert source.index("pass Remember") < source.index("pass Track") < source.index("pass Output")
+    # An 8x8 box: 16 bilinear taps per low-resolution pixel.
+    assert source.count("Box(") >= 3
+    assert "@" not in source
+
+
+# Gamescope 3.16.30.1 creates ReShade textures through VulkanFormatToDRM()
+# (rendervulkan.cpp s_DRMVKFormatTable). A format without a DRM entry becomes
+# VK_FORMAT_UNDEFINED and aborts the compositor (CVulkanTexture::BInit assert).
+GAMESCOPE_TEXTURE_FORMATS = {"R8", "R16F", "R32F", "RG8", "RG16", "RGBA8", "RGBA16", "RGBA16F", "RGBA32F", "RGB10A2"}
+
+
+def test_every_texture_format_is_one_gamescope_can_create():
+    import re
+    source, _ = build_shader(_with_dpr(2.32))
+    formats = set(re.findall(r"Format = (\w+);", source))
+    assert formats and formats <= GAMESCOPE_TEXTURE_FORMATS, formats - GAMESCOPE_TEXTURE_FORMATS

@@ -9,19 +9,60 @@ from pathlib import Path
 from .contracts import REGIONS, validate_frame
 
 
+# The visual design language gives every glass surface one CSS backdrop blur.
+# CSS blur(r) is a Gaussian with sigma = r CSS px, so on screen it is r * dpr.
+GLASS_BLUR_CSS_PX = 16
+# Tiles are blurred at 1/8 resolution after an exact 8x8 box average.
+DOWNSAMPLE = 8
+
+
+def frost_geometry(frame: dict) -> dict:
+    c = frame["context"]
+    sigma = GLASS_BLUR_CSS_PX * c["dpr"]
+    # Three sigma of real game pixels around each region keeps its edges clean.
+    pad = math.ceil(3 * sigma)
+    tiles = {name: (math.ceil((frame["regions"][name]["width"] * c["outputWidth"] + 2 * pad) / DOWNSAMPLE),
+                    math.ceil((frame["regions"][name]["height"] * c["outputHeight"] + 2 * pad) / DOWNSAMPLE)) for name in REGIONS}
+    return {"sigma": sigma, "pad": pad, "tiles": tiles}
+
+
+def blur_taps(sigma: float) -> tuple[list[float], list[float]]:
+    """Gaussian out to 3 sigma, folded into bilinear taps: the centre plus one side."""
+    radius = max(1, math.ceil(3 * sigma))
+    discrete = [math.exp(-k * k / (2 * sigma * sigma)) for k in range(radius + 1)]
+    total = discrete[0] + 2 * sum(discrete[1:])
+    discrete = [w / total for w in discrete]
+    offsets, weights = [0.0], [discrete[0]]
+    for k in range(1, radius + 1, 2):
+        w1, w2 = discrete[k], discrete[k + 1] if k + 1 <= radius else 0.0
+        offsets.append((k * w1 + (k + 1) * w2) / (w1 + w2))
+        weights.append(w1 + w2)
+    return offsets, weights
+
+
+def _blur_body(sigma: float) -> str:
+    offsets, weights = blur_taps(sigma)
+    lines = [f"    float4 c = tex2D(image, uv) * {weights[0]:.10f};"]
+    for o, w in zip(offsets[1:], weights[1:]):
+        lines.append(f"    c += (tex2D(image, uv + texel * {o:.10f}) + tex2D(image, uv - texel * {o:.10f})) * {w:.10f};")
+    return "\n".join(lines)
+
+
 def build_shader(frame: dict) -> tuple[str, str]:
     frame = validate_frame(frame)
     c = frame["context"]
     if c["background"] != "game" or c["colorMode"] != "sdr":
         raise ValueError("unsupported color/background mapping")
     source = (Path(__file__).parent / "assets/qam-frost.fx.in").read_text()
-    values = {"OUT_W": str(c["outputWidth"]), "OUT_H": str(c["outputHeight"]), "FIT": str(("fit", "fill", "stretch", "auto").index(c["fit"])), "MAX_SCALE": str(float(c.get("maxScale", 16384)))}
-    # Output-space quarter-resolution tiles keep sampling density and visual
-    # strength stable when the game renders below the display resolution.
+    geometry = frost_geometry(frame)
+    values = {"OUT_W": str(c["outputWidth"]), "OUT_H": str(c["outputHeight"]), "FIT": str(("fit", "fill", "stretch", "auto").index(c["fit"])), "MAX_SCALE": str(float(c.get("maxScale", 16384))),
+              "PAD": str(geometry["pad"]), "BLUR_TAPS": _blur_body(geometry["sigma"] / DOWNSAMPLE)}
+    # Output-space tiles keep sampling density and visual strength stable when
+    # the game renders below the display resolution.
     for name in REGIONS:
-        r = frame["regions"][name]
-        values[name.upper() + "_W"] = str(math.ceil((r["width"] * c["outputWidth"] + 48) / 4))
-        values[name.upper() + "_H"] = str(math.ceil((r["height"] * c["outputHeight"] + 48) / 4))
+        width, height = geometry["tiles"][name]
+        values[name.upper() + "_W"] = str(width)
+        values[name.upper() + "_H"] = str(height)
     for name, value in values.items():
         source = source.replace("@" + name + "@", value)
     if "@" in source:

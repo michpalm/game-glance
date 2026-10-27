@@ -16,6 +16,8 @@ export type NativeRequest =
 export interface HostAttachment {
     setFrostSession?(session:{generation:number;enabled:boolean}|null):void;
     clearFrost?(generation:number):Promise<void>;
+    /** Starts the frost backend ahead of the first menu press. */
+    warmFrost?():void;
     present(node: ReactNode): Promise<void>;
     conceal?(): Promise<void>;
     suspend(): void;

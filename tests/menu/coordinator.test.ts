@@ -100,4 +100,15 @@ describe('floating menu coordinator',()=>{
         h.handlers().suspended(true);expect(h.state().phase).toBe('native-handoff');expect(h.bindings.closeMenuHost).not.toHaveBeenCalled();
         h.handlers().closed();expect(h.state().phase).toBe('closed');expect(h.bindings.closeMenuHost).not.toHaveBeenCalled();
     });
+    it('warms frost when a game takes focus, once per game, and never for Home',()=>{
+        const h=harness();let game!:(value:Parameters<Parameters<NativeBindings['subscribeGame']>[0]>[0])=>void;
+        const warmFrost=vi.fn();h.bindings.attachHost=()=>({...h.host,warmFrost});
+        h.bindings.subscribeGame=listener=>{game=listener;return h.releaseGame;};
+        const stop=h.c.start();
+        game(null);expect(warmFrost).not.toHaveBeenCalled();
+        const ori={appId:1057090,gameId:'1057090',name:'Ori',kind:'local' as const,actionIds:[]};
+        game(ori);game({...ori});expect(warmFrost).toHaveBeenCalledTimes(1);
+        game(null);game({...ori,appId:70,gameId:'70'});expect(warmFrost).toHaveBeenCalledTimes(2);
+        stop();
+    });
 });

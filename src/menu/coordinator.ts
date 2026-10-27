@@ -61,7 +61,7 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
         if (getState().phase !== 'custom-open') { host?.close(); bindings.closeMenuHost(); return; }
         try {
             frostGeneration=ticket;
-            try{host?.setFrostSession?.({generation:ticket,enabled:entry==='quick-access'});}catch{/* Frost cannot fail menu access. */}
+            try{host?.setFrostSession?.({generation:ticket,enabled:true});}catch{/* Frost cannot fail menu access. */}
             const presented = host?.present(render());
             void presented?.catch(() => undefined); // Activation can throw before the await; cleanup may then reject presentation.
             bindings.showMenuHost(); // Steam must render the native surface before its portal can acknowledge content.
@@ -87,9 +87,12 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
                 }));
                 releases.push(bindings.subscribeGame(game => {
                     const previous=getState().game;
+                    // A game taking focus starts the frost worker, so the first menu
+                    // opening fits the reveal hold instead of paying the worker's cold start.
+                    if(game&&(previous?.appId!==game.appId||previous?.gameId!==game.gameId)){try{host?.warmFrost?.();}catch{/* Frost stays optional. */}}
                     if(getState().phase==='custom-open'&&(previous?.appId!==game?.appId||previous?.gameId!==game?.gameId)){
                         void clearFrost();frostGeneration=++generation;
-                        try{host?.setFrostSession?.({generation:frostGeneration,enabled:getState().entry==='quick-access'});}catch{/* Keep glass. */}
+                        try{host?.setFrostSession?.({generation:frostGeneration,enabled:true});}catch{/* Keep glass. */}
                     }
                     dispatch({ type: 'game', value: game });
                 }));

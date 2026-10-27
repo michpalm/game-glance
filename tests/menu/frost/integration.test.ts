@@ -15,8 +15,8 @@ function fixture(){
 const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
 afterEach(()=>vi.useRealTimers());
 describe('menu frost integration',()=>{
-    it('enables frost only for QAM and clears it before close and native handoff',async()=>{
-        const f=fixture();await f.coordinator.open('home');expect(f.sessions.at(-1)?.enabled).toBe(false);
+    it('enables frost for both the Home and QAM entries and clears it before close and native handoff',async()=>{
+        const f=fixture();await f.coordinator.open('home');expect(f.sessions.at(-1)?.enabled).toBe(true);
         await f.coordinator.open('quick-access');expect(f.sessions.at(-1)?.enabled).toBe(true);
         f.order.length=0;f.coordinator.close();await flush();expect(f.order.indexOf('clear')).toBeLessThan(f.order.indexOf('close'));
         await f.coordinator.open('quick-access');f.order.length=0;await f.coordinator.handoff({kind:'qam',tab:'decky'});

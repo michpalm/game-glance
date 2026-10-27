@@ -27,4 +27,21 @@ describe('native input frost sessions',()=>{
         f.sessions.setFrostSession({generation:3,enabled:true});const newer=f.sessions.current();
         await f.sessions.clearFrost(2);expect(f.sessions.current()).toBe(newer);f.sessions.dispose();
     });
+    it('warms the native environment in a later task, once per flight, and keeps the answer for the first opening',async()=>{
+        const f=fixture();let answer!:(value:unknown)=>void;
+        f.bridge.environment=vi.fn(()=>new Promise(resolve=>{answer=resolve;})) as FrostBridge['environment'];
+        f.sessions.warm();f.sessions.warm();
+        expect(f.bridge.environment).not.toHaveBeenCalled();
+        f.flush();expect(f.bridge.environment).toHaveBeenCalledTimes(1);expect(f.sessions.environment()).toBeNull();
+        answer({hdr:false,maxScale:2});await Promise.resolve();await Promise.resolve();
+        expect(f.sessions.environment()).toEqual({hdr:false,maxScale:2});
+        f.sessions.warm();f.flush();expect(f.bridge.environment).toHaveBeenCalledTimes(2);f.sessions.dispose();
+    });
+    it('does not warm after disposal and keeps the last good environment when a warm-up fails',async()=>{
+        const f=fixture();f.bridge.environment=vi.fn(async()=>({hdr:false,maxScale:2}));
+        f.sessions.warm();f.flush();await Promise.resolve();await Promise.resolve();
+        f.bridge.environment=vi.fn(async()=>null);f.sessions.warm();f.flush();await Promise.resolve();await Promise.resolve();
+        expect(f.sessions.environment()).toEqual({hdr:false,maxScale:2});
+        f.sessions.dispose();f.sessions.warm();f.flush();expect(f.bridge.environment).toHaveBeenCalledTimes(1);
+    });
 });

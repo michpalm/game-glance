@@ -46,7 +46,7 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
 }
 
 export interface HostSnapshot { active: boolean; node: ReactNode; closing?: boolean }
-interface HostSurface { setFrostSession?:HostAttachment['setFrostSession']; clearFrost?:HostAttachment['clearFrost']; verifyPresentation?(): Promise<void>; conceal?(): Promise<void>; resume?(): void; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
+interface HostSurface { setFrostSession?:HostAttachment['setFrostSession']; clearFrost?:HostAttachment['clearFrost']; warmFrost?:HostAttachment['warmFrost']; verifyPresentation?(): Promise<void>; conceal?(): Promise<void>; resume?(): void; install(get: () => HostSnapshot, subscribe: (listener: Stop) => Stop, fault: (error: Error) => void): Stop }
 export function createNativeHost(surface: HostSurface): HostAttachment {
     let state: HostSnapshot = { active: false, node: null, closing: false };
     let disposed = false;
@@ -62,6 +62,7 @@ export function createNativeHost(surface: HostSurface): HostAttachment {
     return {
         setFrostSession:surface.setFrostSession,
         clearFrost:surface.clearFrost,
+        warmFrost:surface.warmFrost,
         conceal: surface.conceal ? () => surface.conceal!() : undefined,
         async present(node) {
             if (disposed) throw new Error('Menu host was disposed');
@@ -194,7 +195,7 @@ export function stretchMenuViewport(document: Document, classes: readonly string
         if (source && source !== document) releaseTokens.push(installTokenCss(source, selector));
         let frost:ReturnType<typeof createMenuFrostHost>|undefined;
         try{if(source&&frostContext){frost=createMenuFrostHost(document,source,document.getElementsByClassName(placeholder)[0] as HTMLElement,frostContext,frostOptions);frost.setSession(initialFrostSession);}}catch{frost?.dispose();frost=undefined;}
-        const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement,()=>frost?.presented()) : undefined;
+        const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement,()=>frost?.presented(),frost?()=>frost?.ready():undefined) : undefined;
         let stopped = false;
         const release = (closing = false) => {
             if (stopped) return;
@@ -236,7 +237,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
         const frostContext=(environment?:NativeFrostEnvironment|null)=>{
             const view=document!.defaultView;if(!view)return null;
             if(environment)lastEnvironment=environment;
-            const current=readFrostContext(view,'context',environment??lastEnvironment);
+            const current=readFrostContext(view,'context',environment??lastEnvironment??frostSessions.environment());
             if(!current)return null;
             const fingerprint=JSON.stringify([current,owner.MainRunningAppID,owner.MainRunningApp?.appid]);
             if(fingerprint!==contextFingerprint){contextFingerprint=fingerprint;contextId++;}
@@ -269,6 +270,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
         return createNativeHost({
             setFrostSession:frostSessions.setFrostSession,
             clearFrost:frostSessions.clearFrost,
+            warmFrost:frostSessions.warm,
             conceal: () => stopViewport?.conceal() ?? Promise.resolve(),
             resume: () => stopViewport?.resume(),
             verifyPresentation() {

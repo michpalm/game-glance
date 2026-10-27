@@ -1,6 +1,6 @@
 import type { HostAttachment } from '../steam/runtime';
 import type { FrostWarmup } from './controller';
-import type { FrostBridge,FrostFrame } from './types';
+import type { FrostBridge,FrostFrame,NativeFrostEnvironment } from './types';
 
 type Session=Parameters<NonNullable<HostAttachment['setFrostSession']>>[0];
 type Surface=Required<Pick<HostAttachment,'setFrostSession'|'clearFrost'>>;
@@ -10,9 +10,21 @@ type Surface=Required<Pick<HostAttachment,'setFrostSession'|'clearFrost'>>;
  * task, after the originating native call has returned. */
 export function createFrostSessions(bridge:FrostBridge,schedule:(callback:()=>void)=>void=fn=>{setTimeout(fn,0);}) {
     let session:Session=null,surface:Surface|null=null,cachedFrame:FrostFrame|undefined,warmup:FrostWarmup|null=null,disposed=false;
+    let environment:NativeFrostEnvironment|null=null,warming=false;
     const safe=(fn:()=>Promise<unknown>)=>{try{return fn().catch(()=>undefined);}catch{return Promise.resolve();}};
     return {
         current:()=>session,
+        environment:()=>environment,
+        /** Starts the backend worker and caches its environment before the first
+         * press, so a cold opening measures at once instead of after the worker
+         * spawns. Runs in a later task, like every other surface operation. */
+        warm(){
+            if(disposed||warming||!bridge.environment)return;warming=true;
+            schedule(()=>{
+                if(disposed){warming=false;return;}
+                void bridge.environment!().then(value=>{warming=false;if(value&&!disposed)environment=value;},()=>{warming=false;});
+            });
+        },
         attach(value:Surface|null){surface=value;},
         remember(frame:FrostFrame){if(!disposed)cachedFrame=frame;},
         takeWarmup(){const value=warmup;warmup=null;return value;},

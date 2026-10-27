@@ -1,10 +1,10 @@
-import { currentUnderline, focusRing, ghost } from '../styles/tokens';
+import { TOKENS, currentUnderline, focusRing, ghost } from '../styles/tokens';
 
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
 export const menuStyles = `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:var(--gg-text,#fff);overflow:hidden;transform:translateZ(0)}
-.gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration)}
+.gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
 .gg-menu *{box-sizing:border-box}
 .gg-menu>header{flex:none;display:flex;align-items:center;padding:0 16px 12px;gap:8px}
 .gg-menu-caption-actions{display:flex;align-items:center;gap:8px}
@@ -14,7 +14,7 @@ export const menuStyles = `
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:is(:disabled,[aria-disabled=true]){${ghost()};transform:none}
 html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):hover{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:not(:disabled):active{transform:scale(.98);transition-duration:var(--gg-fast)}
-.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:var(--gg-glass-solid);backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
+.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:center;justify-content:center;gap:4px;padding:8px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex-shrink:0;min-height:44px;padding:8px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-dim);white-space:nowrap;box-shadow:none}
@@ -78,6 +78,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}.gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
 .gg-menu .gg-menu-error{color:#f6b5b5}
 .gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
+.gg-menu-status-host{transition:opacity var(--gg-fast) linear}
 .gg-menu-status-host .gh-status-pill{background:var(--gg-glass-solid)!important;border-color:var(--gg-edge);border-radius:var(--gg-r-pill);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
 .gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu-tabs::-webkit-scrollbar{display:none}

@@ -2,9 +2,11 @@ import type { HomeFrost } from './home';
 import { REGION_IDS, type FrostBridge, type FrostFrame, type Prepared } from './types';
 
 export interface FrostWarmup {requestId:string;frame:FrostFrame;ready:Promise<Prepared>}
+/** Mirrors frost_geometry() in py_modules/gameglance/frost/shader.py: equal allocations build an equal shader. */
 export function frostAllocation(frame:FrostFrame):string {
+    const pad=Math.ceil(3*16*frame.context.dpr);
     return JSON.stringify([frame.context,...REGION_IDS.map(id=>{
-        const r=frame.regions[id];return [Math.ceil((r.width*frame.context.outputWidth+48)/4),Math.ceil((r.height*frame.context.outputHeight+48)/4)];
+        const r=frame.regions[id];return [Math.ceil((r.width*frame.context.outputWidth+2*pad)/8),Math.ceil((r.height*frame.context.outputHeight+2*pad)/8)];
     })]);
 }
 
@@ -14,8 +16,9 @@ export interface FrostClock {
 }
 interface Session {
     generation:number; presented:boolean; signature?:string; frame?:FrostFrame;
-    request?:string; token?:string; activating?:boolean; homeActive?:boolean;
+    request?:string; key?:string; token?:string; activating?:boolean; homeActive?:boolean;
     sequence:number; timer?:ReturnType<typeof setInterval>; renewing?:boolean;
+    settled?:boolean; waiters:(()=>void)[];
 }
 export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:{bridge:FrostBridge;home:HomeFrost|null;clock?:FrostClock;takeWarmup?:()=>FrostWarmup|null}) {
     const nonce=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -24,10 +27,12 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
     function clear(s:Session):Promise<unknown> {
         if(s.timer!==undefined)clock.clearInterval(s.timer);s.timer=undefined;
         if(s.homeActive){s.homeActive=false;try{home?.clear();}catch{/* A retired document cannot interrupt lease cleanup. */}}
-        const token=s.token,request=s.request;s.token=s.request=undefined;
+        const token=s.token,request=s.request;s.token=s.request=s.key=undefined;
         return Promise.all([...(token?[safely(()=>bridge.release(token))]:[]),...(request?[safely(()=>bridge.cancel(request))]:[])]);
     }
     const current=(s:Session,request:string)=>session===s&&s.request===request&&!disposed;
+    // The reveal hold waits for an outcome (active, unavailable, Home, end), never a timer.
+    function settle(s:Session){if(s.settled)return;s.settled=true;for(const resolve of s.waiters.splice(0))resolve();}
     function heartbeat(s:Session){
         s.timer=clock.setInterval(()=>{
             if(session!==s||!s.token||s.renewing)return;
@@ -35,35 +40,38 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             void bridge.renew(token).catch(()=>false).then(ok=>{s.renewing=false;if(!ok&&session===s&&s.token===token)void clear(s);});
         },250);
     }
+    /** Arms the effect with zero masks; the reveal activates it (see presented). */
     function prepare(s:Session,frame:FrostFrame){
         const candidate=takeWarmup?.();
         const warmup=candidate&&candidate.frame.generation===s.generation&&frostAllocation(candidate.frame)===frostAllocation(frame)?candidate:null;
         if(candidate&&!warmup)void safely(()=>bridge.cancel(candidate.requestId));
         const request=warmup?.requestId??`${nonce}:${s.generation}:${++attempt}`;s.request=request;
         void safely(async()=>{
-            if(bridge.present&&!s.presented){
-                s.activating=true;
-                const active=await bridge.present(request,frame);
-                s.activating=false;
-                if(active.status!=='active')return;
-                if(!current(s,request)||s.presented){await safely(()=>bridge.release(active.token));return;}
-                s.sequence=1;s.token=active.token;heartbeat(s);return;
-            }
             const ready=await(warmup?.ready??bridge.prepare(request,frame));
+            // Armed after the reveal is too late: frost never starts under a visible menu.
             if(!current(s,request)||ready.status!=='ready'||s.presented)return;
-            s.activating=true;
-            const active=await bridge.activate(request,ready.key,++s.sequence,s.frame??frame);
+            s.key=ready.key;
+        }).then(()=>{if(s.request===request||!s.request)settle(s);});
+    }
+    // Masks go live with the reveal; the shader then fades them in over the
+    // same 150 ms as the menu, from the first frame they are visible.
+    function activate(s:Session){
+        const request=s.request,key=s.key,frame=s.frame;
+        if(!request||!key||!frame||s.activating||s.token)return;
+        s.activating=true;
+        void safely(async()=>{
+            const active=await bridge.activate(request,key,++s.sequence,frame);
             s.activating=false;
             if(active.status!=='active')return;
-            if(!current(s,request)||s.presented){await safely(()=>bridge.release(active.token));return;}
+            if(!current(s,request)){await safely(()=>bridge.release(active.token));return;}
             s.token=active.token;heartbeat(s);
         });
     }
     return {
         begin(generation:number){
             if(disposed)return;
-            if(session)void clear(session);
-            session={generation,presented:false,sequence:0};
+            if(session){settle(session);void clear(session);}
+            session={generation,presented:false,sequence:0,waiters:[]};
         },
         frame(frame:FrostFrame|null){
             const s=session;if(!s||disposed||frame&&frame.generation!==s.generation)return;
@@ -73,6 +81,7 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             const changed=s.signature!==signature;s.signature=signature;s.frame=frame;
             if(frame.context.background==='steam'){
                 if(s.homeActive||!s.presented)s.homeActive=home?.apply(frame)??false;
+                settle(s);
             }else if(s.token){
                 const token=s.token,sequence=++s.sequence;
                 void safely(async()=>{const ok=await bridge.update(token,sequence,frame);if(!ok&&session===s&&s.token===token&&s.sequence===sequence)await clear(s);});
@@ -80,15 +89,19 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
         },
         presented(generation:number){
             const s=session;if(!s||s.generation!==generation)return;
-            s.presented=true;
-            // A warmup can finish with zero masks for a later opening. An
-            // activation already in flight must be cancelled before it arrives.
-            if(s.activating)void clear(s);
+            s.presented=true;settle(s);
+            activate(s);
         },
         async end(generation:number){
             const s=session;if(!s||s.generation!==generation)return;
-            session=undefined;await clear(s);
+            session=undefined;settle(s);await clear(s);
         },
-        async dispose(){if(disposed)return;disposed=true;const s=session;session=undefined;if(s)await clear(s);try{home?.dispose();}catch{/* The document may already be gone. */}},
+        /** Resolves when this opening's frost has an outcome; the presentation caps the wait. */
+        settled(generation:number):Promise<void>{
+            const s=session;if(disposed||!s||s.generation!==generation||s.settled)return Promise.resolve();
+            return new Promise(resolve=>s.waiters.push(resolve));
+        },
+        unavailable(generation:number){const s=session;if(s&&s.generation===generation)settle(s);},
+        async dispose(){if(disposed)return;disposed=true;const s=session;session=undefined;if(s){settle(s);await clear(s);}try{home?.dispose();}catch{/* The document may already be gone. */}},
     };
 }

@@ -22,6 +22,11 @@ function fixture() {
 }
 
 describe('single-window glass menu presentation', () => {
+    it('holds the menu fully transparent behind the gate, so lifting it starts the reveal fade',()=>{
+        const f=fixture(),stop=f.start();
+        expect(f.gate().textContent).toContain('.gg-menu,.gg-menu-status-host{opacity:0!important}');
+        expect(f.gate().textContent).toContain('visibility:hidden!important');stop();
+    });
     it('marks frost presentation immediately before the visible gate opens',async()=>{
         const f=fixture(),seen:string[]=[];
         const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,
@@ -56,5 +61,32 @@ describe('single-window glass menu presentation', () => {
         expect(f.frames.size).toBe(0); expect(f.gate()).toBeNull();
         expect(f.source.document.querySelector('#foreign-style')).not.toBeNull();
         expect(f.owner.document.querySelector('#foreign')?.getAttribute('style')).toBeNull();
+    });
+    it('holds the reveal until frost settles, then reveals once',async()=>{
+        const f=fixture(),seen:string[]=[];let release!:()=>void;const hold=vi.fn(()=>new Promise<void>(r=>{release=r;}));
+        const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,
+            f.owner.document.querySelector('#viewport') as unknown as HTMLElement,()=>seen.push('reveal'),hold);
+        await f.frame();await f.frame();expect(f.gate().media).toBe('all');expect(seen).toEqual([]);
+        release();for(let i=0;i<4;i++)await f.frame();
+        expect(f.gate().media).toBe('not all');expect(seen).toEqual(['reveal']);expect(hold).toHaveBeenCalledTimes(1);stop();
+    });
+    it('reveals glass at the 150 ms cap when frost is late, and a later settle changes nothing',async()=>{
+        vi.useFakeTimers();const f=fixture(),seen:string[]=[];let release!:()=>void;
+        const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,
+            f.owner.document.querySelector('#viewport') as unknown as HTMLElement,()=>seen.push('reveal'),()=>new Promise<void>(r=>{release=r;}));
+        await f.frame();await vi.advanceTimersByTimeAsync(149);await f.frame();expect(f.gate().media).toBe('all');
+        await vi.advanceTimersByTimeAsync(1);await f.frame();await f.frame();
+        expect(f.gate().media).toBe('not all');expect(seen).toEqual(['reveal']);
+        release();await f.frame();expect(seen).toEqual(['reveal']);stop();vi.useRealTimers();
+    });
+    it('holds again after a cancelled close resumes, and disposal during a hold leaves no timer',async()=>{
+        vi.useFakeTimers();const f=fixture();const hold=vi.fn(()=>Promise.resolve());
+        const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,
+            f.owner.document.querySelector('#viewport') as unknown as HTMLElement,undefined,hold);
+        for(let i=0;i<3;i++)await f.frame();expect(f.gate().media).toBe('not all');
+        void stop.conceal();stop.resume();for(let i=0;i<4;i++)await f.frame();expect(hold).toHaveBeenCalledTimes(2);
+        const g=fixture(),late=prepareMenuPresentation(g.owner.document as unknown as Document,g.source.document as unknown as Document,
+            g.owner.document.querySelector('#viewport') as unknown as HTMLElement,undefined,()=>new Promise<void>(()=>{}));
+        await g.frame();late();expect(vi.getTimerCount()).toBe(0);stop();vi.useRealTimers();
     });
 });

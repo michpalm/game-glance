@@ -7,9 +7,10 @@ vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
 describe('native menu host',()=>{
     it('forwards frost generations without coupling frost failure to native presentation',async()=>{
-        const setFrostSession=vi.fn(),clearFrost=vi.fn(async()=>{});
-        const host=createNativeHost({install:()=>()=>{},setFrostSession,clearFrost});
-        host.setFrostSession?.({generation:7,enabled:true});await host.clearFrost?.(7);await host.present('menu');
+        const setFrostSession=vi.fn(),clearFrost=vi.fn(async()=>{}),warmFrost=vi.fn();
+        const host=createNativeHost({install:()=>()=>{},setFrostSession,clearFrost,warmFrost});
+        host.warmFrost?.();host.setFrostSession?.({generation:7,enabled:true});await host.clearFrost?.(7);await host.present('menu');
+        expect(warmFrost).toHaveBeenCalledOnce();
         expect(setFrostSession).toHaveBeenCalledWith({generation:7,enabled:true});expect(clearFrost).toHaveBeenCalledWith(7);host.dispose();
     });
     it('mounts the popup without adding any separate background-blur panes', () => {

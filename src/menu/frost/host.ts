@@ -10,7 +10,7 @@ export interface FrostHostOptions {takeWarmup?():FrostWarmup|null;measured?(fram
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */
 export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null,options:FrostHostOptions={}) {
     const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder),takeWarmup:options.takeWarmup});
-    let environment:NativeFrostEnvironment|null=null,reading=false;
+    let environment:NativeFrostEnvironment|null=null,reading=false,environmentKnown=false;
     let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:(()=>void)|undefined;
     let visible=false,stopped=false,lastContext='',lastElements:HTMLElement[]=[];
     function measure(force=false){
@@ -21,7 +21,13 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
         if(!force&&signature===lastContext&&elements.every((e,i)=>e===lastElements[i]))return;
         stopMeasurement?.();stopMeasurement=undefined;
         lastContext=signature;lastElements=elements as HTMLElement[];
-        if(!value||!source.defaultView||!owner.defaultView||elements.some(e=>!e)){controller.frame(null);return;}
+        if(!value||!source.defaultView||!owner.defaultView||elements.some(e=>!e)){
+            controller.frame(null);
+            // Once the native environment has answered, a null context is final for
+            // this opening (HDR, integer scaling): release the reveal hold now.
+            if(!value&&environmentKnown)controller.unavailable(session.generation);
+            return;
+        }
         const regions=Object.fromEntries(REGION_IDS.map((id,i)=>[id,elements[i]!])) as Record<RegionId,HTMLElement>;
         stopMeasurement=observeFrostFrame({generation:session.generation,source:source.defaultView,owner:owner.defaultView,placeholder,elements:regions,context:value},frame=>{
             if(!source.defaultView||!menuViewportAgrees(placeholder.getBoundingClientRect(),source.defaultView)){controller.frame(null);return;}
@@ -32,7 +38,7 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     // measurement itself is observer-driven and coalesced to one RAF.
     const refresh=()=>{
         if(reading||stopped||!session?.enabled)return;reading=true;
-        void bridge.environment?.().then(value=>{if(!stopped){environment=value;measure();}},()=>{environment=null;controller.frame(null);}).finally(()=>{reading=false;});
+        void bridge.environment?.().then(value=>{if(!stopped){environment=value;environmentKnown=true;measure();if(session&&!context(environment))controller.unavailable(session.generation);}},()=>{environment=null;controller.frame(null);}).finally(()=>{reading=false;});
     };
     const timer=setInterval(()=>{try{measure();refresh();}catch{controller.frame(null);}},250);
     const Observer=(source.defaultView as (Window & {MutationObserver?:typeof MutationObserver})|null)?.MutationObserver;
@@ -51,6 +57,8 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
             measure(true);refresh();
         },
         presented(){visible=true;if(session)controller.presented(session.generation);},
+        /** The presentation's reveal hold; resolves at once when frost is off. */
+        ready():Promise<void>{return stopped||!session?.enabled?Promise.resolve():controller.settled(session.generation);},
         async clear(generation:number){
             if(session?.generation!==generation)return;
             const stop=stopMeasurement;stopMeasurement=undefined;session=null;
