@@ -1,0 +1,84 @@
+// Game Glance QAM frost. Game pixels only; foreground Steam UI composes later.
+uniform float4 Bar = float4(0, 0, 0, 0);
+uniform float4 Panel = float4(0, 0, 0, 0);
+uniform float4 Notifications = float4(0, 0, 0, 0);
+uniform float2 BarRadius = float2(0, 0);
+uniform float2 PanelRadius = float2(0, 0);
+uniform float2 NotificationsRadius = float2(0, 0);
+#define OutputSize float2(@OUT_W@, @OUT_H@)
+#define InputSize float2(BUFFER_WIDTH, BUFFER_HEIGHT)
+#if @FIT@ == 0
+#define FitScale min(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT)
+#define GameSize (InputSize * FitScale)
+#elif @FIT@ == 1
+#define FitScale max(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT)
+#define GameSize (InputSize * FitScale)
+#else
+#define GameSize OutputSize
+#endif
+#define Offset ((OutputSize - GameSize) * 0.5)
+#define Pad (24.0 / OutputSize)
+texture2D Scene : COLOR;
+sampler2D SceneSampler { Texture = Scene; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
+texture2D BarH { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
+texture2D BarV { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
+texture2D PanelH { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
+texture2D PanelV { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
+texture2D NotificationsH { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+texture2D NotificationsV { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+sampler2D BarHS { Texture = BarH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D BarVS { Texture = BarV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D PanelHS { Texture = PanelH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D PanelVS { Texture = PanelV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D NotificationsHS { Texture = NotificationsH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D NotificationsVS { Texture = NotificationsV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+void VS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0) {
+    uv = float2((id << 1) & 2, id & 2);
+    pos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+float4 Gaussian(sampler2D image, float2 uv, float2 delta) {
+    float4 c = tex2D(image, uv) * 0.2270270270;
+    c += tex2D(image, uv + delta * 1.3846153846) * 0.3162162162;
+    c += tex2D(image, uv - delta * 1.3846153846) * 0.3162162162;
+    c += tex2D(image, uv + delta * 3.2307692308) * 0.0702702703;
+    c += tex2D(image, uv - delta * 3.2307692308) * 0.0702702703;
+    return c;
+}
+float2 OutputUV(float2 inputUV) { return (Offset + inputUV * GameSize) / OutputSize; }
+float2 InputUV(float2 outputUV) { return (outputUV * OutputSize - Offset) / GameSize; }
+float2 CropUV(float2 uv, float4 rect) { return InputUV(rect.xy - Pad + uv * (rect.zw + 2.0 * Pad)); }
+float2 TileUV(float2 uv, float4 rect) { return (uv - rect.xy + Pad) / (rect.zw + 2.0 * Pad); }
+float Mask(float2 uv, float4 rect, float2 radiusNorm) {
+    if (rect.z <= 0 || rect.w <= 0) return 0;
+    float2 halfSize = rect.zw * OutputSize * 0.5;
+    float2 position = abs((uv - rect.xy - rect.zw * 0.5) * OutputSize);
+    float2 radius = min(radiusNorm * OutputSize, halfSize);
+    if (min(radius.x, radius.y) <= 0) return saturate(0.5 + min(halfSize.x - position.x, halfSize.y - position.y));
+    float2 q = (position - halfSize + radius) / radius;
+    float distance = (length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 1.0) * min(radius.x, radius.y);
+    return saturate(0.5 - distance);
+}
+float4 BarHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(SceneSampler, CropUV(uv, Bar), float2(4.0 / GameSize.x, 0.0)); }
+float4 BarVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(BarHS, uv, float2(0.0, 4.0 / (Bar.w * OutputSize.y + 48.0))); }
+float4 PanelHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(SceneSampler, CropUV(uv, Panel), float2(4.0 / GameSize.x, 0.0)); }
+float4 PanelVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(PanelHS, uv, float2(0.0, 4.0 / (Panel.w * OutputSize.y + 48.0))); }
+float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(SceneSampler, CropUV(uv, Notifications), float2(4.0 / GameSize.x, 0.0)); }
+float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Gaussian(NotificationsHS, uv, float2(0.0, 4.0 / (Notifications.w * OutputSize.y + 48.0))); }
+float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
+    float4 color = tex2D(SceneSampler, uv);
+    float2 outUV = OutputUV(uv);
+    float b = Mask(outUV, Bar, BarRadius), p = Mask(outUV, Panel, PanelRadius), n = Mask(outUV, Notifications, NotificationsRadius);
+    if (b > 0) color = lerp(color, tex2D(BarVS, TileUV(outUV, Bar)), b);
+    if (p > 0) color = lerp(color, tex2D(PanelVS, TileUV(outUV, Panel)), p);
+    if (n > 0) color = lerp(color, tex2D(NotificationsVS, TileUV(outUV, Notifications)), n);
+    return color;
+}
+technique QAMFrost {
+    pass BarX { VertexShader = VS; PixelShader = BarHorizontal; RenderTarget = BarH; }
+    pass BarY { VertexShader = VS; PixelShader = BarVertical; RenderTarget = BarV; }
+    pass PanelX { VertexShader = VS; PixelShader = PanelHorizontal; RenderTarget = PanelH; }
+    pass PanelY { VertexShader = VS; PixelShader = PanelVertical; RenderTarget = PanelV; }
+    pass NotificationsX { VertexShader = VS; PixelShader = NotificationsHorizontal; RenderTarget = NotificationsH; }
+    pass NotificationsY { VertexShader = VS; PixelShader = NotificationsVertical; RenderTarget = NotificationsV; }
+    pass Output { VertexShader = VS; PixelShader = Composite; }
+}
