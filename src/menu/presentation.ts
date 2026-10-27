@@ -2,6 +2,11 @@ import type { Stop } from './model';
 
 export type MenuPresentation = Stop & { conceal(): Promise<void>; resume(): void };
 
+export function menuViewportAgrees(bounds:{width:number;height:number},view:{innerWidth:number;innerHeight:number}):boolean {
+    const sx=bounds.width/view.innerWidth,sy=bounds.height/view.innerHeight;
+    return Number.isFinite(sx)&&Number.isFinite(sy)&&sx>0&&sy>0&&Math.abs(sx-sy)<=Math.max(sx,sy)*.01;
+}
+
 /** Wait only for native viewport agreement. Frost has the same visibility
  * deadline and cannot delay this gate while a bridge prepares resources.
  */
@@ -19,8 +24,7 @@ export function prepareMenuPresentation(owner: Document, source: Document, viewp
     const sync = () => {
         if (stopped || concealed) return;
         const bounds = viewport.getBoundingClientRect(), r = root.getBoundingClientRect();
-        const sx = bounds.width / view.innerWidth, sy = bounds.height / view.innerHeight;
-        const agrees = sx > 0 && sy > 0 && Math.abs(sx - sy) <= Math.max(sx, sy) * .01;
+        const agrees = menuViewportAgrees(bounds,view);
         const key = [bounds.left, bounds.top, bounds.width, bounds.height, view.innerWidth, view.innerHeight, r.left, r.top, r.width, r.height].join(',');
         samples = agrees && key === stable ? samples + 1 : agrees ? 1 : 0; stable = key;
         if (typeof view.requestAnimationFrame === 'function' && samples < 2) { gate.media = 'all'; schedule(); }

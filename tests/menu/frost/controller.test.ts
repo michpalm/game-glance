@@ -29,6 +29,20 @@ describe('frost controller',()=>{
         expect(f.bridge.renew).toHaveBeenCalledWith('combined');await f.controller.end(1);
         expect(f.bridge.release).toHaveBeenCalledWith('combined');
     });
+    it('adopts an early zero-mask warmup only when live allocation and context match',async()=>{
+        const f=fixture(),warmFrame=frame(),ready=Promise.resolve<Prepared>({status:'ready',key:'early'});
+        const controller=createFrostController({bridge:f.bridge,home:f.home,takeWarmup:()=>({requestId:'early-request',frame:warmFrame,ready})});
+        f.bridge.present=vi.fn(async()=>({status:'active',token:'unused'}));
+        controller.begin(1);controller.frame(frame());await flush();
+        expect(f.bridge.prepare).not.toHaveBeenCalled();expect(f.bridge.present).not.toHaveBeenCalled();
+        expect(f.bridge.activate).toHaveBeenCalledWith('early-request','early',1,frame());await controller.dispose();
+    });
+    it('cancels mismatched early geometry and uses the live frame',async()=>{
+        const f=fixture(),early=frame();early.regions.panel.width=.3;
+        const controller=createFrostController({bridge:f.bridge,home:f.home,takeWarmup:()=>({requestId:'wrong',frame:early,ready:Promise.resolve({status:'ready',key:'old'})})});
+        controller.begin(1);controller.frame(frame());await flush();
+        expect(f.bridge.cancel).toHaveBeenCalledWith('wrong');expect(f.bridge.prepare).toHaveBeenCalled();await controller.dispose();
+    });
     it('keeps glass when preparation arrives after presentation, allowing later cache warmup',async()=>{
         const f=fixture(),ready=deferred<Prepared>(); vi.mocked(f.bridge.prepare).mockReturnValue(ready.promise);
         f.controller.begin(1);f.controller.frame(frame());f.controller.presented(1);
@@ -69,6 +83,12 @@ describe('frost controller',()=>{
         const f=fixture();f.controller.begin(1);f.controller.frame(frame(1,'steam'));
         vi.mocked(f.bridge.prepare).mockRejectedValue(Error('offline'));f.controller.frame(frame());await flush();
         expect(f.home.clear).toHaveBeenCalled();await f.controller.dispose();
+    });
+    it('still cancels resources when a detached Home surface throws during cleanup',async()=>{
+        const f=fixture();f.controller.begin(1);f.controller.frame(frame(1,'steam'));
+        f.home.clear.mockImplementation(()=>{throw Error('detached document');});
+        expect(()=>f.controller.frame(frame())).not.toThrow();await flush();
+        await expect(f.controller.dispose()).resolves.toBeUndefined();
     });
     it('does not drop a current lease when an older update is rejected as stale',async()=>{
         const f=fixture(),old=deferred<boolean>();f.controller.begin(1);f.controller.frame(frame());await flush();

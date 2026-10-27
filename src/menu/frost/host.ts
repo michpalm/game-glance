@@ -1,12 +1,15 @@
 import { createFrostBridge } from './backend';
-import { createFrostController } from './controller';
+import { createFrostController, type FrostWarmup } from './controller';
 import { observeFrostFrame } from './geometry';
 import { createHomeFrost } from './home';
-import { REGION_IDS, type FrostContext, type NativeFrostEnvironment, type RegionId } from './types';
+import { menuViewportAgrees } from '../presentation';
+import { REGION_IDS, type FrostContext, type FrostFrame, type NativeFrostEnvironment, type RegionId } from './types';
+
+export interface FrostHostOptions {takeWarmup?():FrostWarmup|null;measured?(frame:FrostFrame):void}
 
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */
-export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null) {
-    const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder)});
+export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null,options:FrostHostOptions={}) {
+    const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder),takeWarmup:options.takeWarmup});
     let environment:NativeFrostEnvironment|null=null,reading=false;
     let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:(()=>void)|undefined;
     let visible=false,stopped=false,lastContext='',lastElements:HTMLElement[]=[];
@@ -20,7 +23,10 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
         lastContext=signature;lastElements=elements as HTMLElement[];
         if(!value||!source.defaultView||!owner.defaultView||elements.some(e=>!e)){controller.frame(null);return;}
         const regions=Object.fromEntries(REGION_IDS.map((id,i)=>[id,elements[i]!])) as Record<RegionId,HTMLElement>;
-        stopMeasurement=observeFrostFrame({generation:session.generation,source:source.defaultView,owner:owner.defaultView,placeholder,elements:regions,context:value},frame=>controller.frame(frame));
+        stopMeasurement=observeFrostFrame({generation:session.generation,source:source.defaultView,owner:owner.defaultView,placeholder,elements:regions,context:value},frame=>{
+            if(!source.defaultView||!menuViewportAgrees(placeholder.getBoundingClientRect(),source.defaultView)){controller.frame(null);return;}
+            if(frame)options.measured?.(frame);controller.frame(frame);
+        });
     }
     // These are cheap context reads inside the active host lease. Geometry
     // measurement itself is observer-driven and coalesced to one RAF.
@@ -35,7 +41,8 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     return {
         setSession(value:typeof session){
             if(stopped)return;
-            stopMeasurement?.();stopMeasurement=undefined;lastContext='';lastElements=[];
+            const stop=stopMeasurement;stopMeasurement=undefined;lastContext='';lastElements=[];
+            try{stop?.();}catch{/* Cancel the old generation even if its document retired. */}
             const old=session;session=value;
             if(old)void controller.end(old.generation);
             if(!value?.enabled)return;
@@ -46,11 +53,13 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
         presented(){visible=true;if(session)controller.presented(session.generation);},
         async clear(generation:number){
             if(session?.generation!==generation)return;
-            stopMeasurement?.();stopMeasurement=undefined;session=null;
-            await controller.end(generation);
+            const stop=stopMeasurement;stopMeasurement=undefined;session=null;
+            try{stop?.();}finally{await controller.end(generation);}
         },
         dispose(){
-            if(stopped)return;stopped=true;clearInterval(timer);observer?.disconnect();stopMeasurement?.();
+            if(stopped)return;stopped=true;clearInterval(timer);
+            try{observer?.disconnect();}catch{/* The renderer may have closed. */}
+            try{stopMeasurement?.();}catch{/* Retired observer handles must not interrupt host teardown. */}
             void controller.dispose();
         },
     };

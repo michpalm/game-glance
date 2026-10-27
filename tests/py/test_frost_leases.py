@@ -197,6 +197,18 @@ def test_stale_frontend_color_or_auto_cap_cannot_enable_a_shader(tmp_path):
     assert replies[2]['status']=='unavailable' and n.calls==[]
 
 
+@pytest.mark.parametrize('operation', ['prepare', 'present'])
+@pytest.mark.parametrize('background,color', [('game', 'hdr'), ('steam', 'sdr')])
+def test_valid_unsupported_mapping_reports_fallback_without_touching_native(tmp_path, operation, background, color):
+    w, n, _, replies = fixture(tmp_path)
+    f = frame()
+    f['context'].update(background=background, colorMode=color)
+    n.environment_state['hdr'] = color == 'hdr'
+    w.command(1, operation, {'request_id': 'unsupported-output', 'frame': f})
+    assert replies[1] == {'status': 'unavailable', 'reason': 'unsupported'}
+    assert n.calls == []
+
+
 def test_cancelled_late_ready_does_not_block_a_later_rearmed_warmup(tmp_path):
     w, n, _, replies = fixture(tmp_path)
     w.command(1, "prepare", {"request_id": "old", "frame": frame()})

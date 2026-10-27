@@ -1,5 +1,12 @@
 import type { HomeFrost } from './home';
-import type { FrostBridge, FrostFrame } from './types';
+import { REGION_IDS, type FrostBridge, type FrostFrame, type Prepared } from './types';
+
+export interface FrostWarmup {requestId:string;frame:FrostFrame;ready:Promise<Prepared>}
+export function frostAllocation(frame:FrostFrame):string {
+    return JSON.stringify([frame.context,...REGION_IDS.map(id=>{
+        const r=frame.regions[id];return [Math.ceil((r.width*frame.context.outputWidth+48)/4),Math.ceil((r.height*frame.context.outputHeight+48)/4)];
+    })]);
+}
 
 export interface FrostClock {
     setInterval(callback:()=>void,ms:number):ReturnType<typeof setInterval>;
@@ -10,13 +17,13 @@ interface Session {
     request?:string; token?:string; activating?:boolean; homeActive?:boolean;
     sequence:number; timer?:ReturnType<typeof setInterval>; renewing?:boolean;
 }
-export function createFrostController({bridge,home,clock=globalThis}:{bridge:FrostBridge;home:HomeFrost|null;clock?:FrostClock}) {
+export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:{bridge:FrostBridge;home:HomeFrost|null;clock?:FrostClock;takeWarmup?:()=>FrostWarmup|null}) {
     const nonce=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let session:Session|undefined,attempt=0,disposed=false;
     const safely=(action:()=>Promise<unknown>)=>{try{return action().catch(()=>undefined);}catch{return Promise.resolve();}};
     function clear(s:Session):Promise<unknown> {
         if(s.timer!==undefined)clock.clearInterval(s.timer);s.timer=undefined;
-        if(s.homeActive){home?.clear();s.homeActive=false;}
+        if(s.homeActive){s.homeActive=false;try{home?.clear();}catch{/* A retired document cannot interrupt lease cleanup. */}}
         const token=s.token,request=s.request;s.token=s.request=undefined;
         return Promise.all([...(token?[safely(()=>bridge.release(token))]:[]),...(request?[safely(()=>bridge.cancel(request))]:[])]);
     }
@@ -29,9 +36,12 @@ export function createFrostController({bridge,home,clock=globalThis}:{bridge:Fro
         },250);
     }
     function prepare(s:Session,frame:FrostFrame){
-        const request=`${nonce}:${s.generation}:${++attempt}`;s.request=request;
+        const candidate=takeWarmup?.();
+        const warmup=candidate&&candidate.frame.generation===s.generation&&frostAllocation(candidate.frame)===frostAllocation(frame)?candidate:null;
+        if(candidate&&!warmup)void safely(()=>bridge.cancel(candidate.requestId));
+        const request=warmup?.requestId??`${nonce}:${s.generation}:${++attempt}`;s.request=request;
         void safely(async()=>{
-            if(bridge.present&&!s.presented){
+            if(bridge.present&&!s.presented&&!warmup){
                 s.activating=true;
                 const active=await bridge.present(request,frame);
                 s.activating=false;
@@ -39,7 +49,7 @@ export function createFrostController({bridge,home,clock=globalThis}:{bridge:Fro
                 if(!current(s,request)||s.presented){await safely(()=>bridge.release(active.token));return;}
                 s.sequence=1;s.token=active.token;heartbeat(s);return;
             }
-            const ready=await bridge.prepare(request,frame);
+            const ready=await(warmup?.ready??bridge.prepare(request,frame));
             if(!current(s,request)||ready.status!=='ready'||s.presented)return;
             s.activating=true;
             const active=await bridge.activate(request,ready.key,++s.sequence,s.frame??frame);
@@ -58,7 +68,7 @@ export function createFrostController({bridge,home,clock=globalThis}:{bridge:Fro
         frame(frame:FrostFrame|null){
             const s=session;if(!s||disposed||frame&&frame.generation!==s.generation)return;
             if(!frame){void clear(s);s.frame=undefined;s.signature=undefined;return;}
-            const signature=JSON.stringify([frame.context,...Object.values(frame.regions).map(r=>[r.width,r.height])]);
+            const signature=frostAllocation(frame);
             if(s.signature&&s.signature!==signature)void clear(s);
             const changed=s.signature!==signature;s.signature=signature;s.frame=frame;
             if(frame.context.background==='steam'){
@@ -79,6 +89,6 @@ export function createFrostController({bridge,home,clock=globalThis}:{bridge:Fro
             const s=session;if(!s||s.generation!==generation)return;
             session=undefined;await clear(s);
         },
-        async dispose(){if(disposed)return;disposed=true;const s=session;session=undefined;if(s)await clear(s);home?.dispose();},
+        async dispose(){if(disposed)return;disposed=true;const s=session;session=undefined;if(s)await clear(s);try{home?.dispose();}catch{/* The document may already be gone. */}},
     };
 }

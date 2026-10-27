@@ -3,7 +3,9 @@ import { findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { prepareMenuPresentation } from './presentation';
-import { createMenuFrostHost } from './frost/host';
+import { createMenuFrostHost, type FrostHostOptions } from './frost/host';
+import { createFrostBridge } from './frost/backend';
+import { createFrostSessions } from './frost/sessions';
 import { readFrostContext } from './frost/context';
 import type { NativeFrostEnvironment } from './frost/types';
 import { installTokenCss } from '../styles/tokens';
@@ -164,7 +166,7 @@ export function retireMenuBackdrop(document: Document, backdrop: HTMLElement, vi
 }
 
 type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void; setFrostSession:NonNullable<HostAttachment['setFrostSession']>; clearFrost:NonNullable<HostAttachment['clearFrost']> };
-export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:(environment?:NativeFrostEnvironment|null)=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null): ViewportRelease {
+export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:(environment?:NativeFrostEnvironment|null)=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null,frostOptions:FrostHostOptions={}): ViewportRelease {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
@@ -191,7 +193,7 @@ export function stretchMenuViewport(document: Document, classes: readonly string
         releaseTokens.push(installTokenCss(document, selector));
         if (source && source !== document) releaseTokens.push(installTokenCss(source, selector));
         let frost:ReturnType<typeof createMenuFrostHost>|undefined;
-        try{if(source&&frostContext){frost=createMenuFrostHost(document,source,document.getElementsByClassName(placeholder)[0] as HTMLElement,frostContext);frost.setSession(initialFrostSession);}}catch{frost?.dispose();frost=undefined;}
+        try{if(source&&frostContext){frost=createMenuFrostHost(document,source,document.getElementsByClassName(placeholder)[0] as HTMLElement,frostContext,frostOptions);frost.setSession(initialFrostSession);}}catch{frost?.dispose();frost=undefined;}
         const presentation = source ? prepareMenuPresentation(document, source, document.getElementsByClassName(placeholder)[0] as HTMLElement,()=>frost?.presented()) : undefined;
         let stopped = false;
         const release = (closing = false) => {
@@ -228,7 +230,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
         let stopClosingBackdrop: Stop | undefined;
         let stopChrome: Stop | undefined;
         let stopPageStatus: Stop | undefined;
-        let frostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null;
+        const frostSessions=createFrostSessions(createFrostBridge());
         let contextId=0,contextFingerprint='';
         let lastEnvironment:NativeFrostEnvironment|null=null;
         const frostContext=(environment?:NativeFrostEnvironment|null)=>{
@@ -248,21 +250,25 @@ export function registerDiscoveredMenuHost(): Stop | null {
         const releaseViewport = (closing = false) => {
             if (!stopViewport) return;
             const release = stopViewport; stopViewport = undefined;
+            frostSessions.attach(null);
             stopClosingBackdrop?.(); stopClosingBackdrop = release(closing);
         };
         function stretchViewport(tree: Tree, popup?: Window) {
             if (!popup?.document) throw new Error('Native menu popup is unavailable');
             stopClosingBackdrop?.(); stopClosingBackdrop = undefined;
             if (!stopViewport) {
-                stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document,frostContext,frostSession);
+                stopViewport = stretchMenuViewport(document!, String(tree.props.className ?? '').split(/\s+/), popup.document,frostContext,frostSessions.current(),{
+                    takeWarmup:frostSessions.takeWarmup,measured:frostSessions.remember,
+                });
+                frostSessions.attach(stopViewport);
             }
         }
         let read: () => HostSnapshot;
         let confirmed: ReactNode;
         const pending = new Set<{ resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
         return createNativeHost({
-            setFrostSession(value){frostSession=value;stopViewport?.setFrostSession(value);},
-            clearFrost(generation){if(frostSession?.generation===generation)frostSession=null;return stopViewport?.clearFrost(generation)??Promise.resolve();},
+            setFrostSession:frostSessions.setFrostSession,
+            clearFrost:frostSessions.clearFrost,
             conceal: () => stopViewport?.conceal() ?? Promise.resolve(),
             resume: () => stopViewport?.resume(),
             verifyPresentation() {
@@ -323,6 +329,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 return () => {
                     try { release(); }
                     finally {
+                        frostSessions.dispose();
                         releaseViewport();
                         stopClosingBackdrop?.(); stopClosingBackdrop = undefined;
                         releaseChromeSubscription(); releaseEffects();

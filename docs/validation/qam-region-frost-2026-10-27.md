@@ -8,13 +8,11 @@
 - Owner-document Home backdrop surfaces and cropped in-game shader with glass fallback.
 - Generation cancellation, ordered updates, 250 ms heartbeat and 1-second lease expiry. Preparation and activation share a bounded zero-mask lease.
 - Strict geometry-only RPCs plus one read-only native-environment query. No global force-composition writer, capture pipeline or persisted region telemetry.
-- 1,939 frontend tests; 83 Python tests; TypeScript and Rollup build pass.
+- 1,947 frontend tests; 95 Python tests; TypeScript and Rollup build pass.
 - Offline pinned compiler: 36 SDR contexts across 16:9/16:10 outputs, unequal game resolutions, Fit/Fill/Stretch and capped Auto. Each has a positive 72-byte uniform buffer, six cropped targets, one production technique and seven passes. A valid zero-uniform shader is explicitly rejected.
 - ZIP inspected: production FX template and six backend modules present; no debug shaders, captures, bytecode or source maps.
 
-Preview ZIP SHA-256: `ffc71624dcccce1de8e7d490ae9fa50dba9c828208d0df5ac09c1b03a20b84bc`.
-
-Frontend SHA-256: `9cb01c15f11de480e65c0fe630dae5e46b0963be6df1f096fb79524618991b2e`.
+Latest installed preview ZIP SHA-256: `58622d553825cb753f1ffcf6fe170d6170c9c408de8b626a13f70ef9881847f3`. A subsequent local diagnostic correction classifies valid unsupported HDR/Home shader requests as `unsupported`, rather than `invalid-geometry`; that correction has not been installed yet.
 
 ## Independent review and corrections
 
@@ -28,13 +26,18 @@ Further source inspection established that disabling can clear the last pipeline
 
 Native readiness is emitted from pipeline `update()`, called by `execute()`, after `set_effect` re-arms the callback. Installed behavior still needs a live effect test. Readiness/activation acknowledgements do not establish atomic GPU presentation across the game and Steam UI.
 
-## Read-only Ally checks
+## Ally integration checks and recovery
 
-- Ally reachable; original frontend remains installed at `924e3279894aeedbb441040c91ce82a8dc69e1680b427266767a0b01f3e43aa8`.
-- Native Wayland ABI/interface binding passed without enabling an effect. The bridge reports HDR off and an Auto maximum scale of 2.
+- Original frontend rollback hash: `924e3279894aeedbb441040c91ce82a8dc69e1680b427266767a0b01f3e43aa8`. The revised preview is currently installed; original frontend and backend were verified against their backup during recovery.
+- Native Wayland ABI/interface binding passed. Initial preflight reported HDR off; the latest external-TV game session reports HDR on and an Auto maximum scale of 2. These are observations of different output contexts, not a claim that the display configuration is unchanged.
 - Steam's performance store omits `is_hdr_enabled`, and its process environment omits `WAYLAND_DISPLAY`. The implementation reads native HDR metadata and discovers one verified desktop-owned Gamescope socket; ambiguous sockets fail closed.
-- Effect slot empty, technique 0, global force-composition value 0 before testing. No shader was activated during preflight.
-- The screen-update confirmation requested from the user remains pending. No new preview installation or live effect test has occurred.
+- Initial native effect slot was empty, technique 0, global force-composition value 0. No test writes the global force-composition property.
+- Earlier integrated SDR openings missed the presentation deadline. A measured separate prepare/activate round trip was removed; early preparation now uses cached plain geometry and verifies it against the live allocation before activation. This has not yet established successful integrated SDR frost presentation.
+- An initial early-preparation experiment froze both Steam JS renderers. The compositor remained responsive; no effect or global force override remained active, and recent kernel checks showed no GPU reset/timeout. Precise cause is unproven. Synchronous cross-window reads in the native input callback are the leading hypothesis.
+- Restored the original frontend, restarted only Steam webhelper processes after graceful restart failed, and installed the complete baseline through Decky. Frontend/backend backup hashes and the settings fingerprint matched. The user confirmed normal screen updates and menu operation afterward.
+- The corrected session manager defers surface work out of native input callbacks. A frontend-only canary and then the full revised preview both remained responsive. The full preview completed two game-menu openings with both renderers responding. A foreground SSH recovery guard was armed and disarmed successfully; detached SSH child watchdogs did not survive and must not be relied on.
+- The latest full-preview run used the external TV with native HDR enabled. Its valid frame was rejected by the SDR-only shader path, leaving glass; the backend incorrectly labelled this `invalid-geometry`. A regression test reproduced that classification and the local correction passes. This run does not validate shader performance or SDR frost.
+- Home previously exposed all three bounded 8px backdrop surfaces. Their presence and bounds are established; visual ordering/strength and transition acceptance remain pending.
 
 ## Rollback and settings
 
@@ -42,11 +45,11 @@ Existing plugin backup on Ally: `/home/deck/gg-qam-region-frost-backup-20261027-
 
 Before-install settings fingerprint (canonical JSON for `settings` and `menu:preferences` only): `5ae04ce320421d5c3448605f0786600634f0d0812e08d7a9a39a4a72d1279b65`.
 
-Use Decky's normal ZIP installer for the preview and rollback; the SSH account cannot write the root-owned plugin directory without elevation. No password is needed when using Decky's installer. A rollback ZIP can be generated from the private backup above, preserving plugin metadata and Python modules. After rollback, reload Game Glance and verify its frontend hash and the settings fingerprint. Do not restore or publish private settings/caches.
+Use Decky's normal ZIP installer for the preview and rollback; the SSH account cannot replace the root-owned plugin directory without elevation. No password is needed when using Decky's installer. The verified rollback ZIP is `/home/deck/gg-qam-region-frost-preview/game-glance-rollback.zip`, SHA-256 `3c992ffa636bad64c8f11c6cad459d62e5eb7c9942c8bf0083ef61329982841c`. After rollback, reload Game Glance and verify its frontend/backend hashes and the settings fingerprint. Do not restore or publish private settings/caches.
 
 ## Outstanding acceptance
 
-- Confirm the physical display updates, install the preview and verify its hashes/settings.
+- Confirm physical responsiveness of the revised preview and repeat SDR testing on the built-in screen or an SDR output. Baseline physical recovery is user-confirmed; preview renderer health checks pass.
 - Test actual shader activation without a force-composition override; check all three masks, foreground sharpness and bell/count visibility.
 - Verify Home backdrop-root ordering and visual blur strength.
 - Record permitted Quick settings opening/closing with Social and Home feed closed. Reject late frost, blur-only frames, choppy edges, close flashes or residue.
