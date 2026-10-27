@@ -2,16 +2,17 @@ import { createFrostBridge } from './backend';
 import { createFrostController } from './controller';
 import { observeFrostFrame } from './geometry';
 import { createHomeFrost } from './home';
-import { REGION_IDS, type FrostContext, type RegionId } from './types';
+import { REGION_IDS, type FrostContext, type NativeFrostEnvironment, type RegionId } from './types';
 
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */
-export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:()=>FrostContext|null) {
-    const controller=createFrostController({bridge:createFrostBridge(),home:createHomeFrost(owner,placeholder)});
+export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null) {
+    const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder)});
+    let environment:NativeFrostEnvironment|null=null,reading=false;
     let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:(()=>void)|undefined;
     let visible=false,stopped=false,lastContext='',lastElements:HTMLElement[]=[];
     function measure(force=false){
         if(stopped||!session?.enabled)return;
-        const value=context(),root=source.querySelector('.gg-menu');
+        const value=context(environment),root=source.querySelector('.gg-menu');
         const elements=REGION_IDS.map(id=>root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`));
         const signature=JSON.stringify(value);
         if(!force&&signature===lastContext&&elements.every((e,i)=>e===lastElements[i]))return;
@@ -23,7 +24,11 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     }
     // These are cheap context reads inside the active host lease. Geometry
     // measurement itself is observer-driven and coalesced to one RAF.
-    const timer=setInterval(()=>{try{measure();}catch{controller.frame(null);}},250);
+    const refresh=()=>{
+        if(reading||stopped||!session?.enabled)return;reading=true;
+        void bridge.environment?.().then(value=>{if(!stopped){environment=value;measure();}},()=>{environment=null;controller.frame(null);}).finally(()=>{reading=false;});
+    };
+    const timer=setInterval(()=>{try{measure();refresh();}catch{controller.frame(null);}},250);
     const Observer=(source.defaultView as (Window & {MutationObserver?:typeof MutationObserver})|null)?.MutationObserver;
     const observer=Observer?new Observer(()=>{try{measure();}catch{controller.frame(null);}}):undefined;
     observer?.observe(source.body,{childList:true,subtree:true});
@@ -36,7 +41,7 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
             if(!value?.enabled)return;
             controller.begin(value.generation);
             if(visible)controller.presented(value.generation);
-            measure(true);
+            measure(true);refresh();
         },
         presented(){visible=true;if(session)controller.presented(session.generation);},
         async clear(generation:number){

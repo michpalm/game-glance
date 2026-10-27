@@ -13,6 +13,9 @@ uniform float2 NotificationsRadius = float2(0, 0);
 #elif @FIT@ == 1
 #define FitScale max(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT)
 #define GameSize (InputSize * FitScale)
+#elif @FIT@ == 3
+#define FitScale min(min(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT), @MAX_SCALE@)
+#define GameSize (InputSize * FitScale)
 #else
 #define GameSize OutputSize
 #endif

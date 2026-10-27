@@ -15,7 +15,7 @@ def build_shader(frame: dict) -> tuple[str, str]:
     if c["background"] != "game" or c["colorMode"] != "sdr":
         raise ValueError("unsupported color/background mapping")
     source = (Path(__file__).parent / "assets/qam-frost.fx.in").read_text()
-    values = {"OUT_W": str(c["outputWidth"]), "OUT_H": str(c["outputHeight"]), "FIT": str(("fit", "fill", "stretch").index(c["fit"]))}
+    values = {"OUT_W": str(c["outputWidth"]), "OUT_H": str(c["outputHeight"]), "FIT": str(("fit", "fill", "stretch", "auto").index(c["fit"])), "MAX_SCALE": str(float(c.get("maxScale", 16384)))}
     # Output-space quarter-resolution tiles keep sampling density and visual
     # strength stable when the game renders below the display resolution.
     for name in REGIONS:

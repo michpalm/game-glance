@@ -9,6 +9,7 @@ import ctypes.util
 import math
 import select
 import struct
+from pathlib import Path
 from dataclasses import dataclass
 
 
@@ -30,6 +31,30 @@ def pack_uniform(name, values):
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1 for v in values):
         raise ValueError("invalid uniform values")
     return struct.pack("<" + "f" * len(values), *values)
+
+
+def read_max_scale(proc_root, uid):
+    candidates = []
+    for process in proc_root.iterdir():
+        candidate = False
+        try:
+            if not process.name.isdigit() or process.stat().st_uid != uid or (process / "comm").read_text().strip() not in ("gamescope", "gamescope-wl"):
+                continue
+            candidate = True
+            args = (process / "cmdline").read_bytes().split(b"\0")
+            scale = 16384.0  # FLT_MAX default is unbounded for our bounded outputs.
+            for i, arg in enumerate(args):
+                if arg in (b"--max-scale", b"-m"):
+                    scale = float(args[i + 1])
+                elif arg.startswith(b"--max-scale="):
+                    scale = float(arg.split(b"=", 1)[1])
+                elif arg.startswith(b"-m"):
+                    scale = float(arg[2:])
+            candidates.append(scale if math.isfinite(scale) and 0 < scale <= 16384 else None)
+        except (OSError, ValueError, IndexError):
+            if candidate:
+                candidates.append(None)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 class Interface(C.Structure):
@@ -119,6 +144,9 @@ class NativeConnection:
         self.effect_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_RESHADE_EFFECT", 0)
         self.technique_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_RESHADE_TECHNIQUE_IDX", 0)
         self.cardinal = self.x.XInternAtom(self.xdisplay, b"CARDINAL", 0)
+        self.hdr_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_DISPLAY_HDR_ENABLED", 0)
+        import os
+        self.max_scale = read_max_scale(Path("/proc"), os.getuid())
         self._sync()
 
     def _property(self, atom):
@@ -145,6 +173,10 @@ class NativeConnection:
             raise OSError("Unsupported Gamescope properties")
         return NativeState(effect or "", technique)
 
+    def environment(self):
+        hdr = self._property(self.hdr_atom)
+        return {"hdr": bool(hdr), "maxScale": self.max_scale} if type(hdr) is int and hdr in (0, 1) else None
+
     def select_technique(self, index):
         if index is None:
             self.x.XDeleteProperty(self.xdisplay, self.root, self.technique_atom)
@@ -160,6 +192,7 @@ class NativeConnection:
     def set_effect(self, relative_name):
         self.wl.wl_proxy_marshal_flags(self.proxy, 1, None, 1, 0, C.c_char_p(relative_name.encode()))
         self._sync()
+        self.ready.clear()  # discard delivery attributable to the previous arm
 
     def set_uniform(self, name, value):
         expected = 8 if name.endswith("Radius") else 16
@@ -198,6 +231,9 @@ class NativeConnection:
             self.wl.wl_display_cancel_read(self.display)
         ready, self.ready = self.ready, set()
         return ready
+
+    def fileno(self):
+        return self.wl.wl_display_get_fd(self.display)
 
     def close(self):
         if self.xdisplay:

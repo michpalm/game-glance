@@ -4,6 +4,8 @@ Date: 27 October 2026
 
 Status: design approved by the user on 27 October 2026. The three-region in-game visual prototype is also approved; production integration is not yet implemented.
 
+Execution status: implementation now exists locally; integrated device acceptance is pending. Source inspection required refinements to the proposed cache strategy below: retain a bounded zero-mask preparation lease through activation, because disabling can discard the native pipeline; re-arm and verify each preparation instead of inferring cache readiness. Production uniforms use two radius axes (72 bytes) to preserve corners under unequal viewport scaling. Native read-only metadata supplies missing HDR state and capped Auto fitting. See [integration validation](../../validation/qam-region-frost-2026-10-27.md) for evidence and remaining checks. These refinements preserve the approved visual scope and fallback behavior.
+
 ## Intended result
 
 Give the QAM live frosting beneath its rounded tab bar, main panel and notification capsule. Keep the gaps, surrounding game and foreground controls sharp. Preserve the current 75% glass tint, layout, controller navigation and existing menu enablement preference. Add no cosmetic settings.

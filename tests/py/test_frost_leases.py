@@ -20,6 +20,7 @@ class FakeNative:
 
     def set_effect(self, path):
         self.path = path
+        self.ready.clear()
         self.calls.append(("set", path))
 
     def select_technique(self, index):
@@ -74,19 +75,86 @@ def test_foreign_effect_is_never_replaced(tmp_path):
     assert n.calls == []
 
 
-def test_prepare_requires_ready_but_verified_cache_reuses_without_event(tmp_path):
+def test_every_prepare_rearms_readiness_even_for_a_cached_native_pipeline(tmp_path):
     w, n, _, replies = fixture(tmp_path)
     w.command(1, "prepare", {"request_id": "r", "frame": frame()})
     w.tick()
     assert 1 not in replies
     n.ready.add(n.path)
     w.tick()
-    assert replies[1]["status"] == "ready" and n.state == NativeState("", 7)
+    assert replies[1]["status"] == "ready" and n.state.effect and n.state.technique == 0
+    w.command(10,"cancel",{"request_id":"r"})
     w.command(2, "prepare", {"request_id": "r2", "frame": frame()})
+    assert 2 not in replies
+    n.ready.add(n.path)
+    w.tick()
     assert replies[2]["status"] == "ready"
+    w.command(11,"cancel",{"request_id":"r2"})
     other = frame(width=1280)
     w.command(3, "prepare", {"request_id": "r3", "frame": other})
     assert 3 not in replies
+
+
+def test_evicted_pipeline_and_viewport_identity_cannot_bypass_a_fresh_ready_event(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    prepare(w, n, replies)
+    w.command(20,"cancel",{"request_id":"req1"})
+    prepare(w, n, replies, "other", frame(width=1280))
+    w.command(21,"cancel",{"request_id":"other"})
+    w.command(8, "prepare", {"request_id": "again", "frame": frame()})
+    assert 8 not in replies
+    n.ready.add(n.path)
+    w.tick()
+    assert replies[8]["status"] == "ready"
+    w.command(22,"cancel",{"request_id":"again"})
+    f = frame()
+    f["context"]["viewportId"] = "replacement"
+    w.command(9, "prepare", {"request_id": "replacement", "frame": f})
+    assert 9 not in replies
+    n.ready.add(n.path)
+    w.tick()
+    assert replies[9]["status"] == "ready"
+
+
+def test_foreign_use_while_idle_invalidates_prepared_readiness(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    key = prepare(w, n, replies)["key"]
+    n.state = NativeState("foreign.fx", 5)
+    w.tick()
+    n.state = NativeState("", 5)
+    w.command(9, "activate", {"request_id": "req1", "key": key, "sequence": 1, "frame": frame()})
+    assert replies[9] == {"status": "unavailable", "reason": "not-ready"}
+
+
+def test_prepare_and_activate_share_pipeline_without_disable_or_reenable(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    key = prepare(w, n, replies)["key"]
+    assert ("disable",) not in n.calls
+    n.calls.clear()
+    w.command(2,"activate",{"request_id":"req1","key":key,"sequence":1,"frame":frame()})
+    assert replies[2]["status"] == "active"
+    assert not any(call[0] in ("set","enable","disable") for call in n.calls)
+
+
+def test_ready_zero_mask_lease_expires_when_frontend_never_activates(tmp_path):
+    w, n, now, replies = fixture(tmp_path)
+    prepare(w,n,replies)
+    now[0] = 1
+    w.tick()
+    assert n.state == NativeState("",7)
+
+
+def test_cancelled_late_ready_does_not_block_a_later_rearmed_warmup(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    w.command(1, "prepare", {"request_id": "old", "frame": frame()})
+    w.command(2, "cancel", {"request_id": "old"})
+    n.ready.add(n.path)
+    w.tick()
+    w.command(3, "prepare", {"request_id": "new", "frame": frame()})
+    assert 3 not in replies
+    n.ready.add(n.path)
+    w.tick()
+    assert replies[3]["status"] == "ready"
 
 
 def test_cancel_before_token_and_late_ready_cannot_activate(tmp_path):

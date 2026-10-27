@@ -15,16 +15,23 @@ def session_environment(home, candidate, validate=True):
     keys = ("DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XAUTHORITY")
     env = {key: candidate[key] for key in keys if isinstance(candidate.get(key), str)}
     env.update({"HOME": home, "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
-    if not re.fullmatch(r":\d+(?:\.\d+)?", env.get("DISPLAY", "")) or not re.fullmatch(r"(?:gamescope|wayland)-\d+", env.get("WAYLAND_DISPLAY", "")):
+    if not re.fullmatch(r":\d+(?:\.\d+)?", env.get("DISPLAY", "")):
         raise ValueError("unsupported desktop display")
     runtime = Path(env.get("XDG_RUNTIME_DIR", ""))
     if not runtime.is_absolute():
         raise ValueError("invalid runtime directory")
     if validate:
         uid = Path(home).stat().st_uid
+        if not env.get("WAYLAND_DISPLAY"):
+            sockets = [p for p in runtime.iterdir() if re.fullmatch(r"gamescope-\d+",p.name) and p.stat().st_uid == uid and stat.S_ISSOCK(p.stat().st_mode)]
+            if len(sockets) != 1:
+                raise ValueError("ambiguous Gamescope session")
+            env["WAYLAND_DISPLAY"] = sockets[0].name
         socket = runtime / env["WAYLAND_DISPLAY"]
         if runtime.stat().st_uid != uid or socket.stat().st_uid != uid or not stat.S_ISSOCK(socket.stat().st_mode):
             raise ValueError("unverified desktop session")
+    if not re.fullmatch(r"(?:gamescope|wayland)-\d+",env.get("WAYLAND_DISPLAY","")):
+        raise ValueError("unsupported Wayland display")
     return subprocess_env(env)
 
 
@@ -132,6 +139,10 @@ class FrostService:
 
     async def prepare(self, request_id, frame):
         return await self._call("prepare", {"request_id": request_id, "frame": frame})
+
+    async def environment(self):
+        result = await self._call("environment", {})
+        return result if isinstance(result, dict) and set(result) == {"hdr", "maxScale"} else None
 
     async def activate(self, request_id, key, sequence, frame):
         return await self._call("activate", {"request_id": request_id, "key": key, "sequence": sequence, "frame": frame})

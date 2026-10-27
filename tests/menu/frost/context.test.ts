@@ -17,4 +17,9 @@ describe('frost context',()=>{
         expect(readFrostContext(owner(true,3,null),'v1')).toBeNull();
         const o=owner(); Object.assign(o,{innerWidth:0}); expect(readFrostContext(o,'v1')).toBeNull();
     });
+    it('uses verified compositor HDR and Auto cap when Steam omits those values',()=>{
+        const o=owner(true,1,null);
+        expect(readFrostContext(o,'v1',{hdr:false,maxScale:2})).toMatchObject({colorMode:'sdr',fit:'auto',maxScale:2});
+        expect(readFrostContext(o,'v1',{hdr:false,maxScale:null})).toBeNull();
+    });
 });

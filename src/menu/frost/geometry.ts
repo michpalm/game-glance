@@ -44,8 +44,19 @@ export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame
         publish(null);
         if(frame===undefined) frame=source.requestAnimationFrame(()=>{frame=undefined;if(!stopped)publish(measureFrostFrame(input));});
     };
+    const boundsKey=(element:Element)=>{const r=element.getBoundingClientRect();return [r.left,r.top,r.width,r.height].join(',');};
+    const initialBounds=new Map<Element,string>([input.placeholder,...REGION_IDS.map(id=>input.elements[id])].filter(Boolean).map(e=>[e,boundsKey(e)]));
     const Resize=(source as Window & {ResizeObserver?:typeof ResizeObserver}).ResizeObserver;
-    const observer=Resize ? new Resize(invalidate) : undefined;
+    const observer=Resize ? new Resize(entries=>{
+        // observe() schedules an initial delivery even when nothing resized.
+        // Suppress only that unchanged first delivery for each target.
+        let changed=entries.length===0;
+        for(const {target} of entries){
+            if(initialBounds.get(target)!==boundsKey(target))changed=true;
+            initialBounds.delete(target);
+        }
+        if(changed)invalidate();
+    }) : undefined;
     observer?.observe(input.placeholder);
     for(const id of REGION_IDS) if(input.elements[id])observer?.observe(input.elements[id]);
     source.addEventListener('resize',invalidate); owner.addEventListener('resize',invalidate);

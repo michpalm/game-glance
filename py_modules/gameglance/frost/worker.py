@@ -23,8 +23,9 @@ def unavailable(reason):
 class FrostWorker:
     def __init__(self, native, home, clock, reply):
         self.native, self.home, self.clock, self.reply = native, home, clock, reply
-        self.prepared, self.cache, self.cancelled, self.files = {}, set(), set(), {}
+        self.prepared, self.cancelled, self.files = {}, set(), {}
         self.active = self.warm = self.owned = None
+        self.prepared_owner = None
         self.previous_technique = None
         self.closed = False
 
@@ -53,6 +54,9 @@ class FrostWorker:
             if state.effect == self.owned and state.technique == self.previous_technique:
                 self.native.disable()
         self.owned = self.active = None
+        self.prepared_owner = None
+        for record in self.prepared.values():
+            record["ready"] = False
         if self.warm:
             self.reply(self.warm["rpc"], unavailable(reason))
             self.warm = None
@@ -83,7 +87,7 @@ class FrostWorker:
 
     def command(self, rpc, operation, args):
         expected = {"prepare": {"request_id", "frame"}, "activate": {"request_id", "key", "sequence", "frame"},
-                    "update": {"token", "sequence", "frame"}, "renew": {"token"}, "release": {"token"}, "cancel": {"request_id"}}
+                    "update": {"token", "sequence", "frame"}, "renew": {"token"}, "release": {"token"}, "cancel": {"request_id"}, "environment": set()}
         try:
             if self.closed or operation not in expected or not isinstance(args, dict) or set(args) != expected[operation]:
                 raise ValueError("invalid operation")
@@ -108,7 +112,7 @@ class FrostWorker:
     def _prepare(self, rpc, request_id, frame):
         if request_id in self.cancelled:
             return unavailable("cancelled")
-        if self.active or self.warm:
+        if self.active or self.warm or self.prepared_owner:
             return unavailable("not-ready")
         if self.native.snapshot().effect:
             return unavailable("owned-elsewhere")
@@ -116,34 +120,39 @@ class FrostWorker:
         path = stage_shader(self.home, source, key)
         self.files[path] = key
         cached = (key, frame["context"]["viewportId"])
-        record = {"key": key, "path": path, "cache": cached, "expires": self.clock() + 30, "generation": frame["generation"]}
+        record = {"key": key, "path": path, "cache": cached, "ready": False, "expires": self.clock() + 30, "generation": frame["generation"]}
+        for previous in self.prepared.values():
+            previous["ready"] = False
         self.prepared[request_id] = record
         while len(self.prepared) > 8:
             self.prepared.pop(next(iter(self.prepared)))
-        if cached in self.cache:
-            return {"status": "ready", "key": key}
         if not self._take(path):
             return unavailable("owned-elsewhere")
         self.warm = {"rpc": rpc, "request": request_id, "record": record, "deadline": self.clock() + 5}
         return _PENDING
 
+    def _environment(self, rpc):
+        return self.native.environment()
+
     def _activate(self, rpc, request_id, key, sequence, frame):
         if request_id in self.cancelled:
             return unavailable("cancelled")
         record = self.prepared.get(request_id)
-        if not record or record["key"] != key or record["expires"] <= self.clock() or record["cache"] not in self.cache or record["generation"] != frame["generation"]:
+        if not record or record["key"] != key or record["expires"] <= self.clock() or not record["ready"] or record["generation"] != frame["generation"]:
             return unavailable("not-ready")
         if build_shader(frame)[1] != key or (key, frame["context"]["viewportId"]) != record["cache"]:
             return unavailable("invalid-geometry")
         if self.active or self.warm:
             return unavailable("not-ready")
-        if not self._take(record["path"]):
-            return unavailable("owned-elsewhere")
+        if not self.prepared_owner or self.prepared_owner["request"] != request_id or self.prepared_owner["deadline"] <= self.clock() or not self._still_owned():
+            self._clear()
+            return unavailable("not-ready")
         if not self._uniforms(frame):
             self._clear("owned-elsewhere")
             return unavailable("owned-elsewhere")
         token = secrets.token_hex(24)
         self.active = {"token": token, "request": request_id, "sequence": sequence, "key": key, "cache": record["cache"], "generation": frame["generation"], "deadline": self.clock() + 1}
+        self.prepared_owner = None
         return {"status": "active", "token": token}
 
     def _valid_token(self, token):
@@ -181,7 +190,7 @@ class FrostWorker:
     def _cancel(self, rpc, request_id):
         self.cancelled.add(request_id)
         self.prepared.pop(request_id, None)
-        if self.warm and self.warm["request"] == request_id or self.active and self.active["request"] == request_id:
+        if self.warm and self.warm["request"] == request_id or self.active and self.active["request"] == request_id or self.prepared_owner and self.prepared_owner["request"] == request_id:
             self._clear()
         return None
 
@@ -189,16 +198,29 @@ class FrostWorker:
         ready = self.native.poll(0)
         now = self.clock()
         self.prepared = {k: v for k, v in self.prepared.items() if v["expires"] > now}
+        if not self.owned and self.native.snapshot().effect:
+            for record in self.prepared.values():
+                record["ready"] = False
         if self.owned and not self._still_owned():
-            self.cache.clear()
+            for record in self.prepared.values():
+                record["ready"] = False
             self._clear("owned-elsewhere")
         elif self.active and self.active["deadline"] <= now:
+            self._clear()
+        elif self.prepared_owner and self.prepared_owner["deadline"] <= now:
             self._clear()
         elif self.warm:
             if self.warm["record"]["path"] in ready:
                 warm, self.warm = self.warm, None
-                self.cache.add(warm["record"]["cache"])
-                self._clear()
+                # set_effect re-arms the native ready callback. Pipeline execute
+                # invokes it even on a cache hit; verify each warmup rather than
+                # guessing residency from a frontend viewport identity.
+                for record in self.prepared.values():
+                    record["ready"] = record is warm["record"]
+                # Do not disable here: vulkan_composite clears the last pipeline
+                # when no effect is active. Hold only this current preparation,
+                # with zero masks and a one-second activation deadline.
+                self.prepared_owner = {"request": warm["request"], "deadline": now + 1}
                 self.reply(warm["rpc"], {"status": "ready", "key": warm["record"]["key"]})
             elif self.warm["deadline"] <= now:
                 self._clear("not-ready")
@@ -232,8 +254,11 @@ def serve(native, home, input_fd, reply, running=lambda: True):
         worker = FrostWorker(native, home, time.monotonic, reply)
         while running() and commands < 4096:
             worker.tick()
-            readable, _, _ = select.select([input_fd], [], [], .025)
-            if not readable:
+            descriptors=[input_fd]
+            if hasattr(native,"fileno"):
+                descriptors.append(native.fileno())
+            readable, _, _ = select.select(descriptors, [], [], .025)
+            if input_fd not in readable:
                 continue
             data = os.read(input_fd, 16385)
             if not data:

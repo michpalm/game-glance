@@ -80,3 +80,14 @@ def test_hdr_is_explicitly_unavailable_until_native_color_mapping_is_verified():
     f["context"]["colorMode"] = "hdr"
     with pytest.raises(ValueError, match="unsupported"):
         build_shader(f)
+
+
+def test_auto_mapping_requires_verified_cap_and_changes_shader_when_cap_changes():
+    f = frame(fit="auto")
+    with pytest.raises(ValueError):
+        validate_frame(f)
+    f["context"]["maxScale"] = 2
+    source, key = build_shader(f)
+    assert "@" not in source
+    f["context"]["maxScale"] = 1
+    assert build_shader(f)[1] != key

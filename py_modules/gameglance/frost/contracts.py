@@ -27,10 +27,12 @@ def validate_frame(value: object) -> dict:
     _fields(value, ("generation", "context", "regions"))
     _number(value["generation"], 0, 2**53 - 1, True)
     c = value["context"]
-    _fields(c, ("viewportId", "background", "outputWidth", "outputHeight", "dpr", "fit", "colorMode"))
+    _fields(c, ("viewportId", "background", "outputWidth", "outputHeight", "dpr", "fit", "colorMode") + (("maxScale",) if isinstance(c, dict) and c.get("fit") == "auto" else ()))
     identifier(c["viewportId"])
-    if c["background"] not in ("game", "steam") or c["fit"] not in ("fit", "fill", "stretch") or c["colorMode"] not in ("sdr", "hdr"):
+    if c["background"] not in ("game", "steam") or c["fit"] not in ("fit", "fill", "stretch", "auto") or c["colorMode"] not in ("sdr", "hdr"):
         raise ValueError("unsupported context")
+    if c["fit"] == "auto":
+        _number(c["maxScale"], .001, 16384)
     for key in ("outputWidth", "outputHeight"):
         _number(c[key], 1, 16384, True)
     _number(c["dpr"], .25, 8)

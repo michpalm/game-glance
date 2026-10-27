@@ -27,9 +27,11 @@ def main():
         negative = subprocess.run([compiler, str(path), "1920", "1080"], capture_output=True, text=True)
         assert negative.returncode == 2 and "uniform_bytes=0" in negative.stdout, negative.stdout + negative.stderr
         for width, height in [(1280, 800), (1920, 1080), (1920, 1200)]:
-            for fit in ("fit", "fill", "stretch"):
+            for fit in ("fit", "fill", "stretch", "auto"):
                 frame = {"generation": 1, "context": {"viewportId": "offline", "background": "game", "outputWidth": width, "outputHeight": height, "dpr": 1.25, "fit": fit, "colorMode": "sdr"},
                          "regions": {name: {"x": .35, "y": y, "width": w, "height": h, "radiusX": .01, "radiusY": .01} for name, y, w, h in [("bar", .12, .6, .08), ("panel", .23, .6, .65), ("notifications", .04, .05, .04)]}}
+                if fit == "auto":
+                    frame["context"]["maxScale"] = 2
                 path.write_text(build_shader(frame)[0])
                 for input_width, input_height in [(width, height), (1280, 720), (800, 600)]:
                     result = subprocess.run([compiler, str(path), str(input_width), str(input_height)], capture_output=True, text=True, check=True)

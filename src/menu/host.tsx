@@ -5,6 +5,7 @@ import type { Stop } from './model';
 import { prepareMenuPresentation } from './presentation';
 import { createMenuFrostHost } from './frost/host';
 import { readFrostContext } from './frost/context';
+import type { NativeFrostEnvironment } from './frost/types';
 import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
@@ -163,7 +164,7 @@ export function retireMenuBackdrop(document: Document, backdrop: HTMLElement, vi
 }
 
 type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void; setFrostSession:NonNullable<HostAttachment['setFrostSession']>; clearFrost:NonNullable<HostAttachment['clearFrost']> };
-export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:()=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null): ViewportRelease {
+export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:(environment?:NativeFrostEnvironment|null)=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null): ViewportRelease {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
@@ -229,9 +230,11 @@ export function registerDiscoveredMenuHost(): Stop | null {
         let stopPageStatus: Stop | undefined;
         let frostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null;
         let contextId=0,contextFingerprint='';
-        const frostContext=()=>{
+        let lastEnvironment:NativeFrostEnvironment|null=null;
+        const frostContext=(environment?:NativeFrostEnvironment|null)=>{
             const view=document!.defaultView;if(!view)return null;
-            const current=readFrostContext(view,'context');
+            if(environment)lastEnvironment=environment;
+            const current=readFrostContext(view,'context',environment??lastEnvironment);
             if(!current)return null;
             const fingerprint=JSON.stringify([current,owner.MainRunningAppID,owner.MainRunningApp?.appid]);
             if(fingerprint!==contextFingerprint){contextFingerprint=fingerprint;contextId++;}

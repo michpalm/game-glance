@@ -53,4 +53,12 @@ describe('frost geometry', () => {
         expect(publish).toHaveBeenCalledWith(null); expect(frames.size).toBe(1);
         stop(); expect(frames.size).toBe(0);
     });
+    it('preserves initial frost when ResizeObserver delivers unchanged initial bounds after reveal',()=>{
+        const input=fixture(),callbacks:ResizeObserverCallback[]=[];
+        Object.assign(input.source,{ResizeObserver:class{constructor(fn:ResizeObserverCallback){callbacks.push(fn);}observe(){}disconnect(){}}});
+        const publish=vi.fn(),stop=observeFrostFrame(input,publish);
+        expect(publish.mock.calls.at(-1)?.[0]).not.toBeNull();publish.mockClear();
+        callbacks[0](Object.values(input.elements).map(target=>({target})) as ResizeObserverEntry[],{} as ResizeObserver);
+        expect(publish).not.toHaveBeenCalled();stop();
+    });
 });
