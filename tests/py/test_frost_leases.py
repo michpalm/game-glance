@@ -177,6 +177,56 @@ def test_present_activates_in_the_ready_dispatch_without_a_second_round_trip(tmp
     assert sum(c[0]=='enable' for c in n.calls)==1
 
 
+def test_live_present_queues_on_matching_early_prepare_and_uses_live_positions(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    w.command(1, 'prepare', {'request_id': 'early', 'frame': frame()})
+    live = frame()
+    live['regions']['bar']['x'] = .2
+    w.command(2, 'present', {'request_id': 'early', 'frame': live})
+    assert 1 not in replies and 2 not in replies
+    n.ready.add(n.path)
+    w.tick()
+    assert replies[1]['status'] == 'ready'
+    assert replies[2]['status'] == 'active'
+    bar = next(c[2] for c in n.calls if c[0] == 'uniform' and c[1] == 'Bar')
+    assert struct.unpack('<4f', bar)[0] == pytest.approx(.2)
+    assert sum(c[0] == 'enable' for c in n.calls) == 1
+
+
+def test_cancel_completes_both_queued_present_and_early_prepare_without_activation(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    w.command(1, 'prepare', {'request_id': 'early', 'frame': frame()})
+    w.command(2, 'present', {'request_id': 'early', 'frame': frame()})
+    w.command(3, 'cancel', {'request_id': 'early'})
+    assert replies[1] == replies[2] == {'status': 'unavailable', 'reason': 'cancelled'}
+    n.ready.add(n.path)
+    w.tick()
+    assert not w.active and n.state.effect == ''
+
+
+def test_live_present_can_adopt_an_already_ready_matching_preparation(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    prepare(w, n, replies, 'early')
+    w.command(2, 'present', {'request_id': 'early', 'frame': frame()})
+    assert replies[2]['status'] == 'active'
+    assert sum(c[0] == 'enable' for c in n.calls) == 1
+
+
+@pytest.mark.parametrize('change', ['viewport', 'generation', 'size'])
+def test_queued_present_cannot_adopt_mismatched_preparation(tmp_path, change):
+    w, n, _, replies = fixture(tmp_path)
+    w.command(1, 'prepare', {'request_id': 'early', 'frame': frame()})
+    live = frame()
+    if change == 'viewport': live['context']['viewportId'] = 'other'
+    if change == 'generation': live['generation'] += 1
+    if change == 'size': live['regions']['bar']['width'] /= 2
+    w.command(2, 'present', {'request_id': 'early', 'frame': live})
+    assert replies[2] == {'status': 'unavailable', 'reason': 'invalid-geometry'}
+    n.ready.add(n.path)
+    w.tick()
+    assert replies[1]['status'] == 'ready' and not w.active
+
+
 def test_cancelled_present_cannot_activate_when_ready_arrives_later(tmp_path):
     w,n,_,replies=fixture(tmp_path)
     w.command(1,'present',{'request_id':'one-trip','frame':frame()})

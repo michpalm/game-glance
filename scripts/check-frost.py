@@ -36,6 +36,10 @@ def main():
                 for input_width, input_height in [(width, height), (1280, 720), (800, 600)]:
                     result = subprocess.run([compiler, str(path), str(input_width), str(input_height)], capture_output=True, text=True, check=True)
                     assert int(re.search(r"uniform_bytes=(\d+)", result.stdout)[1]) > 0, result.stdout
+                    bindings = re.findall(r"uniform (\w+) source=(\w+) default_zero=(\d+)", result.stdout)
+                    expected = {name for region in ('Bar', 'Panel', 'Notifications') for name in (region, region + 'Radius')}
+                    assert {name for name, _, _ in bindings} == expected, result.stdout
+                    assert all(name == source and zero == '1' for name, source, zero in bindings), result.stdout
                     assert re.findall(r"technique (\w+) passes=(\d+)", result.stdout) == [("QAMFrost", "7")], result.stdout
                     crops = [(name, int(w), int(h)) for name, w, h in re.findall(r"texture (\w+) (\d+)x(\d+)", result.stdout) if name != "Scene"]
                     assert len(crops) == 6, result.stdout
@@ -44,7 +48,7 @@ def main():
                         assert w == math.ceil((region["width"] * width + 48) / 4), result.stdout
                         assert h == math.ceil((region["height"] * height + 48) / 4), result.stdout
                     count += 1
-    print(f"PASS: {count} SDR shader contexts; positive UBO, 6 bounded targets, 1 technique, 7 passes. HDR unavailable pending native validation.")
+    print(f"PASS: {count} SDR shader contexts; positive UBO, 6 runtime bindings with zero defaults, 6 bounded targets, 1 technique, 7 passes. HDR unavailable pending native validation.")
 
 
 if __name__ == "__main__":

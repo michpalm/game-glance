@@ -24,6 +24,20 @@ int main(int argc, char **argv) {
     reshadefx::module module;
     codegen->write_result(module);
     std::cout << "uniform_bytes=" << module.total_uniform_size << " uniforms=" << module.uniforms.size() << "\n";
+    for (const auto &uniform : module.uniforms) {
+        std::string source;
+        bool defaultZero = false;
+        for (const auto &annotation : uniform.annotations) {
+            if (annotation.name == "source") source = annotation.value.string_data;
+            if (annotation.name == "defaultValue") {
+                defaultZero = true;
+                for (unsigned i = 0; i < uniform.type.components(); ++i)
+                    defaultZero = defaultZero && annotation.value.as_float[i] == 0.0f;
+            }
+        }
+        std::cout << "uniform " << uniform.name << " source=" << (source.empty() ? "none" : source)
+                  << " default_zero=" << defaultZero << "\n";
+    }
     for (const auto &texture : module.textures)
         std::cout << "texture " << texture.name << " " << texture.width << "x" << texture.height << "\n";
     for (const auto &technique : module.techniques)

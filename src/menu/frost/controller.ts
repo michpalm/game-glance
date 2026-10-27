@@ -41,7 +41,7 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
         if(candidate&&!warmup)void safely(()=>bridge.cancel(candidate.requestId));
         const request=warmup?.requestId??`${nonce}:${s.generation}:${++attempt}`;s.request=request;
         void safely(async()=>{
-            if(bridge.present&&!s.presented&&!warmup){
+            if(bridge.present&&!s.presented){
                 s.activating=true;
                 const active=await bridge.present(request,frame);
                 s.activating=false;

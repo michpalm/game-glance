@@ -46,6 +46,11 @@ class FrostWorker:
             self.native.set_uniform(name + "Radius", pack_uniform(name + "Radius", [r["radiusX"], r["radiusY"]] if r else [0, 0]))
         return self._still_owned()
 
+    def _reject_warm(self, warm, reason):
+        self.reply(warm['rpc'], unavailable(reason))
+        if 'activation_rpc' in warm:
+            self.reply(warm['activation_rpc'], unavailable(reason))
+
     def _clear(self, reason="cancelled"):
         if self.warm and self.owned and self._still_owned():
             # The upstream server captures its resource in the ready callback.
@@ -53,7 +58,7 @@ class FrostWorker:
             warm,self.warm=self.warm,None
             self._uniforms()
             self.retiring={"path":self.owned,"deadline":self.clock()+1}
-            self.reply(warm["rpc"],unavailable(reason))
+            self._reject_warm(warm, reason)
             return
         self._finish_clear(reason)
 
@@ -71,7 +76,7 @@ class FrostWorker:
         for record in self.prepared.values():
             record["ready"] = False
         if self.warm:
-            self.reply(self.warm["rpc"], unavailable(reason))
+            self._reject_warm(self.warm, reason)
             self.warm = None
 
     def _take(self, path):
@@ -160,6 +165,25 @@ class FrostWorker:
         return context["fit"]!="auto" or environment.get("maxScale")==context.get("maxScale")
 
     def _present(self,rpc,request_id,frame):
+        if request_id in self.cancelled:
+            return unavailable('cancelled')
+        if self.warm and self.warm['request'] == request_id:
+            warm = self.warm
+            if 'activate_frame' in warm:
+                return unavailable('not-ready')
+            if not self._context_supported(frame['context']):
+                return unavailable('unsupported')
+            key = build_shader(frame)[1]
+            if frame['generation'] != warm['record']['generation'] or (key, frame['context']['viewportId']) != warm['record']['cache']:
+                return unavailable('invalid-geometry')
+            # Live bounds arrived while zero-mask preparation was executing.
+            # Commit them at readiness without waiting for a frontend round trip.
+            warm['activate_frame'], warm['activation_rpc'] = frame, rpc
+            return _PENDING
+        if self.prepared_owner and self.prepared_owner['request'] == request_id:
+            record = self.prepared.get(request_id)
+            if record:
+                return self._activate(rpc, request_id, record['key'], 1, frame)
         result=self._prepare(rpc,request_id,frame)
         if result is _PENDING:
             self.warm["activate_frame"]=frame
@@ -258,11 +282,13 @@ class FrostWorker:
                 # when no effect is active. Hold only this current preparation,
                 # with zero masks and a one-second activation deadline.
                 self.prepared_owner = {"request": warm["request"], "deadline": now + 1}
+                if 'activation_rpc' in warm:
+                    self.reply(warm['rpc'], {'status': 'ready', 'key': warm['record']['key']})
                 if "activate_frame" in warm:
-                    result=self._activate(warm["rpc"],warm["request"],warm["record"]["key"],1,warm["activate_frame"])
+                    result=self._activate(warm.get('activation_rpc', warm['rpc']),warm["request"],warm["record"]["key"],1,warm["activate_frame"])
                 else:
                     result={"status":"ready","key":warm["record"]["key"]}
-                self.reply(warm["rpc"],result)
+                self.reply(warm.get('activation_rpc', warm['rpc']),result)
             elif self.warm["deadline"] <= now:
                 self._clear("not-ready")
 

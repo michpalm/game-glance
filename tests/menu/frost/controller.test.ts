@@ -29,13 +29,14 @@ describe('frost controller',()=>{
         expect(f.bridge.renew).toHaveBeenCalledWith('combined');await f.controller.end(1);
         expect(f.bridge.release).toHaveBeenCalledWith('combined');
     });
-    it('adopts an early zero-mask warmup only when live allocation and context match',async()=>{
-        const f=fixture(),warmFrame=frame(),ready=Promise.resolve<Prepared>({status:'ready',key:'early'});
-        const controller=createFrostController({bridge:f.bridge,home:f.home,takeWarmup:()=>({requestId:'early-request',frame:warmFrame,ready})});
-        f.bridge.present=vi.fn(async()=>({status:'active',token:'unused'}));
+    it('queues live presentation on a matching early warmup before its ready acknowledgement',async()=>{
+        const f=fixture(),warmFrame=frame(),ready=deferred<Prepared>();
+        const controller=createFrostController({bridge:f.bridge,home:f.home,takeWarmup:()=>({requestId:'early-request',frame:warmFrame,ready:ready.promise})});
+        f.bridge.present=vi.fn(async()=>({status:'active',token:'queued'}));
         controller.begin(1);controller.frame(frame());await flush();
-        expect(f.bridge.prepare).not.toHaveBeenCalled();expect(f.bridge.present).not.toHaveBeenCalled();
-        expect(f.bridge.activate).toHaveBeenCalledWith('early-request','early',1,frame());await controller.dispose();
+        expect(f.bridge.prepare).not.toHaveBeenCalled();expect(f.bridge.activate).not.toHaveBeenCalled();
+        expect(f.bridge.present).toHaveBeenCalledWith('early-request',frame());await controller.dispose();
+        expect(f.bridge.release).toHaveBeenCalledWith('queued');
     });
     it('cancels mismatched early geometry and uses the live frame',async()=>{
         const f=fixture(),early=frame();early.regions.panel.width=.3;

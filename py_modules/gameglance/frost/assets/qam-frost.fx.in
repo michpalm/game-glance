@@ -1,10 +1,10 @@
 // Game Glance QAM frost. Game pixels only; foreground Steam UI composes later.
-uniform float4 Bar = float4(0, 0, 0, 0);
-uniform float4 Panel = float4(0, 0, 0, 0);
-uniform float4 Notifications = float4(0, 0, 0, 0);
-uniform float2 BarRadius = float2(0, 0);
-uniform float2 PanelRadius = float2(0, 0);
-uniform float2 NotificationsRadius = float2(0, 0);
+uniform float4 Bar < source = "Bar"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Panel < source = "Panel"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Notifications < source = "Notifications"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float2 BarRadius < source = "BarRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 PanelRadius < source = "PanelRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 NotificationsRadius < source = "NotificationsRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 #define OutputSize float2(@OUT_W@, @OUT_H@)
 #define InputSize float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 #if @FIT@ == 0
