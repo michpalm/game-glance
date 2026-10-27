@@ -2,7 +2,7 @@
 
 Date: 27 October 2026
 
-Status: proposed design for review. The three-region in-game visual prototype is approved; production integration is not yet implemented.
+Status: design approved by the user on 27 October 2026. The three-region in-game visual prototype is also approved; production integration is not yet implemented.
 
 ## Intended result
 
