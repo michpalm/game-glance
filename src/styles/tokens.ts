@@ -5,7 +5,7 @@ export const TOKENS = {
     glass: 'rgba(12,16,22,.40)', strong: 'rgba(12,16,22,.55)', solid: 'rgba(12,16,22,.75)',
     ink: '#07090c', scrim: 'rgb(5,7,10)',
     edge: 'rgba(255,255,255,.12)', raised: 'rgba(255,255,255,.18)', active: 'rgba(255,255,255,.35)',
-    text: '#fff', dim: 'rgba(255,255,255,.62)', idle: 'rgba(255,255,255,.80)', textShadow: '0 1px 2px #0009',
+    text: '#fff', dim: 'rgba(255,255,255,.62)', idle: 'rgba(255,255,255,.80)', label: 'rgba(255,255,255,.90)', textShadow: '0 1px 2px #0009',
     track: 'rgba(255,255,255,.14)', trackEdge: 'rgba(255,255,255,.22)',
     glassBlur: 16, artBlur: 42,
     radius: { small: 8, card: 12, panel: 16, pill: 999 },

@@ -4,7 +4,7 @@ import { TOKENS, currentUnderline, focusRing, ghost } from '../styles/tokens';
 // retains its tested scale in Steam's separate Home/game overlay viewports.
 export const menuStyles = `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:var(--gg-text,#fff);overflow:hidden;transform:translateZ(0)}
-.gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
+.gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);--gg-text-dim:${TOKENS.label};position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
 .gg-menu *{box-sizing:border-box}
 .gg-menu>header{flex:none;display:flex;align-items:center;padding:0 16px 12px;gap:8px}
 .gg-menu-caption-actions{display:flex;align-items:center;gap:8px}
@@ -24,13 +24,13 @@ html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):h
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:is(.gpfocus,:focus-visible){outline:none;box-shadow:none;transform:none;background:transparent;color:var(--gg-text)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:is(.gpfocus,:focus-visible)::after{opacity:1;box-shadow:0 0 14px 2px var(--gg-accent)}
 html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:hover{box-shadow:none;color:var(--gg-text)}
-.gg-menu .gg-menu-shoulder{display:flex;align-items:center;justify-content:center;flex:none;min-width:40px;padding:8px;font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);color:var(--gg-text-dim)}
+.gg-menu .gg-menu-shoulder{display:flex;align-items:center;justify-content:center;flex:none;min-width:40px;padding:8px;font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
 .gg-menu .gg-menu-shoulder:first-child{border-right:1px solid var(--gg-edge)}.gg-menu .gg-menu-shoulder:last-child{border-left:1px solid var(--gg-edge)}
 .gg-menu .gg-menu-panel{margin-top:12px;padding:24px;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
 .gg-menu h2{font-size:var(--gg-type-heading);font-weight:var(--gg-weight-heading);letter-spacing:-.02em;margin:0 0 12px}
-.gg-menu h3{font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);letter-spacing:.16em;text-transform:uppercase;color:var(--gg-text-dim);margin:12px 0 4px}
-.gg-menu p{color:var(--gg-text-dim);font:inherit;font-size:var(--gg-type-body);line-height:1.4}
-.gg-menu-heading{display:flex;justify-content:space-between;align-items:baseline;gap:16px}.gg-menu-heading>span{color:var(--gg-text-dim);font-size:var(--gg-type-label)}
+.gg-menu h3{font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);letter-spacing:.16em;text-transform:uppercase;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);margin:12px 0 4px}
+.gg-menu p{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font:inherit;font-size:var(--gg-type-body);line-height:1.4}
+.gg-menu-heading{display:flex;justify-content:space-between;align-items:baseline;gap:16px}.gg-menu-heading>span{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;flex-direction:column;gap:12px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
@@ -44,7 +44,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-ingame-session{position:relative;z-index:1;font-weight:var(--gg-weight-heading);white-space:nowrap}
 .gg-menu .gg-ingame-grid{flex:1;grid-auto-rows:minmax(112px,1fr)}
 .gg-menu .gg-ingame-label{display:grid;gap:4px;justify-items:center;width:100%}
-.gg-menu .gg-ingame-label small{color:var(--gg-text-dim);font-size:var(--gg-type-label)}
+.gg-menu .gg-ingame-label small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-ingame-bar{display:block;width:70%;height:6px;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
 .gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
 .gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px}
@@ -54,10 +54,10 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
 .gg-menu .gg-notification-art{flex:none;width:112px;height:52px;border-radius:var(--gg-r-small);object-fit:cover;display:grid;place-items:center;background:var(--gg-edge)}
 .gg-menu .gg-notification-text{flex:1;min-width:0;display:grid;gap:2px}
-.gg-menu .gg-notification-text small{color:var(--gg-text-dim);font-size:var(--gg-type-label);text-transform:uppercase;letter-spacing:.08em}
+.gg-menu .gg-notification-text small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);text-transform:uppercase;letter-spacing:.08em}
 .gg-menu .gg-notification-unread .gg-notification-text small::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:var(--gg-accent);vertical-align:1px}
-.gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);font-size:var(--gg-type-label)}
-.gg-menu .gg-notifications-empty{color:var(--gg-text-dim)}
+.gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
+.gg-menu .gg-notifications-empty{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible){${focusRing()}}
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.gg-menu-quick-sliders>[data-gg-focus="quick:brightness"]{grid-column:1/-1}
@@ -66,7 +66,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-setting-disabled{${ghost()}}
 .gg-menu .gg-menu-setting .Panel,.gg-menu .gg-social-input .Panel{padding:0;margin:0;border:0;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
 .gg-menu .gg-menu-setting [id$="_Label"]{font:inherit;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
-.gg-menu .gg-menu-setting [id$="_Description_Description"]{font-size:var(--gg-type-label);font-weight:var(--gg-weight-body);color:var(--gg-text-dim);line-height:1.4;margin-top:4px}
+.gg-menu .gg-menu-setting [id$="_Description_Description"]{font-size:var(--gg-type-label);font-weight:var(--gg-weight-body);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);line-height:1.4;margin-top:4px}
 .gg-menu .gg-menu-setting-label{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .gg-menu .gg-menu-setting-label svg{width:20px;height:20px;flex:none;color:var(--gg-text)}
 .gg-menu-slider-label{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%}
@@ -88,7 +88,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-native-host .gg-menu .gg-menu-segmented button.gg-menu-action.DialogButton[aria-pressed=true]{background:var(--gg-accent);color:var(--gg-on-accent)}
 .gg-menu .gg-menu-performance-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
 .gg-menu .gg-menu-performance-heading{flex:1;min-width:0}.gg-menu .gg-menu-performance-heading h2{margin:0 0 4px}
-.gg-menu .gg-menu-performance-power{margin:0;color:var(--gg-text-dim);font-size:var(--gg-type-label)}
+.gg-menu .gg-menu-performance-power{margin:0;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-menu-profile-context{flex:0 1 44%;min-width:0}.gg-menu .gg-menu-profile-context .gg-menu-setting{padding-right:0}
 .gg-menu-perf-tabs{display:flex;gap:8px;margin-bottom:12px}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);padding:8px 4px}
@@ -101,7 +101,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:8px;border-radius:var(--gg-r-pill);border-color:var(--gg-edge);background:${TOKENS.glass}}
 .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}.gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
 .gg-menu .gg-menu-error{color:#f6b5b5}
-.gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
+.gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
 .gg-menu-status-host{transition:opacity var(--gg-fast) linear}
 .gg-menu-status-host .gh-status-pill{background:var(--gg-glass-solid)!important;border-color:var(--gg-edge);border-radius:var(--gg-r-pill);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
 .gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
