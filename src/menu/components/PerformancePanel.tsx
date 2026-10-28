@@ -4,6 +4,7 @@ import { LuEye, LuGauge, LuImage, LuLayers } from 'react-icons/lu';
 import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import { PERFORMANCE_OVERLAY_LEVELS, type createPerformance, type PerformanceValue } from '../steam/performance';
+import { shouldClearDraft, shownChoice } from '../pendingChoice';
 import { MenuAction } from './MenuAction';
 import { SettingSegments } from './SettingSegments';
 
@@ -34,7 +35,8 @@ export function settingIcon(id: string): ComponentType | undefined {
 function Control({ id, adapter }: { id: string; adapter: SettingAdapter<PerformanceValue> }) {
     const s = useSyncExternalStore(adapter.subscribe, adapter.get);
     const [draft, setDraft] = useState<number | null>(null);
-    useEffect(() => { if (!s.pending) setDraft(null); }, [s.pending, s.value, s.error]);
+    const [choice, setChoice] = useState<PerformanceValue | null>(null);
+    useEffect(() => { if (shouldClearDraft(s)) { setDraft(null); setChoice(null); } }, [s.pending, s.value, s.error]);
     if (!s.available || s.value === null) return null;
     const Icon = settingIcon(id);
     const label = <span className="gg-menu-setting-label">
@@ -47,8 +49,10 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
         field = <ToggleField highlightOnFocus={false} label={label} checked={s.value}
             disabled={s.disabled || s.pending} onChange={set} />;
     } else if ((id === 'scalingMode' || id === 'scalingFilter') && s.options?.length && s.options.length <= 5) {
+        const shown = shownChoice(choice, s);
         field = <><div className="gg-menu-setting-header">{label}</div><SettingSegments id={`performance:${id}`} label={LABELS[id]}
-            options={s.options} value={s.value} labels={OPTIONS[id]} disabled={s.disabled || s.pending} onSelect={set} /></>;
+            options={s.options} value={shown.value} spinning={shown.spinning} labels={OPTIONS[id]} disabled={s.disabled}
+            onSelect={value => { setChoice(value); set(value); }} /></>;
     } else {
         const values = s.options?.filter((value): value is number => typeof value === 'number');
         const index = (value: number) => values?.reduce((best, v, i) =>
@@ -84,10 +88,13 @@ function FrameControl({ performance }: { performance: Performance }) {
 function ProfilePill({ performance }: { performance: Performance }) {
     const adapter = performance.controls.profile;
     const s = useSyncExternalStore(adapter.subscribe, adapter.get);
+    const [choice, setChoice] = useState<PerformanceValue | null>(null);
+    useEffect(() => { if (shouldClearDraft(s)) setChoice(null); }, [s.pending, s.value, s.error]);
     if (!s.available) return null;
+    const shown = shownChoice(choice, s);
     return <div className="gg-menu-performance-profile"><div className="gg-menu-setting-header">Performance profile</div>
-        <SettingSegments id="performance:profile" label="Performance profile" options={s.options ?? []} value={s.value} labels={PROFILES}
-            disabled={s.pending || s.disabled} onSelect={value => { void adapter.set(value).catch(() => {}); }} />
+        <SettingSegments id="performance:profile" label="Performance profile" options={s.options ?? []} value={shown.value} spinning={shown.spinning} labels={PROFILES}
+            disabled={s.disabled} onSelect={value => { setChoice(value); void adapter.set(value).catch(() => {}); }} />
         {s.error && <p className="gg-menu-error" role="alert">{s.error}</p>}
     </div>;
 }
