@@ -6,7 +6,7 @@ export const TOKENS = {
     ink: '#07090c', scrim: 'rgb(5,7,10)',
     edge: 'rgba(255,255,255,.12)', raised: 'rgba(255,255,255,.18)', active: 'rgba(255,255,255,.35)',
     text: '#fff', dim: 'rgba(255,255,255,.62)', idle: 'rgba(255,255,255,.80)', label: 'rgba(255,255,255,.90)', textShadow: '0 1px 2px #0009',
-    track: 'rgba(255,255,255,.14)', trackEdge: 'rgba(255,255,255,.22)',
+    selected: 'rgba(255,255,255,.14)', track: 'rgba(255,255,255,.14)', trackEdge: 'rgba(255,255,255,.22)',
     glassBlur: 16, artBlur: 42,
     radius: { small: 8, card: 12, panel: 16, pill: 999 },
     type: { heading: 20, body: 16, label: 11, tab: 13, value: 20, bodyWeight: 700, headingWeight: 800 },
@@ -22,6 +22,7 @@ ${selector}{
 --gg-ink:${TOKENS.ink};--gg-scrim:${TOKENS.scrim};--gg-glass-blur:${unit(TOKENS.glassBlur)};
 --gg-edge:${TOKENS.edge};--gg-edge-raised:${TOKENS.raised};--gg-edge-active:${TOKENS.active};
 --gg-text:${TOKENS.text};--gg-text-dim:${TOKENS.dim};--gg-text-idle:${TOKENS.idle};--gg-text-shadow:${TOKENS.textShadow};
+--gg-selected:${TOKENS.selected};--gg-selected-edge:inset 0 -2px 0 color-mix(in srgb,var(--gg-accent) 55%,transparent);
 --gg-track:${TOKENS.track};--gg-track-edge:inset 0 0 0 1px ${TOKENS.trackEdge};
 --gg-accent:${DEFAULT_ACCENT};--gg-accent-text:${legibleAccent(DEFAULT_ACCENT)};--gg-on-accent:#fff;
 --gg-r-small:${unit(TOKENS.radius.small)};--gg-r-card:${unit(TOKENS.radius.card)};--gg-r-panel:${unit(TOKENS.radius.panel)};--gg-r-pill:${TOKENS.radius.pill}px;
@@ -40,8 +41,13 @@ export function glassSurface(level: 'glass' | 'strong' | 'solid' = 'glass'): str
     return `background:var(${name});border:1px solid var(--gg-edge);backdrop-filter:blur(var(--gg-glass-blur))`;
 }
 export const artFill = (dim = false) => `filter:var(--gg-art-fill${dim ? '-dim' : ''})`;
-export const focusRing = (kind: 'compact' | 'card' = 'compact') => `outline:2px solid rgba(255,255,255,.9);outline-offset:1px;border-color:var(--gg-edge-active);box-shadow:var(--gg-focus-shadow);background:var(--gg-glass-strong);transform:${kind === 'compact' ? 'scale(1.04)' : `translateY(${unit(-4)})`}`;
+/** The in-game menu's ring follows the control's shape: outside a card, just inside a slice. It sets no fill or shadow, so a selected item keeps its mark. */
+export const focusRing = (kind: 'compact' | 'card' | 'menu' | 'slice' = 'compact') => kind === 'menu' || kind === 'slice'
+    ? `outline:2px solid #fff;outline-offset:${kind === 'menu' ? '2px' : '-2px'};transform:none`
+    : `outline:2px solid rgba(255,255,255,.9);outline-offset:1px;border-color:var(--gg-edge-active);box-shadow:var(--gg-focus-shadow);background:var(--gg-glass-strong);transform:${kind === 'compact' ? 'scale(1.04)' : `translateY(${unit(-4)})`}`;
 export const currentUnderline = () => `content:'';position:absolute;left:${unit(12)};right:${unit(12)};bottom:${unit(4)};height:${unit(3)};border-radius:var(--gg-r-pill);background:var(--gg-accent);pointer-events:none`;
+/** Section 6: a selected tab, option, friend or bell is a soft shade with a faint accent line. */
+export const selectedSlice = () => 'background:var(--gg-selected);color:var(--gg-text);box-shadow:var(--gg-selected-edge)';
 export const onFill = () => 'background:var(--gg-accent);color:var(--gg-on-accent)';
 export const ghost = () => 'filter:grayscale(.6) brightness(.75);border-color:rgba(255,255,255,.06)';
 export function applyAccent(root: HTMLElement, color: string | null | undefined): void {
