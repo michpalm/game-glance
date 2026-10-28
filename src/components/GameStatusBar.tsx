@@ -7,7 +7,7 @@ import { menuOpen, steamMenuStore } from '../home/steamMenu';
 
 /** How often the menu state is read (Steam's menu store has no event here); a menu opening shows within this. */
 const MENU_POLL_MS = 250;
-import { findTopBar, focusInTopBar } from '../home/topBar';
+import { createTopBarFinder, focusInTopBar } from '../home/topBar';
 
 /** The window's size, kept current. The plugin's code runs in another window than Steam's screen, so it is always `win`'s. */
 function useViewport(win: Window | null): { width: number; height: number } {
@@ -30,7 +30,9 @@ function useFocusInTopBar(doc: Document | null): boolean {
         if (!doc) return;
         // Read where focus is (topBar.focusInTopBar): on each focus event for an instant answer, and on a short poll,
         // since no focus events arrive while Steam's window has no system focus.
-        const update = () => setAway(focusInTopBar(findTopBar(doc, doc.defaultView?.innerWidth ?? 0), doc.activeElement));
+        // The remembered bar: a focus event must not force a layout (createTopBarFinder).
+        const find = createTopBarFinder(doc);
+        const update = () => setAway(focusInTopBar(find(), doc.activeElement));
         doc.addEventListener('focusin', update);
         const timer = setInterval(update, MENU_POLL_MS);
         return () => {

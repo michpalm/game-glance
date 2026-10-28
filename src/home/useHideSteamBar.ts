@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { openUnderway } from '../data/openIntent';
-import { findTopBar } from './topBar';
+import { createTopBarFinder } from './topBar';
 
 export const COVERED = 'data-gg-covered';
 const QUICK_MS = 50;
@@ -16,11 +16,15 @@ export function useHideSteamBar(doc: Document | null, away: boolean): void {
     useEffect(() => {
         if (!doc) return undefined;
         const release = holdCover(doc);
+        const find = createTopBarFinder(doc);
         const clear = () => doc.querySelectorAll(`[${COVERED}]`).forEach((el) => el.removeAttribute(COVERED));
-        const update = () => {
+        // Mutations (every focus move) reuse the remembered bar; the timers measure it again.
+        const update = (force = false) => {
             try {
                 if (away) return clear();
-                coverBar(doc, findTopBar(doc, doc.defaultView?.innerWidth ?? 0));
+                const bar = find(force);
+                if (!force && bar?.hasAttribute(COVERED)) return;
+                coverBar(doc, bar);
             } catch {
                 // leave Steam's bar as it is
             }
@@ -29,15 +33,15 @@ export function useHideSteamBar(doc: Document | null, away: boolean): void {
         // A mutation observer runs before the next paint, so Steam's bar is covered as its route change draws it (the
         // timer alone can let it show for a frame behind ours, which flickered on the game page's entry).
         const win = doc.defaultView;
-        const observer = win && win.MutationObserver ? new win.MutationObserver(update) : null;
+        const observer = win && win.MutationObserver ? new win.MutationObserver(() => update()) : null;
         observer?.observe(doc.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style'] });
         // Quick at first so the bar is hidden as the page opens, then once a second (Steam may re-render its bar).
         let ticks = 0;
         let timer = setInterval(() => {
-            update();
+            update(true);
             if (++ticks === QUICK_TICKS) {
                 clearInterval(timer);
-                timer = setInterval(update, 1000);
+                timer = setInterval(() => update(true), 1000);
             }
         }, QUICK_MS);
         return () => {

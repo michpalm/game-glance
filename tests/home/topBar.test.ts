@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { focusInTopBar, isTopBarRect } from '../../src/home/topBar';
+import { describe, expect, it, vi } from 'vitest';
+import { createTopBarFinder, focusInTopBar, isTopBarRect } from '../../src/home/topBar';
 
 describe('isTopBarRect', () => {
     it("accepts Steam's top strip: flush with the top, thin, across the screen", () => {
@@ -32,5 +32,32 @@ describe('focusInTopBar (read, not from focus events)', () => {
     it('no bar found, or nothing focused: not in the bar', () => {
         expect(focusInTopBar(null, avatar)).toBe(false);
         expect(focusInTopBar(bar([avatar]), null)).toBe(false);
+    });
+});
+
+describe('createTopBarFinder', () => {
+    // Every D-pad move changes classes; measuring the bar then forced a full layout per press.
+    function page() {
+        const bar: any = { isConnected: true, parentElement: null, getBoundingClientRect: vi.fn(() => ({ top: 0, height: 40, width: 1500 })) };
+        const avatar: any = { isConnected: true, parentElement: bar, getBoundingClientRect: vi.fn(() => ({ top: 4, height: 32, width: 32 })) };
+        const doc: any = { defaultView: { innerWidth: 1500 }, querySelector: vi.fn(() => avatar) };
+        return { doc, bar, avatar };
+    }
+    it('measures once and reuses the bar while it is still in the page', () => {
+        const p = page(), find = createTopBarFinder(p.doc);
+        expect(find()).toBe(p.bar); expect(find()).toBe(p.bar); expect(find()).toBe(p.bar);
+        expect(p.bar.getBoundingClientRect).toHaveBeenCalledTimes(1);
+    });
+    it('measures again when Steam replaces its bar, or when asked to', () => {
+        const p = page(), find = createTopBarFinder(p.doc);
+        find(); p.bar.isConnected = false; p.bar.isConnected = true;
+        find(true); expect(p.bar.getBoundingClientRect).toHaveBeenCalledTimes(2);
+        p.bar.isConnected = false; find(); expect(p.bar.getBoundingClientRect).toHaveBeenCalledTimes(3);
+    });
+    it('keeps looking while there is no bar yet', () => {
+        const p = page(); p.doc.querySelector.mockReturnValue(null);
+        const find = createTopBarFinder(p.doc);
+        expect(find()).toBeNull(); expect(find()).toBeNull();
+        expect(p.doc.querySelector).toHaveBeenCalledTimes(2);
     });
 });
