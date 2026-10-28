@@ -6,17 +6,21 @@ import { prepareMenuPresentation } from './presentation';
 import { createMenuFrostHost, type FrostHostOptions } from './frost/host';
 import { createFrostBridge } from './frost/backend';
 import { createFrostSessions } from './frost/sessions';
-import { readFrostContext } from './frost/context';
+import { menuOverHome, readFrostContext } from './frost/context';
 import type { NativeFrostEnvironment } from './frost/types';
 import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
 
-/** The popup owns the only visible status bar; preserve page layout and restore its copy on release. */
-export function hideBackgroundStatus(document: Document): Stop {
+/** One status bar on screen while the custom menu is open. Over a game the popup owns it, so the page copy hides.
+ * On Home the page copy already sits on Home's frost: it stays, held through Steam's "menu open" (which would step
+ * it aside), and the popup copy is hidden instead (`.gg-menu-status-home`), so nothing swaps and nothing flickers. */
+export function holdPageStatus(document: Document, home: boolean): Stop {
     const style = document.createElement('style');
     style.dataset.ggMenuPageStatus = 'true';
-    style.textContent = '.gg-status-host:not(.gg-menu-status-host){visibility:hidden!important;opacity:0!important;transition:none!important}';
+    style.textContent = home
+        ? '.gg-status-host:not(.gg-menu-status-host) .gh-status{opacity:1!important}'
+        : '.gg-status-host:not(.gg-menu-status-host){visibility:hidden!important;opacity:0!important;transition:none!important}';
     document.head.appendChild(style);
     let stopped = false;
     return () => { if (!stopped) { stopped = true; style.remove(); } };
@@ -288,7 +292,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
                     try {
                         if (get().active) {
                             stopChrome ??= hideNativeMenuChrome(owner);
-                            stopPageStatus ??= hideBackgroundStatus(document!);
+                            stopPageStatus ??= holdPageStatus(document!, menuOverHome(document!.defaultView ?? undefined));
                         } else {
                             // A native handoff may arrive after close consumed the viewport lease.
                             // Clear its pending guard even though there is no viewport left to release.

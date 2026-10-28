@@ -2,9 +2,11 @@
 uniform float4 Bar < source = "Bar"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float4 Panel < source = "Panel"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float4 Notifications < source = "Notifications"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Status < source = "Status"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float2 BarRadius < source = "BarRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 PanelRadius < source = "PanelRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 NotificationsRadius < source = "NotificationsRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 StatusRadius < source = "StatusRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 // Milliseconds since Gamescope built this effect.
 uniform float Timer < source = "timer"; >;
 #define OutputSize float2(@OUT_W@, @OUT_H@)
@@ -40,6 +42,9 @@ texture2D PanelV { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
 texture2D NotificationsD { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
 texture2D NotificationsH { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
 texture2D NotificationsV { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+texture2D StatusD { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
+texture2D StatusH { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
+texture2D StatusV { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
 // Render targets keep their contents between frames: the previous state is
 // copied aside, then updated, so the fade starts on the first visible frame.
 // RGBA32F, not RG32F: Gamescope can only create formats with a DRM equivalent.
@@ -54,6 +59,9 @@ sampler2D PanelVS { Texture = PanelV; MinFilter = LINEAR; MagFilter = LINEAR; Ad
 sampler2D NotificationsDS { Texture = NotificationsD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D NotificationsHS { Texture = NotificationsH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D NotificationsVS { Texture = NotificationsV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusDS { Texture = StatusD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusHS { Texture = StatusH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusVS { Texture = StatusV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D StateAS { Texture = StateA; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D StateBS { Texture = StateB; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 void VS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0) {
@@ -93,7 +101,7 @@ float Mask(float2 uv, float4 rect, float2 radiusNorm) {
 float4 Remember(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return tex2D(StateAS, float2(0.5, 0.5)); }
 // x = timer at the first frame with visible masks, y = 1 once started.
 float4 Track(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    if (Bar.z <= 0 && Panel.z <= 0 && Notifications.z <= 0) return float4(0, 0, 0, 0);
+    if (Bar.z <= 0 && Panel.z <= 0 && Notifications.z <= 0 && Status.z <= 0) return float4(0, 0, 0, 0);
     float2 previous = tex2D(StateBS, float2(0.5, 0.5)).xy;
     if (previous.y > 0.5 && previous.x <= Timer) return float4(previous, 0, 0);
     return float4(Timer, 1, 0, 0);
@@ -107,6 +115,9 @@ float4 PanelVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Targe
 float4 NotificationsDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Notifications)); }
 float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsDS, uv, float2(1.0 / @NOTIFICATIONS_W@, 0.0)); }
 float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsHS, uv, float2(0.0, 1.0 / @NOTIFICATIONS_H@)); }
+float4 StatusDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Status)); }
+float4 StatusHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusDS, uv, float2(1.0 / @STATUS_W@, 0.0)); }
+float4 StatusVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusHS, uv, float2(0.0, 1.0 / @STATUS_H@)); }
 float4 Calm(float4 c) {
     float y = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
     float calmed = y > CalmKnee ? CalmKnee + (y - CalmKnee) * CalmSlope : y;
@@ -123,9 +134,11 @@ float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolatio
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
+    float s = Mask(outUV, Status, StatusRadius) * fade;
     if (b > 0) color = lerp(color, Calm(tex2D(BarVS, TileUV(outUV, Bar))), b);
     if (p > 0) color = lerp(color, Calm(tex2D(PanelVS, TileUV(outUV, Panel))), p);
     if (n > 0) color = lerp(color, Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications))), n);
+    if (s > 0) color = lerp(color, Calm(tex2D(StatusVS, TileUV(outUV, Status))), s);
     return color;
 }
 technique QAMFrost {
@@ -140,5 +153,8 @@ technique QAMFrost {
     pass NotificationsDown { VertexShader = VS; PixelShader = NotificationsDown; RenderTarget = NotificationsD; }
     pass NotificationsX { VertexShader = VS; PixelShader = NotificationsHorizontal; RenderTarget = NotificationsH; }
     pass NotificationsY { VertexShader = VS; PixelShader = NotificationsVertical; RenderTarget = NotificationsV; }
+    pass StatusDown { VertexShader = VS; PixelShader = StatusDown; RenderTarget = StatusD; }
+    pass StatusX { VertexShader = VS; PixelShader = StatusHorizontal; RenderTarget = StatusH; }
+    pass StatusY { VertexShader = VS; PixelShader = StatusVertical; RenderTarget = StatusV; }
     pass Output { VertexShader = FadeVS; PixelShader = Composite; }
 }

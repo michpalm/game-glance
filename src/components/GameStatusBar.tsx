@@ -4,6 +4,7 @@ import { StatusBar } from '../home/StatusBar';
 import { statusCss } from '../home/homeCss';
 import { homeCanvas } from '../home/scale';
 import { menuOpen, steamMenuStore } from '../home/steamMenu';
+import { menuOverHome } from '../menu/frost/context';
 
 /** How often the menu state is read (Steam's menu store has no event here); a menu opening shows within this. */
 const MENU_POLL_MS = 250;
@@ -91,13 +92,15 @@ export function GameStatusBar({ hidden = false, menuOverlay = false }: { hidden?
     // A bar inside our custom menu is the foreground copy, not the page copy stepping aside.
     const away = !menuOverlay && (focusInBar || menuShown);
     const canvas = homeCanvas(width, height);
+    // On Home the page's own bar stays up under the menu (menu/host holdPageStatus); this copy keeps its place unseen.
+    const home = menuOverlay && menuOverHome();
     return (
         <>
             <span ref={marker} style={{ display: 'none' }} />
             {doc &&
                 createPortal(
                     <div
-                        className={`gg-status-host${menuOverlay ? ' gg-menu-status-host' : ''}`}
+                        className={`gg-status-host${menuOverlay ? ' gg-menu-status-host' : ''}${home ? ' gg-menu-status-home' : ''}`}
                         style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none', opacity: hidden ? 0 : 1, transition: 'opacity 200ms' }}
                     >
                         <style>{statusCss()}</style>

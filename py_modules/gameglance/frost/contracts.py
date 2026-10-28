@@ -2,7 +2,7 @@
 import copy
 import math
 
-REGIONS = ("bar", "panel", "notifications")
+REGIONS = ("bar", "panel", "notifications", "status")
 
 
 def _fields(value, fields):

@@ -1,4 +1,5 @@
-export const REGION_IDS = ['bar', 'panel', 'notifications'] as const;
+// The status bar copy is the fourth area: over a game it has no other glass under it.
+export const REGION_IDS = ['bar', 'panel', 'notifications', 'status'] as const;
 export type RegionId = typeof REGION_IDS[number];
 export type FitMode = 'fit' | 'fill' | 'stretch' | 'auto';
 export interface NativeFrostEnvironment { hdr:boolean; maxScale:number|null }

@@ -92,4 +92,14 @@ describe('menu glass and reveal motion',()=>{
 
 it('the status bar in the menu takes the soft corner of the status bar outside it (VDL Section 7, option B)', () => {
     expect(menuStyles).toMatch(/\.gg-menu-status-host \.gh-status-pill\{[^}]*border-radius:var\(--gg-r-card\)/);
+    // On Home the page's own bar stays up; the popup copy keeps its layout (for its frost area) but is never seen.
+    expect(menuStyles).toMatch(/\.gg-menu-status-host\.gg-menu-status-home\{visibility:hidden!important\}/);
+});
+
+it('the status bar in the menu takes Home\'s glass over the in-game frost, not the old solid .75', () => {
+    const pill = menuStyles.match(/\.gg-menu-status-host \.gh-status-pill\{([^}]*)\}/)?.[1] ?? '';
+    expect(pill).not.toContain('glass-solid');
+    expect(pill).not.toMatch(/background:/);
+    // The frost shader blurs the game under it (frost area "status"); a CSS blur in the popup would see nothing.
+    expect(pill).toContain('backdrop-filter:none!important');
 });

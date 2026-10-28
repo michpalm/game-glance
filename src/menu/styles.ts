@@ -99,7 +99,8 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-error{color:#f6b5b5}
 .gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
 .gg-menu-status-host{transition:opacity var(--gg-fast) linear}
-.gg-menu-status-host .gh-status-pill{background:var(--gg-glass-solid)!important;border-color:var(--gg-edge);border-radius:var(--gg-r-card);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
+.gg-menu-status-host.gg-menu-status-home{visibility:hidden!important}
+.gg-menu-status-host .gh-status-pill{border-color:var(--gg-edge);border-radius:var(--gg-r-card);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
 .gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu-tabs::-webkit-scrollbar{display:none}
 @media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *,.gg-menu *::after{transition:none!important;animation:none!important}}

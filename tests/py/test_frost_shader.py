@@ -11,7 +11,7 @@ def frame(width=1920, height=1080, fit="fit"):
     return {"generation": 1, "context": {"viewportId": "v1", "background": "game", "outputWidth": width,
             "outputHeight": height, "dpr": 1, "fit": fit, "colorMode": "sdr"},
             "regions": {name: {"x": .35, "y": y, "width": w, "height": h, "radiusX": .01, "radiusY": .01}
-                        for name, y, w, h in [("bar", .12, .60, .08), ("panel", .23, .60, .65), ("notifications", .04, .05, .04)]}}
+                        for name, y, w, h in [("bar", .12, .60, .08), ("panel", .23, .60, .65), ("notifications", .04, .05, .04), ("status", .01, .20, .03)]}}
 
 
 @pytest.mark.parametrize("mutation", [
@@ -20,6 +20,7 @@ def frame(width=1920, height=1080, fit="fit"):
     lambda f: f["regions"]["bar"].update(width=float("nan")),
     lambda f: f["regions"]["bar"].update(width=2),
     lambda f: f["regions"].pop("notifications"),
+    lambda f: f["regions"].pop("status"),
     lambda f: f.update(generation=True),
     lambda f: f["context"].update(outputWidth=20000),
 ])
@@ -184,3 +185,12 @@ def test_every_texture_format_is_one_gamescope_can_create():
     source, _ = build_shader(_with_dpr(2.32))
     formats = set(re.findall(r"Format = (\w+);", source))
     assert formats and formats <= GAMESCOPE_TEXTURE_FORMATS, formats - GAMESCOPE_TEXTURE_FORMATS
+
+
+def test_status_bar_gets_its_own_frost_area_like_the_others():
+    source, _ = build_shader(frame())
+    for part in ("uniform float4 Status", "uniform float2 StatusRadius", "texture2D StatusV", "pass StatusY",
+                 "Mask(outUV, Status, StatusRadius)", "Calm(tex2D(StatusVS, TileUV(outUV, Status)))"):
+        assert part in source
+    # The fade starts when any area, the status bar included, becomes visible.
+    assert "Status.z <= 0" in source

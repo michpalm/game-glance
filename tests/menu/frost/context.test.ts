@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFrostContext } from '../../../src/menu/frost/context';
+import { menuOverHome, readFrostContext } from '../../../src/menu/frost/context';
 function owner(overlay=false,scaler=3,hdr:unknown=false) {
     return {innerWidth:1920,innerHeight:1080,devicePixelRatio:1,SystemPerfStore:{msgSettingsPerApp:{split_scaling_scaler:scaler},msgSettingsGlobal:{is_hdr_enabled:hdr}},SteamUIStore:{WindowStore:{GamepadUIMainWindowInstance:{BIsOverlayPath:()=>overlay}}}} as unknown as Window;
 }
@@ -7,6 +7,12 @@ describe('frost context',()=>{
     it('reads the verified native fit/fill/stretch enum without mutating settings',()=>{
         for(const [value,fit] of [[3,'fit'],[4,'fill'],[5,'stretch']] as const)
             expect(readFrostContext(owner(true,value),'v1')).toMatchObject({background:'game',fit,outputWidth:1920,colorMode:'sdr'});
+    });
+    it('tells Home from a game only when Steam answers',()=>{
+        expect(menuOverHome(owner(false))).toBe(true);
+        expect(menuOverHome(owner(true))).toBe(false);
+        // Unknown is not Home: the game behaviour (popup copy shown) stays the fallback.
+        expect(menuOverHome({} as Window)).toBe(false);
     });
     it('recognizes Home and HDR independently',()=>{
         expect(readFrostContext(owner(false,3,true),'v1')).toMatchObject({background:'steam',colorMode:'hdr'});

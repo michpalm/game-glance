@@ -7,10 +7,18 @@ interface NativeContext {
 /** @decky/ui system/Perf.d.ts ESplitScalingScaler. Auto/Integer require a
  * different mapping contract; never silently treat them as Fit. */
 const FIT:Record<number,FitMode|undefined> = {3:'fit',4:'fill',5:'stretch'};
+function overlayPath(owner:Window):unknown {
+    const native = owner as Window & NativeContext, globals=globalThis as unknown as NativeContext;
+    return (native.SteamUIStore??globals.SteamUIStore)?.WindowStore?.GamepadUIMainWindowInstance?.BIsOverlayPath?.();
+}
+/** True only when Steam says the menu opens over its own UI (Home, the library), not over a game. */
+export function menuOverHome(owner:Window=globalThis as unknown as Window):boolean {
+    try { return overlayPath(owner)===false; } catch { return false; }
+}
 export function readFrostContext(owner:Window, viewportId:string, environment?:NativeFrostEnvironment|null):FrostContext|null {
     const native = owner as Window & NativeContext;
     const globals=globalThis as unknown as NativeContext;
-    const overlay = (native.SteamUIStore??globals.SteamUIStore)?.WindowStore?.GamepadUIMainWindowInstance?.BIsOverlayPath?.();
+    const overlay = overlayPath(owner);
     const store=native.SystemPerfStore??globals.SystemPerfStore;
     const hdr = environment?.hdr??store?.msgSettingsGlobal?.is_hdr_enabled;
     const scaler=store?.msgSettingsPerApp?.split_scaling_scaler;

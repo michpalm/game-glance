@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { measureFrostFrame, observeFrostFrame } from '../../../src/menu/frost/geometry';
 
 function fixture() {
-    const { window: owner, document } = parseHTML('<html><body><div id="viewport"></div><div id="bar"></div><div id="panel"></div><div id="notifications"></div></body></html>');
+    const { window: owner, document } = parseHTML('<html><body><div id="viewport"></div><div id="bar"></div><div id="panel"></div><div id="notifications"></div><div id="status"></div></body></html>');
     const { window: source } = parseHTML('<html><body></body></html>');
     // Linkedom windows share several global descriptors; use independent plain viewports.
     const view = Object.assign(new EventTarget(), { innerWidth:1000, innerHeight:500, devicePixelRatio:1.25, getComputedStyle:()=>({borderTopLeftRadius:'999px'}), requestAnimationFrame:vi.fn(), cancelAnimationFrame:vi.fn() });
     const sourceView = Object.assign(new EventTarget(), view);
     const placeholder = document.getElementById('viewport')! as unknown as HTMLElement;
     placeholder.getBoundingClientRect = () => ({left:20, top:10, width:500, height:250} as DOMRect);
-    const elements = Object.fromEntries(['bar','panel','notifications'].map(id => {
+    const elements = Object.fromEntries(['bar','panel','notifications','status'].map(id => {
         const e = document.getElementById(id)! as unknown as HTMLElement;
         e.getBoundingClientRect = () => ({left:100,top:80,width:400,height:200} as DOMRect);
         Object.defineProperties(e,{offsetWidth:{value:400,configurable:true},offsetHeight:{value:200,configurable:true}});

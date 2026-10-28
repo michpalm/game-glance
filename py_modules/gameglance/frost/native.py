@@ -24,8 +24,8 @@ def protocol_description():
 
 
 def pack_uniform(name, values):
-    allowed = {n: 4 for n in ("Bar", "Panel", "Notifications")}
-    allowed.update({n + "Radius": 2 for n in ("Bar", "Panel", "Notifications")})
+    allowed = {n: 4 for n in ("Bar", "Panel", "Notifications", "Status")}
+    allowed.update({n + "Radius": 2 for n in ("Bar", "Panel", "Notifications", "Status")})
     if name not in allowed or not isinstance(values, (list, tuple)) or len(values) != allowed[name]:
         raise ValueError("invalid uniform")
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1 for v in values):
@@ -242,7 +242,7 @@ class NativeConnection:
 
     def set_uniform(self, name, value):
         expected = 8 if name.endswith("Radius") else 16
-        if name not in {"Bar", "Panel", "Notifications", "BarRadius", "PanelRadius", "NotificationsRadius"} or len(value) != expected:
+        if name not in {"Bar", "Panel", "Notifications", "Status", "BarRadius", "PanelRadius", "NotificationsRadius", "StatusRadius"} or len(value) != expected:
             raise ValueError("invalid native uniform")
         buffer = C.create_string_buffer(value)
         array = Array(len(value), len(value), C.cast(buffer, C.c_void_p))

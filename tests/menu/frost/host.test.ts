@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 const rpc=vi.fn<(name:string,...args:unknown[])=>Promise<unknown>>(async()=>null);
 vi.mock('@decky/api',()=>({callable:(name:string)=>(...args:unknown[])=>rpc(name,...args)}));
-import { createMenuFrostHost } from '../../../src/menu/frost/host';
+import { createMenuFrostHost, frostRegionElements } from '../../../src/menu/frost/host';
 function fixture(){
     const owner=parseHTML('<html><body><section><div id="viewport"></div></section></body></html>');
     const source=parseHTML('<html><body><div class="gg-menu"><i data-gg-frost-region="bar"></i><i data-gg-frost-region="panel"></i><i data-gg-frost-region="notifications"></i></div></body></html>');
@@ -25,5 +25,14 @@ describe('menu frost host reveal hold',()=>{
         let settled=false;void f.host.ready().then(()=>{settled=true;});
         await flush();expect(settled).toBe(false);
         answer({hdr:false,maxScale:2});await flush();expect(settled).toBe(true);f.host.dispose();
+    });
+});
+describe('menu frost regions',()=>{
+    it('finds the status bar copy, which is portalled outside the menu root, as the fourth area',()=>{
+        const {document}=parseHTML('<html><body><div class="gg-menu"><i data-gg-frost-region="bar"></i><i data-gg-frost-region="panel"></i><i data-gg-frost-region="notifications"></i></div>'+
+            '<div class="gg-status-host gg-menu-status-host"><div class="gh-status"><div class="gh-status-pill"></div></div></div></body></html>');
+        const found=frostRegionElements(document as unknown as Document);
+        expect(found.slice(0,3).map(e=>e?.getAttribute('data-gg-frost-region'))).toEqual(['bar','panel','notifications']);
+        expect(found[3]?.className).toBe('gh-status-pill');
     });
 });

@@ -7,6 +7,12 @@ import { REGION_IDS, type FrostContext, type FrostFrame, type NativeFrostEnviron
 
 export interface FrostHostOptions {takeWarmup?():FrostWarmup|null;measured?(frame:FrostFrame):void}
 
+/** The frost areas' elements, in REGION_IDS order. The status bar copy is portalled to the popup's body, outside the menu root. */
+export function frostRegionElements(source:Document):(HTMLElement|null)[] {
+    const root=source.querySelector('.gg-menu');
+    return REGION_IDS.map(id=>id==='status'?source.querySelector<HTMLElement>('.gg-menu-status-host .gh-status-pill'):root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`)??null);
+}
+
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */
 export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null,options:FrostHostOptions={}) {
     const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder),takeWarmup:options.takeWarmup});
@@ -15,8 +21,7 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     let visible=false,stopped=false,lastContext='',lastElements:HTMLElement[]=[];
     function measure(force=false){
         if(stopped||!session?.enabled)return;
-        const value=context(environment),root=source.querySelector('.gg-menu');
-        const elements=REGION_IDS.map(id=>root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`));
+        const value=context(environment),elements=frostRegionElements(source);
         const signature=JSON.stringify(value);
         if(!force&&signature===lastContext&&elements.every((e,i)=>e===lastElements[i]))return;
         stopMeasurement?.();stopMeasurement=undefined;
