@@ -135,6 +135,32 @@ def test_shader_downsamples_every_pixel_and_fades_in_from_the_first_visible_fram
     assert "@" not in source
 
 
+def _function(source, name):
+    import re
+    start = re.search(r"\b" + name + r"\(", source).start()
+    depth, index = 0, source.index("{", start)
+    for end in range(index, len(source)):
+        depth += {"{": 1, "}": -1}.get(source[end], 0)
+        if depth == 0:
+            return source[start:end + 1]
+
+
+def test_full_screen_output_reads_the_fade_once_per_vertex_not_per_pixel():
+    # On the Ally (2026-10-28) a per-pixel read of the 1x1 fade state in the
+    # full-screen pass cost ~20 ms a frame in game; square tiles alone did not.
+    source, _ = build_shader(_with_dpr(2.32))
+    assert "VertexShader = FadeVS; PixelShader = Composite" in source
+    assert "StateAS" in _function(source, "FadeVS") and "tex2Dlod" in _function(source, "FadeVS")
+    assert "StateAS" not in _function(source, "Composite")
+
+
+def test_rounded_masks_skip_pixels_outside_their_region():
+    source, _ = build_shader(_with_dpr(2.32))
+    mask = _function(source, "Mask")
+    # The cheap bounds test comes before the rounded-corner distance.
+    assert "any(position > halfSize" in mask and mask.index("any(position > halfSize") < mask.index("length(")
+
+
 # Gamescope 3.16.30.1 creates ReShade textures through VulkanFormatToDRM()
 # (rendervulkan.cpp s_DRMVKFormatTable). A format without a DRM entry becomes
 # VK_FORMAT_UNDEFINED and aborts the compositor (CVulkanTexture::BInit assert).

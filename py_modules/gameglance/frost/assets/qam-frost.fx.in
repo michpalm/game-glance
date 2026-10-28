@@ -78,6 +78,8 @@ float Mask(float2 uv, float4 rect, float2 radiusNorm) {
     if (rect.z <= 0 || rect.w <= 0) return 0;
     float2 halfSize = rect.zw * OutputSize * 0.5;
     float2 position = abs((uv - rect.xy - rect.zw * 0.5) * OutputSize);
+    // Most of the screen is outside every region: skip the corner distance there.
+    if (any(position > halfSize + 1.0)) return 0;
     float2 radius = min(radiusNorm * OutputSize, halfSize);
     if (min(radius.x, radius.y) <= 0) return saturate(0.5 + min(halfSize.x - position.x, halfSize.y - position.y));
     float2 q = (position - halfSize + radius) / radius;
@@ -101,10 +103,15 @@ float4 PanelVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Targe
 float4 NotificationsDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Notifications)); }
 float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsDS, uv, float2(1.0 / @NOTIFICATIONS_W@, 0.0)); }
 float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsHS, uv, float2(0.0, 1.0 / @NOTIFICATIONS_H@)); }
-float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
+// The fade is one value per frame: read the state in the three vertices, not in
+// every output pixel, where that read cost ~20 ms a frame in game on the Ally.
+void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1) {
+    VS(id, pos, uv);
+    fade = saturate((Timer - tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).x) / FadeMs);
+}
+float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1) : SV_Target {
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
-    float fade = saturate((Timer - tex2D(StateAS, float2(0.5, 0.5)).x) / FadeMs);
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
     if (b > 0) color = lerp(color, tex2D(BarVS, TileUV(outUV, Bar)), b);
     if (p > 0) color = lerp(color, tex2D(PanelVS, TileUV(outUV, Panel)), p);
@@ -123,5 +130,5 @@ technique QAMFrost {
     pass NotificationsDown { VertexShader = VS; PixelShader = NotificationsDown; RenderTarget = NotificationsD; }
     pass NotificationsX { VertexShader = VS; PixelShader = NotificationsHorizontal; RenderTarget = NotificationsH; }
     pass NotificationsY { VertexShader = VS; PixelShader = NotificationsVertical; RenderTarget = NotificationsV; }
-    pass Output { VertexShader = VS; PixelShader = Composite; }
+    pass Output { VertexShader = FadeVS; PixelShader = Composite; }
 }
