@@ -51,8 +51,9 @@ export const focusRing = (kind: 'compact' | 'card' | 'menu' | 'slice' | 'lift' |
 };
 /** Section 7: action corners are a share of the button's height, so Home's Play scales into the page's with the same corner. */
 export const actionRadius = (height: number, kind: 'action' | 'icon') => Math.round(height * (kind === 'action' ? .36 : .30));
-/** The shader's calm (qam-frost.fx.in) in CSS: off until the Ally shows Steam's browser keeps the blur with an SVG filter in backdrop-filter. */
-export const CALM_IN_CSS: boolean = false;
+/** The shader's calm (qam-frost.fx.in) in CSS. On since 28 October: on the Ally Steam's browser keeps the blur with the filter, matches the shader within
+ * one level and shows no frame-time cost (120 Hz, Home and a game page). Off sends no url(), in case a future Steam drops reference filters. */
+export const CALM_IN_CSS: boolean = true;
 export const CALM_FILTER_ID = 'gg-calm';
 /** The shader's gain for a luminance Y (Calm in qam-frost.fx.in): 1 up to the knee, then (knee + (Y - knee) * slope) / Y, in 41 steps of Y. */
 export const calmGain = () => Array.from({ length: 41 }, (_, i) => {
@@ -71,9 +72,11 @@ export const calmFilterMarkup = () => {
         + `<feComponentTransfer in="luma" result="gain">${gain}</feComponentTransfer>`
         + '<feComposite in="SourceGraphic" in2="gain" operator="arithmetic" k1="1" k2="0" k3="0" k4="0"/></filter></svg>';
 };
+/** The frost's backdrop-filter value alone, for an animation that must end on it (a fill-both keyframe overrides the rule). */
+export const frostFilter = (blur: string) => `blur(${blur})${CALM_IN_CSS ? ` url(#${CALM_FILTER_ID})` : ''}`;
 /** One frost for every glass surface: background and backdrop only; each surface keeps its own border. */
 export const frostSurface = (blur: string, level: 'glass' | 'strong' = 'glass') =>
-    `background:${level === 'glass' ? TOKENS.glass : TOKENS.strong};backdrop-filter:blur(${blur})${CALM_IN_CSS ? ` url(#${CALM_FILTER_ID})` : ''}`;
+    `background:${level === 'glass' ? TOKENS.glass : TOKENS.strong};backdrop-filter:${frostFilter(blur)}`;
 /** Small text over art or glass: the menu's 90% white with its shadow (TOKENS.textShadow, in the surface's unit). */
 export const labelText = (u: (n: number) => string = (n) => `${n}px`) => `color:${TOKENS.label};text-shadow:0 ${u(1)} ${u(2)} #0009`;
 export const currentUnderline = () => `content:'';position:absolute;left:${unit(12)};right:${unit(12)};bottom:${unit(4)};height:${unit(3)};border-radius:var(--gg-r-pill);background:var(--gg-accent);pointer-events:none`;

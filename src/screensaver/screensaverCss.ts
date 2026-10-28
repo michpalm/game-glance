@@ -1,6 +1,6 @@
 
 import { defaultGrowth } from '../home/scale';
-import { frostSurface, labelText } from '../styles/tokens';
+import { frostFilter, frostSurface, labelText } from '../styles/tokens';
 
 /**
  * Game Glance's screensaver: its timings, its canvas and its stylesheet. Pure. Steam's Game Slideshow (probed on the
@@ -87,8 +87,8 @@ export function screensaverCss(steamSlideshow: string | null): string {
         // both at once: the old ones are gone before the new ones come in. Each part fades on its own, never a whole slide
         // or the overlay: a backdrop blur under a fading parent has nothing to blur until the fade ends, so the card's
         // glass popped in. The card's blur grows with its fade instead (ggs-glass-in / -out).
-        `@keyframes ggs-glass-in { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(${CARD_BLUR}px); } }`,
-        `@keyframes ggs-glass-out { from { opacity: 1; backdrop-filter: blur(${CARD_BLUR}px); } to { opacity: 0; backdrop-filter: blur(0px); } }`,
+        `@keyframes ggs-glass-in { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: ${frostFilter(`${CARD_BLUR}px`)}; } }`,
+        `@keyframes ggs-glass-out { from { opacity: 1; backdrop-filter: ${frostFilter(`${CARD_BLUR}px`)}; } to { opacity: 0; backdrop-filter: blur(0px); } }`,
         `.ggs-slide { position: absolute; inset: 0; }`,
         `.ggs-first .ggs-frame { animation: ggs-fade-in ${CROSSFADE_MS}ms ease-in-out both; }`,
         `.ggs-leaving .ggs-frame { animation: ggs-fade-out ${CROSSFADE_MS}ms ease-in-out both; }`,

@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { expect, it } from 'vitest';
-import { actionRadius, applyAccent, CALM_IN_CSS, calmFilterMarkup, calmGain, focusRing, frostSurface, installCalmFilter, installTokenCss, labelText, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
+import { actionRadius, applyAccent, CALM_IN_CSS, calmFilterMarkup, calmGain, focusRing, frostFilter, frostSurface, installCalmFilter, installTokenCss, labelText, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
 
 it('shares each document token stylesheet and releases only the caller-owned style', () => {
     const a = parseHTML('<html><head><style id="foreign"></style></head><body></body></html>');
@@ -73,17 +73,21 @@ it('the calm filter scales the colour by one gain from its luminance, so hue hol
     expect(m).not.toMatch(/<feComponentTransfer>(?![^]*result="gain")/);
 });
 
-it('frost is .40 glass and one blur, with no filter reference while the calm is off', () => {
-    expect(CALM_IN_CSS).toBe(false);
-    expect(frostSurface('16px')).toBe('background:rgba(12,16,22,.40);backdrop-filter:blur(16px)');
+it('frost is .40 glass, one blur and the calm (on since the Ally kept the blur and matched the shader, 28 October)', () => {
+    expect(CALM_IN_CSS).toBe(true);
+    expect(frostFilter('16px')).toBe('blur(16px) url(#gg-calm)');
+    expect(frostSurface('16px')).toBe('background:rgba(12,16,22,.40);backdrop-filter:blur(16px) url(#gg-calm)');
     expect(frostSurface('16px', 'strong')).toContain('rgba(12,16,22,.55)');
-    expect(frostSurface('16px')).not.toContain('url(');
 });
 
-it('installCalmFilter adds nothing while the calm is off', () => {
+it('installCalmFilter puts one filter in each document, shared, and removes it after its last user', () => {
     const { document } = parseHTML('<html><head></head><body></body></html>');
-    const release = installCalmFilter(document as unknown as Document);
-    expect(document.getElementById('gg-calm')).toBeNull(); release(); release();
+    const doc = document as unknown as Document;
+    const a = installCalmFilter(doc), b = installCalmFilter(doc);
+    expect(document.querySelectorAll('#gg-calm')).toHaveLength(1);
+    expect(document.querySelector('#gg-calm feComposite, #gg-calm fecomposite')).not.toBeNull();
+    a(); a(); expect(document.getElementById('gg-calm')).not.toBeNull();
+    b(); expect(document.getElementById('gg-calm')).toBeNull();
 });
 
 it('labels are 90% white with the menu shadow', () => {

@@ -89,7 +89,10 @@ describe('frost and labels (VDL Section 7)', () => {
     it('the card is the frost and its labels are 90% white with the shadow', () => {
         const css = screensaverCss(null);
         expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
-        expect(css).toContain('background:rgba(12,16,22,.40);backdrop-filter:blur(16px)');
+        expect(css).toContain('background:rgba(12,16,22,.40);backdrop-filter:blur(16px) url(#gg-calm)');
+        // the card's fade-in and fade-out end on the same frost, calm included (a fill-both animation overrides the rule)
+        expect(css).toMatch(/@keyframes ggs-glass-in \{[^]*?to \{[^}]*backdrop-filter: blur\(16px\) url\(#gg-calm\)/);
+        expect(css).toMatch(/@keyframes ggs-glass-out \{ from \{[^}]*backdrop-filter: blur\(16px\) url\(#gg-calm\)/);
         expect(css).toMatch(new RegExp(`\\.ggs-label \\{[^}]*${labelText().replace(/[().]/g, (c) => `\\${c}`)}`));
     });
 });

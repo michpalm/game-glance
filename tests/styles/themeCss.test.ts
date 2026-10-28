@@ -68,7 +68,7 @@ describe('buildThemeCss full-screen layout', () => {
         expect(row).toContain('padding: calc(var(--gg-side) / 2) !important');
         const card = ruleFor(css, `${gap} > .Panel {`);
         expect(card).toContain('margin: 0');
-        expect(card).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) !important;');
+        expect(card).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) url(#gg-calm) !important;');
         expect(card).toContain('border-radius: calc(16 * var(--gg-d, 1))');
         expect(ruleFor(css, `${gap} ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) {`)).toContain('margin-top: 0');
         expect(ruleFor(css, `${gap} ~ .rt_Tabs {`)).toContain('margin-top: 0');
@@ -437,7 +437,7 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .rt_Root { background: transparent !important; }
           .rt_Tabs { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; background: rgba(14, 20, 27, 0.9) !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) url(#gg-calm) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: 0 !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ .rt_Tabs { margin-top: 0 !important; }
           .ad_Inner > .gg-hero { position: absolute !important; top: calc(var(--gg-play-top) + var(--gg-row-h)) !important;
@@ -509,7 +509,10 @@ describe('game page grammar (VDL Section 7)', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
         expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
         expect(css).not.toMatch(/blur\(calc\((10|12|14) \* var\(--gg-d/);
-        expect(css).not.toContain('url(#');   // no calm reference while CALM_IN_CSS is off
+        // every frost carries the calm
+        const frosts = [...css.matchAll(/background:rgba\(12,16,22,\.(40|55)\)[^;]*;\s*backdrop-filter:([^;!]+)/g)].map((m) => m[2].trim());
+        expect(frosts.length).toBeGreaterThan(5);
+        for (const f of frosts) expect(f).toMatch(/^blur\([^)]*\)+ url\(#gg-calm\)$/);
     });
     it('labels are 90% white with the shadow; the eyebrow keeps its accent and gains the shadow', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
@@ -587,7 +590,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     });
     it('restyle: the cloud status is the same dark circle as the others, with the re-tuned state colours and Home’s focus ring', () => {
         const cloud = rulesFor(restyled, '.ps_Cloud');
-        expect(cloud).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d))) !important;');
+        expect(cloud).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d))) url(#gg-calm) !important;');
         // Its ring is the menu circles' (1 d unit, the boosted ring colour), not 1 CSS px: a 1 px ring is 2 device px on the
         // Ally and settled visibly as the open transition handed over from Home's (#64).
         const menuRing = /border-width: [^;]*; border-color: [^;]*;/.exec(rulesFor(restyled, '.ps_Menu'))![0];
