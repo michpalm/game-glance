@@ -113,6 +113,19 @@ describe('feed tabs (VDL Section 7)', () => {
     });
 });
 
+describe('card and capsule focus (VDL Section 7)', () => {
+    it('feed cards lift with the ring and a neutral shadow; capsules stay level', () => {
+        const css = homeCss();
+        expect(ruleFor(css, '.gh-card.gh-card-focus')).toContain('translateY(-4px)');
+        for (const sel of ['.gh-card.gh-card-focus', '.gh-cap.gh-cap-focus', '.gh-recents-focus .gh-cap-sel']) {
+            const r = ruleFor(css, sel);
+            expect(r).toContain('outline:2px solid #fff'); expect(r).toContain('rgba(0,0,0,.75)'); expect(r).not.toContain('glance-accent');
+        }
+        expect(ruleFor(css, '.gh-cap.gh-cap-focus')).not.toContain('translateY');
+        expect(css).not.toMatch(/\.gh-(card|cap)-bar/);
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
@@ -244,8 +257,8 @@ describe('homeCss', () => {
     });
     it('focus looks follow DOM focus too: after a tap, a click or the wheel Steam drops its focus classes', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
-        // The selected card's ring and glow, with the row under DOM focus.
-        expect(css).toMatch(/\.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\)/);
+        // The selected card's ring, with the row under DOM focus.
+        expect(css).toMatch(/\.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*outline:2px solid #fff/);
         // A button, the Play pill's growth, a feed card and a tab's line.
         expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*outline:2px solid #fff/);
         expect(css).toMatch(/\.gh-card:focus\s*\{[^}]*translateY\(-4px\)/);
@@ -279,10 +292,10 @@ describe('homeCss', () => {
         // pointer-events, so they too take none under the sheet or while a game opens (an explicit auto would escape both).
         expect(css).toMatch(/\.gh-ghost\s*\{[^}]*cursor:\s*default/);
         expect(css).not.toMatch(/\.gh-ghost\s*\{[^}]*pointer-events/);
-        // While the card row has focus, the selected (or Library) card gets a white ring outside it and an even accent
-        // glow (no y offset), and no bar along its bottom edge. Wide or narrow (a fast L1/R1 run), only the selected card
+        // While the card row has focus, the selected (or Library) card gets the menu's white ring outside it and a neutral
+        // shadow, and no bar. Wide or narrow (a fast L1/R1 run), only the selected card
         // (gh-cap-sel): in Steam's row style the wide card is the first game, selected or not, and gets no ring.
-        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-sel, \.gh-recents-focus \.gh-cap-lib-on, \.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\), 0 0 [\d.]+px [\d.]+px var\(--glance-accent\)/);
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-sel, \.gh-recents-focus \.gh-cap-lib-on, \.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*outline:2px solid #fff[^}]*rgba\(0,0,0,\.75\)/);
         expect(css).not.toMatch(/gh-recents-focus[^{]*\.gh-cap-bar/);
         expect(css).not.toMatch(/\.gh-cap-wide[,\s]*\{[^}]*(box-shadow|--gh-edge)/);
         expect(css).not.toMatch(/\.gh-recents-focus \.gh-cap-wide/);
@@ -304,14 +317,13 @@ describe('homeCss', () => {
         expect(hand).toMatch(/\.gh-recents\s*\{[^}]*top:\s*calc\(478px - var\(--gh-top\)\)\s*!important[^}]*height:\s*210px/);
         expect(hand).toMatch(/\.gh-cap\s*\{[^}]*height:\s*210px\s*!important[^}]*border-radius:\s*12px/);
         expect(hand).toMatch(/\.gh-cap-cover\s*\{[^}]*width:\s*140px/);
-        expect(hand).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\), 0 24px 60px -18px var\(--glance-accent\)/);
+        expect(hand).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:0 14px 28px -12px rgba\(0,0,0,\.75\)/);
         expect(hand).toMatch(/\.gh-ghost-icon\s*\{[^}]*width:\s*54px/);
         const dock = homeCss(1.6);
         expect(dock).toMatch(/\.gh-recents\s*\{[^}]*top:\s*calc\(464px - var\(--gh-top\)\)\s*!important[^}]*height:\s*224px/);
         expect(dock).toMatch(/\.gh-cap\s*\{[^}]*height:\s*224px\s*!important[^}]*border-radius:\s*12\.8px/);
         expect(dock).toMatch(/\.gh-cap-cover\s*\{[^}]*width:\s*149px/);
-        expect(dock).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\), 0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
-        expect(dock).toMatch(/\.gh-cap-bar\s*\{[^}]*height:\s*4\.8px/);
+        expect(dock).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:0 14px 28px -12px rgba\(0,0,0,\.75\)/);
         expect(dock).toMatch(/\.gh-ghost-icon\s*\{[^}]*width:\s*57\.6px[^}]*font-size:\s*32px/);
         expect(dock).toMatch(/\.gh-ghost-label\s*\{[^}]*font-size:\s*15\.2px/);
         // Default (before Home has measured its box): handheld.
@@ -397,7 +409,7 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
         expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
-        expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
+        expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 14px 28px -12px rgba\(0,0,0,\.75\)/);
     });
     describe('stackShift: the whole Home stack moves down into the bottom slack', () => {
         // Tab strip 700 + 33.6 (padding 8 + 10, 13px at line-height 1.2) = 733.6; it ends 18 above the 46 legend reserve.
@@ -797,15 +809,6 @@ describe('homeCss logo', () => {
         const body = /\.gh-logo \{([^}]*)\}/.exec(homeCss())?.[1] ?? '';
         expect(body).not.toBe('');
         for (const prop of ['width', 'height', 'max-width', 'max-height']) expect(body, prop).not.toMatch(new RegExp(`(^|[;\\s])${prop}:`));
-    });
-});
-
-describe('homeCss accent on hidden bars', () => {
-    it('bars nobody sees take a new accent at once (no colour transition): an unselected card, the hidden feed and tabs', () => {
-        const css = homeCss();
-        // Each L1/R1 step changes the accent: these ran ~30 colour transitions a step, all invisible (measured on the Ally).
-        expect(css).toMatch(/\.gh-cap:not\(\.gh-cap-focus\) \.gh-cap-bar \{ transition: opacity 250ms !important; \}/);
-        expect(css).toMatch(/\.gh-card:not\(\.gh-card-focus\):not\(:focus\) \.gh-card-bar \{ transition: opacity 250ms !important; \}/);
     });
 });
 

@@ -143,7 +143,6 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
                     item.sub && <div className="gh-card-sub">{item.sub}</div>
                 )}
             </div>
-            <div className="gh-card-bar" />
         </Focusable>
     );
 }

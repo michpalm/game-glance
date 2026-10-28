@@ -294,8 +294,7 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
         expect(buildUnifideckCss(full)).not.toContain('#0b0d10');
         expect(css).not.toContain('#0b0d10');
         expect(css).toMatch(/\.unifideck-hide-native-play \.unifideck-play-btn[^{]*\{[^}]*color: #ffffff !important;/);
-        const pf = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
-        expect(css).toMatch(new RegExp(`\\.unifideck-play-btn\\.gpfocus[^{]*\\{[^}]*transform: scale\\(${pf.x}, ${pf.y}\\) !important;`));
+        expect(css).toMatch(/\.unifideck-play-btn\.gpfocus[^{]*\{[^}]*outline:calc\(2 \* var\(--gg-d\)\) solid #fff !important;[^}]*transform: none !important;/);
     });
     it('with Spotlight Home\u2019s look its row has Steam\u2019s padding (none above, 36 below), so the pill is level with Steam\u2019s', () => {
         const rowRule = /:has\([^)]*\) \{[^}]*padding-top: 0 !important; padding-bottom: [^;]+ !important;/;
@@ -487,6 +486,33 @@ describe('buildThemeCss 1.1.1 baseline', () => {
 });
 
 /** Every rule body for `selector` (exact selector text), joined: the restyle adds later rules for some selectors. */
+/** Every rule body whose selector list has a selector matching `re`. */
+const rulesMatching = (css: string, re: RegExp) => [...css.replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, sel]) => !sel.trim().startsWith('@') && sel.split(',').some((x) => re.test(x.trim()))).map(([, , body]) => body);
+
+describe('game page grammar (VDL Section 7)', () => {
+    it('soft Play and tiles, menu focus everywhere, info cards lift', () => {
+        const css = buildThemeCss(full, { restyle: true }) + buildUnifideckCss(full, { restyle: true });
+        // The page's corners: 22 and 18 of its 60 (the same shares of the icon height as Home's 19 and 16 of 54).
+        expect(css).toContain('border-radius: calc(var(--gg-icon) * 0.3667) !important');
+        expect(css).toContain('border-radius: calc(var(--gg-icon) * 0.3) !important');
+        expect(buildThemeCss(full)).toContain('border-radius: 999px !important');   // the 1.1.1 layout keeps its round pill
+        // The page's action controls: Play, the circles, the cloud, Unifideck's buttons, the store and copy pills.
+        const focus = rulesMatching(css, /(rt_PlayBtn|ps_Menu|ps_Cloud|unifideck|gg-store|gg-copy)[^{]*(gpfocus|:focus|gg-store-focus|gg-copy-focus)/i);
+        expect(focus.length).toBeGreaterThan(5);
+        for (const r of focus) {
+            expect(r).not.toMatch(/box-shadow:[^;]*var\(--(glance|gg)-accent\)/); expect(r).not.toMatch(/scale\(1\.0\d/);
+        }
+        expect(css).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important');
+        expect(css).toContain('translateY(calc(-4 * var(--gg-d)))');
+        expect(css).toContain('transform-style: preserve-3d');   // icon buttons keep blurring the art (57a522a)
+    });
+    it('a focused control never grows, so the open transition lands on the page pill at rest', () => {
+        expect(PAGE_LAYOUT.focusScale).toBe(1);
+        expect(pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon)).toEqual({ x: 1, y: 1 });
+    });
+});
+
 const rulesFor = (css: string, selector: string) => {
     const bodies: string[] = [];
     let start = css.indexOf(`${selector} {`);
@@ -544,7 +570,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(cloud).toContain('backdrop-filter: blur(calc(12 * var(--gg-d))) !important;');
         expect(cloud).toContain('--gg-ok: #5cf2b4; --gg-warn: #ffd84d; --gg-bad: #ff8585; --gg-off: #c4c9d1;');
         expect(rulesFor(restyled, '.ps_Cloud::before')).toContain('drop-shadow');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // The menu circles' fill is the same.
         expect(rulesFor(restyled, '.ps_Menu')).toContain('background: rgba(12, 16, 22, 0.4) !important;');
         // Not in the 1.1.1 output.
@@ -646,7 +672,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
             .filter((s) => /\.(rt_PlayBtn|ps_Menu|ps_Cloud)/.test(s) && /(\.gpfocus|:focus)(?![\w-])/.test(s) && !s.split(gate).join('').includes(':not(') && !s.startsWith('html[data-gg-mouse]'));
         expect(focusRules.length).toBeGreaterThanOrEqual(8);
         for (const sel of focusRules) for (const part of sel.split(/,\s*(?=:where)/)) expect(part.trim(), sel).toMatch(/^:where\(html:not\(\[data-gg-mouse\]\)\)/);
-        expect(rulesFor(restyled, `${gate} .ps_Menu.gpfocus`)).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
+        expect(rulesFor(restyled, `${gate} .ps_Menu.gpfocus`)).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // Steam's own focus rule darkens a focused circle's icon (meant for its white focus look): in mouse mode it stays
         // the white of a circle at rest, or it showed black on the dark glass after coming back to the page.
         // (Steam darkens the icon's svg, whose paths fill with currentColor: the button and its svg both.)
@@ -665,11 +691,13 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(buildThemeCss(steam)).not.toContain(':hover');
         for (const sel of restyled.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');
     });
-    it("a card the controller selected looks like Home's focused feed card (accent ring and glow, a lift), not in mouse mode", () => {
+    it("a card the controller selected looks like Home's focused feed card (the menu's ring, a neutral shadow, a lift), not in mouse mode", () => {
         const gate = ':where(html:not([data-gg-mouse]))';
         const look = rulesFor(restyled, `${gate} .gg-card-nav.gg-card-focus, ${gate} .gg-card-nav:focus`);
-        expect(look).toContain('box-shadow: 0 0 0 calc(1 * var(--gg-d)) var(--glance-accent), 0 calc(16 * var(--gg-d)) calc(40 * var(--gg-d)) calc(-1 * calc(12 * var(--gg-d))) var(--glance-accent) !important;');
-        expect(look).toContain('transform: translateY(calc(-4 * var(--gg-d)))');
+        expect(look).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
+        expect(look).toContain('box-shadow:0 calc(14 * var(--gg-d)) calc(28 * var(--gg-d)) calc(-12 * var(--gg-d)) rgba(0,0,0,.75) !important;');
+        expect(look).not.toContain('accent');
+        expect(look).toContain('transform:translateY(calc(-4 * var(--gg-d)))');
         expect(buildThemeCss(steam)).not.toContain('gg-card-focus');
     });
     it('hides the temporary launch-option tip and marker only in the restyled page', () => {
@@ -743,12 +771,11 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     it("Play has no green sheen: Steam's focus shine (a green gradient on its ::after) is hidden on the accent pill", () => {
         expect(rulesFor(restyled, '.rt_PlayBtn [role="button"]::after')).toContain('display: none !important');
     });
-    it("Play focused as Home's: the fill stays the accent (no lighter overlay), a white ring and accent glow, scaled as Home's", () => {
+    it("Play focused as Home's: the fill stays the accent (no lighter overlay) and the menu's white ring, no glow or growth", () => {
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"].gpfocus')).toContain('background: transparent !important');
         const ring = rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)');
-        expect(ring).toContain('rgba(255, 255, 255, 0.9)');
-        const pf = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
-        expect(ring).toContain(`transform: scale(${pf.x}, ${pf.y}) !important`);
+        expect(ring).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
+        expect(ring).toContain('transform: none !important');
         expect(rulesFor(restyled, '.rt_PlayBtn > div:has(> [role="button"])')).toContain('transition: transform 250ms, box-shadow 250ms !important');
     });
     it('the glass blurs the art: the round buttons and the cards join Steam\'s 3D scene, the hero art\'s (a flat container cut their blur off)', () => {
@@ -768,14 +795,13 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     it('focus looks follow DOM focus too: a page opened by a tap or a click has Play focused without Steam\'s gpfocus', () => {
         // The open transition lands on a focused Play (openMotion): without this the pill shrank and lost its ring at the hand-over.
         const ring = rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"]:focus)');
-        expect(ring).toContain('rgba(255, 255, 255, 0.9)');
-        const pf = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
-        expect(ring).toContain(`transform: scale(${pf.x}, ${pf.y}) !important`);
-        expect(ring).toContain('var(--glance-accent)');
+        expect(ring).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
+        expect(ring).toContain('transform: none !important');
+        expect(ring).not.toContain('accent');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"]:focus')).toContain('background: transparent !important');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"] + [role="button"]:focus')).toContain('background: rgba(255, 255, 255, 0.28) !important');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Menu:focus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud:focus')).toContain('var(--glance-accent) !important; transform: scale(1.04) !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Menu:focus')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud:focus')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
     });
     it('the "Play from" arrow focused: the pill shows its focus and the arrow\'s segment is tinted, as on Home (Michael: Neva)', () => {
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn [role="button"] + [role="button"].gpfocus')).toContain('background: rgba(255, 255, 255, 0.28) !important');
@@ -785,7 +811,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).toContain("@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: #5fd1ae; }");
         expect(rulesFor(restyled, '.ad_Inner')).toContain('--gg-accent: var(--glance-accent);');
         expect(rulesFor(restyled, '.ad_Inner')).toContain('transition: --glance-accent 500ms ease;');
-        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('var(--glance-accent)');
+        expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // handoff px scaled like Home: its 1440 canvas on 16:9, its 1280 canvas on 16:10
         expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
         expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
@@ -945,7 +971,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         for (const [, selector, body] of steamRules) {
             const props = body.split(';').map((d) => d.split(':')[0].trim()).filter(Boolean);
             for (const prop of props) {
-                expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|--gg-cloud-dot|overflow|transition|color|background|border|border-width|border-color|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display|object-position|transform|transform-style)$/)]);
+                expect([selector, prop]).toEqual([selector, expect.stringMatching(/^(--gg-accent|--gg-play-top|--gg-row-h|--gg-ok|--gg-warn|--gg-bad|--gg-off|--gg-cloud-dot|overflow|transition|color|background|border|border-width|border-color|filter|box-shadow|visibility|padding-left|padding-right|padding-top|padding-bottom|font-size|font-weight|width|height|margin-right|top|min-width|flex|padding|backdrop-filter|display|object-position|transform|transform-style|outline|outline-offset|border-radius)$/)]);
             }
         }
         // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's, and in
@@ -1223,7 +1249,7 @@ describe('pillFocusScale', () => {
         const pf = pillFocusScale(340, 60);
         expect(pf.y).toBe(f);
         expect((pf.x - 1) * 340).toBeCloseTo((f - 1) * 60, 2);
-        expect(pillFocusScale(250, 54).x).toBeCloseTo(1 + (0.04 * 54) / 250, 4);
+        expect(pillFocusScale(250, 54).x).toBeCloseTo(1 + ((f - 1) * 54) / 250, 4);
     });
 });
 

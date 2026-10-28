@@ -109,7 +109,6 @@ const GameCapsule = memo(function GameCapsule({ game, index, left, width, dim, w
                     {game.demo && <div className="gh-cap-new">{tr('demoMark')}</div>}
                 </div>
             )}
-            <div className="gh-cap-bar" />
         </div>
     );
 });
@@ -231,7 +230,6 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
                         </div>
                         <div className="gh-lib-label">{tr('viewLibrary')}</div>
                     </div>
-                    <div className="gh-cap-bar" />
                 </div>
                 {layout.ghosts.map((ghost, j) => (
                     <div

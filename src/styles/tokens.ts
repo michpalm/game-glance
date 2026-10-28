@@ -42,10 +42,11 @@ export function glassSurface(level: 'glass' | 'strong' | 'solid' = 'glass'): str
 }
 export const artFill = (dim = false) => `filter:var(--gg-art-fill${dim ? '-dim' : ''})`;
 /** The in-game menu's ring follows the control's shape: outside a card, just inside a slice. It sets no fill or shadow, so a selected item keeps its mark.
- * Section 7: 'lift' raises a feed or info card 4 units, 'level' keeps a capsule in its row; both add a neutral shadow, never the accent. */
+ * Section 7: 'lift' raises a feed or info card 4 units, 'level' keeps a capsule in its row; both add a neutral shadow, never the accent.
+ * `u` writes the surface's unit (the page's d units, so its ring is Home's 2 canvas px at the hand-over). */
 export const focusRing = (kind: 'compact' | 'card' | 'menu' | 'slice' | 'lift' | 'level' = 'compact', u: (n: number) => string = (n) => `${n}px`) => {
-    if (kind === 'menu' || kind === 'slice') return `outline:2px solid #fff;outline-offset:${kind === 'menu' ? '2px' : '-2px'};transform:none`;
-    if (kind === 'lift' || kind === 'level') return `outline:2px solid #fff;outline-offset:2px;box-shadow:0 ${u(14)} ${u(28)} ${u(-12)} rgba(0,0,0,.75);transform:${kind === 'lift' ? `translateY(${u(-4)})` : 'none'}`;
+    if (kind === 'menu' || kind === 'slice') return `outline:${u(2)} solid #fff;outline-offset:${u(kind === 'menu' ? 2 : -2)};transform:none`;
+    if (kind === 'lift' || kind === 'level') return `outline:${u(2)} solid #fff;outline-offset:${u(2)};box-shadow:0 ${u(14)} ${u(28)} ${u(-12)} rgba(0,0,0,.75);transform:${kind === 'lift' ? `translateY(${u(-4)})` : 'none'}`;
     return `outline:2px solid rgba(255,255,255,.9);outline-offset:1px;border-color:var(--gg-edge-active);box-shadow:var(--gg-focus-shadow);background:var(--gg-glass-strong);transform:${kind === 'compact' ? 'scale(1.04)' : `translateY(${unit(-4)})`}`;
 };
 /** Section 7: action corners are a share of the button's height, so Home's Play scales into the page's with the same corner. */

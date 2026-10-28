@@ -7,6 +7,7 @@ import { defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
+import { actionRadius, focusRing, TOKENS } from './tokens';
 
 export type ClassMap = Record<string, string | undefined> | undefined;
 
@@ -147,8 +148,8 @@ export const PAGE_LAYOUT = {
     playArrow: { w: 56, glyph: 14 },
     /** The glyph in the controller and gear circles. */
     circleIcon: 24,
-    /** A focused button grows by this about its centre (Home's buttons and the page's Play, alike). */
-    focusScale: 1.04,
+    /** Section 7: a focused control never grows (the menu's ring only); the open transition lands on the pill at rest. */
+    focusScale: 1,
     /** The cloud circle's glyph (Home's size; the page's was in another unit, so its ratio to Home's changed with the screen). */
     cloudIcon: 26,
     cleanInfo: { padX: 24, padY: 14, colGap: 28, value: 22, barW: 96, barH: 4, barTop: 2 },
@@ -158,8 +159,9 @@ export const PAGE_LAYOUT = {
     storePillTop: 82,
 } as const;
 
-/** The page's Play pill focused (pillFocusScale on the pill's size). */
-const PILL_FOCUS = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
+/** Section 7: Play's corner and the round buttons' (now soft tiles) as shares of the icon height (22 and 18 of 60), in either layout. */
+const R_PLAY = `calc(var(--gg-icon) * ${+(actionRadius(PAGE_LAYOUT.icon, 'action') / PAGE_LAYOUT.icon).toFixed(4)})`;
+const R_TILE = `calc(var(--gg-icon) * ${+(actionRadius(PAGE_LAYOUT.icon, 'icon') / PAGE_LAYOUT.icon).toFixed(4)})`;
 
 /** The TV media query as CSS. */
 const TV_QUERY = `@media (min-width: ${PAGE_LAYOUT.tvQuery.minWidth}px) and (min-height: ${PAGE_LAYOUT.tvQuery.minHeight}px)`;
@@ -440,11 +442,11 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         rule(primary, ` width: var(--gg-play-w) !important; min-width: 0 !important; flex: 0 0 var(--gg-play-w) !important; height: var(--gg-icon) !important;
             justify-content: center !important; border-radius: 999px !important; background: var(--gg-accent) !important; box-shadow: none !important;
             color: #ffffff !important; font-size: ${u(16)} !important; `),
-        rule(focused, ` background: var(--gg-accent) !important; box-shadow: 0 0 0 ${u(2)} rgba(255, 255, 255, 0.9) !important; `),
+        rule(focused, ` background: var(--gg-accent) !important; ${actionRing} `),
         // Spotlight Home's look: Steam's Play row has no top padding and a 36 one below (see the playSection rule above), so the buttons start
         // at --gg-play-top; the same here, or Unifideck's pill sits lower than Steam's.
         options.restyle ? rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` padding-top: 0 !important; padding-bottom: ${d(36)} !important; `) : '',
-        // And the handoff's pill type, white on the accent and focused as our own Play pill (ring, glow, focus scale).
+        // And the handoff's pill type, white on the accent and focused as our own Play pill (the menu's ring).
         options.restyle ? rule(primary, ` font-size: ${d(22)} !important; font-weight: 700 !important; color: #ffffff !important; transition: transform 250ms, box-shadow 250ms !important; `) : '',
         // Read and laid out as Home's pill and Steam's (consistent on Home and every page): the word as written, not in
         // Unifideck's capitals, and glyph and word from the left at the page pill's inset, glyph size and gap.
@@ -453,10 +455,12 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         // Its cloud button's in-sync check badge at Unifideck's proportion to the 24 glyph (the circles' rule sizes every svg 24).
         options.restyle ? rule('.unifideck-icon-btn svg.unifideck-cloud-badge', ` width: ${d(13)} !important; height: ${d(13)} !important; `) : '',
         options.restyle ? rule(primary.map((p) => `${p} svg`), ` width: ${d(PAGE_LAYOUT.pill.icon)} !important; height: ${d(PAGE_LAYOUT.pill.icon)} !important; margin: 0 ${d(PAGE_LAYOUT.pill.iconGap)} 0 0 !important; flex: 0 0 auto !important; `) : '',
-        options.restyle ? rule(`${UNIFIDECK_PAGE} .unifideck-icon-btn`, ` ${actionTransition} `) : '',
-        options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:is(.gpfocus, :focus)`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `) : '',
+        // Section 7: soft corners, as Steam's own Play and buttons on the restyled page.
+        options.restyle ? rule(primary, ` border-radius: ${R_PLAY} !important; `) : '',
+        options.restyle ? rule(`${UNIFIDECK_PAGE} .unifideck-icon-btn`, ` border-radius: ${R_TILE} !important; ${actionTransition} `) : '',
+        options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:is(.gpfocus, :focus)`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `) : '',
         options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:not(.gg-uni-cloud):is(.gpfocus, :focus) svg`, ` color: #ffffff !important; fill: currentColor !important; `) : '',
-        options.restyle ? rule(focused, ` box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--gg-accent) !important; transform: scale(${PILL_FOCUS.x}, ${PILL_FOCUS.y}) !important; `) : '',
+        options.restyle ? rule(focused, ` ${actionFocused} `) : '',
     ].filter((r) => r.length > 0).join('\n');
 }
 
@@ -670,13 +674,15 @@ export function buildLaunchCss(classes: ThemeClasses): string {
  * The eyebrow/title block is shown only with the full-screen layout, where the logo was; otherwise (a renamed Steam
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
-const actionFocusShadow = `box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--glance-accent) !important;`;
-const actionFocused = `${actionFocusShadow} transform: scale(${PAGE_LAYOUT.focusScale}) !important;`;
+/** Section 7: the in-game menu's ring on every action control, no glow or growth (tokens.focusRing). */
+const important = (decls: string) => decls.split(';').filter(Boolean).map((x) => `${x} !important;`).join(' ');
+const actionRing = important(focusRing('menu', d).replace(';transform:none', ''));
+const actionFocused = `${actionRing} transform: none !important;`;
 const actionTransition = 'transition: transform 250ms, box-shadow 250ms !important;';
 
 function restyleRules({ header, details, root, play, shared }: ThemeClasses, layout: boolean, heroFit: HeroFit): string[] {
-    // Play focused, as Home's: a white ring and accent glow, grown by the focus scale (by the controller or DOM focus).
-    const pillFocused = ` box-shadow: 0 0 0 ${d(2)} rgba(255, 255, 255, 0.9), 0 ${d(14)} ${d(40)} calc(-1 * ${d(8)}) var(--glance-accent) !important; transform: scale(${PILL_FOCUS.x}, ${PILL_FOCUS.y}) !important; `;
+    // Play focused, as Home's: the menu's white ring (by the controller or DOM focus).
+    const pillFocused = ` ${actionFocused} `;
     const topCapsule = cls(header, 'TopCapsule');
     const titleImage = cls(header, 'TitleImageContainer');
     const svgTitle = cls(header, 'SVGTitle');
@@ -733,16 +739,20 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Its ring is Home's: 1 d unit (1 canvas px on Home), never 1 px, which is drawn on whole device px (2 at the Ally's
         // 2.32) and read brighter than Home's as the open transition handed over (Michael on the Ally). Not the cloud: placed
         // at a fractional position, its 1 px is drawn soft like Home's already. Its colour is Home's, as bright as Home's (ringBoost).
+        // Section 7: Play and the buttons take soft corners (the 1.1.1 layout keeps its round ones).
+        rule(playButton && `${playButton} > div:has(> [role="button"])`, ` border-radius: ${R_PLAY} !important; `),
+        rule(menuButton, ` border-radius: ${R_TILE} !important; `),
+        rule(cloud, ` border-radius: ${R_TILE} !important; `),
         rule(menuButton, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; backdrop-filter: blur(${d(12)}) !important; ${actionTransition} `),
-        rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `),
+        rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `),
         // (Each focus look here also under DOM focus: after a tap or a click Steam keeps focus but drops gpfocus, and a page
         // opened that way has its Play focused without it, which the open transition lands on.)
-        rule(menuButton && `${NOT_MOUSE} ${menuButton}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; color: #ffffff !important; ${actionFocused} `),
+        rule(menuButton && `${NOT_MOUSE} ${menuButton}:focus`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `),
         rule(menuButton && `${NOT_MOUSE} ${menuButton}:is(.gpfocus, :focus) svg`, ` color: #ffffff !important; `),
         rule(menuButton && `${menuButton} svg`, ` width: ${d(PAGE_LAYOUT.circleIcon)} !important; height: ${d(PAGE_LAYOUT.circleIcon)} !important; `),
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
-        // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring and glow.
+        // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring.
         rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
             backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
@@ -765,11 +775,11 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
             left: auto !important; bottom: auto !important; margin: 0 !important;
             width: ${d(CLOUD_DOT.size)} !important; height: ${d(CLOUD_DOT.size)} !important; box-sizing: content-box !important; border-radius: 50% !important;
             background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: ${d(CLOUD_DOT.ring)} solid ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
-        rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
-        rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: rgba(12, 16, 22, 0.4) !important; ${actionFocused} `),
+        rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
+        rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
 
         // Play: white words and glyph on the accent pill, as on Home. Focused as Home's Play: the fill stays the accent (no
-        // lighter overlay), a white ring and accent glow, and it grows by the focus scale.
+        // lighter overlay) and the menu's white ring.
         rule(playButton && `${playButton} [role="button"]`, ` color: #ffffff !important; `),
         rule(playButton && `${NOT_MOUSE} ${playButton} [role="button"].gpfocus`, ` background: transparent !important; `),
         rule(playButton && `${NOT_MOUSE} ${playButton} [role="button"]:focus`, ` background: transparent !important; `),
@@ -821,9 +831,9 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Under a mouse, a card lifts with the hover ring, as Home's feed cards do; a press still gives.
         `${HOVER} .gg-card-tap:hover { box-shadow: ${hoverRing(d(2))} !important; transform: translateY(${d(-2)}); }`,
         `${HOVER} .gg-card-tap:hover:active { transform: translateY(${d(-2)}) scale(0.98); }`,
-        // Selected with the controller (logic/cardNav, components/GameHero): Home's focused feed card, an accent ring and
-        // glow and a lift, in d units; off in mouse mode, as every focus look (the hover look is the mouse's).
-        `${NOT_MOUSE} .gg-card-nav.gg-card-focus, ${NOT_MOUSE} .gg-card-nav:focus { box-shadow: 0 0 0 ${d(1)} var(--glance-accent), 0 ${d(16)} ${d(40)} calc(-1 * ${d(12)}) var(--glance-accent) !important; transform: translateY(${d(-4)}); outline: none; }`,
+        // Selected with the controller (logic/cardNav, components/GameHero): Home's focused feed card, the menu's ring, a
+        // neutral shadow and a lift, in d units; off in mouse mode, as every focus look (the hover look is the mouse's).
+        `${NOT_MOUSE} .gg-card-nav.gg-card-focus, ${NOT_MOUSE} .gg-card-nav:focus { ${focusRing('lift', d).split(';').map((x) => (x.startsWith('transform') ? `${x};` : `${x} !important;`)).join(' ')} }`,
         // Steam's page panel lies over the cards (a tap landed on it, on the Deck): the hero is lifted above it and takes
         // no touches itself, only the tappable cards do, so nothing of Steam's below is covered.
         `.gg-hero { z-index: 2; pointer-events: none; }`,
@@ -849,7 +859,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         `${NOT_MOUSE} .gg-store-choice:is(.gpfocus, .gg-store-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocused} }`,
         `${HOVER} .gg-store-choice:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
         `.gg-copy-plus { flex: 0 0 auto; display: block; margin-left: ${d(8)}; width: ${d(12)}; height: ${d(12)}; }`,
-        `${NOT_MOUSE} .gg-copy-pill:is(.gpfocus, .gg-copy-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocusShadow} transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale}) !important; }`,
+        `${NOT_MOUSE} .gg-copy-pill:is(.gpfocus, .gg-copy-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionRing} transform: translateY(-50%) !important; }`,
         `${HOVER} .gg-copy-pill:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
         `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,

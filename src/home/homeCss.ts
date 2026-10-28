@@ -1,4 +1,4 @@
-import { HOME_BUTTON_GLASS, homeCardFocusShadow } from '../styles/homeGlass';
+import { HOME_BUTTON_GLASS } from '../styles/homeGlass';
 import { SCALE_UNIT_CSS } from '../styles/screenScale';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from '../styles/downloadFill';
 import { GiveWay, giveWay, roomMissing } from './giveWay';
@@ -14,7 +14,7 @@ import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_M
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
 import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
-import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
+import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
 import { RETURN_ATTR } from './openCancel';
 import { actionRadius, focusRing, frostSurface, selectedSlice, TOKENS } from '../styles/tokens';
@@ -59,7 +59,6 @@ export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-store-choic
 const HOVER = `html[${MOUSE_ATTR}]`;
 const GLASS = 'background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(14px)';
 const SCRIM = '5,7,10';
-const GLOW = homeCardFocusShadow('var(--glance-accent)');
 
 /**
  * Title block metrics (handoff), in logical px from the screen top; the CSS below uses them. The title's slot is
@@ -262,7 +261,6 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
     const geo = recentsGeometry(cardScale);
     const k = geo.fine;
     // The recents edge glow and shadows scale with the cards; the 1px ring stays crisp.
-    const capGlow = `0 0 0 1px var(--glance-accent), 0 ${k(CAP_GLOW.y)}px ${k(CAP_GLOW.blur)}px ${k(CAP_GLOW.spread)}px var(--glance-accent)`;
     const capShadow = `0 ${k(6)}px ${k(20)}px -${k(10)}px rgba(0,0,0,.6)`;
     const t = TITLE_BLOCK;
     return [
@@ -455,16 +453,12 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // ended inside it at a fractional device pixel, leaving a bright 1-device-px row of un-shaded art at the bottom.
         rule('.gh-cap::after', `content: ''; position: absolute; inset: 0; margin: 0; padding: 0; border-radius: inherit; pointer-events: none;
             box-shadow: inset 0 0 0 1px var(--gh-edge); transition: box-shadow ${CAP_STATE_MS}ms`),
-        rule('.gh-cap.gh-cap-focus', `box-shadow: ${capGlow}; --gh-edge: rgba(255,255,255,.35)`),
+        rule('.gh-cap.gh-cap-focus', `${focusRing('level')}; --gh-edge: rgba(255,255,255,.35)`),
         rule('.gh-cap-blur', `position: absolute; inset: -${k(30)}px; background-size: cover; background-position: center; filter: blur(${k(22)}px) brightness(.75)`),
         // Wide art is mounted only on the expanded capsule, after (over) the portrait, and fades in. The portrait is
         // never hidden: loaded wide art is opaque and covers it; if every wide url fails, the portrait shows through.
         rule('.gh-cap-art', `position: absolute; inset: 0; background-size: cover; background-position: center 30%; background-repeat: no-repeat; animation: gh-fade-in ${CAP_ART_FADE_MS}ms ease both`),
         rule('.gh-cap-cover', `position: absolute; right: 0; top: 0; width: ${geo.capsuleW}px; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 1`),
-        rule('.gh-cap-bar', `position: absolute; left: 0; right: 0; bottom: 0; height: ${k(3)}px; background: var(--glance-accent); opacity: 0; transition: opacity 250ms, background ${ACCENT_MS}ms`),
-        rule('.gh-cap.gh-cap-focus .gh-cap-bar', 'opacity: 1'),
-        // A bar nobody sees takes a new accent at once (each L1/R1 step changes it: ~30 invisible colour transitions a step).
-        rule('.gh-cap:not(.gh-cap-focus) .gh-cap-bar', 'transition: opacity 250ms'),
         // "New" (a game new to the library) and "Demo" marks: small light pills at the top left, over the art; side by side
         // on the wide card, one under the other on a capsule.
         rule('.gh-cap-marks', `position: absolute; left: ${k(8)}px; top: ${k(8)}px; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: flex-start; gap: ${k(4)}px; pointer-events: none`),
@@ -472,11 +466,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-cap-new', `position: relative; margin: 0; padding: ${k(3)}px ${k(7)}px; border-radius: 999px;
             font-size: ${k(8.5)}px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; line-height: 1.2; white-space: nowrap;
             color: #0b0d10; background: rgba(255,255,255,.92); box-shadow: 0 ${k(2)}px ${k(8)}px rgba(0,0,0,.35); pointer-events: none`),
-        // While the card row has focus the selected card (or the Library card) is the focused one: a 2px white ring just
-        // outside it and an accent glow even on every side (no downward offset, no bar along its bottom edge: on the Ally
-        // those read as the card being cut at the bottom). Unfocused it keeps its resting look. Only the selected card: in
+        // While the card row has focus the selected card (or the Library card) is the focused one: the menu's white ring just
+        // outside it and a neutral shadow, level in its row (Section 7: no accent glow or bar). Unfocused it keeps its resting look. Only the selected card: in
         // Steam's row style the wide card is the first game, selected or not.
-        rule('.gh-recents-focus .gh-cap-sel, .gh-recents-focus .gh-cap-lib-on', `box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 ${k(28)}px ${k(2)}px var(--glance-accent); --gh-edge: rgba(255,255,255,.35)`),
+        rule('.gh-recents-focus .gh-cap-sel, .gh-recents-focus .gh-cap-lib-on', `${focusRing('level')}; --gh-edge: rgba(255,255,255,.35)`),
         // The selected card's brighter edge, wide or narrow (a fast L1/R1 run, home/fastCycle, keeps it narrow).
         rule('.gh-cap-sel', '--gh-edge: rgba(255,255,255,.35)'),
         // A game not installed here (RecentsRow.greyedOut) is grey until selected, as Steam's library shows them.
@@ -548,7 +541,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // The edge over the art and shade, as on the recents capsules (no un-shaded bottom row).
         rule('.gh-card::after', `content: ''; position: absolute; inset: 0; margin: 0; padding: 0; border-radius: inherit; pointer-events: none;
             box-shadow: inset 0 0 0 1px var(--gh-edge); transition: box-shadow 300ms`),
-        rule('.gh-card.gh-card-focus', `box-shadow: ${GLOW}; --gh-edge: rgba(255,255,255,.3); transform: translateY(-4px)`),
+        rule('.gh-card.gh-card-focus', `${focusRing('lift')}; --gh-edge: rgba(255,255,255,.3)`),
         // A mouse over a feed card: the recents' faint ring and half the focused card's lift.
         rule('.gh-card.gh-card-hover:not(.gh-card-focus)', `box-shadow: ${hoverRing('2px')}, 0 6px 20px -10px rgba(0,0,0,.6); transform: translateY(-2px)`),
         // Avatar rings: green online or in game, Steam's away blue away; offline: no ring and a dimmed avatar.
@@ -591,9 +584,6 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-was', 'text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .7'),
         rule('.gh-card-sub', `font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; color: rgba(255,255,255,.62);
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden`),
-        rule('.gh-card-bar', `position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--glance-accent); opacity: 0; transition: opacity 250ms, background ${ACCENT_MS}ms`),
-        rule('.gh-card.gh-card-focus .gh-card-bar', 'opacity: 1'),
-        rule('.gh-card:not(.gh-card-focus) .gh-card-bar', 'transition: opacity 250ms'),
         // Friend avatar: a 42px square with Steam's slightly rounded corners, top-left, with a square presence ring (the
         // box-shadow follows the radius; see below).
         rule('.gh-avatar', `position: absolute; left: 14px; top: 14px; width: 42px; height: 42px; border-radius: ${AVATAR_RADIUS}px; overflow: hidden;
@@ -696,7 +686,7 @@ export function openingRules(): string[] {
         // circles look at the page's size, and fades in late as the page's other parts do, so it does not pop in after the
         // hand-over. Its own fade, not the extras layer's: a backdrop blur inside a fading parent sees nothing behind it.
         rule('.gh-open-circle', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; box-sizing: border-box; aspect-ratio: 1;
-            align-items: center; justify-content: center; border-radius: 999px; color: #fff; background: rgba(12,16,22,.4); border: 1px solid rgba(255,255,255,.18);
+            align-items: center; justify-content: center; border-radius: 30%; color: #fff; background: rgba(12,16,22,.4); border: 1px solid rgba(255,255,255,.18);
             backdrop-filter: blur(12px); opacity: 0`),
         rule('.gh-open-circle svg', `width: ${PAGE_LAYOUT.circleIcon}px; height: ${PAGE_LAYOUT.circleIcon}px; margin: 0; fill: currentColor`),
         rule(`${M} .gh-open-circle`, 'display: flex; left: calc(var(--gho-circle-extra-x) * 1px); top: calc(var(--gho-circle-extra-y) * 1px); width: calc(var(--gho-circle-extra-w) * 1px)'),

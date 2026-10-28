@@ -59,7 +59,7 @@ export function cardScaleFor(size: { width: number; height: number } | null): nu
     return size ? cardScale(isTvScreen(size.width, size.height)) : null;
 }
 
-/** The focus glow under the expanded card (handoff, times the scale): `0 GLOW.y GLOW.blur GLOW.spread`, plus a 1px ring. */
+/** Room kept above the expanded card for its focus look (the handoff glow, times the scale): `0 GLOW.y GLOW.blur GLOW.spread`. Section 7 draws a smaller ring and shadow inside it. */
 export const GLOW = { y: 16, blur: 40, spread: -12 } as const;
 
 /** Every recents size for a card scale (an unusable scale gives the handheld one). The CSS reads it too. */

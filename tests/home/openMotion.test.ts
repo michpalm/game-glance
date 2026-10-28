@@ -285,7 +285,7 @@ describe('openMotion', () => {
     const pageW = 354.2 * pf.x;
     const pageH = 62.5 * pf.y;
     it('the Play pill moves by its left edge and centre; its background layer, inside it, grows onto the page pill as focused', () => {
-        expect(f).toBe(1.04);
+        expect(f).toBe(1);   // Section 7: a focused Play never grows, so the morph lands on the page pill at rest
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         const bg = parse(v['--gho-play-bg']);
         expect(bg.sx).toBeCloseTo(pageW / r.pill.w, 3);
