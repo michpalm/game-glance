@@ -250,9 +250,9 @@ These are the only intended visible changes to Home, the game page, the screensa
 9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent with dark text to `glass-solid` with a raised edge and white text.
 10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the feed looks as calm as today.
 11. A feed card with no art or avatar shows `empty-fill` instead of a gradient in its game's accent.
-12. Play and the action buttons take `r-action` (26); the round icon buttons become `r-action-icon` (22) tiles; buttons focus with the white ring only, no glow or 1.04 scale (Section 7, Q38, Q39).
+12. Play and the action buttons take `r-action` (36% of height); the round icon buttons become `r-action-icon` (30%) tiles; buttons focus with the white ring only, no glow or 1.04 scale (Section 7, Q38, Q39).
 13. The feed tabs sit on a glass strip; the current tab is a `selected` slice instead of an accent underline (Q40).
-14. Every glass surface takes the in-game frost: one 16 px blur, .40 glass and the calm curve where Steam supports it; the game page's icon buttons blur the art (Q41).
+14. Every glass surface takes the in-game frost: one 16 px blur, .40 glass and the calm curve where Steam supports it (Q41).
 15. Small secondary text moves from 62% to 90% white with a soft shadow; "Last played" gains the shadow (Q42).
 
 ### Allowlist
@@ -345,23 +345,23 @@ Visual reference, painted on real Ally frames (private artifacts): [Home and Gam
 
 ### Shape
 
-- **Action buttons are soft cards.** Play, and the other wide action buttons on Home's action row and the game page (Library, the Play and stream pair), take `r-action` (26). The icon buttons beside Play (controller, settings, cloud) become square tiles, the same height as Play, with `r-action-icon` (22). Chosen over keeping the pill and over the menu's `r-card` 12: close to today's shape, one step toward the menu.
+- **Action buttons are soft cards.** Play, and the other wide action buttons on Home's action row and the game page (Library, the Play and stream pair), take `r-action`. The icon buttons beside Play (controller, settings, cloud) become square tiles, the same height as Play, with `r-action-icon`. Chosen over keeping the pill and over the menu's `r-card` 12: close to today's shape, one step toward the menu.
 - **Play keeps its accent fill** and stays the one accent button on a view. Icon tiles are `glass` with `edge-raised`; the cloud's sync dot stays in the tile's corner.
 - **Pills stay for status and selectors**: the status pill, the Steam source pill, the family copy and store pills, the "Online" count, thin bars. Capsules, feed cards and info cards keep their radii.
 
 | Token | Value | Use |
 |---|---|---|
-| `r-action` | 26 | Play and wide action buttons on Home and the game page |
-| `r-action-icon` | 22 | Square icon buttons beside Play |
+| `r-action` | 36% of the button's height, rounded | Play and wide action buttons on Home and the game page |
+| `r-action-icon` | 30% of the button's height, rounded | Square icon buttons beside Play |
 
-Both are in the design unit, like every other size token. At Play's height (62 on the Ally) 26 still reads as rounded ends, while 12 reads as a card.
+These two are proportions, not fixed sizes, because Home's buttons (54 design units tall) and the game page's (60) differ and the open transition scales one into the other: Home gets 19 and 16, the game page 22 and 18. The mockup's soft option was 26 and 22 Steam px on a 73 px Play. Half the height would be a pill; the menu's 12 on a 60 tall button is 20%.
 
 ### States
 
 | State | Look on Home, the game page and the screensaver |
 |---|---|
 | Focus, buttons and tiles | Section 6's ring: 2 px white, 2 px outside, following the shape. Glass tiles step up to `glass-strong`; Play keeps its accent fill. No growth and no glow. |
-| Focus, feed cards and Recents capsules | The same ring, plus today's 4 px lift with a neutral shadow, `0 14px 28px -12px rgba(0,0,0,.75)`. No accent glow and no accent bar. |
+| Focus, feed cards and Recents capsules | The same ring with a neutral shadow, `0 14px 28px -12px rgba(0,0,0,.75)`. Feed cards and the game page's info cards keep today's 4 px lift; Recents capsules, which slide in a row and do not lift today, stay level. No accent glow and no accent bar. |
 | Current, feed tabs | The tabs sit on a `glass` strip (`r-card`, `edge`) and are slices of it, as the menu's tabs are of the menu bar. The current tab is `selected` with `selected-edge`; the others are `text-idle`. A focused tab shows Section 6's inset ring (offset −2 px) on top. The underline and its glow are removed. |
 | On, Unavailable | Unchanged (Section 2). |
 
@@ -372,7 +372,7 @@ The accent means chosen or on, never focus, on every surface. Mouse hover keeps 
 Every glass surface outside the menu uses the in-game frost: the status bar, the Steam and copy pills, the game page's info cards, the icon tiles, Home's tab strip and buttons, and the screensaver's cards. That is `glass` (.40) over a 16 px blur (σ = 16 CSS px, the same Gaussian as the shader's), with the calm curve (Section 1, In-game frost: luma above 0.45 rises at 35%, hue kept).
 
 - **One blur.** Today these surfaces use 10, 12, 14 and 16 px at .38 or .40. They all move to `glass-blur` and `glass`.
-- **The game page's icon buttons blur the art.** Today they show the art sharp through their tint, because a `backdrop-filter` inside a flat container sees only that container. Every container from the scene down to them keeps `transform-style: preserve-3d`, as the cards already do.
+- **The game page's icon buttons keep blurring the art.** A `backdrop-filter` inside a flat container sees only that container, so every container from Steam's scene down to them keeps `transform-style: preserve-3d` (done in 3.3, 57a522a). A test keeps it.
 - **The calm curve in CSS.** A recipe, `frostSurface()`, adds the curve as an SVG filter in the same `backdrop-filter`: a per-channel transfer table (21 steps, `color-interpolation-filters: sRGB` so it works on the same encoded values as the shader) that is the identity below 0.45 and rises at 0.35 above it. It is per channel, not per luma like the shader, so a bright saturated colour can shift slightly; on Steam's screens the art under glass is mostly mid to dark, where nothing changes. If Steam's browser does not support SVG filters in `backdrop-filter` (checked on the Ally first), the recipe returns blur and glass only. That fallback is already today's spec, so nothing else waits on the check.
 - **Blurred artwork is separate.** `art-fill` and `art-fill-dim` (Section 1) are unchanged: they erase art behind content, not frost a surface.
 
@@ -394,7 +394,7 @@ Text on glass already read well; text directly on bright art did not. The weight
 
 ### Code
 
-- `tokens.ts`: `r-action` and `r-action-icon`; `frostSurface(level)` (glass, blur and the calm filter, with the fallback); `focusRing()` gains a `lift` kind (ring, 4 px lift, neutral shadow). Home, the game page and the screensaver use `focusRing('menu')` for buttons and tiles, `focusRing('lift')` for cards and capsules, `focusRing('slice')` and `selectedSlice()` for the feed tabs.
+- `tokens.ts`: `r-action` and `r-action-icon`; `frostSurface(level)` (glass, blur and the calm filter, with the fallback); `actionRadius(height, kind)` returns the two proportions; `focusRing()` gains a `lift` kind (ring, 4 px lift, neutral shadow) and a `level` kind (ring and neutral shadow, for capsules). Home, the game page and the screensaver use `focusRing('menu')` for buttons and tiles, `focusRing('lift')` for feed and info cards, `focusRing('level')` for capsules, `focusRing('slice')` and `selectedSlice()` for the feed tabs.
 - `src/home/homeCss.ts`: the action row's radii and icon tiles; focus rules lose the accent glow, the 1.04 scale and `.gh-card-bar`; `.gh-tab-line` is replaced by the strip and slices; every glass rule reads `frostSurface()`; labels move to `text-label` with the shadow.
 - `src/styles/themeCss.ts`: the game page's Play and icon buttons, their focus, `preserve-3d` down to the icon buttons, and the info cards' frost.
 - `src/styles/sourcePill.ts`, `src/styles/homeGlass.ts`, `src/screensaver/screensaverCss.ts`: blur and glass from the recipe.
@@ -402,7 +402,7 @@ Text on glass already read well; text directly on bright art did not. The weight
 
 ### Testing
 
-- Style tests: no accent in any focus rule on Home, the game page or the screensaver; no `transform: scale` in their focus rules; card and capsule focus use `focusRing('lift')`; every `backdrop-filter` outside the menu comes from `frostSurface()` or `art-fill`; the feed tabs use `selectedSlice()` and no `.gh-tab-line`; the action row uses `r-action` and `r-action-icon`.
+- Style tests: no accent in any focus rule on Home, the game page or the screensaver; no `transform: scale` in their focus rules; card focus uses `focusRing('lift')` and capsule focus `focusRing('level')`; every `backdrop-filter` outside the menu comes from `frostSurface()` or `art-fill`; the feed tabs use `selectedSlice()` and no `.gh-tab-line`; the action row uses `r-action` and `r-action-icon`.
 - The `giveWay.ts` / `homeCss` stack test stays green: the tab strip keeps the tab row's height.
 - Device, first: does Steam's browser on the Ally apply an SVG filter in `backdrop-filter`? This decides whether the calm filter ships or the fallback does.
 - Device: Home (rest and feed open), Ori's and a bright game's page, and the screensaver, over a bright and a dark scene. Check that the white ring stays visible over bright art, the Recently updated lines read on bright art, and the frost matches the menu's over the same scene.
@@ -463,8 +463,8 @@ All on the visual reference page except Q28–Q42 (Q31–Q42 on the pages linked
 | Q35 | Menu focus: a white ring following the shape, no growth or glow; supersedes Q1 and Q3 inside the menu (2026-10-28) |
 | Q36 | Menu selection: a soft white shade with a faint accent line (option 3, chosen over accent fill, plain shade and accent tint); supersedes Q4, Q11 and Q13's accent fill, and Q28's underline, inside the menu (2026-10-28) |
 | Q37 | Home, the game page and the screensaver follow Section 6's grammar (Section 7), kept recognisably Home (2026-10-28) |
-| Q38 | Play and action buttons are soft cards, `r-action` 26 and `r-action-icon` 22 (chosen over the pill and over `r-card` 12); supersedes Q11 on these surfaces (2026-10-28) |
-| Q39 | Focus outside the menu: Section 6's white ring with no glow or growth; cards and capsules keep a 4 px lift with a neutral shadow (chosen over ring only and today's look); supersedes Q1 there (2026-10-28) |
+| Q38 | Play and action buttons are soft cards, `r-action` 36% and `r-action-icon` 30% of their height (chosen over the pill and over `r-card` 12); supersedes Q11 on these surfaces (2026-10-28) |
+| Q39 | Focus outside the menu: Section 6's white ring with no glow or growth; cards keep a 4 px lift with a neutral shadow (chosen over ring only and today's look); supersedes Q1 there (2026-10-28) |
 | Q40 | Home's feed tabs sit on a glass strip as `selected` slices (chosen over no strip); supersedes Q3 there (2026-10-28) |
 | Q41 | One frost for every glass surface: the in-game frost's blur, .40 glass and calm curve, in CSS where Steam supports it (2026-10-28) |
 | Q42 | Small secondary text on Home, the game page and the screensaver is `text-label` with `text-shadow`; supersedes Q29's "Home keeps `text-dim`" (2026-10-28) |
