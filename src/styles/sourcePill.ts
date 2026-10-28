@@ -1,4 +1,4 @@
-import { frostSurface } from './tokens';
+import { actionRadius, frostSurface } from './tokens';
 
 /**
  * The store pill's look (icon + store name), shared by the restyled game page (`.gg-pill`, sized in --gg-d units) and
@@ -19,11 +19,12 @@ export const SOURCE_PILL = {
     border: 'rgba(255,255,255,.12)',
 } as const;
 
-/** Size, type and fill of the pill (the game page's restyle on top of its 1.1.1 pill: radius 999, 1px border, inline-flex). */
+/** Size, type, corner and fill of the pill (the game page's restyle on top of its 1.1.1 pill: 1px border, inline-flex). Section 7, option B:
+ * the corner is Play's share of the height (tokens.actionRadius), 12 on 32, not a half circle. */
 export function sourcePillLook(unit: (px: number) => string): string {
     const p = SOURCE_PILL;
     // The height includes the 1px border on both (Steam's page sizes content boxes by default: its pill was 2 px taller).
-    return `box-sizing: border-box; height: ${unit(p.height)}; padding: 0 ${unit(p.padX)}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; line-height: 1; ${frostSurface(unit(p.blur))};
+    return `box-sizing: border-box; height: ${unit(p.height)}; border-radius: ${unit(actionRadius(p.height, 'action'))}; padding: 0 ${unit(p.padX)}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; line-height: 1; ${frostSurface(unit(p.blur))};
             border-color: ${p.border};`;
 }
 

@@ -174,6 +174,21 @@ describe('status bar and chips match the menu (VDL Section 7)', () => {
     });
 });
 
+describe('soft pills (VDL Section 7, option B)', () => {
+    it("the status bar, store and family chips take Play's share of their height: 12 on 32", () => {
+        const css = homeCss();
+        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+            expect(ruleFor(css, sel), sel).toContain('border-radius: 12px');
+            expect(ruleFor(css, sel), sel).not.toContain('999px');
+        }
+        // The open transition's copies of the page's chips, in the page's units.
+        for (const sel of ['.gh-x-pill', '.gh-x-family', '.gh-x-store-choice']) {
+            expect(rulesMatching(css, new RegExp(`\\${sel}$`)).join(' '), sel).toMatch(/border-radius: calc\(12px \* var\(--gho-x-d\)\)/);
+            expect(rulesMatching(css, new RegExp(`\\${sel}$`)).join(' '), sel).not.toContain('999px');
+        }
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
@@ -253,7 +268,7 @@ describe('homeCss', () => {
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
         expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
-        expect(pill).toMatch(/border-radius:\s*999px/);
+        expect(pill).toMatch(/border-radius:\s*12px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
         // The same look as the game page: one definition.
         for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);

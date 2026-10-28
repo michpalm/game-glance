@@ -228,7 +228,7 @@ export function statusRules(): string[] {
             box-shadow: 0 0 0 2px rgba(12,16,22,.55), 0 1px 4px rgba(0,0,0,.4); transition: background ${ACCENT_MS}ms`),
         ...(Object.keys(PERSONA_DOT_COLOURS) as PersonaDot[]).map((dot) => rule(`.gh-status-dot-${dot}`, `background: ${PERSONA_DOT_COLOURS[dot]}`)),
         rule('.gh-status.gh-status-away', 'opacity: 0'),
-        rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border-radius: 999px; border: 1px solid; color: rgba(255,255,255,.9);
+        rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border: 1px solid; color: rgba(255,255,255,.9);
             line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)}`),
         rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
         rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
@@ -344,16 +344,16 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
 
         // Store pill (icon + name) at the right edge, centred on the action row: the game page's pill (styles/sourcePill.ts).
         rule('.gh-source', `position: absolute; right: var(--gh-pill, ${SOURCE_PILL.right}px); top: calc(${sourcePillTop()}px - var(--gh-top)); display: inline-flex; align-items: center;
-            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; pointer-events: none; ${sourcePillLook(px)}`),
+            margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; pointer-events: none; ${sourcePillLook(px)}`),
         rule('.gh-source-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
         // A game from the family library: its pill (data/family) just left of the store pill, inside it so it follows it.
         rule('.gh-family', `position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
-            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(px)}`),
+            margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(px)}`),
         rule('.gh-family-icon', `flex: 0 0 auto; ${sourcePillIcon(px)}`),
         rule('.gh-copy-choice, .gh-store-choice', 'pointer-events: auto; cursor: pointer; transition: transform 250ms, box-shadow 250ms'),
         rule('.gh-copy-plus', 'display: block; flex: 0 0 auto; width: 12px; height: 12px; margin-left: 8px'),
         rule('.gh-source.gh-source-selectable', 'padding: 0; border: 0; background: transparent; backdrop-filter: none'),
-        rule('.gh-store-choice', `display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; color: #fff; ${sourcePillLook(px)}`),
+        rule('.gh-store-choice', `display: inline-flex; align-items: center; border: 1px solid; color: #fff; ${sourcePillLook(px)}`),
         rule(':where(html:not([data-gg-mouse])) .gh-copy-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-copy-choice:focus, :where(html:not([data-gg-mouse])) .gh-store-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-store-choice:focus', focusRing('menu')),
         // The ring sets transform: none; the copy pill keeps its centring (Section 7: no growth).
         rule(`${NOT_MOUSE} .gh-copy-choice.gh-pill-focus, ${NOT_MOUSE} .gh-copy-choice:focus`, 'transform: translateY(-50%)'),
@@ -855,18 +855,18 @@ export function openingRules(): string[] {
         // The page's store pill (and family pill in it), right-aligned where the page draws it, as themeCss draws .gg-pill
         // and .gg-family. The legacy path crossfades; measured openings use one translated pair below.
         rule('.gh-x-pill', `display: none; position: absolute; left: var(--gho-x-pill-x); top: var(--gho-x-pill-y); transform: translateX(-100%) var(--gho-x-pill-from, translate(0px, 0px)); align-items: center;
-            border-radius: 999px; border: 1px solid; color: #fff; white-space: nowrap; ${sourcePillLook(dd)}`),
+            border: 1px solid; color: #fff; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule('.gh-root[data-gh-extras~="pills"] .gh-x-pill', 'display: inline-flex'),
         rule(`${MT} .gh-x-pill`, `transform: translateX(-100%); transition: ${move}`),
         rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-x-pill', 'transform: translateX(-100%); transition: none'),
         rule('.gh-x-pill-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
         rule('.gh-x-family', `position: absolute; right: calc(100% + ${dd(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
-            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),
+            margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(dd)}`),
         rule('.gh-x-family-icon', `flex: 0 0 auto; ${sourcePillIcon(dd)}`),
         rule('.gh-x-copy-plus', `display: block; flex: 0 0 auto; width: ${dd(12)}; height: ${dd(12)}; margin-left: ${dd(8)}`),
 
         rule('.gh-x-pill.gh-x-selectable', 'padding:0; border:0; background:transparent; backdrop-filter:none'),
-        rule('.gh-x-store-choice', `display:inline-flex; align-items:center; border:1px solid; border-radius:999px; color:#fff; ${sourcePillLook(dd)}`),
+        rule('.gh-x-store-choice', `display:inline-flex; align-items:center; border:1px solid; color:#fff; ${sourcePillLook(dd)}`),
         rule(`${M}[data-gh-pill] .gh-source`, 'visibility:hidden'),
         `${M}[data-gh-pill] .gh-x-pill { transform:var(--pill-from); opacity:1; }`,
         `${MT}[data-gh-pill] .gh-x-pill { transform:none; transition:${move}; }`,

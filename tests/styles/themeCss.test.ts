@@ -491,6 +491,14 @@ const rulesMatching = (css: string, re: RegExp) => [...css.replace(/@keyframes[^
     .filter(([, sel]) => !sel.trim().startsWith('@') && sel.split(',').some((x) => re.test(x.trim()))).map(([, , body]) => body);
 
 describe('game page grammar (VDL Section 7)', () => {
+    it("the store and family chips take Play's share of their height (option B)", () => {
+        // The restyle's own rules (it appends to the 1.1.1 output, whose round pill it overrides).
+        const css = buildThemeCss(full, { restyle: true }).slice(buildThemeCss(full).length);
+        for (const sel of ['.gg-pill', '.gg-store-choice', '.gg-family']) {
+            const body = rulesMatching(css, new RegExp(`^\\${sel}$`)).join(' ');
+            expect(body, sel).toContain('border-radius: calc(12 * var(--gg-d))'); expect(body, sel).not.toContain('999px');
+        }
+    });
     it("the 1.1.1 page's Unifideck focus stays in its own units; the restyle swaps it for the menu ring", () => {
         const plain = rulesMatching(buildUnifideckCss(full), /unifideck-play-btn\.gpfocus/).join(' ');
         expect(plain).not.toContain('--gg-d'); expect(plain).toContain('box-shadow: 0 0 0 calc(2 * var(--gg-u))');

@@ -856,14 +856,14 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         `.gg-native-store-switcher { visibility: hidden !important; pointer-events: none !important; }`,
         `.gg-native-store-switcher > [role="combobox"] { width: 100% !important; min-width: 0 !important; height: 100% !important; }`,
         `.gg-pill.gg-store-selectable { padding: 0; border: 0; background: transparent; backdrop-filter: none; }`,
-        `.gg-store-choice { display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; cursor: pointer; pointer-events: auto; color: #fff; ${sourcePillLook(d)} ${actionTransition} }`,
+        `.gg-store-choice { display: inline-flex; align-items: center; border: 1px solid; cursor: pointer; pointer-events: auto; color: #fff; ${sourcePillLook(d)} ${actionTransition} }`,
         `${NOT_MOUSE} .gg-store-choice:is(.gpfocus, .gg-store-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocused} }`,
         `${HOVER} .gg-store-choice:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
         `.gg-copy-plus { flex: 0 0 auto; display: block; margin-left: ${d(8)}; width: ${d(12)}; height: ${d(12)}; }`,
         `${NOT_MOUSE} .gg-copy-pill:is(.gpfocus, .gg-copy-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionRing} transform: translateY(-50%) !important; }`,
         `${HOVER} .gg-copy-pill:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
         `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
-            margin: 0; border-radius: 999px; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
+            margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
         `.gg-family-icon { flex: 0 0 auto; ${sourcePillIcon(d)} }`,
     ];
 

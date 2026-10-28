@@ -89,3 +89,7 @@ describe('menu glass and reveal motion',()=>{
         expect(menuStyles).toMatch(/@media\(prefers-reduced-motion:reduce\)\{[^{]*\.gg-menu \*::after[^{]*\{[^}]*animation:none!important/);
     });
 });
+
+it('the status bar in the menu takes the soft corner of the status bar outside it (VDL Section 7, option B)', () => {
+    expect(menuStyles).toMatch(/\.gg-menu-status-host \.gh-status-pill\{[^}]*border-radius:var\(--gg-r-card\)/);
+});
