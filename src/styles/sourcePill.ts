@@ -15,7 +15,8 @@ export const SOURCE_PILL = {
     iconGap: 8,
     /** Distance from the screen's right edge (the page's side inset). */
     right: 56,
-    border: 'rgba(255, 255, 255, 0.18)',
+    /** Section 7: the cards' edge, as the in-game menu's top bar (TOKENS.edge). */
+    border: 'rgba(255,255,255,.12)',
 } as const;
 
 /** Size, type and fill of the pill (the game page's restyle on top of its 1.1.1 pill: radius 999, 1px border, inline-flex). */

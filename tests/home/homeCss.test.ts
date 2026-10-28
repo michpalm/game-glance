@@ -162,6 +162,18 @@ describe('final review fixes (VDL Section 7)', () => {
     });
 });
 
+describe('status bar and chips match the menu (VDL Section 7)', () => {
+    it("the status bar, store and family chips take the cards' edge and bold text, as the menu's top bar", () => {
+        const css = homeCss();
+        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+            const r = ruleFor(css, sel);
+            expect(r, sel).toContain('border-color: rgba(255,255,255,.12)');
+            expect(r, sel).not.toMatch(/font-weight: 600/);
+            expect(r, sel).toContain('font-weight: 700');
+        }
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
