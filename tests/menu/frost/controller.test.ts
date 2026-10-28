@@ -65,10 +65,27 @@ describe('frost controller',()=>{
         expect(f.bridge.release).toHaveBeenCalledWith('token');const count=vi.mocked(f.bridge.renew).mock.calls.length;
         await vi.advanceTimersByTimeAsync(1000);expect(vi.mocked(f.bridge.renew).mock.calls.length).toBe(count);await f.controller.dispose();
     });
-    it('clears invalid geometry and does not introduce replacement frost into a visible presentation',async()=>{
+    it('clears invalid geometry, then brings this opening’s frost back once the menu is measured again',async()=>{
         const f=fixture();f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);await flush();
         f.controller.frame(null);expect(f.bridge.release).toHaveBeenCalledWith('token');
-        f.controller.frame(frame());await flush();expect(f.bridge.activate).toHaveBeenCalledTimes(1);await f.controller.dispose();
+        f.controller.frame(frame());await flush();expect(f.bridge.activate).toHaveBeenCalledTimes(2);
+        await f.controller.dispose();expect(f.bridge.release).toHaveBeenCalledTimes(2);
+    });
+    it('keeps frost when the bell widens for a live notification count',async()=>{
+        const f=fixture();f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);await flush();
+        // The geometry observer publishes null, then the new size.
+        const wider=frame();wider.regions.notifications.width=.15;
+        f.controller.frame(null);f.controller.frame(wider);await flush();
+        expect(f.bridge.prepare).toHaveBeenLastCalledWith(expect.any(String),wider);
+        expect(f.bridge.activate).toHaveBeenLastCalledWith(expect.any(String),'key',expect.any(Number),wider);
+        await f.controller.dispose();
+    });
+    it('does not bring frost back into an opening that never had it',async()=>{
+        const f=fixture(),ready=deferred<Prepared>();vi.mocked(f.bridge.prepare).mockReturnValueOnce(ready.promise);
+        f.controller.begin(1);f.controller.frame(frame());f.controller.presented(1);
+        ready.resolve({status:'ready',key:'key'});await flush();
+        f.controller.frame(null);f.controller.frame(frame());await flush();
+        expect(f.bridge.activate).not.toHaveBeenCalled();await f.controller.dispose();
     });
     it('clears the old adapter before a context switch and tolerates bridge errors',async()=>{
         const f=fixture();f.controller.begin(1);f.controller.frame(frame(1,'steam'));

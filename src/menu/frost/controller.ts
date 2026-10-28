@@ -17,6 +17,8 @@ export interface FrostClock {
 interface Session {
     generation:number; presented:boolean; signature?:string; frame?:FrostFrame;
     request?:string; key?:string; token?:string; activating?:boolean; homeActive?:boolean;
+    /** This opening showed frost; a re-measure (a resize, the live bell count) may bring it back. */
+    hadFrost?:boolean;
     sequence:number; timer?:ReturnType<typeof setInterval>; renewing?:boolean;
     settled?:boolean; waiters:(()=>void)[];
 }
@@ -48,9 +50,11 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
         const request=warmup?.requestId??`${nonce}:${s.generation}:${++attempt}`;s.request=request;
         void safely(async()=>{
             const ready=await(warmup?.ready??bridge.prepare(request,frame));
-            // Armed after the reveal is too late: frost never starts under a visible menu.
-            if(!current(s,request)||ready.status!=='ready'||s.presented)return;
+            // Armed after the reveal is too late for a first start: frost never
+            // appears late. Frost this opening already showed comes back, fading in.
+            if(!current(s,request)||ready.status!=='ready'||s.presented&&!s.hadFrost)return;
             s.key=ready.key;
+            if(s.presented)activate(s);
         }).then(()=>{if(s.request===request||!s.request)settle(s);});
     }
     // Masks go live with the reveal; the shader then fades them in over the
@@ -64,7 +68,7 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             s.activating=false;
             if(active.status!=='active')return;
             if(!current(s,request)){await safely(()=>bridge.release(active.token));return;}
-            s.token=active.token;heartbeat(s);
+            s.token=active.token;s.hadFrost=true;heartbeat(s);
         });
     }
     return {
