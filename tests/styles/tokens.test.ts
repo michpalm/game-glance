@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { expect, it } from 'vitest';
-import { actionRadius, applyAccent, CALM_IN_CSS, calmTable, focusRing, frostSurface, installCalmFilter, installTokenCss, labelText, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
+import { actionRadius, applyAccent, CALM_IN_CSS, calmFilterMarkup, calmGain, focusRing, frostSurface, installCalmFilter, installTokenCss, labelText, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
 
 it('shares each document token stylesheet and releases only the caller-owned style', () => {
     const a = parseHTML('<html><head><style id="foreign"></style></head><body></body></html>');
@@ -51,9 +51,26 @@ it('lift and level focus: white ring, neutral shadow, no accent, lift only for l
     expect(focusRing('lift', (n) => `calc(var(--gg-d) * ${n})`)).toContain('translateY(calc(var(--gg-d) * -4))');
 });
 
-it('the calm table is the identity to 0.45, then rises at 0.35', () => {
-    const v = calmTable().split(' ').map(Number);
-    expect(v).toHaveLength(21); expect(v[0]).toBe(0); expect(v[9]).toBeCloseTo(.45); expect(v[20]).toBeCloseTo(.6425);
+it('the calm gain is the shader\'s: 1 up to 0.45 luminance, then (0.45 + (Y - 0.45) * 0.35) / Y', () => {
+    const v = calmGain().split(' ').map(Number);
+    expect(v).toHaveLength(41);
+    expect(v[0]).toBe(1); expect(v[18]).toBe(1);                   // Y = 0.45
+    expect(v[20]).toBeCloseTo((0.45 + 0.05 * 0.35) / 0.5, 4);       // Y = 0.5
+    expect(v[40]).toBeCloseTo(0.6425, 4);                           // Y = 1
+});
+
+it('the calm filter scales the colour by one gain from its luminance, so hue holds (the shader\'s Calm)', () => {
+    const m = calmFilterMarkup();
+    expect(m).toContain('id="gg-calm"'); expect(m).toContain('color-interpolation-filters="sRGB"');
+    // 1. luminance (Rec. 709 weights) into R, G and B, alpha kept
+    const row = '0.2126 0.7152 0.0722 0 0';
+    expect(m).toContain(`<feColorMatrix in="SourceGraphic" type="matrix" values="${row} ${row} ${row} 0 0 0 1 0" result="luma"/>`);
+    // 2. luminance to gain, the same table on each channel
+    expect(m.match(new RegExp(`type="table" tableValues="${calmGain()}"`, 'g'))).toHaveLength(3);
+    // 3. colour times gain
+    expect(m).toMatch(/<feComposite in="SourceGraphic" in2="gain" operator="arithmetic" k1="1" k2="0" k3="0" k4="0"\/>/);
+    // never a per-channel curve on the colour itself
+    expect(m).not.toMatch(/<feComponentTransfer>(?![^]*result="gain")/);
 });
 
 it('frost is .40 glass and one blur, with no filter reference while the calm is off', () => {

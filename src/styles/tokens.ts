@@ -54,10 +54,23 @@ export const actionRadius = (height: number, kind: 'action' | 'icon') => Math.ro
 /** The shader's calm (qam-frost.fx.in) in CSS: off until the Ally shows Steam's browser keeps the blur with an SVG filter in backdrop-filter. */
 export const CALM_IN_CSS: boolean = false;
 export const CALM_FILTER_ID = 'gg-calm';
-export const calmTable = () => Array.from({ length: 21 }, (_, i) => {
-    const x = i / 20;
-    return +(x <= .45 ? x : .45 + (x - .45) * .35).toFixed(4);
+/** The shader's gain for a luminance Y (Calm in qam-frost.fx.in): 1 up to the knee, then (knee + (Y - knee) * slope) / Y, in 41 steps of Y. */
+export const calmGain = () => Array.from({ length: 41 }, (_, i) => {
+    const y = i / 40;
+    return +(y <= .45 ? 1 : (.45 + (y - .45) * .35) / y).toFixed(4);
 }).join(' ');
+const LUMA_ROW = '0.2126 0.7152 0.0722 0 0';
+/**
+ * The calm as an SVG filter, as the shader does it: the luminance of each pixel picks one gain, which scales all three
+ * channels, so a bright colour is dimmed and keeps its hue (a per-channel curve greyed saturated colours, probed on the Ally).
+ */
+export const calmFilterMarkup = () => {
+    const gain = ['R', 'G', 'B'].map((c) => `<feFunc${c} type="table" tableValues="${calmGain()}"/>`).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute"><filter id="${CALM_FILTER_ID}" color-interpolation-filters="sRGB">`
+        + `<feColorMatrix in="SourceGraphic" type="matrix" values="${LUMA_ROW} ${LUMA_ROW} ${LUMA_ROW} 0 0 0 1 0" result="luma"/>`
+        + `<feComponentTransfer in="luma" result="gain">${gain}</feComponentTransfer>`
+        + '<feComposite in="SourceGraphic" in2="gain" operator="arithmetic" k1="1" k2="0" k3="0" k4="0"/></filter></svg>';
+};
 /** One frost for every glass surface: background and backdrop only; each surface keeps its own border. */
 export const frostSurface = (blur: string, level: 'glass' | 'strong' = 'glass') =>
     `background:${level === 'glass' ? TOKENS.glass : TOKENS.strong};backdrop-filter:blur(${blur})${CALM_IN_CSS ? ` url(#${CALM_FILTER_ID})` : ''}`;
@@ -100,9 +113,8 @@ export function installCalmFilter(document: Document): () => void {
     if (!CALM_IN_CSS) return () => {};
     let entry = calmFilters.get(document);
     if (!entry) {
-        const funcs = ['R', 'G', 'B'].map((c) => `<feFunc${c} type="table" tableValues="${calmTable()}"/>`).join('');
         const host = document.createElement('div');
-        host.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute"><filter id="${CALM_FILTER_ID}" color-interpolation-filters="sRGB"><feComponentTransfer>${funcs}</feComponentTransfer></filter></svg>`;
+        host.innerHTML = calmFilterMarkup();
         const node = host.firstElementChild!;
         document.body.appendChild(node); entry = { node, users: 0 }; calmFilters.set(document, entry);
     }
