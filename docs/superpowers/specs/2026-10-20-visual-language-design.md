@@ -1,8 +1,8 @@
 # Game Glance visual language
 
-Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review; in-game menu text and frost added 2026-10-28 (Q28–Q30); in-game menu grammar added 2026-10-28 (Section 6, Q31–Q36), awaiting written review. Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
+Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review; in-game menu text and frost added 2026-10-28 (Q28–Q30); in-game menu grammar added 2026-10-28 (Section 6, Q31–Q36); Home, game page and screensaver grammar, frost and labels added 2026-10-28 (Section 7, Q37–Q42), awaiting written review. Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
 
-Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec; Q28–Q30 were decided on the device and are recorded only in the decision log. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
+Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec; Q28–Q30 were decided on the device and are recorded only in the decision log; Q31–Q42 have their own reference pages, linked in Sections 6 and 7. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
 ## Identity: the focus is games
 
@@ -40,7 +40,7 @@ The work succeeds when:
 
 - One module, `src/styles/tokens.ts`, holds every shared colour, glass, edge, radius, type, spacing and motion value, and every surface reads from it.
 - The 55 distinct `rgba()` colours, 10 radii, 9 blur strengths and 7 timings in 3.6's style files (plus the floating menu's when it is rebased) collapse to the named sets below. Values that stay outside the module are on the allowlist (Section 5) with a reason.
-- Focus, current, on and unavailable states look the same on every surface. The in-game menu follows Section 6 first; the other surfaces follow once each is reviewed against it.
+- Focus, current, on and unavailable states look the same on every surface: the in-game menu follows Section 6, and Home, the game page and the screensaver follow Section 7.
 - Released surfaces (Home, game page, screensaver, status bar) show no visible change on the Ally apart from the approved changes listed in Section 5.
 
 The floating menu's polish is a separate, later deliverable, built on these tokens after this work ships.
@@ -103,13 +103,13 @@ One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred a
 | `track` | `rgba(255,255,255,.14)` | Empty part of sliders and progress bars |
 | `track-edge` | inset `0 0 0 1px rgba(255,255,255,.22)` | Slider tracks, so an empty track stays visible |
 
-Inside the in-game menu the game shows through the frost, so its small text needs more than Home's 62%. Unselected tabs and categories use `text-idle`; the selected one stays `text`, marked as Section 6's `selected` slice (Q36; it was an underline when Q28 was decided), and tabs take no text shadow. Every 11 px secondary line (the power line, section labels, Friends, Nobody online, Last online, tile captions, notification times, setting descriptions, the L1/R1 hints) uses `text-label` with `text-shadow`. Outside the menu, secondary text keeps `text-dim`. Measured on a real Ori frame on the Ally (2026-10-28): 62% labels read 2.3–4.8:1 and unselected 62% tabs 3.1–4.8:1; with `text-label`, the shadow and the frost's calm curve (below) every measured label stays above 5:1, also over a bright scene.
+Inside the in-game menu the game shows through the frost, so its small text needs more than Home's 62%. Unselected tabs and categories use `text-idle`; the selected one stays `text`, marked as Section 6's `selected` slice (Q36; it was an underline when Q28 was decided), and tabs take no text shadow. Every 11 px secondary line (the power line, section labels, Friends, Nobody online, Last online, tile captions, notification times, setting descriptions, the L1/R1 hints) uses `text-label` with `text-shadow`. Home, the game page and the screensaver do the same (Section 7, Q42); `text-dim` stays only for the settings panel's HowLongToBeat line. Measured on a real Ori frame on the Ally (2026-10-28): 62% labels read 2.3–4.8:1 and unselected 62% tabs 3.1–4.8:1; with `text-label`, the shadow and the frost's calm curve (below) every measured label stays above 5:1, also over a bright scene.
 
 ### In-game frost
 
 The menu bar, the panel and the notification bell are the three frost regions: each is `glass` (.40) with `edge` over the game, which the frost shader blurs. The bell takes the same .40 glass as the bar and panel, not `glass-strong`.
 
-Under the glass the shader calms bright areas: a frosted pixel's luma above 0.45 rises at 35% of the rate (RGB scaled together, so hue is kept); darker scenes are unchanged. Reason: through .40 glass a bright sky left small labels near 2.4:1. Code: `Calm()` in `py_modules/gameglance/frost/assets/qam-frost.fx.in`, `CalmKnee 0.45`, `CalmSlope 0.35`.
+Every other glass surface takes the same frost in CSS (Section 7, Q41). Under the glass the shader calms bright areas: a frosted pixel's luma above 0.45 rises at 35% of the rate (RGB scaled together, so hue is kept); darker scenes are unchanged. Reason: through .40 glass a bright sky left small labels near 2.4:1. Code: `Calm()` in `py_modules/gameglance/frost/assets/qam-frost.fx.in`, `CalmKnee 0.45`, `CalmSlope 0.35`.
 
 ### Accent
 
@@ -136,7 +136,7 @@ Four states, one meaning and one look each. Focus is always added on top of the 
 | On | A value that is set | Accent fill with `on-accent` text or thumb: toggle on track, slider fill, chosen segment |
 | Unavailable | Steam reports the control unavailable | Home's ghost: `filter: grayscale(.6) brightness(.75)`, edge `rgba(255,255,255,.06)`. Visible, but cannot be operated. |
 
-Inside the in-game menu, Section 6's states apply instead (Q35, Q36).
+Inside the in-game menu, Section 6's states apply instead (Q35, Q36); on Home, the game page and the screensaver, Section 7's (Q39, Q40).
 
 Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabled in mouse mode, as today.
 
@@ -151,7 +151,7 @@ Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabl
 | `r-panel` | 16 | Panels and sheets, including the floating menu bar and panel (26 today) |
 | `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls, slider tracks, thin bars, circles |
 
-Inside the in-game menu, buttons, tabs and segmented controls are cards and slices instead of pills (Section 6, Q34).
+Inside the in-game menu, buttons, tabs and segmented controls are cards and slices instead of pills (Section 6, Q34). On Home and the game page, action buttons take `r-action` and `r-action-icon` and the feed tabs are slices of a strip (Section 7, Q38, Q40).
 
 Every radius uses its role's token. A shape nested inside another uses the outer radius minus the gap between them. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round, so `r-pill` leaves them unchanged.
 
@@ -196,7 +196,7 @@ Toggles, tiles, cards, tabs and sliders take the tokens above with no further de
 - **Destinations have resting glass; settings do not.** Navigate tiles and Home cards are glass at rest. Setting rows sit directly on their panel; focus adds `glass-strong` and the focus ring.
 - **Named options use a segmented control; numeric scales use a slider.** Up to five named options (Performance profile, Scaling mode, Scaling filter) use the same segmented control, with the chosen option as an accent fill. Volume, frame limit, overlay level and TDP remain sliders.
 
-The in-game menu refines these in Section 6: its buttons are cards, and its chosen options are `selected` slices.
+The in-game menu refines these in Section 6: its buttons are cards, and its chosen options are `selected` slices. Section 7 refines them for Home and the game page: action buttons are soft cards.
 
 ## 5. Code structure
 
@@ -239,7 +239,7 @@ Old names stay as aliases pointing at the new one until every surface has moved,
 
 These are the only intended visible changes to Home, the game page, the screensaver and the status bar:
 
-1. Home info cards, feed cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring; lift, glow and accent bar unchanged.
+1. Home info cards, feed cards and Recents capsules: focus changes from a 1 px accent edge to the 2 px white ring and keeps its lift; the accent glow and accent bar are removed (Section 7, Q39).
 2. Small capitals unify to the `label` role (11 / 800 / .16em): "Last played" 12 → 11, chip labels and pills 10 → 11, card lines 10.5 → 11, the screensaver's labels 9 → 11. The feed tabs keep 13 / 700 as the `tab` role.
 3. Status pill weight changes from 600 to 700.
 4. Glass, edge and blur values snap to the nearest token (for example `.38` → `.40` glass, blur 12 and 14 → 16).
@@ -250,6 +250,10 @@ These are the only intended visible changes to Home, the game page, the screensa
 9. Feed card pills ("News", "Major Update", and the friend cards' "In-game", whose teal is the default accent, not a status colour) change from each card's game accent with dark text to `glass-solid` with a raised edge and white text.
 10. Feed artwork fills move to `art-fill-dim` (friend backdrops blur 28 → 42, news fills 24 → 42) and the capsule fill to `art-fill` (blur 22 → 42); the feed looks as calm as today.
 11. A feed card with no art or avatar shows `empty-fill` instead of a gradient in its game's accent.
+12. Play and the action buttons take `r-action` (26); the round icon buttons become `r-action-icon` (22) tiles; buttons focus with the white ring only, no glow or 1.04 scale (Section 7, Q38, Q39).
+13. The feed tabs sit on a glass strip; the current tab is a `selected` slice instead of an accent underline (Q40).
+14. Every glass surface takes the in-game frost: one 16 px blur, .40 glass and the calm curve where Steam supports it; the game page's icon buttons blur the art (Q41).
+15. Small secondary text moves from 62% to 90% white with a soft shadow; "Last played" gains the shadow (Q42).
 
 ### Allowlist
 
@@ -268,7 +272,7 @@ No fetch, push, pull request or release is part of this spec; those are separate
 
 ## 6. In-game menu grammar
 
-Added 2026-10-28 (Q31–Q36). The in-game menu had several looks for the same job: two label styles for one setting, choices with and without a track, a second underline row for Performance's categories, a ring on tiles but an underline glow on tabs, and pills beside square cards. This section gives the menu one grammar, kept very readable, simple and clean. Inside the menu it overrides Sections 2–4 where they differ; Home, the game page and the screensaver keep Sections 2–4 until each is reviewed against this section, as the next step after the menu.
+Added 2026-10-28 (Q31–Q36). The in-game menu had several looks for the same job: two label styles for one setting, choices with and without a track, a second underline row for Performance's categories, a ring on tiles but an underline glow on tabs, and pills beside square cards. This section gives the menu one grammar, kept very readable, simple and clean. Inside the menu it overrides Sections 2–4 where they differ; Section 7 carries it to Home, the game page and the screensaver.
 
 Visual reference, rendered from the menu's own markup and styles saved on the Ally over a real Ori frame (private artifacts): [Structure](https://claude.ai/artifact/CY3dp7rAYfZKQZfGh1azJF), [Controls](https://claude.ai/artifact/1ZhUYr9y8U4gxbtZZN8YCZ), [Shape and focus](https://claude.ai/artifact/KJ4qmzyVKNabjmZrZtTAaD), [Selected slice](https://claude.ai/artifact/GghVenM2kcw38Y8Ktz5dds) (option 3 chosen).
 
@@ -333,6 +337,76 @@ Selected text is `text`; unselected slices stay `text-idle` (Q28).
 - A behaviour test for the pending choice: selected at once, spinner shown, cleared on Steam's value, reverted with the error line on failure.
 - Device: each menu page on the Ally over a bright and a dark scene, checking the selected slice is visible on both and focus never looks like selection.
 
+## 7. Home, game page and screensaver grammar
+
+Added 2026-10-28 (Q37–Q42). Section 6 gave the in-game menu one grammar. This section carries it to Home, the game page and the screensaver, so that the same control looks and behaves the same in and out of the menu. Where this section differs from Sections 1–5, this section wins on these surfaces. Home stays recognisably Home: Play keeps a rounded shape and large cards keep their lift.
+
+Visual reference, painted on real Ally frames (private artifacts): [Home and Game Page Grammar](https://claude.ai/artifact/4b316CCxyN8q77EZbLDR5H) (defaults: Play soft, tabs on a strip, card focus ring and lift) and [Frost and Labels](https://claude.ai/artifact/1NguTkv9BEitQAVBPREoDu).
+
+### Shape
+
+- **Action buttons are soft cards.** Play, and the other wide action buttons on Home's action row and the game page (Library, the Play and stream pair), take `r-action` (26). The icon buttons beside Play (controller, settings, cloud) become square tiles, the same height as Play, with `r-action-icon` (22). Chosen over keeping the pill and over the menu's `r-card` 12: close to today's shape, one step toward the menu.
+- **Play keeps its accent fill** and stays the one accent button on a view. Icon tiles are `glass` with `edge-raised`; the cloud's sync dot stays in the tile's corner.
+- **Pills stay for status and selectors**: the status pill, the Steam source pill, the family copy and store pills, the "Online" count, thin bars. Capsules, feed cards and info cards keep their radii.
+
+| Token | Value | Use |
+|---|---|---|
+| `r-action` | 26 | Play and wide action buttons on Home and the game page |
+| `r-action-icon` | 22 | Square icon buttons beside Play |
+
+Both are in the design unit, like every other size token. At Play's height (62 on the Ally) 26 still reads as rounded ends, while 12 reads as a card.
+
+### States
+
+| State | Look on Home, the game page and the screensaver |
+|---|---|
+| Focus, buttons and tiles | Section 6's ring: 2 px white, 2 px outside, following the shape. Glass tiles step up to `glass-strong`; Play keeps its accent fill. No growth and no glow. |
+| Focus, feed cards and Recents capsules | The same ring, plus today's 4 px lift with a neutral shadow, `0 14px 28px -12px rgba(0,0,0,.75)`. No accent glow and no accent bar. |
+| Current, feed tabs | The tabs sit on a `glass` strip (`r-card`, `edge`) and are slices of it, as the menu's tabs are of the menu bar. The current tab is `selected` with `selected-edge`; the others are `text-idle`. A focused tab shows Section 6's inset ring (offset −2 px) on top. The underline and its glow are removed. |
+| On, Unavailable | Unchanged (Section 2). |
+
+The accent means chosen or on, never focus, on every surface. Mouse hover keeps Home's hover ring, and focus looks stay off in mouse mode.
+
+### Frost
+
+Every glass surface outside the menu uses the in-game frost: the status bar, the Steam and copy pills, the game page's info cards, the icon tiles, Home's tab strip and buttons, and the screensaver's cards. That is `glass` (.40) over a 16 px blur (σ = 16 CSS px, the same Gaussian as the shader's), with the calm curve (Section 1, In-game frost: luma above 0.45 rises at 35%, hue kept).
+
+- **One blur.** Today these surfaces use 10, 12, 14 and 16 px at .38 or .40. They all move to `glass-blur` and `glass`.
+- **The game page's icon buttons blur the art.** Today they show the art sharp through their tint, because a `backdrop-filter` inside a flat container sees only that container. Every container from the scene down to them keeps `transform-style: preserve-3d`, as the cards already do.
+- **The calm curve in CSS.** A recipe, `frostSurface()`, adds the curve as an SVG filter in the same `backdrop-filter`: a per-channel transfer table (21 steps, `color-interpolation-filters: sRGB` so it works on the same encoded values as the shader) that is the identity below 0.45 and rises at 0.35 above it. It is per channel, not per luma like the shader, so a bright saturated colour can shift slightly; on Steam's screens the art under glass is mostly mid to dark, where nothing changes. If Steam's browser does not support SVG filters in `backdrop-filter` (checked on the Ally first), the recipe returns blur and glass only. That fallback is already today's spec, so nothing else waits on the check.
+- **Blurred artwork is separate.** `art-fill` and `art-fill-dim` (Section 1) are unchanged: they erase art behind content, not frost a surface.
+
+### Labels
+
+Small secondary text on Home, the game page and the screensaver takes the menu's style: `text-label` (90%) with `text-shadow`. This covers card labels, chip labels, the feed's meta lines, row headers and the Recently updated lines. "Last played" keeps `accent-text` and gains the same shadow. Section 1's `text-dim` stays only for the plugin settings panel's HowLongToBeat line.
+
+Measured on real Ally frames, worst 5% of each label's background, WCAG formula (2026-10-28):
+
+| Text | 62% today | 90% + shadow |
+|---|---|---|
+| Recently updated line on bright art (Assassin's Creed) | 3.8:1 | 5.9:1 |
+| Recently updated line (Metro 2033 Redux) | 4.4:1 | 7.3:1 |
+| Feed meta lines, row header | about 7:1 | about 14:1 |
+| Game page info card labels (Ori) | 7.3:1 | 15.4:1 |
+| Screensaver info card labels (TOEM) | 6.2:1 | 12.1:1 |
+
+Text on glass already read well; text directly on bright art did not. The weight, size and spacing of the `label` role are unchanged.
+
+### Code
+
+- `tokens.ts`: `r-action` and `r-action-icon`; `frostSurface(level)` (glass, blur and the calm filter, with the fallback); `focusRing()` gains a `lift` kind (ring, 4 px lift, neutral shadow). Home, the game page and the screensaver use `focusRing('menu')` for buttons and tiles, `focusRing('lift')` for cards and capsules, `focusRing('slice')` and `selectedSlice()` for the feed tabs.
+- `src/home/homeCss.ts`: the action row's radii and icon tiles; focus rules lose the accent glow, the 1.04 scale and `.gh-card-bar`; `.gh-tab-line` is replaced by the strip and slices; every glass rule reads `frostSurface()`; labels move to `text-label` with the shadow.
+- `src/styles/themeCss.ts`: the game page's Play and icon buttons, their focus, `preserve-3d` down to the icon buttons, and the info cards' frost.
+- `src/styles/sourcePill.ts`, `src/styles/homeGlass.ts`, `src/screensaver/screensaverCss.ts`: blur and glass from the recipe.
+- `homeCardFocusShadow` is removed once nothing uses it.
+
+### Testing
+
+- Style tests: no accent in any focus rule on Home, the game page or the screensaver; no `transform: scale` in their focus rules; card and capsule focus use `focusRing('lift')`; every `backdrop-filter` outside the menu comes from `frostSurface()` or `art-fill`; the feed tabs use `selectedSlice()` and no `.gh-tab-line`; the action row uses `r-action` and `r-action-icon`.
+- The `giveWay.ts` / `homeCss` stack test stays green: the tab strip keeps the tab row's height.
+- Device, first: does Steam's browser on the Ally apply an SVG filter in `backdrop-filter`? This decides whether the calm filter ships or the fallback does.
+- Device: Home (rest and feed open), Ori's and a bright game's page, and the screensaver, over a bright and a dark scene. Check that the white ring stays visible over bright art, the Recently updated lines read on bright art, and the frost matches the menu's over the same scene.
+
 ## Testing
 
 - Unit tests for `tokenCss()`: every token name is emitted, the accent `@property` is registered, and values match this spec.
@@ -346,14 +420,13 @@ Selected text is `text`; unselected slices stay `text-idle` (Q28).
 ## Out of scope
 
 - Building the floating menu's polish (next deliverable, built on these tokens). Its grammar is decided in Section 6; the work to apply it is planned separately.
-- Applying Section 6 to Home, the game page and the screensaver (each reviewed later).
 - New colour themes or a user-selectable theme.
 - Changes to Steam-owned native panels, including the Quick Access panel that holds Game Glance's settings (beyond its one line in Section 5).
 - Changing Home's layout, its size (settled in 3.6, #55) or its open transitions.
 
 ## Decision log
 
-All on the visual reference page except Q28–Q30. Q1–Q14 decided 2026-10-20 on `codex/floating-menu`; Q19–Q27 decided 2026-10-25 in the re-review on 3.6; Q28–Q30 decided 2026-10-28 for the 4.0 in-game menu from contrast measured over real Ally frames and confirmed on the device (`codex/social-chat`, ab5eb37, 81a718e, d0c51ca).
+All on the visual reference page except Q28–Q42 (Q31–Q42 on the pages linked in Sections 6 and 7). Q1–Q14 decided 2026-10-20 on `codex/floating-menu`; Q19–Q27 decided 2026-10-25 in the re-review on 3.6; Q28–Q30 decided 2026-10-28 for the 4.0 in-game menu from contrast measured over real Ally frames and confirmed on the device (`codex/social-chat`, ab5eb37, 81a718e, d0c51ca).
 
 | Q | Decision |
 |---|---|
@@ -389,3 +462,9 @@ All on the visual reference page except Q28–Q30. Q1–Q14 decided 2026-10-20 o
 | Q34 | Menu shape: cards and full-height slices; pills only for switches, slider tracks, progress bars and circles (2026-10-28) |
 | Q35 | Menu focus: a white ring following the shape, no growth or glow; supersedes Q1 and Q3 inside the menu (2026-10-28) |
 | Q36 | Menu selection: a soft white shade with a faint accent line (option 3, chosen over accent fill, plain shade and accent tint); supersedes Q4, Q11 and Q13's accent fill, and Q28's underline, inside the menu (2026-10-28) |
+| Q37 | Home, the game page and the screensaver follow Section 6's grammar (Section 7), kept recognisably Home (2026-10-28) |
+| Q38 | Play and action buttons are soft cards, `r-action` 26 and `r-action-icon` 22 (chosen over the pill and over `r-card` 12); supersedes Q11 on these surfaces (2026-10-28) |
+| Q39 | Focus outside the menu: Section 6's white ring with no glow or growth; cards and capsules keep a 4 px lift with a neutral shadow (chosen over ring only and today's look); supersedes Q1 there (2026-10-28) |
+| Q40 | Home's feed tabs sit on a glass strip as `selected` slices (chosen over no strip); supersedes Q3 there (2026-10-28) |
+| Q41 | One frost for every glass surface: the in-game frost's blur, .40 glass and calm curve, in CSS where Steam supports it (2026-10-28) |
+| Q42 | Small secondary text on Home, the game page and the screensaver is `text-label` with `text-shadow`; supersedes Q29's "Home keeps `text-dim`" (2026-10-28) |
