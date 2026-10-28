@@ -1,6 +1,6 @@
 import { Focusable, type GamepadEvent } from '@decky/ui';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
-import { LuBell } from 'react-icons/lu';
+import { LuArrowUpRight, LuBell } from 'react-icons/lu';
 import { pickMenuAccent, resolveMenuAccent } from '../accent';
 import { shownAccent } from '../../home/shownAccent';
 import { installMouseMode } from '../../home/mouseMode';
@@ -117,7 +117,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
-        content = <><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}>Open in Steam</MenuAction></>;
+        content = <div className="gg-menu-heading"><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}><LuArrowUpRight aria-hidden="true" />Open in Steam</MenuAction></div>;
     }
     return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
@@ -125,7 +125,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     }}>
         <style>{menuStyles}</style>
         <GameStatusBar menuOverlay />
-        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
+        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
         <Focusable className="gg-menu-panel" data-gg-frost-region="panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
     </Focusable>;

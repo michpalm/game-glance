@@ -93,7 +93,9 @@ describe('Social panel layout (direction A)', () => {
         const order = v.nodes.filter(n => typeof n.props.id === 'string' && n.props.id.startsWith('social:friend:')).map(n => n.props.id.slice(-1));
         expect(order).toEqual(['1', '2', '3']);
         expect(strings(v.nodes)).toContain('1 in game · 1 online');
-        expect(v.nodes.some(n => n.props.className === 'gg-social-heading')).toBe(false);
+        const heading = v.nodes.find(n => n.props.className === 'gg-menu-heading')!;
+        expect(strings(tree(heading))).toBe('Social | 1 in game · 1 online');
+        expect(strings(tree(v.nodes.find(n => n.props.className === 'gg-social-list-heading')!))).toBe('Friends');
     });
     it('previews the last messages read-only and enters on Write a message', () => {
         const v = view({ preview: { id, state: 'ready', messages: [{ id: 'p1', text: 'Example hello', timestamp: 1, own: false, state: 'received' }] } });

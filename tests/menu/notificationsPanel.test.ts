@@ -51,4 +51,8 @@ describe('Notifications page', () => {
     it('says so when there is nothing new', () => {
         expect(strings(harness([]).nodes)).toContain('No notifications');
     });
+    it('uses the shared title row', () => {
+        const element = NotificationsContents({ rows: [], sales: {}, handoff: vi.fn() });
+        expect(tree(element.props.children)[0].props.className).toBe('gg-menu-heading');
+    });
 });

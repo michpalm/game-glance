@@ -53,9 +53,10 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
     const statusText = snapshot.status === 'loading' ? 'Loading friends…' : snapshot.status === 'offline' ? 'Connect to Steam to see your friends.' : snapshot.status === 'unavailable' ? 'Friends are unavailable in this Steam session.' : 'No friends to show.';
     return <div className="gg-social">
         <style>{socialStyles}</style>
+        <div className="gg-menu-heading"><h2>Social</h2><span>{counts}</span></div>
         <div className="gg-social-split">
             <div className="gg-social-friends">
-                <div className="gg-social-list-heading"><span>Friends</span><span>{counts}</span></div>
+                <div className="gg-social-list-heading"><span>Friends</span></div>
                 <Focusable className="gg-social-friend-list" flow-children="column">
                     {ordered(snapshot.friends).map(f => <div key={f.steamId} onFocus={() => social.preview(f.steamId)} onMouseEnter={() => social.preview(f.steamId)}>
                         <MenuAction id={`social:friend:${f.steamId}`} className="gg-social-friend" selected={f.steamId === snapshot.selectedId} disabled={f.blocked} onAction={() => enter(f.steamId)}>

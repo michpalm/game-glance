@@ -14,7 +14,7 @@ const destination = (row: TrayRow): NativeRequest => row.kind === 'other' || !ro
 /** Stateless presentation of Steam's tray: one row per notification, each opening what it is about. */
 export function NotificationsContents({ rows, sales, handoff }: { rows: TrayRow[]; sales: Record<number, SaleInfo | null>; handoff(request: NativeRequest): void }) {
     return <div className="gg-notifications">
-        <div className="gg-notifications-heading"><h2>Notifications</h2>
+        <div className="gg-menu-heading"><h2>Notifications</h2>
             <MenuAction id="notifications:native" onAction={() => handoff({ kind: 'qam', tab: 'notifications' })}><LuArrowUpRight aria-hidden="true" />Steam</MenuAction></div>
         <Focusable className="gg-notifications-list" flow-children="column">
             {rows.map(row => {

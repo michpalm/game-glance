@@ -46,6 +46,10 @@ export function visibleSections(state: MenuState): SectionId[] {
 export function selectedBarSection(state: MenuState): SectionId {
     return visibleSections(state).includes(state.section) ? state.section : 'more';
 }
+/** The tab marked as the page you're on; none while Notifications is open, which the bell marks instead. */
+export function barSelection(state: MenuState): SectionId | null {
+    return state.stack[state.stack.length - 1] === 'notifications' ? null : selectedBarSection(state);
+}
 export function reduceMenu(state: MenuState, event: MenuEvent): MenuState {
     switch (event.type) {
         case 'enable':

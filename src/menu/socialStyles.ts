@@ -3,7 +3,6 @@ import { focusRing, selectedSlice } from '../styles/tokens';
 /** Social shares menu tokens and controls; these rules describe only its layout and content. */
 export const socialStyles = `
 .gg-social{display:flex;flex-direction:column;height:100%;min-height:0;gap:16px;font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.35}
-.gg-social-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}.gg-social-heading h2{margin:0}
 .gg-social-split{display:grid;grid-template-columns:minmax(190px,4fr) minmax(0,6fr);gap:16px;flex:1;min-height:0}
 .gg-social-friends{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0;border-right:1px solid var(--gg-edge);padding-right:12px}
 .gg-social-list-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}

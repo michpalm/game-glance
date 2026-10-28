@@ -29,6 +29,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu h3{font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);letter-spacing:.16em;text-transform:uppercase;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);margin:12px 0 4px}
 .gg-menu p{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font:inherit;font-size:var(--gg-type-body);line-height:1.4}
 .gg-menu-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 12px}.gg-menu-heading h2{margin:0}.gg-menu-heading>span{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
+.gg-menu .gg-notifications>.gg-menu-heading,.gg-menu .gg-social>.gg-menu-heading{flex:none;margin:0}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
@@ -46,8 +47,6 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-ingame-bar{display:block;width:70%;height:6px;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
 .gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
 .gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px}
-.gg-menu .gg-notifications-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.gg-menu .gg-notifications-heading h2{margin:0}
 .gg-menu .gg-notifications-list{display:flex;flex-direction:column;gap:12px}
 .gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
 .gg-menu .gg-notification-art{flex:none;width:112px;height:52px;border-radius:var(--gg-r-small);object-fit:cover;display:grid;place-items:center;background:var(--gg-edge)}

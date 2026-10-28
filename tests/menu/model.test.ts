@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultMenuState, reduceMenu, selectedBarSection, visibleSections, type GameContext, type MenuEvent, type MenuState } from '../../src/menu/model';
+import { barSelection, defaultMenuState, reduceMenu, selectedBarSection, visibleSections, type GameContext, type MenuEvent, type MenuState } from '../../src/menu/model';
 
 const game: GameContext = { appId: 1057090, gameId: '1057090', name: 'Ori', kind: 'local', actionIds: ['resume','achievements'] };
 const events = (...actions: MenuEvent[]) => actions.reduce(reduceMenu, reduceMenu(defaultMenuState(), {type:'enable',value:true}));
@@ -70,4 +70,10 @@ describe('floating menu transitions', () => {
         const state:MenuState=events({type:'open',entry:'home'});
         expect(reduceMenu(state,{type:'select',section:'in-game'})).toBe(state);
     });
+});
+
+it('selects no tab while Notifications is open', () => {
+    const state = { ...defaultMenuState(), phase: 'custom-open' as const, stack: ['notifications'] };
+    expect(barSelection(state)).toBeNull();
+    expect(barSelection(defaultMenuState())).toBe(selectedBarSection(defaultMenuState()));
 });
