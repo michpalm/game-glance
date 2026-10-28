@@ -519,6 +519,9 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule(`${HOVER} .gh-tab:hover:not(.gh-tab-on)`, 'color: rgba(255,255,255,.85)'),
         // Focused: the menu's inset ring; a focused current tab keeps its shade and line under it.
         rule(`${NOT_MOUSE} .gh-tab.gh-tab-focus`, focusRing('slice')),
+        // The end tabs take the strip's corners: its overflow clips to them, so a square tab's inset ring lost its corners.
+        rule('.gh-tab:first-child', 'border-radius: 12px 0 0 12px'),
+        rule('.gh-tab:last-child', 'border-radius: 0 12px 12px 0'),
         // Friends tab: people icon and the number of friends online, after the label.
         rule('.gh-tab-count', `display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 8px; font-size: 11px; letter-spacing: .04em; line-height: 1;
             vertical-align: 1px; color: ${FRIEND_COLOURS.none}; transition: color 200ms`),
@@ -719,7 +722,7 @@ export function openingRules(): string[] {
         rule(`${MT} .gh-source`, `transform: var(--gho-store); transition: ${move}`),
         // The Play pill moves; its accent background becomes a layer inside it that grows to the page pill (the pill
         // stops clipping it, and keeps its focus ring on that layer).
-        rule(`${M} ${play}`, 'overflow: visible; background: transparent; border-color: transparent; box-shadow: none'),
+        rule(`${M} ${play}`, 'overflow: visible; background: transparent; border-color: transparent; box-shadow: none; outline: none'),
         // (Both layers start at the pill's outer edge, its 1px border, as openMotion's scales are of its outer size: from inside
         // the border they ended a border's width short all round, and the page pill grew at the hand-over.)
         rule(`${M} ${play}::before`, `content: ''; position: absolute; left: -1px; top: -1px; width: calc(100% + 2px); height: calc(100% + 2px); border-radius: ${R_ACTION}px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none`),

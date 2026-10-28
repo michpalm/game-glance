@@ -151,6 +151,17 @@ describe('frost and labels (VDL Section 7)', () => {
     });
 });
 
+describe('final review fixes (VDL Section 7)', () => {
+    const css = homeCss();
+    it("the opening Play drops Home's focus ring; only the page-size ring (::after) shows", () => {
+        expect(ruleFor(css, '.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]')).toContain('outline: none');
+    });
+    it("the end tabs follow the strip's corners, so their focus ring is not clipped", () => {
+        expect(ruleFor(css, '.gh-tab:first-child')).toContain('border-radius: 12px 0 0 12px');
+        expect(ruleFor(css, '.gh-tab:last-child')).toContain('border-radius: 0 12px 12px 0');
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();

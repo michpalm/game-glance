@@ -444,7 +444,7 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         rule(primary, ` width: var(--gg-play-w) !important; min-width: 0 !important; flex: 0 0 var(--gg-play-w) !important; height: var(--gg-icon) !important;
             justify-content: center !important; border-radius: 999px !important; background: var(--gg-accent) !important; box-shadow: none !important;
             color: #ffffff !important; font-size: ${u(16)} !important; `),
-        rule(focused, ` background: var(--gg-accent) !important; ${actionRing} `),
+        rule(focused, ` background: var(--gg-accent) !important; box-shadow: 0 0 0 ${u(2)} rgba(255, 255, 255, 0.9) !important; `),
         // Spotlight Home's look: Steam's Play row has no top padding and a 36 one below (see the playSection rule above), so the buttons start
         // at --gg-play-top; the same here, or Unifideck's pill sits lower than Steam's.
         options.restyle ? rule(`${inner}${UNIFIDECK_PAGE} > div:has(${UNIFIDECK_PRIMARY.join(', ')})`, ` padding-top: 0 !important; padding-bottom: ${d(36)} !important; `) : '',
@@ -462,7 +462,7 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         options.restyle ? rule(`${UNIFIDECK_PAGE} .unifideck-icon-btn`, ` border-radius: ${R_TILE} !important; ${actionTransition} `) : '',
         options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:is(.gpfocus, :focus)`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `) : '',
         options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:not(.gg-uni-cloud):is(.gpfocus, :focus) svg`, ` color: #ffffff !important; fill: currentColor !important; `) : '',
-        options.restyle ? rule(focused, ` ${actionFocused} `) : '',
+        options.restyle ? rule(focused, ` box-shadow: none !important; ${actionFocused} `) : '',
     ].filter((r) => r.length > 0).join('\n');
 }
 

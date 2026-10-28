@@ -491,6 +491,12 @@ const rulesMatching = (css: string, re: RegExp) => [...css.replace(/@keyframes[^
     .filter(([, sel]) => !sel.trim().startsWith('@') && sel.split(',').some((x) => re.test(x.trim()))).map(([, , body]) => body);
 
 describe('game page grammar (VDL Section 7)', () => {
+    it("the 1.1.1 page's Unifideck focus stays in its own units; the restyle swaps it for the menu ring", () => {
+        const plain = rulesMatching(buildUnifideckCss(full), /unifideck-play-btn\.gpfocus/).join(' ');
+        expect(plain).not.toContain('--gg-d'); expect(plain).toContain('box-shadow: 0 0 0 calc(2 * var(--gg-u))');
+        const restyled = rulesMatching(buildUnifideckCss(full, { restyle: true }), /unifideck-play-btn\.gpfocus/).join(' ');
+        expect(restyled).toContain('box-shadow: none !important'); expect(restyled).toContain('outline:calc(2 * var(--gg-d)) solid #fff');
+    });
     it('every glass surface uses the frost and no other blur or tint', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
         expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
