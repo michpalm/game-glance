@@ -283,7 +283,7 @@ Two shapes only:
 - **Cards**, `r-card` (12): tiles, setting rows, notification rows, friend rows, buttons, the bell, the message field, and every track that holds options. The bar and panel keep `r-panel` (16).
 - **Slices**: an option inside a bar or track. A slice runs edge to edge and from the track's top to its bottom, square inside (the track clips its outer corners), with a 1 px `edge` hairline between slices. The main tabs are slices of the menu bar; Performance's categories, Scaling mode, Scaling filter and the performance profile are slices of their tracks.
 
-`r-pill` stays only where the round shape is the control: toggle switches, slider tracks and thumbs, progress bars, and circles (avatars, the unread dot). The status pill shown above the menu belongs to the status bar and keeps its shape.
+`r-pill` stays only where the round shape is the control: toggle switches, slider tracks and thumbs, progress bars, and circles (avatars, the unread dot). The status pill shown above the menu belongs to the status bar and takes its shape, `r-card` (Section 7, Q44).
 
 ### States
 
@@ -347,7 +347,8 @@ Visual reference, painted on real Ally frames (private artifacts): [Home and Gam
 
 - **Action buttons are soft cards.** Play, and the other wide action buttons on Home's action row and the game page (Library, the Play and stream pair), take `r-action`. The icon buttons beside Play (controller, settings, cloud) become square tiles, the same height as Play, with `r-action-icon`. Chosen over keeping the pill and over the menu's `r-card` 12: close to today's shape, one step toward the menu.
 - **Play keeps its accent fill** and stays the one accent button on a view. Icon tiles are `glass` with `edge-raised`; the cloud's sync dot stays in the tile's corner.
-- **Pills stay for status and selectors**: the status pill, the Steam source pill, the family copy and store pills, the "Online" count, thin bars. Capsules, feed cards and info cards keep their radii.
+- **The status bar and the store and family chips are soft too.** They take `r-action` of their 32-unit height (12, the cards' corner), not a half circle, and the menu's top-bar look: the cards' `edge` and `bodyWeight` text (Q43, Q44). Chosen over the pill and over `r-small` 8, rendered on the Ally on 28 October. The status bar shown above the in-game menu takes the same corner (`r-card`).
+- **Pills stay only where the round shape is the control or a mark**: thin bars, the "New" and "Demo" marks on capsules. Capsules, feed cards and info cards keep their radii.
 
 | Token | Value | Use |
 |---|---|---|
@@ -468,3 +469,5 @@ All on the visual reference page except Q28–Q42 (Q31–Q42 on the pages linked
 | Q40 | Home's feed tabs sit on a glass strip as `selected` slices (chosen over no strip); supersedes Q3 there (2026-10-28) |
 | Q41 | One frost for every glass surface: the in-game frost's blur, .40 glass and calm curve, in CSS where Steam supports it (2026-10-28) |
 | Q42 | Small secondary text on Home, the game page and the screensaver is `text-label` with `text-shadow`; supersedes Q29's "Home keeps `text-dim`" (2026-10-28) |
+| Q43 | The status bar and the store and family chips match the in-game menu's top bar: the cards' `edge` (.12, was .18) and `bodyWeight` text (700; the status bar was 600) (2026-10-28) |
+| Q44 | The status bar and the store and family chips take `r-action` of their height (12 on 32), chosen over the pill and over `r-small` 8; the menu's status bar follows (`r-card`); supersedes the pill rule for these in Section 7 (2026-10-28) |
