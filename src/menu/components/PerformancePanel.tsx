@@ -1,6 +1,6 @@
 import { Focusable, NavEntryPositionPreferences, SliderField, ToggleField } from '@decky/ui';
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { LuImage } from 'react-icons/lu';
+import { useEffect, useState, useSyncExternalStore, type ComponentType } from 'react';
+import { LuEye, LuGauge, LuImage, LuLayers } from 'react-icons/lu';
 import { steamPerformanceIcon } from '../steam/performanceIcons';
 import type { SettingAdapter } from '../steam/setting';
 import { PERFORMANCE_OVERLAY_LEVELS, type createPerformance, type PerformanceValue } from '../steam/performance';
@@ -25,12 +25,18 @@ const OPTIONS: Record<string, Record<string, string>> = {
 const SUFFIX: Record<string, string> = { frameLimit: ' FPS', refreshRate: ' Hz', tdp: ' W', gpuClock: ' MHz' };
 const PROFILES: Record<string, string> = { 'low-power': 'Low power', balanced: 'Balanced', performance: 'Performance' };
 
+// Steam's own Performance art where it has some; otherwise one of ours, so every row has an icon.
+const FALLBACK_ICONS: Record<string, ComponentType> = { frameLimit: LuGauge, overlayLevel: LuLayers, overlaySteam: LuEye };
+export function settingIcon(id: string): ComponentType | undefined {
+    return id === 'hdr' ? LuImage : steamPerformanceIcon(id) ?? FALLBACK_ICONS[id];
+}
+
 function Control({ id, adapter }: { id: string; adapter: SettingAdapter<PerformanceValue> }) {
     const s = useSyncExternalStore(adapter.subscribe, adapter.get);
     const [draft, setDraft] = useState<number | null>(null);
     useEffect(() => { if (!s.pending) setDraft(null); }, [s.pending, s.value, s.error]);
     if (!s.available || s.value === null) return null;
-    const Icon = id === 'hdr' ? LuImage : steamPerformanceIcon(id);
+    const Icon = settingIcon(id);
     const label = <span className="gg-menu-setting-label">
         {Icon && <span aria-hidden="true" className="gg-menu-native-icon"><Icon /></span>}
         <span>{LABELS[id]}</span>
@@ -49,15 +55,11 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
             Math.abs(v - value) < Math.abs(values[best] - value) ? i : best, 0) ?? value;
         const value = draft ?? s.value as number;
         const display = OPTIONS[id]?.[String(s.value)] ?? `${Number((s.value as number).toFixed(3))}${SUFFIX[id] ?? ''}`;
-        const notchLabels = OPTIONS[id] && values?.map((value, notchIndex) => ({
-            value, notchIndex, label: OPTIONS[id][String(value)] ?? String(value),
-        }));
         field = <SliderField highlightOnFocus={false}
             label={<span className="gg-menu-slider-label">{label}<output>{display}</output></span>}
             value={values?.length ? index(value) : value} min={values?.length ? 0 : s.min}
             max={values?.length ? values.length - 1 : s.max} step={values?.length ? 1 : s.step ?? 1}
-            disabled={s.disabled} showValue={false} notchLabels={notchLabels || undefined}
-            notchCount={notchLabels?.length} notchTicksVisible={false}
+            disabled={s.disabled} showValue={false}
             onChange={next => {
                 const nextValue = values?.length ? values[Math.round(next)] : next;
                 if (nextValue !== undefined) { setDraft(nextValue); set(nextValue); }
@@ -83,7 +85,7 @@ function ProfilePill({ performance }: { performance: Performance }) {
     const adapter = performance.controls.profile;
     const s = useSyncExternalStore(adapter.subscribe, adapter.get);
     if (!s.available) return null;
-    return <div className="gg-menu-performance-profile"><h3>Performance profile</h3>
+    return <div className="gg-menu-performance-profile"><div className="gg-menu-setting-header">Performance profile</div>
         <SettingSegments id="performance:profile" label="Performance profile" options={s.options ?? []} value={s.value} labels={PROFILES}
             disabled={s.pending || s.disabled} onSelect={value => { void adapter.set(value).catch(() => {}); }} />
         {s.error && <p className="gg-menu-error" role="alert">{s.error}</p>}
