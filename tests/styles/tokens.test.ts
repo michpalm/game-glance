@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { expect, it } from 'vitest';
-import { applyAccent, focusRing, installTokenCss, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
+import { actionRadius, applyAccent, CALM_IN_CSS, calmTable, focusRing, frostSurface, installCalmFilter, installTokenCss, labelText, selectedSlice, TOKENS, tokenCss } from '../../src/styles/tokens';
 
 it('shares each document token stylesheet and releases only the caller-owned style', () => {
     const a = parseHTML('<html><head><style id="foreign"></style></head><body></body></html>');
@@ -34,4 +34,41 @@ it('gives the menu a ring that follows the shape, with no growth or glow', () =>
     expect(focusRing('menu')).toBe('outline:2px solid #fff;outline-offset:2px;transform:none');
     expect(focusRing('slice')).toBe('outline:2px solid #fff;outline-offset:-2px;transform:none');
     expect(focusRing()).toContain('scale(1.04)');
+});
+
+it('action radii are proportions of the button height', () => {
+    expect(actionRadius(54, 'action')).toBe(19); expect(actionRadius(54, 'icon')).toBe(16);
+    expect(actionRadius(60, 'action')).toBe(22); expect(actionRadius(60, 'icon')).toBe(18);
+});
+
+it('lift and level focus: white ring, neutral shadow, no accent, lift only for lift', () => {
+    const lift = focusRing('lift'), level = focusRing('level');
+    for (const r of [lift, level]) {
+        expect(r).toContain('outline:2px solid #fff'); expect(r).toContain('outline-offset:2px');
+        expect(r).toContain('0 14px 28px -12px rgba(0,0,0,.75)'); expect(r).not.toMatch(/accent|scale\(/);
+    }
+    expect(lift).toContain('translateY(-4px)'); expect(level).toContain('transform:none');
+    expect(focusRing('lift', (n) => `calc(var(--gg-d) * ${n})`)).toContain('translateY(calc(var(--gg-d) * -4))');
+});
+
+it('the calm table is the identity to 0.45, then rises at 0.35', () => {
+    const v = calmTable().split(' ').map(Number);
+    expect(v).toHaveLength(21); expect(v[0]).toBe(0); expect(v[9]).toBeCloseTo(.45); expect(v[20]).toBeCloseTo(.6425);
+});
+
+it('frost is .40 glass and one blur, with no filter reference while the calm is off', () => {
+    expect(CALM_IN_CSS).toBe(false);
+    expect(frostSurface('16px')).toBe('background:rgba(12,16,22,.40);backdrop-filter:blur(16px)');
+    expect(frostSurface('16px', 'strong')).toContain('rgba(12,16,22,.55)');
+    expect(frostSurface('16px')).not.toContain('url(');
+});
+
+it('installCalmFilter adds nothing while the calm is off', () => {
+    const { document } = parseHTML('<html><head></head><body></body></html>');
+    const release = installCalmFilter(document as unknown as Document);
+    expect(document.getElementById('gg-calm')).toBeNull(); release(); release();
+});
+
+it('labels are 90% white with the menu shadow', () => {
+    expect(labelText()).toBe('color:rgba(255,255,255,.90);text-shadow:0 1px 2px #0009');
 });

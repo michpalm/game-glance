@@ -41,10 +41,27 @@ export function glassSurface(level: 'glass' | 'strong' | 'solid' = 'glass'): str
     return `background:var(${name});border:1px solid var(--gg-edge);backdrop-filter:blur(var(--gg-glass-blur))`;
 }
 export const artFill = (dim = false) => `filter:var(--gg-art-fill${dim ? '-dim' : ''})`;
-/** The in-game menu's ring follows the control's shape: outside a card, just inside a slice. It sets no fill or shadow, so a selected item keeps its mark. */
-export const focusRing = (kind: 'compact' | 'card' | 'menu' | 'slice' = 'compact') => kind === 'menu' || kind === 'slice'
-    ? `outline:2px solid #fff;outline-offset:${kind === 'menu' ? '2px' : '-2px'};transform:none`
-    : `outline:2px solid rgba(255,255,255,.9);outline-offset:1px;border-color:var(--gg-edge-active);box-shadow:var(--gg-focus-shadow);background:var(--gg-glass-strong);transform:${kind === 'compact' ? 'scale(1.04)' : `translateY(${unit(-4)})`}`;
+/** The in-game menu's ring follows the control's shape: outside a card, just inside a slice. It sets no fill or shadow, so a selected item keeps its mark.
+ * Section 7: 'lift' raises a feed or info card 4 units, 'level' keeps a capsule in its row; both add a neutral shadow, never the accent. */
+export const focusRing = (kind: 'compact' | 'card' | 'menu' | 'slice' | 'lift' | 'level' = 'compact', u: (n: number) => string = (n) => `${n}px`) => {
+    if (kind === 'menu' || kind === 'slice') return `outline:2px solid #fff;outline-offset:${kind === 'menu' ? '2px' : '-2px'};transform:none`;
+    if (kind === 'lift' || kind === 'level') return `outline:2px solid #fff;outline-offset:2px;box-shadow:0 ${u(14)} ${u(28)} ${u(-12)} rgba(0,0,0,.75);transform:${kind === 'lift' ? `translateY(${u(-4)})` : 'none'}`;
+    return `outline:2px solid rgba(255,255,255,.9);outline-offset:1px;border-color:var(--gg-edge-active);box-shadow:var(--gg-focus-shadow);background:var(--gg-glass-strong);transform:${kind === 'compact' ? 'scale(1.04)' : `translateY(${unit(-4)})`}`;
+};
+/** Section 7: action corners are a share of the button's height, so Home's Play scales into the page's with the same corner. */
+export const actionRadius = (height: number, kind: 'action' | 'icon') => Math.round(height * (kind === 'action' ? .36 : .30));
+/** The shader's calm (qam-frost.fx.in) in CSS: off until the Ally shows Steam's browser keeps the blur with an SVG filter in backdrop-filter. */
+export const CALM_IN_CSS: boolean = false;
+export const CALM_FILTER_ID = 'gg-calm';
+export const calmTable = () => Array.from({ length: 21 }, (_, i) => {
+    const x = i / 20;
+    return +(x <= .45 ? x : .45 + (x - .45) * .35).toFixed(4);
+}).join(' ');
+/** One frost for every glass surface: background and backdrop only; each surface keeps its own border. */
+export const frostSurface = (blur: string, level: 'glass' | 'strong' = 'glass') =>
+    `background:${level === 'glass' ? TOKENS.glass : TOKENS.strong};backdrop-filter:blur(${blur})${CALM_IN_CSS ? ` url(#${CALM_FILTER_ID})` : ''}`;
+/** Small text over art or glass: the menu's 90% white with its shadow. */
+export const labelText = () => `color:${TOKENS.label};text-shadow:${TOKENS.textShadow}`;
 export const currentUnderline = () => `content:'';position:absolute;left:${unit(12)};right:${unit(12)};bottom:${unit(4)};height:${unit(3)};border-radius:var(--gg-r-pill);background:var(--gg-accent);pointer-events:none`;
 /** Section 6: a selected tab, option, friend or bell is a soft shade with a faint accent line. */
 export const selectedSlice = () => 'background:var(--gg-selected);color:var(--gg-text);box-shadow:var(--gg-selected-edge)';
@@ -73,5 +90,25 @@ export function installTokenCss(document: Document, selector: string): () => voi
         if (released) return; released = true;
         if (--entry!.users === 0) { entry!.node.remove(); entries!.delete(selector); }
         if (!entries!.size) sheets.delete(document);
+    };
+}
+
+const calmFilters = new WeakMap<Document, { node: Element; users: number }>();
+/** One hidden SVG holding the calm filter per document, shared like the token sheet. Does nothing while CALM_IN_CSS is off. */
+export function installCalmFilter(document: Document): () => void {
+    if (!CALM_IN_CSS) return () => {};
+    let entry = calmFilters.get(document);
+    if (!entry) {
+        const funcs = ['R', 'G', 'B'].map((c) => `<feFunc${c} type="table" tableValues="${calmTable()}"/>`).join('');
+        const host = document.createElement('div');
+        host.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute"><filter id="${CALM_FILTER_ID}" color-interpolation-filters="sRGB"><feComponentTransfer>${funcs}</feComponentTransfer></filter></svg>`;
+        const node = host.firstElementChild!;
+        document.body.appendChild(node); entry = { node, users: 0 }; calmFilters.set(document, entry);
+    }
+    entry.users++;
+    let released = false;
+    return () => {
+        if (released) return; released = true;
+        if (--entry!.users === 0) { entry!.node.remove(); calmFilters.delete(document); }
     };
 }
