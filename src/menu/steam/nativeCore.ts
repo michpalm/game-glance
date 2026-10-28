@@ -45,9 +45,21 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
     };
 }
 
+let settingsStoreClass:{Get():unknown}|undefined;
+/** Steam creates SystemStoragStore (sic) only when its own Quick Access settings first
+ * draws, through the class's Get(); until then brightness, airplane and night mode
+ * have no store. Create it the same way Steam does, found by Get()'s own source. */
+function ensureSystemSettingsStore(root:CoreGlobals){
+    if(root.SystemStoragStore)return;
+    try{
+        settingsStoreClass??=findModuleExport(value=>typeof value==='function'&&typeof (value as {Get?:unknown}).Get==='function'&&Function.prototype.toString.call((value as {Get:()=>unknown}).Get).includes('SystemStoragStore'));
+        settingsStoreClass?.Get();
+    }catch{/* The display API still reads and writes brightness. */}
+}
 /** One lazy source per enabled menu session; callbacks remain alive for unsettled issued writes. */
 export function discoverQuickSettingsBindings():QuickSettingsBindings {
     const root=globals(),audio=root.SteamClient?.System?.Audio,display=root.SteamClient?.System?.Display;
+    ensureSystemSettingsStore(root);
     const initialBrightness=root.SystemStoragStore?.DisplayBrightness;
     let devices:AudioState|null=null,brightness:number|null=(typeof initialBrightness==='number'?initialBrightness:initialBrightness?.Value)??null,alive=false,generation=0,scanning=false,fingerprint='';
     let interval:ReturnType<typeof setInterval>|undefined;
@@ -93,7 +105,11 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     function stop(){alive=false;generation++;scanning=false;if(interval!==undefined)clearInterval(interval);interval=undefined;for(const r of registrations.splice(0)){try{release(r);}catch{}}}
     const bindings:QuickSettingsBindings={subscribe(listener){listeners.add(listener);if(listeners.size===1)start();return()=>{listeners.delete(listener);if(!listeners.size)stop();};},toggles};
     if(audio?.GetDevices&&audio?.SetDeviceVolume)bindings.audio={read:()=>devices,async write(id,type,value){const ticket=generation,requestedAt=Date.now();const current=await audio.GetDevices();if(!alive||ticket!==generation||Date.now()-requestedAt>=3000)throw Error('Audio device confirmation expired. Try again.');devices=current;emit();if((type===1?current.activeOutputDeviceId:current.activeInputDeviceId)!==id)throw Error('Active audio device changed. Try again.');const result=await audio.SetDeviceVolume(id,type,value);if(result&&result.result!==1)throw Error(result.message||'Steam rejected the volume change');}};
-    if(display?.RegisterForBrightnessChanges&&typeof store?.SetDisplayBrightness==='function')bindings.brightness={read:()=>brightness,contextKey:displayKey,available:()=>store.msgSettings?.is_display_brightness_available??displaySettings()?.bDisplayIsExternal===false,write:value=>store.SetDisplayBrightness!(value)};
+    // Steam creates SystemStoragStore lazily, when its own Quick Access settings first
+    // draws; until then the display API alone reads (on registration) and writes.
+    const settingsStore=()=>root.SystemStoragStore;
+    const setBrightness=typeof store?.SetDisplayBrightness==='function'?(value:number)=>store.SetDisplayBrightness!(value):typeof display?.SetBrightness==='function'?(value:number)=>display.SetBrightness(value):undefined;
+    if(display?.RegisterForBrightnessChanges&&setBrightness)bindings.brightness={read:()=>brightness,contextKey:displayKey,available:()=>settingsStore()?.msgSettings?.is_display_brightness_available??displaySettings()?.bDisplayIsExternal===false,write:value=>setBrightness(value)};
     return bindings;
 }
 export function nativeNotificationBindings(){

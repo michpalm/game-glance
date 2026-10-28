@@ -47,7 +47,8 @@ describe('native quick settings adapters',()=>{
 });
 
 const nativeMetadata=vi.hoisted(()=>({settings:{strDisplayName:'Test panel',bDisplayIsExternal:false,bDisplayIsUsingAutoScale:true}}));
-vi.mock('@decky/ui',()=>({findModuleExport:(predicate:(value:unknown)=>boolean)=>[nativeMetadata,{BIsFeatureBlocked:()=>false}].find(predicate)}));
+const steamModules=vi.hoisted(()=>({storeClass:null as unknown}));
+vi.mock('@decky/ui',()=>({findModuleExport:(predicate:(value:unknown)=>boolean)=>[nativeMetadata,{BIsFeatureBlocked:()=>false},steamModules.storeClass].filter(Boolean).find(predicate)}));
 import { discoverQuickSettingsBindings } from '../../src/menu/steam/nativeCore';
 function nativeHarness(){
     vi.useFakeTimers();nativeMetadata.settings.bDisplayIsExternal=false;
@@ -110,6 +111,35 @@ it('seeds brightness from Steam’s wrapped value and trusts its capability in a
     value.Value=0.65;callback({flBrightness:0.65});await pending;
     expect(settings.controls.brightness.get()).toMatchObject({value:65,pending:false});
     settings.dispose();expect(unregister).toHaveBeenCalledTimes(1);nativeMetadata.settings.bDisplayIsExternal=false;
+});
+it('offers brightness before Steam has created its lazy settings store', async () => {
+    // After a Steam restart, window.SystemStoragStore exists only once Steam's own
+    // Quick Access settings has drawn its slider (Ally, 2026-10-28). Registering
+    // for brightness changes reports the current value at once.
+    vi.useFakeTimers();nativeMetadata.settings.bDisplayIsExternal=false;
+    let callback!:(state:{flBrightness:number})=>void;const setBrightness=vi.fn();
+    vi.stubGlobal('SteamClient',{System:{Display:{SetBrightness:setBrightness,RegisterForBrightnessChanges:(fn:typeof callback)=>{callback=fn;fn({flBrightness:.65});return {unregister:vi.fn()};}}}});
+    vi.stubGlobal('SystemStoragStore',undefined);
+    const settings=createQuickSettings(discoverQuickSettingsBindings());
+    expect(settings.controls.brightness?.get()).toMatchObject({available:true,value:65});
+    const pending=settings.controls.brightness.set(40);await vi.advanceTimersByTimeAsync(100);
+    expect(setBrightness).toHaveBeenCalledWith(0.4);
+    callback({flBrightness:.4});await pending;expect(settings.controls.brightness.get()).toMatchObject({value:40,pending:false});
+    settings.dispose();
+});
+it('asks Steam to create its settings store, so brightness, airplane mode and night mode show as in Steam', () => {
+    // In Gamescope Steam names the Ally's panel "External: 1|||Windowed"; only the
+    // store's is_display_brightness_available knows it has a backlight.
+    nativeMetadata.settings.bDisplayIsExternal=true;
+    const store={DisplayBrightness:{Value:.65},AirplaneModeEnabled:{Value:false},msgSettings:{is_display_brightness_available:true,display_nightmode_enabled:false},SetDisplayBrightness:vi.fn(),SetAirplaneMode:vi.fn(),SetNightModeEnabled:vi.fn()};
+    class SteamSettingsStore {static Get(){return (globalThis as {SystemStoragStore?:unknown}).SystemStoragStore??=store;}}
+    steamModules.storeClass=SteamSettingsStore;
+    vi.stubGlobal('SteamClient',{System:{Display:{RegisterForBrightnessChanges:()=>({unregister:vi.fn()})}}});
+    vi.stubGlobal('SystemStoragStore',undefined);
+    const bindings=discoverQuickSettingsBindings(),settings=createQuickSettings(bindings);
+    expect(settings.controls.brightness?.get()).toMatchObject({available:true,value:65});
+    expect(Object.keys(bindings.toggles??{})).toEqual(expect.arrayContaining(['airplane','night']));
+    settings.dispose();steamModules.storeClass=null;nativeMetadata.settings.bDisplayIsExternal=false;
 });
 it('hides brightness when Steam explicitly reports no controllable backlight', () => {
     nativeMetadata.settings.bDisplayIsExternal=false;
