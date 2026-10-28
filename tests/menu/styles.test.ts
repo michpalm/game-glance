@@ -73,6 +73,8 @@ describe('menu glass and reveal motion',()=>{
     it('keeps tab labels on one line and the bar scrollable', () => {
         expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton')).toContain('white-space:nowrap');
         expect(rule('.gg-menu-tabs')).toContain('overflow-x:auto');
+        // Tabs grow to fill the bar but never shrink below their label, so a long row scrolls instead.
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton')).toContain('flex:1 0 auto');
     });
     it('lets a slider without a partner take the full row', () => {
         expect(menuStyles).toContain('.gg-menu-quick-sliders>:only-child{grid-column:1/-1}');
@@ -83,6 +85,7 @@ describe('menu glass and reveal motion',()=>{
     });
     it('turns a pending option’s spinner into a still ring under reduced motion', () => {
         expect(menuStyles).toMatch(/\.gg-menu-pending::after\{[^}]*animation:gg-menu-spin/);
-        expect(menuStyles).toContain('@media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *{transition:none!important;animation:none!important}}');
+        // animation is not inherited and `*` skips pseudo-elements, so the spinner needs its own entry.
+        expect(menuStyles).toMatch(/@media\(prefers-reduced-motion:reduce\)\{[^{]*\.gg-menu \*::after[^{]*\{[^}]*animation:none!important/);
     });
 });

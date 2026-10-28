@@ -18,7 +18,7 @@ html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):h
 .gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:stretch;justify-content:stretch;gap:0;padding:0;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
-.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex:1 1 auto;min-height:0;padding:0 12px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);white-space:nowrap;box-shadow:none}
+.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex:1 0 auto;min-height:0;padding:0 12px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);white-space:nowrap;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]{${selectedSlice()}}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:is(.gpfocus,:focus-visible){${focusRing('slice')};color:var(--gg-text)}
 html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:hover{box-shadow:none;color:var(--gg-text)}
@@ -102,5 +102,5 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-status-host .gh-status-pill{background:var(--gg-glass-solid)!important;border-color:var(--gg-edge);border-radius:var(--gg-r-pill);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
 .gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu-tabs::-webkit-scrollbar{display:none}
-@media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *{transition:none!important;animation:none!important}}
+@media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *,.gg-menu *::after{transition:none!important;animation:none!important}}
 `;

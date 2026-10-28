@@ -18,3 +18,7 @@ it('drops the local choice when Steam cancels it', () => {
     expect(shouldClearDraft({ pending: false })).toBe(true);
     expect(shownChoice(null, { value: 1, pending: false, error: null }).spinning).toBe(false);
 });
+it('never spins when Steam turns the press down before applying anything', () => {
+    // An unavailable control rejects at once and never reports pending; a repeat press repeats the same error.
+    expect(shownChoice(3, { value: 1, pending: false, error: 'This control is unavailable' })).toEqual({ value: 1, spinning: false });
+});
