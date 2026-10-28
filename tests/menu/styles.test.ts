@@ -33,4 +33,56 @@ describe('menu glass and reveal motion',()=>{
         expect(rule('.gg-menu')).toMatch(/transition:[^;}]*opacity var\(--gg-fast\) linear/);
         expect(rule('.gg-menu-status-host')).toContain('transition:opacity var(--gg-fast) linear');
     });
+    const all = [...menuStyles.split('\n'), ...socialStyles.split('\n')];
+    it('draws options in the bar and tracks as full-height slices in a card track', () => {
+        expect(rule('.gg-menu-tabs')).toMatch(/padding:0[;}]/);
+        expect(rule('.gg-menu-tabs')).toMatch(/gap:0[;}]/);
+        expect(rule('.gg-menu-tabs')).toContain('align-items:stretch');
+        for (const track of ['.gg-menu-segmented', '.gg-menu-perf-tabs']) {
+            expect(rule(track)).toContain('border-radius:var(--gg-r-card)');
+            expect(rule(track)).toContain('overflow:hidden');
+            expect(rule(track)).toMatch(/padding:0[;}]/);
+        }
+        for (const slice of ['.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton',
+            '.gg-menu-native-host .gg-menu .gg-menu-segmented button.gg-menu-action.DialogButton',
+            '.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton'])
+            expect(rule(slice)).toContain('border-radius:0');
+    });
+    it('uses pills only where the round shape is the control', () => {
+        const pills = all.filter(line => line.includes('--gg-r-pill'));
+        for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-social-avatar|gh-status-pill/);
+    });
+    it('marks every selected item with the shade and faint edge, never an accent fill', () => {
+        const selected = all.flatMap(line => line.match(/[^{}]*\[aria-pressed=true\][^{}]*\{[^}]*\}/g) ?? [])
+            .filter(css => !css.includes(':not([aria-pressed=true])'));
+        expect(selected.length).toBeGreaterThanOrEqual(5);
+        for (const css of selected) {
+            expect(css, css.slice(0, 90)).not.toContain('background:var(--gg-accent)');
+            if (!css.includes('::after')) expect(css, css.slice(0, 90)).toContain('var(--gg-selected-edge)');
+        }
+    });
+    it('focuses with the white ring only: no growth, no glow', () => {
+        expect(menuStyles + socialStyles).not.toContain('--gg-focus-shadow');
+        expect(menuStyles + socialStyles).not.toContain('scale(1.04)');
+        expect(menuStyles).toContain('outline-offset:-2px');
+    });
+    it('keeps every focus rule out of mouse mode', () => {
+        for (const line of all.filter(l => /gpfocus|:focus-visible|:focus-within/.test(l)))
+            expect(line, line.slice(0, 90)).toMatch(/^:where\(html:not\(\[data-gg-mouse\]\)\)/);
+    });
+    it('keeps tab labels on one line and the bar scrollable', () => {
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton')).toContain('white-space:nowrap');
+        expect(rule('.gg-menu-tabs')).toContain('overflow-x:auto');
+    });
+    it('lets a slider without a partner take the full row', () => {
+        expect(menuStyles).toContain('.gg-menu-quick-sliders>:only-child{grid-column:1/-1}');
+    });
+    it('gives tiles one height on every page', () => {
+        expect(rule('.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton')).toMatch(/height:112px/);
+        expect(rule('.gg-menu .gg-ingame-grid')).not.toMatch(/flex:1/);
+    });
+    it('turns a pending option’s spinner into a still ring under reduced motion', () => {
+        expect(menuStyles).toMatch(/\.gg-menu-pending::after\{[^}]*animation:gg-menu-spin/);
+        expect(menuStyles).toContain('@media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *{transition:none!important;animation:none!important}}');
+    });
 });
