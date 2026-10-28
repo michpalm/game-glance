@@ -1,8 +1,8 @@
 # Game Glance visual language
 
-Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review. Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
+Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review; in-game menu text and frost added 2026-10-28 (Q28–Q30). Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
 
-Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
+Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec; Q28–Q30 were decided on the device and are recorded only in the decision log. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
 ## Identity: the focus is games
 
@@ -96,10 +96,20 @@ One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred a
 | Token | Value | Use |
 |---|---|---|
 | `text` | `#fff` | All primary text |
-| `text-dim` | `rgba(255,255,255,.62)` | Labels, sublabels, inactive tabs; replaces the menu's `#d5dce3` |
+| `text-dim` | `rgba(255,255,255,.62)` | Labels and sublabels outside the in-game menu (Home, game page, screensaver); replaces the menu's `#d5dce3` |
+| `text-idle` | `rgba(255,255,255,.80)` | Unselected choices in a row of options: the menu's main tabs, Performance categories (code: `idle`, `--gg-text-idle`) |
+| `text-label` | `rgba(255,255,255,.90)` | Small secondary text inside the in-game menu, always with `text-shadow` (code: `label`; the menu sets `--gg-text-dim` to it, so menu rules keep reading `--gg-text-dim`) |
 | `text-shadow` | `0 1px 2px #0009` | All text on glass over artwork |
 | `track` | `rgba(255,255,255,.14)` | Empty part of sliders and progress bars |
 | `track-edge` | inset `0 0 0 1px rgba(255,255,255,.22)` | Slider tracks, so an empty track stays visible |
+
+Inside the in-game menu the game shows through the frost, so its small text needs more than Home's 62%. Unselected tabs and categories use `text-idle`; the selected one stays `text` with its underline, and tabs take no text shadow. Every 11 px secondary line (the power line, section labels, Friends, Nobody online, Last online, tile captions, notification times, setting descriptions, the L1/R1 hints) uses `text-label` with `text-shadow`. Outside the menu, secondary text keeps `text-dim`. Measured on a real Ori frame on the Ally (2026-10-28): 62% labels read 2.3–4.8:1 and unselected 62% tabs 3.1–4.8:1; with `text-label`, the shadow and the frost's calm curve (below) every measured label stays above 5:1, also over a bright scene.
+
+### In-game frost
+
+The menu bar, the panel and the notification bell are the three frost regions: each is `glass` (.40) with `edge` over the game, which the frost shader blurs. The bell takes the same .40 glass as the bar and panel, not `glass-strong`.
+
+Under the glass the shader calms bright areas: a frosted pixel's luma above 0.45 rises at 35% of the rate (RGB scaled together, so hue is kept); darker scenes are unchanged. Reason: through .40 glass a bright sky left small labels near 2.4:1. Code: `Calm()` in `py_modules/gameglance/frost/assets/qam-frost.fx.in`, `CalmKnee 0.45`, `CalmSlope 0.35`.
 
 ### Accent
 
@@ -122,7 +132,7 @@ Four states, one meaning and one look each. Focus is always added on top of the 
 | State | Meaning | Look |
 |---|---|---|
 | Focus | Where the controller is | 2 px white ring `rgba(255,255,255,.9)` plus accent glow below (`0 14px 40px -8px accent`). Compact controls (buttons, tiles, rows, segments) scale to 1.04; cards (info cards, feed cards, capsules) lift 4 px instead and show their 3 px accent bar. |
-| Current | Where you are in navigation | Home's tab row: inactive `text-dim`, no box; current `text` with a 3 px accent underline at 55% opacity; focused tab: underline at full opacity with a `0 0 14px 2px accent` glow. Tabs do not use the focus ring. |
+| Current | Where you are in navigation | Home's tab row: inactive `text-dim` (`text-idle` in the in-game menu's tabs and Performance categories), no box; current `text` with a 3 px accent underline at 55% opacity; focused tab: underline at full opacity with a `0 0 14px 2px accent` glow. Tabs do not use the focus ring. |
 | On | A value that is set | Accent fill with `on-accent` text or thumb: toggle on track, slider fill, chosen segment |
 | Unavailable | Steam reports the control unavailable | Home's ghost: `filter: grayscale(.6) brightness(.75)`, edge `rgba(255,255,255,.06)`. Visible, but cannot be operated. |
 
@@ -269,7 +279,7 @@ No fetch, push, pull request or release is part of this spec; those are separate
 
 ## Decision log
 
-All on the visual reference page. Q1–Q14 decided 2026-10-20 on `codex/floating-menu`; Q19–Q27 decided 2026-10-25 in the re-review on 3.6.
+All on the visual reference page except Q28–Q30. Q1–Q14 decided 2026-10-20 on `codex/floating-menu`; Q19–Q27 decided 2026-10-25 in the re-review on 3.6; Q28–Q30 decided 2026-10-28 for the 4.0 in-game menu from contrast measured over real Ally frames and confirmed on the device (`codex/social-chat`, ab5eb37, 81a718e, d0c51ca).
 
 | Q | Decision |
 |---|---|
@@ -296,3 +306,6 @@ All on the visual reference page. Q1–Q14 decided 2026-10-20 on `codex/floating
 | Q25 | Small capitals at 11; the feed tabs keep 13 as the `tab` role |
 | Q26 | A feed card without art gets a neutral tint (`empty-fill`) |
 | Q27 | Feed cards take the white focus ring (a check of Section 2) |
+| Q28 | In the in-game menu, unselected tabs and categories are `text-idle` (80%), no text shadow; the selected one stays `text` with its underline (2026-10-28) |
+| Q29 | In the in-game menu, small secondary text is `text-label` (90%) with `text-shadow`; Home keeps `text-dim` (2026-10-28) |
+| Q30 | The in-game frost calms luma above 0.45 to 35% of its rise, hue kept; the bell uses the bar's .40 glass (2026-10-28) |
