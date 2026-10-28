@@ -88,6 +88,31 @@ describe('action row (VDL Section 7)', () => {
     });
 });
 
+describe('feed tabs (VDL Section 7)', () => {
+    const css = homeCss();
+    it('sit on a glass strip as full-height slices', () => {
+        const strip = ruleFor(css, '.gh-tabs');
+        expect(strip).toContain('backdrop-filter:blur(16px)'); expect(strip).toContain('border-radius: 12px');
+        expect(strip).toContain('gap: 0'); expect(strip).toContain('overflow: hidden');
+        expect(strip).toContain('right: auto'); expect(strip).toContain('width: max-content');
+        expect(ruleFor(css, '.gh-tab')).toContain('color: rgba(255,255,255,.80)');
+    });
+    it('mark the current tab with the selected slice, never an underline', () => {
+        expect(ruleFor(css, '.gh-tab.gh-tab-on')).toContain('background:var(--gg-selected)');
+        expect(css).not.toContain('.gh-tab-line');
+        expect(ruleFor(css, '.gh-root')).toContain('--gg-accent: var(--glance-accent)');
+    });
+    it('focus is the inset ring and keeps the selected shade', () => {
+        const f = ruleFor(css, `${NOT_MOUSE} .gh-tab.gh-tab-focus`);
+        expect(f).toContain('outline-offset:-2px'); expect(f).not.toContain('background');
+    });
+    it('keeps the tab row height: the strip edge is drawn inside, adding nothing', () => {
+        expect(ruleFor(css, '.gh-tab')).toContain('padding: 8px 16px 10px');
+        expect(ruleFor(css, '.gh-tabs')).not.toMatch(/(^|;)\s*border:/);
+        expect(FEED_SHEET.tabHeight).toBe(8 + 10 + 13 * 1.2);
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
@@ -224,7 +249,7 @@ describe('homeCss', () => {
         // A button, the Play pill's growth, a feed card and a tab's line.
         expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*outline:2px solid #fff/);
         expect(css).toMatch(/\.gh-card:focus\s*\{[^}]*translateY\(-4px\)/);
-        expect(css).toMatch(/\.gh-tab:focus \.gh-tab-line\s*\{[^}]*opacity:\s*1/);
+        expect(css).toMatch(/\.gh-tab:focus\s*\{[^}]*outline-offset:-2px/);
         // A hover never shows over a focused card.
         expect(css).toMatch(/\.gh-card\.gh-card-hover:not\(\.gh-card-focus\):not\(:focus\)\s*\{/);
     });
@@ -781,7 +806,6 @@ describe('homeCss accent on hidden bars', () => {
         // Each L1/R1 step changes the accent: these ran ~30 colour transitions a step, all invisible (measured on the Ally).
         expect(css).toMatch(/\.gh-cap:not\(\.gh-cap-focus\) \.gh-cap-bar \{ transition: opacity 250ms !important; \}/);
         expect(css).toMatch(/\.gh-card:not\(\.gh-card-focus\):not\(:focus\) \.gh-card-bar \{ transition: opacity 250ms !important; \}/);
-        expect(css).toMatch(/\.gh-page:not\(\.gh-page-up\) \.gh-tab-line \{ transition: none !important; \}/);
     });
 });
 
@@ -957,7 +981,7 @@ describe('homeCss mouse hover', () => {
         // Every focus look of a button or a tab, and its DOM-focus twin, sits behind the gate; :where() adds nothing to its weight.
         for (const sel of selectors(css).filter((s) => /\.gh-(btn[\w-]*|tab)[^{]*(\.gh-focus|\.gh-tab-focus)(?![\w-])/.test(s) && !/:not\(\.gh-focus\)/.test(s))) expect(sel, sel).toContain(gate);
         expect(css).toContain(`${gate} .gh-btn.gh-focus`);
-        expect(css).toContain(`${gate} .gh-tab.gh-tab-focus .gh-tab-line`);
+        expect(css).toContain(`${gate} .gh-tab.gh-tab-focus`);
         // The selected game keeps its look: it says whose art and buttons these are.
         for (const sel of selectors(css).filter((s) => s.includes('gh-recents-focus'))) expect(sel).not.toContain(gate);
     });

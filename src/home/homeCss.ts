@@ -17,7 +17,7 @@ import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
 import { RETURN_ATTR } from './openCancel';
-import { actionRadius, focusRing, frostSurface, TOKENS } from '../styles/tokens';
+import { actionRadius, focusRing, frostSurface, selectedSlice, TOKENS } from '../styles/tokens';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -271,6 +271,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         `@keyframes gh-fade-in { from { opacity: 0; } to { opacity: 1; } }`,
         rule('.gh-root', `--gh-side: ${SIDE_INSET.handheld}px; --gh-row: ${SIDE_INSET.handheld - ROW_OFFSET}px; --gh-pill: ${PILL_INSET.handheld}px; --glance-accent: ${DEFAULT_ACCENT}; --glance-accent-text: ${DEFAULT_ACCENT}; --gh-top: 52px; --gh-bottom: ${FEED_SHEET.legendReserve}px; --gh-shift: 0px; --gh-dim: 0;
             --gh-ink: #07090c; --gh-on-accent: #0b0d10; --gh-r-capsule: 8px; --gh-r-card: 12px; --gh-r-panel: 16px; --gh-r-pill: 999px;
+            --gg-accent: var(--glance-accent); --gg-text: #fff; --gg-selected: ${TOKENS.selected}; --gg-selected-edge: inset 0 -2px 0 color-mix(in srgb, var(--gg-accent) 55%, transparent);
             transition: none;
             position: absolute; inset: 0; overflow: hidden; overflow: clip; z-index: 0; background: var(--gh-ink); color: #fff;
             font-family: inherit; text-align: left; line-height: normal; letter-spacing: normal; text-transform: none`),
@@ -512,19 +513,18 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-btn-library', 'width: 280px; flex: 0 0 280px; background: var(--glance-accent); border-color: var(--glance-accent); color: var(--gh-on-accent)'),
 
         // Feed sheet: tab strip (handoff: top 700 from the screen top plus the stack shift, ending 18 above the legend reserve at rest).
-        rule('.gh-tabs', `position: absolute; left: var(--gh-row, ${SIDE_INSET.handheld - ROW_OFFSET}px); right: var(--gh-row, ${SIDE_INSET.handheld - ROW_OFFSET}px); top: calc(${FEED_SHEET.tabsTop}px - var(--gh-top)); display: flex; justify-content: flex-start; gap: 30px; margin: 0; padding: 0; pointer-events: none`),
+        // Section 7: the tabs are slices of one glass strip that hugs them, as the menu's tabs; its edge is an inset outline,
+        // drawn over the slices and adding no height (FEED_SHEET.tabHeight and the give-way numbers hold).
+        rule('.gh-tabs', `position: absolute; left: var(--gh-row, ${SIDE_INSET.handheld - ROW_OFFSET}px); top: calc(${FEED_SHEET.tabsTop}px - var(--gh-top)); display: flex; justify-content: flex-start; gap: 0; margin: 0; padding: 0; pointer-events: none;
+            right: auto; width: max-content; border-radius: 12px; overflow: hidden; ${frostSurface('16px')}; outline: 1px solid ${TOKENS.edge}; outline-offset: -1px`),
         // Out of sight under the games row at rest: taps there are the row's; with the sheet up a tap picks a tab.
         rule('.gh-page-up .gh-tabs', 'pointer-events: auto'),
-        rule('.gh-tab', `position: relative; margin: 0; padding: 8px 2px 10px; font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
-            line-height: 1.2; white-space: nowrap; color: rgba(255,255,255,.6); background: transparent; outline: none; cursor: pointer; transition: color 200ms`),
-        rule('.gh-tab.gh-tab-on', 'color: #fff'),
+        rule('.gh-tab', `position: relative; margin: 0; padding: 8px 16px 10px; font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+            line-height: 1.2; white-space: nowrap; color: ${TOKENS.idle}; background: transparent; outline: none; cursor: pointer; transition: color 200ms, background 200ms`),
+        rule('.gh-tab.gh-tab-on', selectedSlice()),
         rule(`${HOVER} .gh-tab:hover:not(.gh-tab-on)`, 'color: rgba(255,255,255,.85)'),
-        rule('.gh-tab-line', `position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: var(--glance-accent); opacity: 0; box-shadow: none;
-            transition: opacity 250ms, box-shadow 250ms, background ${ACCENT_MS}ms`),
-        rule('.gh-tab.gh-tab-on .gh-tab-line', 'opacity: .55'),
-        // The tabs are out of sight while the sheet is down: their line takes a new accent at once.
-        rule('.gh-page:not(.gh-page-up) .gh-tab-line', 'transition: none'),
-        rule(`${NOT_MOUSE} .gh-tab.gh-tab-focus .gh-tab-line`, 'opacity: 1; box-shadow: 0 0 14px 2px var(--glance-accent)'),
+        // Focused: the menu's inset ring; a focused current tab keeps its shade and line under it.
+        rule(`${NOT_MOUSE} .gh-tab.gh-tab-focus`, focusRing('slice')),
         // Friends tab: people icon and the number of friends online, after the label.
         rule('.gh-tab-count', `display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 8px; font-size: 11px; letter-spacing: .04em; line-height: 1;
             vertical-align: 1px; color: ${FRIEND_COLOURS.none}; transition: color 200ms`),

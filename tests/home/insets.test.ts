@@ -43,6 +43,6 @@ describe('homeCss side inset', () => {
         expect(css).toMatch(/\.gh-source \{[^}]*right: var\(--gh-pill, 56px\) !important/);
         expect(css).toMatch(/\.gh-recents \{[^}]*left: var\(--gh-row, 44px\) !important/);
         expect(css).toMatch(/\.gh-feed \{[^}]*left: var\(--gh-row, 44px\) !important/);
-        expect(css).toMatch(/\.gh-tabs \{[^}]*left: var\(--gh-row, 44px\) !important; right: var\(--gh-row, 44px\) !important/);
+        expect(css).toMatch(/\.gh-tabs \{[^}]*left: var\(--gh-row, 44px\) !important;[^}]*right: auto !important/);
     });
 });
