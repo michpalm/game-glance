@@ -190,9 +190,10 @@ describe('soft pills (VDL Section 7, option B)', () => {
 });
 
 describe('status bar avatar (VDL Section 7)', () => {
-    it("is a square whose corner follows the bar's: its 12 minus the 3 between them", () => {
+    it("is a 22 px square, 5 px clear of the bar's edges, its corner the bar's 12 minus those 5", () => {
         const r = ruleFor(homeCss(), '.gh-status-avatar');
-        expect(r).toContain('border-radius: 9px'); expect(r).not.toContain('50%');
+        expect(r).toContain('width: 22px'); expect(r).toContain('height: 22px');
+        expect(r).toContain('border-radius: 7px'); expect(r).not.toContain('50%');
     });
 });
 
