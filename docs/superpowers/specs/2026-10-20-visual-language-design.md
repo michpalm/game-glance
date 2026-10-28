@@ -1,6 +1,6 @@
 # Game Glance visual language
 
-Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review; in-game menu text and frost added 2026-10-28 (Q28–Q30). Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
+Written 2026-10-20; re-reviewed on 3.6 on 2026-10-25. Status: ready for written review; in-game menu text and frost added 2026-10-28 (Q28–Q30); in-game menu grammar added 2026-10-28 (Section 6, Q31–Q36), awaiting written review. Every question is decided (see the decision log at the end). No code has changed. Ships as release 4.0.0.
 
 Visual reference: [Game Glance Visual Language](https://claude.ai/artifact/MEGivGmdtx737oxs3nv6xn) (private artifact). This spec's questions on that page are Q1–Q14 and Q19–Q27; Q15–Q18 belong to the Deck Shelves spec; Q28–Q30 were decided on the device and are recorded only in the decision log. Each approved option is marked "Proposed", or "Chosen" where Michael picked another.
 
@@ -40,7 +40,7 @@ The work succeeds when:
 
 - One module, `src/styles/tokens.ts`, holds every shared colour, glass, edge, radius, type, spacing and motion value, and every surface reads from it.
 - The 55 distinct `rgba()` colours, 10 radii, 9 blur strengths and 7 timings in 3.6's style files (plus the floating menu's when it is rebased) collapse to the named sets below. Values that stay outside the module are on the allowlist (Section 5) with a reason.
-- Focus, current, on and unavailable states look the same on every surface.
+- Focus, current, on and unavailable states look the same on every surface. The in-game menu follows Section 6 first; the other surfaces follow once each is reviewed against it.
 - Released surfaces (Home, game page, screensaver, status bar) show no visible change on the Ally apart from the approved changes listed in Section 5.
 
 The floating menu's polish is a separate, later deliverable, built on these tokens after this work ships.
@@ -103,7 +103,7 @@ One blur strength (16 px) everywhere a surface uses CSS backdrop blur. Blurred a
 | `track` | `rgba(255,255,255,.14)` | Empty part of sliders and progress bars |
 | `track-edge` | inset `0 0 0 1px rgba(255,255,255,.22)` | Slider tracks, so an empty track stays visible |
 
-Inside the in-game menu the game shows through the frost, so its small text needs more than Home's 62%. Unselected tabs and categories use `text-idle`; the selected one stays `text` with its underline, and tabs take no text shadow. Every 11 px secondary line (the power line, section labels, Friends, Nobody online, Last online, tile captions, notification times, setting descriptions, the L1/R1 hints) uses `text-label` with `text-shadow`. Outside the menu, secondary text keeps `text-dim`. Measured on a real Ori frame on the Ally (2026-10-28): 62% labels read 2.3–4.8:1 and unselected 62% tabs 3.1–4.8:1; with `text-label`, the shadow and the frost's calm curve (below) every measured label stays above 5:1, also over a bright scene.
+Inside the in-game menu the game shows through the frost, so its small text needs more than Home's 62%. Unselected tabs and categories use `text-idle`; the selected one stays `text`, marked as Section 6's `selected` slice (Q36; it was an underline when Q28 was decided), and tabs take no text shadow. Every 11 px secondary line (the power line, section labels, Friends, Nobody online, Last online, tile captions, notification times, setting descriptions, the L1/R1 hints) uses `text-label` with `text-shadow`. Outside the menu, secondary text keeps `text-dim`. Measured on a real Ori frame on the Ally (2026-10-28): 62% labels read 2.3–4.8:1 and unselected 62% tabs 3.1–4.8:1; with `text-label`, the shadow and the frost's calm curve (below) every measured label stays above 5:1, also over a bright scene.
 
 ### In-game frost
 
@@ -136,6 +136,8 @@ Four states, one meaning and one look each. Focus is always added on top of the 
 | On | A value that is set | Accent fill with `on-accent` text or thumb: toggle on track, slider fill, chosen segment |
 | Unavailable | Steam reports the control unavailable | Home's ghost: `filter: grayscale(.6) brightness(.75)`, edge `rgba(255,255,255,.06)`. Visible, but cannot be operated. |
 
+Inside the in-game menu, Section 6's states apply instead (Q35, Q36).
+
 Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabled in mouse mode, as today.
 
 ## 3. Shape, type, spacing and motion
@@ -148,6 +150,8 @@ Mouse hover keeps Home's existing mouse-mode hover ring. Focus looks stay disabl
 | `r-card` | 12 | Cards (including the game page's info cards), tiles, setting rows |
 | `r-panel` | 16 | Panels and sheets, including the floating menu bar and panel (26 today) |
 | `r-pill` | 999 | Buttons, pills, tabs, toggles, segmented controls, slider tracks, thin bars, circles |
+
+Inside the in-game menu, buttons, tabs and segmented controls are cards and slices instead of pills (Section 6, Q34).
 
 Every radius uses its role's token. A shape nested inside another uses the outer radius minus the gap between them. Thin bars (progress, achievements, chips, screensaver) and circles are already fully round, so `r-pill` leaves them unchanged.
 
@@ -191,6 +195,8 @@ Toggles, tiles, cards, tabs and sliders take the tokens above with no further de
 - **Action buttons are pills.** At most one accent-filled (primary) button per view; all others are `glass` with `edge-raised`. Round buttons hold icons only.
 - **Destinations have resting glass; settings do not.** Navigate tiles and Home cards are glass at rest. Setting rows sit directly on their panel; focus adds `glass-strong` and the focus ring.
 - **Named options use a segmented control; numeric scales use a slider.** Up to five named options (Performance profile, Scaling mode, Scaling filter) use the same segmented control, with the chosen option as an accent fill. Volume, frame limit, overlay level and TDP remain sliders.
+
+The in-game menu refines these in Section 6: its buttons are cards, and its chosen options are `selected` slices.
 
 ## 5. Code structure
 
@@ -260,6 +266,73 @@ Work happens on the local branch `design/visual-language`, in the worktree `../g
 
 No fetch, push, pull request or release is part of this spec; those are separate steps.
 
+## 6. In-game menu grammar
+
+Added 2026-10-28 (Q31–Q36). The in-game menu had several looks for the same job: two label styles for one setting, choices with and without a track, a second underline row for Performance's categories, a ring on tiles but an underline glow on tabs, and pills beside square cards. This section gives the menu one grammar, kept very readable, simple and clean. Inside the menu it overrides Sections 2–4 where they differ; Home, the game page and the screensaver keep Sections 2–4 until each is reviewed against this section, as the next step after the menu.
+
+Visual reference, rendered from the menu's own markup and styles saved on the Ally over a real Ori frame (private artifacts): [Structure](https://claude.ai/artifact/CY3dp7rAYfZKQZfGh1azJF), [Controls](https://claude.ai/artifact/1ZhUYr9y8U4gxbtZZN8YCZ), [Shape and focus](https://claude.ai/artifact/KJ4qmzyVKNabjmZrZtTAaD), [Selected slice](https://claude.ai/artifact/GghVenM2kcw38Y8Ktz5dds) (option 3 chosen).
+
+### Shape
+
+Two shapes only:
+
+- **Cards**, `r-card` (12): tiles, setting rows, notification rows, friend rows, buttons, the bell, the message field, and every track that holds options. The bar and panel keep `r-panel` (16).
+- **Slices**: an option inside a bar or track. A slice runs edge to edge and from the track's top to its bottom, square inside (the track clips its outer corners), with a 1 px `edge` hairline between slices. The main tabs are slices of the menu bar; Performance's categories, Scaling mode, Scaling filter and the performance profile are slices of their tracks.
+
+`r-pill` stays only where the round shape is the control: toggle switches, slider tracks and thumbs, progress bars, and circles (avatars, the unread dot). The status pill shown above the menu belongs to the status bar and keeps its shape.
+
+### States
+
+| State | Look in the menu |
+|---|---|
+| Focus | A 2 px white ring (`#fff`) that follows the shape: 2 px outside a card, 2 px inside a slice (`outline-offset: -2px`, so the track never clips it). The fill steps up to `glass-strong`; a focused selected item keeps its `selected` fill and line. No growth and no glow. |
+| Selected | `selected`: a soft white shade with a faint accent line along the bottom edge. One mark for the page you're on (tab), the category, the chosen option, the open friend and the bell while Notifications is open. |
+| On | A toggle that is on and a slider's fill stay `accent`: these are values, not selections. |
+| Unavailable | Section 2's ghost. A choice is never greyed out while Steam applies it (see Choices). |
+
+Focus and selection differ by form, not only colour: a crisp outline against a soft fill. A focused selected slice shows both. The accent is a small marker in the menu (the selection line, on toggles, slider fills, progress bars, the unread dot), never a large fill.
+
+New tokens:
+
+| Token | Value | Use |
+|---|---|---|
+| `selected` | `rgba(255,255,255,.14)` | Fill of a selected slice, friend row or bell |
+| `selected-edge` | inset `0 -2px 0` `color-mix(in srgb, accent 55%, transparent)` | The line along a selected item's bottom edge; an inset shadow, so it adds no height |
+
+Selected text is `text`; unselected slices stay `text-idle` (Q28).
+
+### Structure
+
+- **Page title.** Every page opens with a `heading` title, with the page's status on the right in `text-label` (Social: who is online; Performance: the power line). A page's own action (Notifications' Steam, Navigate's Steam menu) sits on the right of the title row instead, as a card button with an icon.
+- **Two label styles.** A *section label* (`label` role: 11 / 800 / uppercase, `text-label`) names a group, such as Connectivity or Friends. A *setting label* (`body`: 16 / 700, `text`, no uppercase) names one setting: Frame limit, Scaling mode, Performance profile. Nothing else labels a control.
+- **Choice groups are always on a track.** Named options (up to five) are slices of a card track, whatever page they are on.
+- **Sub-navigation is a choice group.** Performance's categories (Display, Scaling, Power & GPU, Overlay) are a choice group under the page title, never a second underline row.
+- **The bell marks Notifications.** While Notifications is open the bell is `selected` and no tab is.
+
+### Controls
+
+- **One setting row.** Every setting is a row: icon, setting label, then its value or switch on the right. Frame limit, Overlay level and Show overlay in Steam gain icons (gauge, layers, eye), matching Quick settings.
+- **Sliders show the value beside the label** (120 FPS, Off, 65%). No tick labels under the track.
+- **Choices respond at once.** Pressing an option selects it immediately; while Steam applies it a small spinner turns inside that option (a still ring under reduced motion). Options never grey out while a change applies, which is what made Scaling feel slow. If Steam refuses the change, the selection returns to Steam's value and the setting shows its usual error line.
+- **Layout.** Toggles sit two per row. A slider takes the full row unless it has a partner (Volume with Microphone).
+
+### Tiles and buttons
+
+- **One tile.** Icon (24), title (`body`) and an optional caption (`text-label`), centred, 112 units high on every page; the In game grid no longer stretches to fill the panel. A caption appears only when it adds something (In game's "10 of 37"), so Navigate's tiles have none.
+- **Buttons are cards with an icon.** A button that leaves the menu for Steam shows the arrow icon. Navigate's "Open Steam menu" becomes "Steam menu" in the title row.
+
+### Code
+
+- `tokens.ts`: `selected` and `selected-edge` tokens; `focusRing()` gains a `slice` kind (inset ring, no transform) and the menu uses a `menu` kind without growth or glow; `currentUnderline()` is no longer used by the menu; a `selectedSlice()` recipe returns the fill and edge.
+- `src/menu/styles.ts` and `socialStyles.ts`: tabs, `.gg-menu-perf-tabs` and `.gg-menu-segmented` become slice tracks; buttons and the bell move from `r-pill` to `r-card` (the message field already uses it); the grid's fixed tile height; setting headers take the setting label.
+- The pending choice needs a short-lived local selection per control, cleared when Steam reports its value or fails.
+
+### Testing
+
+- Style tests: no `r-pill` in the menu outside switches, slider tracks, progress bars and circles; every selected rule uses `selected` and `selected-edge`, and none uses an `accent` background; focus rules in the menu have no `transform` and no `--gg-focus-shadow`.
+- A behaviour test for the pending choice: selected at once, spinner shown, cleared on Steam's value, reverted with the error line on failure.
+- Device: each menu page on the Ally over a bright and a dark scene, checking the selected slice is visible on both and focus never looks like selection.
+
 ## Testing
 
 - Unit tests for `tokenCss()`: every token name is emitted, the accent `@property` is registered, and values match this spec.
@@ -272,7 +345,8 @@ No fetch, push, pull request or release is part of this spec; those are separate
 
 ## Out of scope
 
-- Floating menu layout and polish (next deliverable, built on these tokens).
+- Building the floating menu's polish (next deliverable, built on these tokens). Its grammar is decided in Section 6; the work to apply it is planned separately.
+- Applying Section 6 to Home, the game page and the screensaver (each reviewed later).
 - New colour themes or a user-selectable theme.
 - Changes to Steam-owned native panels, including the Quick Access panel that holds Game Glance's settings (beyond its one line in Section 5).
 - Changing Home's layout, its size (settled in 3.6, #55) or its open transitions.
@@ -309,3 +383,9 @@ All on the visual reference page except Q28–Q30. Q1–Q14 decided 2026-10-20 o
 | Q28 | In the in-game menu, unselected tabs and categories are `text-idle` (80%), no text shadow; the selected one stays `text` with its underline (2026-10-28) |
 | Q29 | In the in-game menu, small secondary text is `text-label` (90%) with `text-shadow`; Home keeps `text-dim` (2026-10-28) |
 | Q30 | The in-game frost calms luma above 0.45 to 35% of its rise, hue kept; the bell uses the bar's .40 glass (2026-10-28) |
+| Q31 | The in-game menu gets one grammar (Section 6), built in the menu first; chosen over restyling component by component (2026-10-28) |
+| Q32 | Menu structure: page titles, two label styles, choices always on a track, categories as a choice group, the bell marks Notifications (2026-10-28) |
+| Q33 | Menu controls: one setting row, slider value beside the label, choices respond at once with a spinner, toggles two per row (2026-10-28) |
+| Q34 | Menu shape: cards and full-height slices; pills only for switches, slider tracks, progress bars and circles (2026-10-28) |
+| Q35 | Menu focus: a white ring following the shape, no growth or glow; supersedes Q1 and Q3 inside the menu (2026-10-28) |
+| Q36 | Menu selection: a soft white shade with a faint accent line (option 3, chosen over accent fill, plain shade and accent tint); supersedes Q4, Q11 and Q13's accent fill, and Q28's underline, inside the menu (2026-10-28) |
