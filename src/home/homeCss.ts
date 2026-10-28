@@ -91,6 +91,8 @@ export const TITLE_BLOCK = {
 
 /** Home's Play pill focused: grows by what a circle grows (themeCss.pillFocusScale). */
 /** Section 7: Play and Library's corner, and the circles' (now soft tiles), as shares of the 54 px height; the page's are the same shares of its 60. */
+/** Your avatar's size in the status bar (#9), inside the 32 px pill. */
+const STATUS_AVATAR = 26;
 const R_ACTION = actionRadius(TITLE_BLOCK.button, 'action');
 const R_ICON = actionRadius(TITLE_BLOCK.button, 'icon');
 /** The page's Play corner at the size the opening layer draws it: the page's share of the pill's height, times its growth (--gho-play-sy). */
@@ -232,8 +234,10 @@ export function statusRules(): string[] {
             line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)}`),
         rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
         rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
-        // Your avatar in the pill (#9): a circle, ringed in your status colour (set inline), the pill grows to fit it.
-        rule('.gh-status-avatar', 'flex: 0 0 auto; width: 26px; height: 26px; box-sizing: border-box; border: 2px solid var(--gh-avatar-ring, #fff); border-radius: 50%; background-size: cover; background-position: center'),
+        // Your avatar in the pill (#9): a square ringed in your status colour (set inline), the pill grows to fit it. Its corner
+        // follows the bar's (VDL: a nested shape takes the outer radius minus the gap), 12 - (32 - 26) / 2 = 9.
+        rule('.gh-status-avatar', `flex: 0 0 auto; width: ${STATUS_AVATAR}px; height: ${STATUS_AVATAR}px; box-sizing: border-box; border: 2px solid var(--gh-avatar-ring, #fff);
+            border-radius: ${actionRadius(SOURCE_PILL.height, 'action') - (SOURCE_PILL.height - STATUS_AVATAR) / 2}px; background-size: cover; background-position: center`),
         rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
         rule('.gh-status-offline svg', 'opacity: .6'),
     ];

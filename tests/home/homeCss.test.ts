@@ -189,6 +189,13 @@ describe('soft pills (VDL Section 7, option B)', () => {
     });
 });
 
+describe('status bar avatar (VDL Section 7)', () => {
+    it("is a square whose corner follows the bar's: its 12 minus the 3 between them", () => {
+        const r = ruleFor(homeCss(), '.gh-status-avatar');
+        expect(r).toContain('border-radius: 9px'); expect(r).not.toContain('50%');
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
