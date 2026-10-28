@@ -25,6 +25,10 @@ uniform float Timer < source = "timer"; >;
 #define Pad (@PAD@.0 / OutputSize)
 // The menu fades in over the visual language's fast motion token; frost matches it.
 #define FadeMs 150.0
+// Bright game areas are calmed under the glass so menu text stays readable:
+// above the knee, brightness rises at a third of the rate. Hue is kept.
+#define CalmKnee 0.45
+#define CalmSlope 0.35
 texture2D Scene : COLOR;
 sampler2D SceneSampler { Texture = Scene; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 texture2D BarD { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
@@ -103,6 +107,12 @@ float4 PanelVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Targe
 float4 NotificationsDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Notifications)); }
 float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsDS, uv, float2(1.0 / @NOTIFICATIONS_W@, 0.0)); }
 float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsHS, uv, float2(0.0, 1.0 / @NOTIFICATIONS_H@)); }
+float4 Calm(float4 c) {
+    float y = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
+    float calmed = y > CalmKnee ? CalmKnee + (y - CalmKnee) * CalmSlope : y;
+    c.rgb *= calmed / max(y, 1e-4);
+    return c;
+}
 // The fade is one value per frame: read the state in the three vertices, not in
 // every output pixel, where that read cost ~20 ms a frame in game on the Ally.
 void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1) {
@@ -113,9 +123,9 @@ float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolatio
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
-    if (b > 0) color = lerp(color, tex2D(BarVS, TileUV(outUV, Bar)), b);
-    if (p > 0) color = lerp(color, tex2D(PanelVS, TileUV(outUV, Panel)), p);
-    if (n > 0) color = lerp(color, tex2D(NotificationsVS, TileUV(outUV, Notifications)), n);
+    if (b > 0) color = lerp(color, Calm(tex2D(BarVS, TileUV(outUV, Bar))), b);
+    if (p > 0) color = lerp(color, Calm(tex2D(PanelVS, TileUV(outUV, Panel))), p);
+    if (n > 0) color = lerp(color, Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications))), n);
     return color;
 }
 technique QAMFrost {

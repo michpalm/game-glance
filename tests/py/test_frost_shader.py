@@ -154,6 +154,18 @@ def test_full_screen_output_reads_the_fade_once_per_vertex_not_per_pixel():
     assert "StateAS" not in _function(source, "Composite")
 
 
+def test_frost_calms_bright_game_areas_so_menu_text_stays_readable():
+    # Over a bright sky, 40% glass left small labels near 2.4:1 (Ally, 2026-10-28).
+    # Above the knee, brightness rises at a third of the rate; hue is kept.
+    source, _ = build_shader(_with_dpr(2.32))
+    calm = _function(source, "Calm")
+    assert "#define CalmKnee 0.45" in source and "#define CalmSlope 0.35" in source
+    assert "dot(c.rgb" in calm and "c.rgb *=" in calm
+    composite = _function(source, "Composite")
+    for tile in ("BarVS", "PanelVS", "NotificationsVS"):
+        assert f"Calm(tex2D({tile}" in composite
+
+
 def test_rounded_masks_skip_pixels_outside_their_region():
     source, _ = build_shader(_with_dpr(2.32))
     mask = _function(source, "Mask")
