@@ -7,6 +7,7 @@ import {
     FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
+import { NOT_MOUSE } from '../../src/home/mouseMode';
 import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
@@ -43,6 +44,50 @@ function selectors(css: string): string[] {
     return out;
 }
 
+/** Every rule as [selector list, body], keyframes excluded. */
+function rules(css: string): Array<[string[], string]> {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+    return [...flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, prelude]) => !prelude.trim().startsWith('@'))
+        .map(([, prelude, body]) => [topLevelCommas(prelude).map((s) => s.trim()), body]);
+}
+/** The bodies of every rule whose selector list holds exactly `selector`, joined. */
+function ruleFor(css: string, selector: string): string {
+    return rules(css).filter(([list]) => list.includes(selector)).map(([, body]) => body).join(' ');
+}
+/** The bodies of every rule with a selector matching `re`. */
+function rulesMatching(css: string, re: RegExp): string[] {
+    return rules(css).filter(([list]) => list.some((s) => re.test(s))).map(([, body]) => body);
+}
+
+describe('action row (VDL Section 7)', () => {
+    const css = homeCss();
+    it('Play and Library take r-action, circles become r-action-icon tiles', () => {
+        expect(ruleFor(css, '.gh-btn')).toContain('border-radius: 19px');
+        expect(ruleFor(css, '.gh-btn-circle')).toContain('border-radius: 16px');
+    });
+    it('the stream segment follows Play\'s corner', () => {
+        expect(ruleFor(css, '.gh-actions > .gh-btn-stream')).toContain('border-radius: 0 19px 19px 0');
+    });
+    it('focused buttons get the white ring only', () => {
+        const focus = rulesMatching(css, /\.gh-btn.*\.gh-focus|gh-btn-stream\.gh-focus\)|gh-(copy|store)-choice.*(gh-pill-focus|:focus)/);
+        expect(focus.length).toBeGreaterThan(0);
+        for (const r of focus) { expect(r).not.toMatch(/glance-accent|scale\(/); }
+        expect(ruleFor(css, `${NOT_MOUSE} .gh-btn.gh-focus`)).toContain('outline:2px solid #fff');
+    });
+    it('glass buttons use the frost; focused tiles step up to glass-strong', () => {
+        expect(ruleFor(css, '.gh-btn')).toContain('backdrop-filter:blur(16px)');
+        expect(ruleFor(css, `${NOT_MOUSE} .gh-btn-circle.gh-focus`)).toContain('rgba(12,16,22,.55)');
+    });
+    it('the opening Play layers keep the soft corner and the ring, never the glow', () => {
+        const layers = rulesMatching(css, /data-action="play"\]::(before|after)$/).join(' ');
+        expect(layers).not.toContain('999px'); expect(layers).not.toMatch(/14px 40px -8px/);
+        expect(layers).toContain('outline:2px solid #fff');
+        // The page's corner (22 of its 60) at the growing layer's height.
+        expect(layers).toContain('border-radius: calc(var(--gho-play-sy) * 19.8px)');
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
@@ -50,10 +95,11 @@ describe('homeCss', () => {
         const focus = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-copy-choice.gh-pill-focus'));
         expect(focus?.[1]).toContain('.gh-store-choice.gh-pill-focus');
         const button = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-btn.gh-focus'));
-        const shadow = (body: string) => /box-shadow:\s*([^;]+)/.exec(body)?.[1];
-        expect(shadow(focus?.[2] ?? '')).toBe(shadow(button?.[2] ?? ''));
+        const ring = (body: string) => /outline:([^;]+)/.exec(body)?.[1];
+        expect(ring(focus?.[2] ?? '')).toBe(ring(button?.[2] ?? ''));
         expect(focus?.[2]).not.toContain('background:');
-        expect(css).toContain(`transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`);
+        // No growth (Section 7): the copy pill only keeps its centring.
+        expect(css).not.toContain(`translateY(-50%) scale(`);
     });
     it('homeCss prefixes every class with gh-', () => {
         const css = homeCss();
@@ -176,8 +222,7 @@ describe('homeCss', () => {
         // The selected card's ring and glow, with the row under DOM focus.
         expect(css).toMatch(/\.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\)/);
         // A button, the Play pill's growth, a feed card and a tab's line.
-        expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\)/);
-        expect(css).toMatch(/\.gh-actions > \.gh-btn-play\.gh-btn:focus\s*\{[^}]*transform:\s*scale/);
+        expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*outline:2px solid #fff/);
         expect(css).toMatch(/\.gh-card:focus\s*\{[^}]*translateY\(-4px\)/);
         expect(css).toMatch(/\.gh-tab:focus \.gh-tab-line\s*\{[^}]*opacity:\s*1/);
         // A hover never shows over a focused card.
@@ -586,8 +631,7 @@ describe('homeCss open transition', () => {
         expect(focus?.[1]).toMatch(/background: transparent[^]*box-shadow: none[^]*transform: none/);
         // Focused, the whole pill shows Home's focus (as the page's pill does for its arrow), and the segment is tinted.
         const pill = all.find(([sel]) => sel.split(', ')[0] === ':where(html:not([data-gg-mouse])) .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus)');
-        const hp = pillFocusScale(HOME_PILL.width, TITLE_BLOCK.button);
-        expect(pill?.[1]).toMatch(new RegExp(`box-shadow: 0 0 0 2px rgba\\(255,255,255,\\.9\\)[^]*transform: scale\\(${hp.x}, ${hp.y}\\)`));
+        expect(pill?.[1]).toMatch(/outline:2px solid #fff[^]*transform:none/);
         const tint = all.find(([sel]) => sel.split(', ')[0] === ':where(html:not([data-gg-mouse])) .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus) > .gh-play-arrow');
         expect(tint?.[1]).toMatch(/background: rgba\(255,255,255,\.28\)/);
         // Opening: the segment moves with the pill and grows onto the page's (openMotion --gho-play-arrow), about its right end.
@@ -754,13 +798,11 @@ describe('homeCss Play pill', () => {
         expect(body).toContain('color: #fff');
         expect(body).not.toContain('--gh-on-accent');
     });
-    it("focused: a white ring and accent glow, scaled by the page's focus scale (the page focuses its Play the same)", () => {
+    it("focused: the menu's white ring, no glow or growth (the page focuses its Play the same)", () => {
         const body = /:where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn\.gh-focus, :where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn:focus \{([^}]*)\}/.exec(homeCss())?.[1] ?? '';
-        expect(body).toContain('0 0 0 2px rgba(255,255,255,.9)');
-        expect(body).toContain(`scale(${PAGE_LAYOUT.focusScale})`);
-        // The Play pill grows by what a circle grows (its height's share), so its gap to the circles stays.
-        const hp = pillFocusScale(HOME_PILL.width, TITLE_BLOCK.button);
-        expect(/\.gh-actions > \.gh-btn-play\.gh-focus, :where\(html:not\(\[data-gg-mouse\]\)\) \.gh-actions > \.gh-btn-play\.gh-btn:focus \{([^}]*)\}/.exec(homeCss())?.[1] ?? '').toContain(`scale(${hp.x}, ${hp.y})`);
+        expect(body).toContain('outline:2px solid #fff'); expect(body).toContain('outline-offset:2px');
+        expect(body).not.toContain('scale(');
+        expect(homeCss()).not.toMatch(/\.gh-btn-play\.gh-focus[^{]*\{[^}]*scale\(/);
     });
 });
 
@@ -768,7 +810,7 @@ describe('homeCss Play pill while opening', () => {
     it("takes on the page's focused look as the morph settles (Steam focuses Play there): a ring layer at the page pill's exact size", () => {
         const css = homeCss();
         const after = /\.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(after).toContain('box-shadow: 0 0 0 2px rgba(255,255,255,.9)');
+        expect(after).toContain('outline:2px solid #fff');
         expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; }');
         // The page's focused Play keeps its accent fill, as Home's (no lighter overlay any more).
         expect(after).toContain('background: var(--glance-accent)');
@@ -923,8 +965,8 @@ describe('homeCss mouse hover', () => {
         expect(css).toContain(`.gh-cap.gh-cap-hover:not(.gh-cap-sel):not(.gh-cap-lib-on)`);
         expect(css).toMatch(new RegExp(`\\.gh-cap\\.gh-cap-hover[^{]*\\{[^}]*box-shadow: ${ring.replace(/[().]/g, '\\$&')}`));
     });
-    it("opened with a mouse, the growing Play pill has no focus ring or glow (the page shows none then)", () => {
-        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*box-shadow: none !important/);
+    it("opened with a mouse, the growing Play pill has no focus ring (the page shows none then)", () => {
+        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*outline: none !important/);
     });
     it('no hover look without mouse mode: every :hover rule is under html[data-gg-mouse]', () => {
         for (const sel of css.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');

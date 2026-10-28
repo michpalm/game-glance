@@ -12,11 +12,12 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
+import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, GLOW as CAP_GLOW, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
 import { RETURN_ATTR } from './openCancel';
+import { actionRadius, focusRing, frostSurface, TOKENS } from '../styles/tokens';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -89,7 +90,11 @@ export const TITLE_BLOCK = {
 } as const;
 
 /** Home's Play pill focused: grows by what a circle grows (themeCss.pillFocusScale). */
-const pillFocus = pillFocusScale(HOME_PILL.width, TITLE_BLOCK.button);
+/** Section 7: Play and Library's corner, and the circles' (now soft tiles), as shares of the 54 px height; the page's are the same shares of its 60. */
+const R_ACTION = actionRadius(TITLE_BLOCK.button, 'action');
+const R_ICON = actionRadius(TITLE_BLOCK.button, 'icon');
+/** The page's Play corner at the size the opening layer draws it: the page's share of the pill's height, times its growth (--gho-play-sy). */
+const R_PAGE_PLAY = Math.round((actionRadius(PAGE_LAYOUT.icon, 'action') / PAGE_LAYOUT.icon) * TITLE_BLOCK.button * 100) / 100;
 
 export interface TitleBlockLayout {
     /** Top of the title's two-line slot. */
@@ -349,19 +354,19 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-copy-plus', 'display: block; flex: 0 0 auto; width: 12px; height: 12px; margin-left: 8px'),
         rule('.gh-source.gh-source-selectable', 'padding: 0; border: 0; background: transparent; backdrop-filter: none'),
         rule('.gh-store-choice', `display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; color: #fff; ${sourcePillLook(px)}`),
-        rule(':where(html:not([data-gg-mouse])) .gh-copy-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-copy-choice:focus, :where(html:not([data-gg-mouse])) .gh-store-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-store-choice:focus', 'box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 14px 40px -8px var(--glance-accent)'),
-        rule(`${NOT_MOUSE} .gh-copy-choice.gh-pill-focus, ${NOT_MOUSE} .gh-copy-choice:focus`, `transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`),
-        rule(`${NOT_MOUSE} .gh-store-choice.gh-pill-focus, ${NOT_MOUSE} .gh-store-choice:focus`, `transform: scale(${PAGE_LAYOUT.focusScale})`),
+        rule(':where(html:not([data-gg-mouse])) .gh-copy-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-copy-choice:focus, :where(html:not([data-gg-mouse])) .gh-store-choice.gh-pill-focus, :where(html:not([data-gg-mouse])) .gh-store-choice:focus', focusRing('menu')),
+        // The ring sets transform: none; the copy pill keeps its centring (Section 7: no growth).
+        rule(`${NOT_MOUSE} .gh-copy-choice.gh-pill-focus, ${NOT_MOUSE} .gh-copy-choice:focus`, 'transform: translateY(-50%)'),
         rule('html[data-gg-mouse] .gh-copy-choice:hover, html[data-gg-mouse] .gh-store-choice:hover', 'box-shadow: 0 0 0 2px rgba(255,255,255,.45)'),
         ...statusRules(),
         ...openingRules(),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
         rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
-        rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: var(--gh-r-pill); display: flex; align-items: center; justify-content: center; gap: 12px;
-            font-size: 19px; font-weight: ${HOME_BUTTON_GLASS.fontWeight}; line-height: 1; color: ${HOME_BUTTON_GLASS.color}; background: ${HOME_BUTTON_GLASS.background}; border: 1px solid ${HOME_BUTTON_GLASS.borderColor};
-            backdrop-filter: blur(${HOME_BUTTON_GLASS.blurPx}px); box-shadow: none; transform: none; outline: none; cursor: pointer;
+        rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: ${R_ACTION}px; display: flex; align-items: center; justify-content: center; gap: 12px;
+            font-size: 19px; font-weight: ${HOME_BUTTON_GLASS.fontWeight}; line-height: 1; color: ${HOME_BUTTON_GLASS.color}; ${frostSurface(`${HOME_BUTTON_GLASS.blurPx}px`)}; border: 1px solid ${HOME_BUTTON_GLASS.borderColor};
+            box-shadow: none; transform: none; outline: none; cursor: pointer;
             transition: transform 250ms, box-shadow 250ms, background ${ACCENT_MS}ms, border-color ${ACCENT_MS}ms`),
-        rule('.gh-btn-circle', 'width: 54px; flex: 0 0 54px; font-size: 22px'),
+        rule('.gh-btn-circle', `width: 54px; flex: 0 0 54px; font-size: 22px; border-radius: ${R_ICON}px`),
         // Steam's own controller and gear icons (steamIcons), at the page's size, so the open transition's hand-over changes nothing.
         rule('.gh-steam-icon svg', `width: ${PAGE_LAYOUT.circleIcon}px; height: ${PAGE_LAYOUT.circleIcon}px; margin: 0; fill: currentColor`),
         // Cloud circle: the same circle as the others; only its icon is coloured by the sync state (cloud.CLOUD_COLOURS,
@@ -396,14 +401,14 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-btn-play svg', `width: ${HOME_PILL.icon}px; height: ${HOME_PILL.icon}px; margin: 0`),
         rule('.gh-btn-icon', 'display: flex; align-items: center; justify-content: center; line-height: 1'),
         rule('.gh-btn-play .gh-btn-icon', `font-size: ${HOME_PILL.icon}px`),
-        rule(`${NOT_MOUSE} .gh-btn.gh-focus`, `box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 14px 40px -8px var(--glance-accent); transform: scale(${PAGE_LAYOUT.focusScale})`),
+        // Section 7: the menu's ring, no glow or growth; a glass tile steps up to glass-strong, Play keeps its accent fill.
+        rule(`${NOT_MOUSE} .gh-btn.gh-focus`, focusRing('menu')),
+        rule(`${NOT_MOUSE} .gh-btn-circle.gh-focus`, `background: ${TOKENS.strong}`),
         // A mouse over a button (mouseMode, never a finger or the controller): the game cards' hover ring, ring only (focused
         // too: the focus looks are off in mouse mode, NOT_MOUSE). The stream
         // segment is part of the Play pill: the pill takes the ring, as it takes the focus look.
         rule(`${HOVER} .gh-btn:hover:not(.gh-btn-stream)`, `box-shadow: ${hoverRing('2px')}`),
         rule(`${HOVER} .gh-actions > .gh-btn-play:has(+ .gh-btn-stream:hover)`, `box-shadow: ${hoverRing('2px')}`),
-        // The Play pill grows by what a circle grows (themeCss.pillFocusScale), so its gap to the circles stays.
-        rule(`${NOT_MOUSE} .gh-actions > .gh-btn-play.gh-focus`, `transform: scale(${pillFocus.x}, ${pillFocus.y})`),
         // A game on more than one device (home/streaming): the pill ends in the page's "Play from" segment (a divider and
         // Steam's arrow glyph, part of the pill, so it grows with it), and a focusable arrow lies over it, right after Play
         // in the row (the row's gap pulled back). Focused, the segment lights as the page's does; no ring or growth of its own.
@@ -411,10 +416,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             border-left: 1px solid rgba(4,17,12,.25); pointer-events: none`),
         rule('.gh-play-arrow svg', `width: ${HOME_PILL.arrowGlyph}px; height: ${HOME_PILL.arrowGlyph}px; margin: 0; fill: currentColor`),
         rule('.gh-actions > .gh-btn-stream', `position: relative; z-index: 1; flex: 0 0 ${HOME_PILL.arrow}px; width: ${HOME_PILL.arrow}px; margin-left: -${HOME_PILL.arrow + 12}px; background: transparent;
-            border: none; border-radius: 0 999px 999px 0; backdrop-filter: none; box-shadow: none; transform: none`),
+            border: none; border-radius: 0 ${R_ACTION}px ${R_ACTION}px 0; backdrop-filter: none; box-shadow: none; transform: none`),
         rule(`${NOT_MOUSE} .gh-actions > .gh-btn-stream.gh-focus`, 'background: transparent; box-shadow: none; transform: none'),
         // The arrow focused: the whole pill shows Home's focus, as the page's pill does for its arrow; the segment is tinted.
-        rule(`${NOT_MOUSE} .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus)`, `box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 14px 40px -8px var(--glance-accent); transform: scale(${pillFocus.x}, ${pillFocus.y})`),
+        rule(`${NOT_MOUSE} .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus)`, focusRing('menu')),
         rule(`${NOT_MOUSE} .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus) > .gh-play-arrow`, 'background: rgba(255,255,255,.28)'),
 
         // Recents row (handoff: left 44, 140 tall; times the card scale, its bottom stays at 688 and it grows upwards
@@ -726,13 +731,13 @@ export function openingRules(): string[] {
         rule(`${M} ${play}`, 'overflow: visible; background: transparent; border-color: transparent; box-shadow: none'),
         // (Both layers start at the pill's outer edge, its 1px border, as openMotion's scales are of its outer size: from inside
         // the border they ended a border's width short all round, and the page pill grew at the hand-over.)
-        rule(`${M} ${play}::before`, "content: ''; position: absolute; left: -1px; top: -1px; width: calc(100% + 2px); height: calc(100% + 2px); border-radius: 999px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none"),
-        // The page focuses Play (its white ring and accent glow, as Home's focus): the page's focused pill at its exact size
+        rule(`${M} ${play}::before`, `content: ''; position: absolute; left: -1px; top: -1px; width: calc(100% + 2px); height: calc(100% + 2px); border-radius: ${R_ACTION}px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none`),
+        // The page focuses Play (its white ring, as Home's focus): the page's focused pill at its exact size
         // (round ends; the stretched layer's are oval) fades in as the pill comes to rest, under the glyph and label.
-        rule(`${M} ${play}::after`, "content: ''; position: absolute; left: -1px; top: calc(var(--gho-play-dy) - 1px); width: calc((100% + 2px) * var(--gho-play-sx)); height: calc((100% + 2px) * var(--gho-play-sy)); border-radius: 999px; background: var(--glance-accent); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 14px 40px -8px var(--glance-accent); pointer-events: none"),
+        rule(`${M} ${play}::after`, `content: ''; position: absolute; left: -1px; top: calc(var(--gho-play-dy) - 1px); width: calc((100% + 2px) * var(--gho-play-sx)); height: calc((100% + 2px) * var(--gho-play-sy)); border-radius: calc(var(--gho-play-sy) * ${R_PAGE_PLAY}px); background: var(--glance-accent); ${focusRing('menu').replace(';transform:none', '')}; box-shadow: none; pointer-events: none`),
         soft(`${M} ${play}::after`, 'opacity: 0'),
         // Opened with a mouse, the page shows its Play without the focus look (mouseMode): the pill grows without its ring and glow.
-        rule(`${HOVER} ${M} ${play}::after`, 'box-shadow: none'),
+        rule(`${HOVER} ${M} ${play}::after`, 'outline: none'),
         rule([`${M} ${play} > .gh-btn-icon`, `${M} ${play} > .gh-btn-label`, `${M} ${play} > .gh-play-arrow`].join(', '), 'z-index: 1'),
         rule(`${M} ${play} > .gh-play-arrow`, 'transform-origin: 100% 50%'),
         rule(`${MT} ${play} > .gh-play-arrow`, `transform: var(--gho-play-arrow); transition: ${move}`),
