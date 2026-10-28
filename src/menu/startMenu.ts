@@ -11,7 +11,7 @@ import { menuInputActive, type NativeInputOwner } from './navigation';
 import { createPerformance } from './steam/performance';
 import { discoverPerformanceBindings } from './steam/performanceNative';
 import { createQuickSettings } from './steam/quickSettings';
-import { createNotificationBadge } from './steam/notifications';
+import { createNotificationBadge, createNotificationList } from './steam/notifications';
 import { discoverQuickSettingsBindings, nativeNotificationBindings } from './steam/nativeCore';
 import { MenuShell } from './components/MenuShell';
 import { createSocial, type SocialService } from './steam/social';
@@ -49,6 +49,7 @@ export function startMenu(options?: Partial<Options>): Stop {
     let releaseHost: Stop | undefined;
     let quickSettings: ReturnType<typeof createQuickSettings> | undefined;
     let notificationBadge: ReturnType<typeof createNotificationBadge> | undefined;
+    let notifications: ReturnType<typeof createNotificationList> | undefined;
     let performance: ReturnType<typeof createPerformance> | undefined;
     let social: SocialService | undefined;
     let state = defaultMenuState();
@@ -60,8 +61,8 @@ export function startMenu(options?: Partial<Options>): Stop {
     function release() {
         const friends = social; social = undefined;
         const perf = performance; performance = undefined;
-        const quick = quickSettings, badge = notificationBadge; quickSettings = undefined; notificationBadge = undefined;
-        const steps = [stopSession, () => friends?.dispose(), () => quick?.dispose(), () => badge?.dispose(), () => perf?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
+        const quick = quickSettings, badge = notificationBadge, tray = notifications; quickSettings = undefined; notificationBadge = undefined; notifications = undefined;
+        const steps = [stopSession, () => friends?.dispose(), () => quick?.dispose(), () => badge?.dispose(), () => tray?.dispose(), () => perf?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
         for (const stop of steps) { try { stop?.(); } catch (error) { console.warn('[Game Glance] menu release failed', error); } }
     }
     function reconcile() {
@@ -77,12 +78,13 @@ export function startMenu(options?: Partial<Options>): Stop {
                 try { quickSettings = createQuickSettings(discoverQuickSettingsBindings()); } catch (error) { console.warn('[Game Glance] custom Quick Settings unavailable', error); }
                 try { performance = createPerformance(discoverPerformanceBindings()); } catch (error) { console.warn('[Game Glance] custom Performance unavailable', error); }
                 try { notificationBadge = createNotificationBadge(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification badge unavailable', error); }
+                try { notifications = createNotificationList(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification list unavailable', error); }
             }
             state = reduceMenu(defaultMenuState(), { type: 'enable', value: true });
             dispatch({ type: 'pins', value: [...preferences.get().pins] });
             function ConnectedShell() {
                 const snapshot = useSyncExternalStore(subscribe, () => state);
-                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, performance, social });
+                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, performance, social });
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();

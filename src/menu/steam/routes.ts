@@ -4,9 +4,20 @@ export interface NativeTabs { Notifications:number; Friends:number; Settings:num
 export interface RouteBindings {
     deactivate(): void; tabs: NativeTabs; openMain(): void; openQam(tab:number): void;
     library(): void; navigate(path:string): void; finishNavigation(): void; power(): void;
+    exitGame(gameId:string): void;
+    openStore(url:string): void;
+    joinGame(url:string): void;
     profile: { allowed():boolean; resolve():string; open(url:string):void };
     fallback?(request: NativeRequest): Promise<void>;
 }
+// Steam's in-game overlay routes (sp.js AppOverlay: `/app/${appid}/overlay/...`).
+const GAME_PAGES: Record<string,(appId:number)=>string> = {
+    achievements:id=>`/app/${id}/overlay/achievements`, recordings:id=>`/app/${id}/overlay/gamerecording`,
+    guides:id=>`/app/${id}/overlay/guides`, controller:id=>`/app/${id}/overlay/controller`, 'game-page':id=>`/library/app/${id}`,
+};
+// The two urls Steam's own friends menu opens for Join Game (home/join.ts builds them); nothing else.
+const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;
+export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
 export function createRoutes(bindings:RouteBindings) {
     return { async open(request:NativeRequest):Promise<void> {
@@ -33,6 +44,22 @@ export function createRoutes(bindings:RouteBindings) {
                 }
             }
             bindings.finishNavigation();return;
+        }
+        if(request.kind==='join'){
+            if(!JOIN_URL.test(request.url))throw Error('This game cannot be joined from here');
+            bindings.joinGame(request.url);return;
+        }
+        if(request.kind==='store'){
+            if(request.target==='wishlist'){bindings.openStore('https://store.steampowered.com/wishlist/');return;}
+            if(!Number.isInteger(request.appId)||request.appId<=0)throw Error('This store page is unavailable');
+            bindings.openStore(`https://store.steampowered.com/app/${request.appId}/`);return;
+        }
+        if(request.kind==='game-action'){
+            if(!Number.isInteger(request.appId)||request.appId<=0||!/^\d{1,20}$/.test(request.gameId))throw Error('This game is unavailable');
+            if(request.actionId==='exit'){bindings.exitGame(request.gameId);return;}
+            const page=GAME_PAGES[request.actionId];
+            if(!page)throw Error('This game destination is unavailable');
+            bindings.navigate(page(request.appId));bindings.finishNavigation();return;
         }
         if(!bindings.fallback)throw Error('This native destination is unavailable');
         await bindings.fallback(request);

@@ -8,11 +8,11 @@ import type { RouteBindings } from './routes';
 interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
 interface CoreGlobals {
-    SteamClient?: { System?:{Audio?:Audio;Display?:Display};Window?:{SetGamepadUIAutoDisplayScale?(value:boolean):void};WebChat?:{ShowFriendChatDialog?(id:string):void} };
+    SteamClient?: { System?:{Audio?:Audio;Display?:Display};Window?:{SetGamepadUIAutoDisplayScale?(value:boolean):void};WebChat?:{ShowFriendChatDialog?(id:string):void};Apps?:{TerminateApp?(gameId:string,force:boolean):void};URL?:{ExecuteSteamURL?(url:string):void} };
     SystemStoragStore?: { DisplayBrightness?:number|{Value?:number};AirplaneModeEnabled?:boolean|{Value?:boolean};msgSettings?:{display_nightmode_enabled?:boolean;is_display_brightness_available?:boolean};SetDisplayBrightness?(value:number):void;SetAirplaneMode?(value:boolean):void;SetNightModeEnabled?(value:boolean):void };
     SystemNetworkStore?:{hasWirelessDevice?:boolean;isWifiEnabled?:boolean;SetWifiEnabled?(value:boolean):void};
     settingsStore?:{GetClientSetting(key:string):[unknown,((value:unknown)=>unknown)?]};
-    NotificationStore?:{m_nUnviewedNotifications?:number;m_cbkNotificationTray?:{Register(callback:Stop):Registration}};
+    NotificationStore?:{m_nUnviewedNotifications?:number;m_rgNotificationTray?:unknown;m_cbkNotificationTray?:{Register(callback:Stop):Registration}};
     urlStore?:{ResolveURL(key:string):string};
     g_FriendsUIApp?:{m_bReadyToRender?:boolean;m_CMInterface?:{m_bConnected?:boolean;m_bLoggedOn?:boolean};FriendStore?:{m_self?:{m_unAccountID?:number};GetUserDoNotDisturb?():boolean;SetUserDoNotDisturb?(value:boolean):void}};
 }
@@ -34,6 +34,9 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
     return {deactivate,tabs:QuickAccessTab,openMain(){owner.MenuStore.OpenMainMenu?owner.MenuStore.OpenMainMenu():owner.MenuStore.OpenSideMenu(1);},openQam:tab=>owner.MenuStore.OpenQuickAccessMenu(tab),
         library(){navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
         power(){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');Router.OpenPowerMenu();},
+        joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
+        openStore(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('The Steam store is unavailable');steamUrl.ExecuteSteamURL(`steam://openurl/${url}`);},
+        exitGame(gameId){const apps=root.SteamClient?.Apps;if(typeof apps?.TerminateApp!=='function')throw Error('Steam cannot exit this game');apps.TerminateApp(gameId,false);},
         profile:{allowed:()=>friendsOnline(root)&&parentalAllowed(3),resolve:()=>root.urlStore?.ResolveURL('SteamIDMyProfile')??'',open(url){if(!window.Navigator?.ExternalWeb)throw Error('Steam Profile is unavailable');window.Navigator.ExternalWeb(url);}},
         async fallback(request){
             if(request.kind==='friend-chat'&&root.SteamClient?.WebChat?.ShowFriendChatDialog){if(!/^\d{17}$/.test(request.steamId))throw Error('Invalid Steam ID');root.SteamClient.WebChat.ShowFriendChatDialog(request.steamId);return;}
@@ -95,7 +98,7 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
 }
 export function nativeNotificationBindings(){
     const getStore=()=>globals().NotificationStore;
-    return {getUnviewed:()=>getStore()?.m_nUnviewedNotifications??0,subscribe(listener:Stop):Stop{
+    return {getUnviewed:()=>getStore()?.m_nUnviewedNotifications??0,getTray:():unknown=>getStore()?.m_rgNotificationTray,subscribe(listener:Stop):Stop{
         const registration=getStore()?.m_cbkNotificationTray?.Register(listener);
         let previous=getStore()?.m_nUnviewedNotifications;
         const timer=setInterval(()=>{const next=getStore()?.m_nUnviewedNotifications;if(next!==previous){previous=next;listener();}},500);

@@ -1,10 +1,10 @@
 import { Focusable, TextField } from '@decky/ui';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
-import { LuArrowUpRight, LuSend, LuUser } from 'react-icons/lu';
+import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
 import { FRIEND_COLOURS, friendRing } from '../../home/friends';
 import { takeSteamFocus } from '../../home/steamFocus';
 import type { NativeRequest } from '../steam/runtime';
-import type { SocialFriend, SocialService, SocialSnapshot } from '../steam/social';
+import type { ChatMessage, SocialFriend, SocialService, SocialSnapshot } from '../steam/social';
 import { socialStyles } from '../socialStyles';
 import { captureChatAnchor, restoreChatAnchor, type ChatScrollAnchor } from '../socialScroll';
 import { MenuAction } from './MenuAction';
@@ -29,22 +29,35 @@ interface SocialContentsProps {
     atBottom?: boolean;
     timelineRef?: RefObject<HTMLDivElement | null>;
     onScroll?: UIEventHandler<HTMLDivElement>;
+    joinArmed?: boolean;
+    armJoin?(): void;
 }
+const RANK: Record<string, number> = { ingame: 0, online: 1 };
+/** In a game first, then online, then everyone else; Steam's order within each group. */
+const ordered = (friends: SocialFriend[]) => friends.map((f, i) => ({ f, i })).sort((a, b) => (RANK[a.f.state] ?? 2) - (RANK[b.f.state] ?? 2) || a.i - b.i).map(x => x.f);
+const previewMessage = (message: ChatMessage) => <div key={message.id} className={`gg-social-message ${message.own ? 'gg-social-own' : ''}`}><div className="gg-social-bubble"><span>{message.rich ? 'Message with an attachment' : message.text}</span></div></div>;
 
 /** Stateless presentation; native operations are confined to explicit actions on the session. */
-export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll }: SocialContentsProps) {
+export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {} }: SocialContentsProps) {
     const friend = snapshot.friends.find(f => f.steamId === (entered ? snapshot.enteredId : snapshot.selectedId));
     const native = () => handoff(entered && snapshot.enteredId ? { kind: 'friend-chat', steamId: snapshot.enteredId } : { kind: 'qam', tab: 'friends' });
     const pending = snapshot.messages.some(m => m.own && m.state === 'pending');
+    const inGame = snapshot.friends.filter(f => f.state === 'ingame').length, online = snapshot.friends.filter(f => f.state !== 'offline' && f.state !== 'ingame').length;
+    const counts = [inGame && `${inGame} in game`, online && `${online} online`].filter(Boolean).join(' · ') || 'Nobody online';
+    // Steam's own chat and Join game sit beside the reply, one small pill each.
+    const extras = friend && <>
+        {friend.joinUrl && <MenuAction id="social:join" onAction={joinArmed ? () => handoff({ kind: 'join', url: friend.joinUrl! }) : armJoin}><LuGamepad2 aria-hidden="true" />{joinArmed ? 'Press again to join' : 'Join game'}</MenuAction>}
+        <MenuAction id="social:native" onAction={native}><LuArrowUpRight aria-hidden="true" />Steam</MenuAction>
+    </>;
+    const preview = !entered && friend && snapshot.preview?.id === friend.steamId ? snapshot.preview : null;
     const statusText = snapshot.status === 'loading' ? 'Loading friends…' : snapshot.status === 'offline' ? 'Connect to Steam to see your friends.' : snapshot.status === 'unavailable' ? 'Friends are unavailable in this Steam session.' : 'No friends to show.';
     return <div className="gg-social">
         <style>{socialStyles}</style>
-        <div className="gg-social-heading"><h2>Social</h2><MenuAction id="social:native" onAction={native}><LuArrowUpRight aria-hidden="true" />Open in Steam</MenuAction></div>
         <div className="gg-social-split">
             <div className="gg-social-friends">
-                <div className="gg-social-list-heading"><span>Friends</span><span>{snapshot.friends.filter(f => f.state !== 'offline').length} online</span></div>
+                <div className="gg-social-list-heading"><span>Friends</span><span>{counts}</span></div>
                 <Focusable className="gg-social-friend-list" flow-children="column">
-                    {snapshot.friends.map(f => <div key={f.steamId} onFocus={() => social.preview(f.steamId)} onMouseEnter={() => social.preview(f.steamId)}>
+                    {ordered(snapshot.friends).map(f => <div key={f.steamId} onFocus={() => social.preview(f.steamId)} onMouseEnter={() => social.preview(f.steamId)}>
                         <MenuAction id={`social:friend:${f.steamId}`} className="gg-social-friend" selected={f.steamId === snapshot.selectedId} disabled={f.blocked} onAction={() => enter(f.steamId)}>
                             <Avatar friend={f} /><span className="gg-social-identity"><strong>{f.name || 'Steam friend'}</strong><small>{f.blocked ? 'Blocked' : f.sub}</small></span>
                         </MenuAction>
@@ -70,8 +83,20 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
                     <div className="gg-social-compose">
                         <div className="gg-social-input" data-gg-focus="social:compose"><TextField aria-label="Message" label="Message" value={snapshot.draft} disabled={snapshot.loading || !snapshot.canChat} onChange={event => social.setDraft(event.target.value)} /></div>
                         <MenuAction id="social:send" className="gg-social-send" disabled={snapshot.sending || snapshot.loading || pending || !snapshot.canChat || !snapshot.draft.trim()} onAction={() => { void social.send(); }}><LuSend aria-hidden="true" />{snapshot.sending ? 'Sending…' : 'Send'}</MenuAction>
+                        {extras}
                     </div>
-                </> : friend && <div className="gg-social-preview"><p>{snapshot.canChat ? 'Open your conversation to see messages and chat.' : 'Embedded chat is unavailable. You can open Social in Steam.'}</p><MenuAction id="social:open" disabled={!snapshot.canChat || friend.blocked} onAction={() => enter(friend.steamId)}>Open conversation</MenuAction></div>}
+                </> : friend && <>
+                    <div className="gg-social-preview" aria-label="Recent messages">
+                        {!snapshot.canChat ? <p className="gg-social-empty">Embedded chat is unavailable. You can open Social in Steam.</p>
+                            : preview?.state === 'loading' ? <p className="gg-social-empty" role="status">Loading conversation…</p>
+                            : preview?.state === 'none' || preview?.state === 'ready' && !preview.messages.length ? <p className="gg-social-empty">No messages yet.</p>
+                            : preview?.messages.map(previewMessage)}
+                    </div>
+                    <div className="gg-social-compose">
+                        <MenuAction id="social:open" className="gg-social-write" disabled={!snapshot.canChat || friend.blocked} onAction={() => enter(friend.steamId)}>Write a message…</MenuAction>
+                        {extras}
+                    </div>
+                </>}
             </div>
         </div>
     </div>;
@@ -85,6 +110,14 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
     const historyAnchor = useRef<ChatScrollAnchor | null>(null);
     const focusedChat = useRef<string | null>(null);
     const [atBottom, setAtBottom] = useState(true);
+    const [joinArmed, setJoinArmed] = useState(false);
+    const friendKey = entered ? snapshot.enteredId : snapshot.selectedId;
+    useEffect(() => { setJoinArmed(false); }, [friendKey]);
+    useEffect(() => {
+        if (!joinArmed) return;
+        const timer = setTimeout(() => setJoinArmed(false), 4000);
+        return () => clearTimeout(timer);
+    }, [joinArmed]);
     const syncVisibility = () => {
         const element = timeline.current;
         if (!element) { social.setVisibility(false, false); return; }
@@ -124,7 +157,7 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
         const input = timeline.current?.parentElement?.querySelector<HTMLInputElement>('[data-gg-focus="social:compose"] input');
         input?.focus({ preventScroll: true }); if (input) takeSteamFocus(input);
     }, [entered, snapshot.enteredId, snapshot.loading]);
-    return <SocialContents {...props} snapshot={snapshot} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility}
+    return <SocialContents {...props} snapshot={snapshot} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
         loadMore={() => { const element = timeline.current; if (element) { bottom.current = false; historyAnchor.current = captureChatAnchor(element); } void social.loadMore(); }}
         latest={() => { bottom.current = true; social.latest(); }} />;
 }

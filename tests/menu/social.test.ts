@@ -15,11 +15,20 @@ function harness() {
             setVisibility: vi.fn(), dispose: vi.fn(), notify: () => update() };
         sessions.push(session); return session;
     });
+    const peeked: Array<ChatSession & { messages: ChatMessage[]; notify(): void }> = [];
+    let existing = new Set([id]);
+    const peek = vi.fn((steamId: string) => {
+        if (!existing.has(steamId)) return null;
+        let update = () => {};
+        const session = { messages: [] as ChatMessage[], read: () => ({ messages: session.messages, more: false }), subscribe: vi.fn((fn: () => void) => { update = fn; return vi.fn(); }),
+            load: vi.fn(async () => {}), loadMore: vi.fn(async () => {}), send: vi.fn(async () => {}), retry: vi.fn(async () => {}), setVisibility: vi.fn(), dispose: vi.fn(), notify: () => update() };
+        peeked.push(session); return session;
+    });
     const stop = vi.fn();
-    const bindings: SocialBindings = { read: () => context, subscribe: fn => { change = fn; return stop; }, open };
+    const bindings: SocialBindings = { read: () => context, subscribe: fn => { change = fn; return stop; }, open, peek };
     const social = createSocial(bindings);
     const unsubscribe = social.subscribe(() => {});
-    return { social, open, sessions, stop, unsubscribe, change(value: Partial<SocialContext>, notify = true) { context = { ...context, ...value }; if (notify) change(); } };
+    return { social, open, peek, peeked, setExisting: (ids: string[]) => { existing = new Set(ids); }, sessions, stop, unsubscribe, change(value: Partial<SocialContext>, notify = true) { context = { ...context, ...value }; if (notify) change(); } };
 }
 
 describe('Social session', () => {
@@ -118,5 +127,52 @@ describe('Social session', () => {
         h.sessions[0].messages = [{ id: 'old', text: 'Private synthetic text', timestamp: 1, own: false, state: 'received' }]; h.sessions[0].notify();
         h.change({ accountId: 'account-b' }, false); h.sessions[0].read = () => { throw Error('Account changed'); }; h.sessions[0].notify();
         expect(h.social.get()).toMatchObject({ accountId: 'account-b', enteredId: null, messages: [] }); h.social.dispose();
+    });
+});
+
+const message = (n: number, own = false): ChatMessage => ({ id: `m${n}`, text: `Example ${n}`, timestamp: 1_793_000_000 + n, own, state: own ? 'sent' : 'received' });
+describe('Social conversation preview', () => {
+    const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
+    it('shows the last messages of an existing conversation after a short pause, without creating one or reading it', async () => {
+        vi.useFakeTimers();
+        const h = harness();
+        h.social.preview(id);
+        expect(h.peek).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(400);
+        expect(h.peek).toHaveBeenCalledWith(id); expect(h.open).not.toHaveBeenCalled();
+        const session = h.peeked[0];
+        session.messages = [1, 2, 3, 4, 5, 6].map(n => message(n, n === 5));
+        session.notify(); await flush();
+        expect(session.load).toHaveBeenCalledOnce();
+        expect(session.setVisibility.mock.calls.every(([visible]) => visible === false)).toBe(true);
+        expect(h.social.get().preview).toMatchObject({ id, state: 'ready' });
+        expect(h.social.get().preview!.messages.map(m => m.id)).toEqual(['m3', 'm4', 'm5', 'm6']);
+        h.social.dispose(); expect(session.dispose).toHaveBeenCalledOnce();
+        vi.useRealTimers();
+    });
+    it('says there is no conversation yet instead of starting one', async () => {
+        vi.useFakeTimers();
+        const h = harness(); h.setExisting([]);
+        h.social.preview(other); await vi.advanceTimersByTimeAsync(400); await flush();
+        expect(h.social.get().preview).toEqual({ id: other, state: 'none', messages: [] });
+        expect(h.open).not.toHaveBeenCalled(); h.social.dispose(); vi.useRealTimers();
+    });
+    it('drops the old preview when moving on, and skips friends passed over quickly', async () => {
+        vi.useFakeTimers();
+        const h = harness(); h.setExisting([id, other]);
+        h.social.preview(id); await vi.advanceTimersByTimeAsync(400); await flush();
+        h.social.preview(other); await vi.advanceTimersByTimeAsync(100); h.social.preview(id);
+        expect(h.peeked[0].dispose).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(400); await flush();
+        expect(h.peek.mock.calls.map(c => c[0])).toEqual([id, id]);
+        h.social.dispose(); vi.useRealTimers();
+    });
+    it('hands over to the real conversation on entry', async () => {
+        vi.useFakeTimers();
+        const h = harness();
+        h.social.preview(id); await vi.advanceTimersByTimeAsync(400); await flush();
+        await h.social.enter(id);
+        expect(h.peeked[0].dispose).toHaveBeenCalledOnce(); expect(h.social.get().preview).toBeNull(); expect(h.open).toHaveBeenCalledWith(id);
+        h.social.dispose(); vi.useRealTimers();
     });
 });

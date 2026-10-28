@@ -34,6 +34,30 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;flex-direction:column;gap:12px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
+.gg-menu .gg-ingame{display:flex;flex-direction:column;gap:16px;min-height:100%}
+.gg-menu .gg-ingame-hero{position:relative;flex:none;height:176px;margin:-24px -24px 0;border-radius:var(--gg-r-panel) var(--gg-r-panel) 0 0;overflow:hidden;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:16px 24px}
+.gg-menu .gg-ingame-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--gg-glass-solid))}
+.gg-menu .gg-ingame-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+.gg-menu .gg-ingame-logo{position:relative;z-index:1;max-width:45%;max-height:90px;object-fit:contain;object-position:left bottom;filter:drop-shadow(var(--gg-text-shadow))}
+.gg-menu .gg-ingame-hero h2{position:relative;z-index:1;margin:0}
+.gg-menu .gg-ingame-logo-slot{position:relative;display:block;height:90px}
+.gg-menu .gg-ingame-session{position:relative;z-index:1;font-weight:var(--gg-weight-heading);white-space:nowrap}
+.gg-menu .gg-ingame-grid{flex:1;grid-auto-rows:minmax(112px,1fr)}
+.gg-menu .gg-ingame-label{display:grid;gap:4px;justify-items:center;width:100%}
+.gg-menu .gg-ingame-label small{color:var(--gg-text-dim);font-size:var(--gg-type-label)}
+.gg-menu .gg-ingame-bar{display:block;width:70%;height:6px;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
+.gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
+.gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px}
+.gg-menu .gg-notifications-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.gg-menu .gg-notifications-heading h2{margin:0}
+.gg-menu .gg-notifications-list{display:flex;flex-direction:column;gap:12px}
+.gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
+.gg-menu .gg-notification-art{flex:none;width:112px;height:52px;border-radius:var(--gg-r-small);object-fit:cover;display:grid;place-items:center;background:var(--gg-edge)}
+.gg-menu .gg-notification-text{flex:1;min-width:0;display:grid;gap:2px}
+.gg-menu .gg-notification-text small{color:var(--gg-text-dim);font-size:var(--gg-type-label);text-transform:uppercase;letter-spacing:.08em}
+.gg-menu .gg-notification-unread .gg-notification-text small::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:var(--gg-accent);vertical-align:1px}
+.gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);font-size:var(--gg-type-label)}
+.gg-menu .gg-notifications-empty{color:var(--gg-text-dim)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible){${focusRing()}}
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.gg-menu-quick-sliders>[data-gg-focus="quick:brightness"]{grid-column:1/-1}

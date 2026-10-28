@@ -34,7 +34,10 @@ export interface SocialBindings {
     read(): SocialContext;
     subscribe(listener: Stop): Stop;
     open(steamId: string): ChatSession;
+    /** An existing conversation only (never created), or null; previews never make it visible. */
+    peek?(steamId: string): ChatSession | null;
 }
+export interface ChatPreview { id: string; state: 'loading' | 'ready' | 'none' | 'error'; messages: ChatMessage[] }
 export interface SocialSnapshot extends SocialContext {
     selectedId: string | null;
     enteredId: string | null;
@@ -45,7 +48,11 @@ export interface SocialSnapshot extends SocialContext {
     draft: string;
     error: string;
     newer?: boolean;
+    preview?: ChatPreview | null;
 }
+/** A friend must stay selected this long before their conversation is previewed. */
+export const PREVIEW_DWELL_MS = 400;
+const PREVIEW_MESSAGES = 4;
 const EMPTY: SocialContext = { accountId: null, status: 'loading', canChat: false, friends: [] };
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Chat is unavailable. Try opening it in Steam.';
 
@@ -63,6 +70,7 @@ export function createSocial(bindings: SocialBindings) {
     const listeners = new Set<Stop>();
     const drafts = new Map<string, string>();
     const failedDrafts = new Map<string, string>();
+    let peekTimer: ReturnType<typeof setTimeout> | undefined, peeked: ChatSession | undefined, stopPeek: Stop | undefined, peekTicket = 0;
     const emit = (change: Partial<SocialSnapshot>) => {
         current = { ...current, ...change };
         for (const listener of listeners) listener();
@@ -78,6 +86,41 @@ export function createSocial(bindings: SocialBindings) {
         for (const release of [unsubscribe, () => owned?.setVisibility(false, false), () => owned?.dispose()]) {
             try { release?.(); } catch { /* Release every resource even if a native view vanished. */ }
         }
+    }
+    /** Previews read history only: the session is never made visible, so Steam marks nothing read. */
+    function releasePreview(clear = true) {
+        peekTicket++;
+        if (peekTimer !== undefined) clearTimeout(peekTimer);
+        peekTimer = undefined;
+        const owned = peeked, unsubscribe = stopPeek; peeked = undefined; stopPeek = undefined;
+        for (const release of [unsubscribe, () => owned?.dispose()]) { try { release?.(); } catch { /* A vanished native view must not block the next preview. */ } }
+        if (clear && current.preview) emit({ preview: null });
+    }
+    function schedulePreview(steamId: string) {
+        releasePreview(current.preview?.id !== steamId);
+        if (!bindings.peek || current.enteredId) return;
+        const ticket = peekTicket;
+        peekTimer = setTimeout(() => { peekTimer = undefined; void loadPreview(steamId, ticket); }, PREVIEW_DWELL_MS);
+    }
+    async function loadPreview(steamId: string, ticket: number) {
+        if (disposed || ticket !== peekTicket || current.enteredId || current.selectedId !== steamId) return;
+        let owned: ChatSession | null = null;
+        try { owned = bindings.peek!(steamId); } catch { owned = null; }
+        if (!owned) { emit({ preview: { id: steamId, state: 'none', messages: [] } }); return; }
+        const session = owned;
+        peeked = session;
+        const show = (state: ChatPreview['state']) => {
+            if (ticket !== peekTicket || disposed) return;
+            try { emit({ preview: { id: steamId, state, messages: session.read().messages.slice(-PREVIEW_MESSAGES) } }); }
+            catch { emit({ preview: { id: steamId, state: 'error', messages: [] } }); }
+        };
+        try {
+            session.setVisibility(false, false);
+            emit({ preview: { id: steamId, state: 'loading', messages: [] } });
+            stopPeek = session.subscribe(() => show('ready'));
+            await session.load();
+            show('ready');
+        } catch { if (ticket === peekTicket && !disposed) emit({ preview: { id: steamId, state: 'error', messages: [] } }); }
     }
     function leave() {
         releaseChat();
@@ -102,7 +145,7 @@ export function createSocial(bindings: SocialBindings) {
         try { context = bindings.read(); }
         catch { context = { ...EMPTY, status: 'unavailable' }; }
         if (current.accountId !== context.accountId) {
-            releaseChat(); drafts.clear(); failedDrafts.clear(); accountGeneration++;
+            releaseChat(); releasePreview(); drafts.clear(); failedDrafts.clear(); accountGeneration++;
             current = { ...current, enteredId: null, selectedId: null, messages: [], draft: '', loading: false, sending: false, more: false, newer: false, error: '' };
         }
         const entered = context.friends.find(f => f.steamId === current.enteredId);
@@ -111,6 +154,7 @@ export function createSocial(bindings: SocialBindings) {
         emit({ ...context, selectedId });
     }
     function stop() {
+        releasePreview();
         const unsubscribe = stopSource;
         stopSource = undefined;
         try { unsubscribe?.(); } finally { leave(); }
@@ -152,6 +196,7 @@ export function createSocial(bindings: SocialBindings) {
         preview(steamId: string) {
             if (disposed || current.enteredId || !current.friends.some(f => f.steamId === steamId)) return;
             emit({ selectedId: steamId, error: '' });
+            schedulePreview(steamId);
         },
         async enter(steamId: string) {
             if (disposed) return;
@@ -161,6 +206,7 @@ export function createSocial(bindings: SocialBindings) {
                 emit({ error: 'Chat is unavailable for this friend. Open Social in Steam.' }); return;
             }
             if (current.enteredId === steamId && chat) return;
+            releasePreview();
             releaseChat();
             try {
                 chat = bindings.open(steamId);

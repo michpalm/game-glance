@@ -75,3 +75,44 @@ describe('Social panel interaction', () => {
         expect(leave).toHaveBeenCalledOnce(); expect(state).toMatchObject({ phase: 'custom-open', stack: [], focus: { social: `social:friend:${id}` } });
     });
 });
+
+describe('Social panel layout (direction A)', () => {
+    const person = (steamId: string, state: 'ingame' | 'online' | 'offline', extra: Record<string, unknown> = {}) => ({ steamId, name: `Friend ${steamId.slice(-1)}`, avatarUrl: null, state, appId: state === 'ingame' ? 1057090 : null, lastAppId: null,
+        sub: state === 'ingame' ? 'Ori and the Will of the Wisps' : state === 'online' ? 'Online' : 'Last online 1 day ago', game: state === 'ingame' ? 'Ori and the Will of the Wisps' : '', gameInLibrary: true, joinUrl: null, ...extra });
+    const strings = (nodes: ReturnType<typeof tree>) => nodes.flatMap(n => [n.props.children].flat().filter((c: unknown) => typeof c === 'string')).join(' | ');
+    function view(change: Partial<SocialSnapshot> = {}, extra: Record<string, unknown> = {}) {
+        const friends = [person('76561198000000003', 'offline'), person('76561198000000002', 'online'), person(id, 'ingame')];
+        const snapshot: SocialSnapshot = { accountId: 'test', status: 'ready', canChat: true, friends: friends as SocialSnapshot['friends'], selectedId: id, enteredId: null, messages: [], more: false, loading: false, sending: false, draft: '', error: '', ...change };
+        const social = { preview: vi.fn(), send: vi.fn(), retry: vi.fn(), setDraft: vi.fn(), reload: vi.fn() } as unknown as SocialService;
+        const enter = vi.fn(), handoff = vi.fn(), armJoin = vi.fn();
+        const nodes = tree(SocialContents({ snapshot, social, entered: !!snapshot.enteredId, enter, leave: vi.fn(), handoff, loadMore: vi.fn(), latest: vi.fn(), armJoin, ...extra }));
+        return { nodes, enter, handoff, armJoin, action: (key: string) => nodes.find(n => n.props.id === key) };
+    }
+    it('lists friends in a game first, then online, then the rest, with the counts in the heading', () => {
+        const v = view();
+        const order = v.nodes.filter(n => typeof n.props.id === 'string' && n.props.id.startsWith('social:friend:')).map(n => n.props.id.slice(-1));
+        expect(order).toEqual(['1', '2', '3']);
+        expect(strings(v.nodes)).toContain('1 in game · 1 online');
+        expect(v.nodes.some(n => n.props.className === 'gg-social-heading')).toBe(false);
+    });
+    it('previews the last messages read-only and enters on Write a message', () => {
+        const v = view({ preview: { id, state: 'ready', messages: [{ id: 'p1', text: 'Example hello', timestamp: 1, own: false, state: 'received' }] } });
+        expect(strings(v.nodes)).toContain('Example hello');
+        expect(v.action('social:back')!.props.disabled).toBe(true); expect(v.action('social:send')).toBeUndefined();
+        v.action('social:open')!.props.onAction(); expect(v.enter).toHaveBeenCalledWith(id);
+        expect(strings(v.nodes)).toContain('Write a message…');
+        v.action('social:native')!.props.onAction(); expect(v.handoff).toHaveBeenCalledWith({ kind: 'qam', tab: 'friends' });
+    });
+    it('says when there is no conversation yet', () => {
+        expect(strings(view({ preview: { id, state: 'none', messages: [] } }).nodes)).toContain('No messages yet.');
+    });
+    it('offers Join game only when Steam would, and asks once first', () => {
+        expect(view().action('social:join')).toBeUndefined();
+        const url = `steam://rungame/1057090/${id}`;
+        const joinable = (armed: boolean) => view({ friends: [person(id, 'ingame', { joinUrl: url })] as SocialSnapshot['friends'] }, { joinArmed: armed });
+        const first = joinable(false); first.action('social:join')!.props.onAction();
+        expect(first.armJoin).toHaveBeenCalled(); expect(first.handoff).not.toHaveBeenCalled();
+        const armed = joinable(true); expect(strings(armed.nodes)).toContain('Press again to join');
+        armed.action('social:join')!.props.onAction(); expect(armed.handoff).toHaveBeenCalledWith({ kind: 'join', url });
+    });
+});

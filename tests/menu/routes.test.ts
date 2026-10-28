@@ -4,7 +4,7 @@ function harness() {
     const order: string[] = [];
     const b = { deactivate: vi.fn(() => { order.push('deactivate'); }), openMain: vi.fn(), openQam: vi.fn(),
         tabs: { Notifications: 10, Friends: 13, Settings: 14, Perf: 15, Help: 16, Music: 17, Decky: 999 },
-        library: vi.fn(() => { order.push('library'); }), navigate: vi.fn(), finishNavigation: vi.fn(() => { order.push('close'); }), power: vi.fn(),
+        library: vi.fn(() => { order.push('library'); }), navigate: vi.fn(), finishNavigation: vi.fn(() => { order.push('close'); }), power: vi.fn(), exitGame: vi.fn(), openStore: vi.fn(), joinGame: vi.fn(),
         profile: { allowed: vi.fn(() => true), resolve: vi.fn(() => 'https://steamcommunity.com/profiles/76561190000000000'), open: vi.fn() },
     };
     return { b, order, routes: createRoutes(b) };
@@ -35,4 +35,48 @@ it('opens the native Library root without constructing an unresolved tab route',
     const owner={Navigate:navigate,Navigator:{LibraryTab:tab},MenuStore:{CloseSideMenus:vi.fn()}} as unknown as NativeOwner;
     nativeRouteBindings(owner,vi.fn(),async()=>{}).library();
     expect(navigate).toHaveBeenCalledWith('/library'); expect(tab).not.toHaveBeenCalled();
+});
+
+describe('in-game page destinations', () => {
+    it.each([['achievements','/app/1057090/overlay/achievements'],['recordings','/app/1057090/overlay/gamerecording'],['guides','/app/1057090/overlay/guides'],
+        ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090']] as const)('opens %s for the running game', async (actionId, path) => {
+        const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'1057090',actionId});
+        expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.order).toEqual(['deactivate','close']);
+    });
+    it('exits the running game by its game id without navigating', async () => {
+        const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'13243934688390676480',actionId:'exit'});
+        expect(h.b.exitGame).toHaveBeenCalledWith('13243934688390676480'); expect(h.b.navigate).not.toHaveBeenCalled();
+    });
+    it('rejects unknown actions and malformed ids', async () => {
+        const h = harness();
+        await expect(h.routes.open({kind:'game-action',appId:1057090,gameId:'1',actionId:'uninstall'})).rejects.toThrow();
+        await expect(h.routes.open({kind:'game-action',appId:-1,gameId:'1',actionId:'guides'})).rejects.toThrow();
+        await expect(h.routes.open({kind:'game-action',appId:1,gameId:'x;rm',actionId:'exit'})).rejects.toThrow();
+        expect(h.b.navigate).not.toHaveBeenCalled(); expect(h.b.exitGame).not.toHaveBeenCalled();
+    });
+});
+
+describe('notification destinations', () => {
+    it('opens a sale’s store page or the wishlist through Steam’s browser', async () => {
+        const h = harness();
+        await h.routes.open({ kind: 'store', target: 'app', appId: 3339880 });
+        expect(h.b.openStore).toHaveBeenCalledWith('https://store.steampowered.com/app/3339880/');
+        await h.routes.open({ kind: 'store', target: 'wishlist' });
+        expect(h.b.openStore).toHaveBeenLastCalledWith('https://store.steampowered.com/wishlist/');
+        expect(h.order[0]).toBe('deactivate');
+    });
+    it('refuses a malformed app id', async () => {
+        const h = harness();
+        await expect(h.routes.open({ kind: 'store', target: 'app', appId: 1.5 })).rejects.toThrow();
+        expect(h.b.openStore).not.toHaveBeenCalled();
+    });
+});
+
+describe('join a friend', () => {
+    it.each([`steam://rungame/1057090/76561198000000001`, `steam://rungame/730/76561198000000001/%2Bconnect%201.2.3.4`, `steam://joinlobby/1057090/109775241000000000/76561198000000001`])('opens Steam’s own join url %s', async url => {
+        const h = harness(); await h.routes.open({ kind: 'join', url }); expect(h.b.joinGame).toHaveBeenCalledWith(url);
+    });
+    it.each(['steam://install/1', 'https://example.com', 'steam://rungame/1/2 ; rm', 'steam://rungame/abc/76561198000000001'])('refuses anything else: %s', async url => {
+        const h = harness(); await expect(h.routes.open({ kind: 'join', url })).rejects.toThrow(); expect(h.b.joinGame).not.toHaveBeenCalled();
+    });
 });

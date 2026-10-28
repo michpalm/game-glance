@@ -134,3 +134,20 @@ describe('native embedded chat bindings', () => {
         } finally { vi.useRealTimers(); }
     });
 });
+
+describe('native conversation preview', () => {
+    it('looks up an existing conversation without creating one, and reads its history without marking it read', async () => {
+        const h = harness();
+        const session = h.bindings.peek!(steamId)!;
+        expect(h.getChat).toHaveBeenCalledWith(expect.any(Number), false);
+        expect(h.getChat.mock.calls.some(call => (call as unknown[])[1] === true)).toBe(false);
+        await session.load(); session.setVisibility(false, false);
+        expect(h.raw.LoadChatLogs).toHaveBeenCalled(); expect(h.raw.OnActivate).not.toHaveBeenCalled();
+        session.dispose(); expect(h.raw.RemoveChatView).toHaveBeenCalled();
+    });
+    it('answers null when there is no conversation yet, instead of starting one', () => {
+        const h = harness(); h.getChat.mockReturnValue(null as never);
+        expect(h.bindings.peek!(steamId)).toBeNull();
+        expect(h.raw.AddChatView).not.toHaveBeenCalled();
+    });
+});

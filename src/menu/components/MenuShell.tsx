@@ -20,9 +20,11 @@ import { QuickSettingsPanel } from './QuickSettingsPanel';
 import { PerformancePanel } from './PerformancePanel';
 import type { createPerformance } from '../steam/performance';
 import type { createQuickSettings } from '../steam/quickSettings';
-import type { createNotificationBadge } from '../steam/notifications';
+import type { createNotificationBadge, createNotificationList } from '../steam/notifications';
 import { MorePanel } from './MorePanel';
 import { SocialPanel } from './SocialPanel';
+import { InGamePanel } from './InGamePanel';
+import { NotificationsPanel } from './NotificationsPanel';
 import type { SocialService } from '../steam/social';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
@@ -35,11 +37,12 @@ export interface MenuShellProps {
     unreadCount?: number;
     quickSettings?: ReturnType<typeof createQuickSettings>;
     notificationBadge?: ReturnType<typeof createNotificationBadge>;
+    notifications?: ReturnType<typeof createNotificationList>;
     performance?: ReturnType<typeof createPerformance>;
     social?: SocialService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, performance, social, panels = {} }: MenuShellProps) {
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, performance, social, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const [error, setError] = useState('');
     const [cachedAccent, setCachedAccent] = useState<{ appId: number; color: string | undefined }>();
@@ -102,14 +105,16 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const color = appId ? accentMemo.get(appId) ?? (cachedAccent?.appId === appId ? cachedAccent.color : undefined) : undefined;
     const owner = (globalThis as unknown as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { BIsOverlayPath?(): boolean } } } }).SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance;
     const accent = pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true);
-    let content = panels[state.section];
+    const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
+    let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} handoff={enterNative} /> : panels[state.section];
+    if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
     if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
-    if (state.section === 'more') content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
+    if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
         content = <><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}>Open in Steam</MenuAction></>;
@@ -120,7 +125,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     }}>
         <style>{menuStyles}</style>
         <GameStatusBar menuOverlay />
-        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" onAction={() => enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
+        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
         <Focusable className="gg-menu-panel" data-gg-frost-region="panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
     </Focusable>;

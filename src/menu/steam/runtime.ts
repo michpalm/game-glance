@@ -12,7 +12,10 @@ export type NativeRequest =
     | { kind: 'navigate'; destination: NavigateDestination }
     | { kind: 'game-action'; appId: number; gameId: string; actionId: string }
     | { kind: 'guide-article'; appId: number; fileId: string }
-    | { kind: 'friend-chat'; steamId: string };
+    | { kind: 'friend-chat'; steamId: string }
+    | { kind: 'store'; target: 'app'; appId: number }
+    | { kind: 'store'; target: 'wishlist' }
+    | { kind: 'join'; url: string };
 export interface HostAttachment {
     setFrostSession?(session:{generation:number;enabled:boolean}|null):void;
     clearFrost?(generation:number):Promise<void>;

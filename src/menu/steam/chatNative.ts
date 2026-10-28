@@ -89,15 +89,19 @@ export function createNativeSocialBindings(deps: NativeSocialDependencies): Soci
             const timer = setInterval(listener, 1000);
             return () => clearInterval(timer);
         },
-        open(steamId: string): ChatSession {
+        open: (steamId: string): ChatSession => openChat(steamId, true)!,
+        peek: (steamId: string): ChatSession | null => { try { return openChat(steamId, false); } catch { return null; } },
+    };
+    function openChat(steamId: string, create: boolean): ChatSession | null {
             const context = read();
             const account = steamAccountId(steamId);
             const app = deps.app(), helpers = deps.helpers();
             if (!context.canChat || !account || !app || !helpers || context.friends.find(f => f.steamId === steamId)?.blocked !== false) throw unavailable();
             const browser = app.GetDefaultBrowserContext!();
             if (!browser || !Number.isFinite(browser.m_nBrowserID) || !Number.isFinite(browser.m_unPID)) throw unavailable();
-            // This is the first creating lookup: it runs only for an explicit user entry.
-            const raw = app.ChatStore!.GetFriendChat(account, true);
+            // The creating lookup runs only for an explicit user entry; previews never create a chat.
+            const raw = app.ChatStore!.GetFriendChat(account, create);
+            if (!raw && !create) return null;
             if (!raw || ['AddChatView', 'RemoveChatView', 'LoadChatLogs', 'LoadMoreHistory', 'IsMoreHistoryAvailable', 'SendChatMessage', 'RetryFailedMessage', 'OnActivate', 'OnDeactivate'].some(name => typeof (raw as unknown as Record<string, unknown>)[name] !== 'function')) throw unavailable();
             let disposed = false;
             let visible = false;
@@ -224,8 +228,7 @@ export function createNativeSocialBindings(deps: NativeSocialDependencies): Soci
                     try { if (wasVisible) raw.OnDeactivate(); } finally { raw.RemoveChatView(view); }
                 },
             };
-        },
-    };
+    }
 }
 
 /** Shape discovery deliberately avoids Steam's changing webpack module numbers. */
