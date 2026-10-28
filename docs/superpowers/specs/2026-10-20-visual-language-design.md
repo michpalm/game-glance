@@ -303,7 +303,7 @@ Selected text is `text`; unselected slices stay `text-idle` (Q28).
 
 ### Structure
 
-- **Page title.** Every page opens with a `heading` title, with the page's status on the right in `text-label` (Social: who is online; Performance: the power line). A page's own action (Notifications' Steam, Navigate's Steam menu) sits on the right of the title row instead, as a card button with an icon.
+- **Page title.** Every page opens with a `heading` title, with the page's status on the right in `text-label` (Social: who is online; Configure menu: how many are on the bar). Performance keeps its power line under the title, since its right side holds the Per-game profile switch. A page's own action (Notifications' Steam, Navigate's Steam menu) sits on the right of the title row instead, as a card button with an icon.
 - **Two label styles.** A *section label* (`label` role: 11 / 800 / uppercase, `text-label`) names a group, such as Connectivity or Friends. A *setting label* (`body`: 16 / 700, `text`, no uppercase) names one setting: Frame limit, Scaling mode, Performance profile. Nothing else labels a control.
 - **Choice groups are always on a track.** Named options (up to five) are slices of a card track, whatever page they are on.
 - **Sub-navigation is a choice group.** Performance's categories (Display, Scaling, Power & GPU, Overlay) are a choice group under the page title, never a second underline row.
