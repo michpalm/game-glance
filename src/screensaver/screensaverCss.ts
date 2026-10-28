@@ -1,5 +1,6 @@
 
 import { defaultGrowth } from '../home/scale';
+import { frostSurface, labelText } from '../styles/tokens';
 
 /**
  * Game Glance's screensaver: its timings, its canvas and its stylesheet. Pure. Steam's Game Slideshow (probed on the
@@ -113,10 +114,10 @@ export function screensaverCss(steamSlideshow: string | null): string {
             overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }`,
         // The HowLongToBeat card: the Clean look's glass, bottom-right, its bottom on the logo's.
         `.ggs-card { position: absolute; right: ${SS_SIDE}px; bottom: ${SS_SIDE}px; display: flex; gap: 18px; align-items: flex-start; padding: 9px 16px;
-            border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(12,16,22,.38); backdrop-filter: blur(${CARD_BLUR}px);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,.12); ${frostSurface(`${CARD_BLUR}px`)};
             transform: scale(var(--ggs-card-k, 1)); transform-origin: 100% 100%; }`,
         `.ggs-card > div { display: flex; flex-direction: column; gap: 2px; }`,
-        `.ggs-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.62); white-space: nowrap; }`,
+        `.ggs-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; ${labelText()}; white-space: nowrap; }`,
         `.ggs-value { font-size: 17px; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }`,
         `.ggs-bar { width: 100%; min-width: 56px; height: 3px; margin-top: 2px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }`,
         `.ggs-bar > div { height: 100%; background: #fff; }`,

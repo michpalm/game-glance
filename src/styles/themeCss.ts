@@ -7,7 +7,7 @@ import { defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
-import { actionRadius, focusRing, TOKENS } from './tokens';
+import { actionRadius, focusRing, frostSurface, labelText, TOKENS } from './tokens';
 
 export type ClassMap = Record<string, string | undefined> | undefined;
 
@@ -72,7 +72,7 @@ function cardBandClearance(playSection: string | null, tabs: string | null, clou
     const card = `${gap} > .Panel`;
     return [
         rule(gap, ` margin-top: ${CARD_BAND} !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; `),
-        rule(card, ` margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background: rgba(12, 16, 22, 0.38) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; backdrop-filter: blur(calc(16 * var(--gg-d, 1))) !important; `),
+        rule(card, ` margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; ${important(frostSurface('calc(16 * var(--gg-d, 1))'))} border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; `),
         rule(`${gap} ~ *:not(${cloud}):not(${tabs}):has(> .Panel:not(:empty)):has(~ ${tabs})`, ` margin-top: 0 !important; `),
         rule(`${gap} ~ ${tabs}`, ` margin-top: 0 !important; `),
     ];
@@ -88,6 +88,8 @@ const u = (n: number) => `calc(${n} * var(--gg-u))`;
  * cards are Home's size on every screen, so Home's title block and the details title line up.
  */
 const d = (px: number) => `calc(${px} * var(--gg-d))`;
+/** A token recipe (`prop:value;prop:value`) with every declaration `!important`, as the page's restyle writes them. */
+const important = (decls: string) => decls.split(';').filter(Boolean).map((x) => `${x} !important;`).join(' ');
 /** Hover looks apply only in mouse mode (home/mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
 /** Accent changes animate over 500 ms on every accent-coloured property, as on Home (handoff "Interactions & motion"). */
@@ -506,7 +508,7 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
     return [
         `.gg-cards { display: grid; grid-template-columns: minmax(0, ${PAGE_LAYOUT.cards.split[0]}fr) minmax(0, ${PAGE_LAYOUT.cards.split[1]}fr); gap: ${unit(PAGE_LAYOUT.cards.gridGap)}; }`,
         `.gg-card { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.cards.colGap)}; padding: ${unit(PAGE_LAYOUT.cards.padY)} ${unit(PAGE_LAYOUT.cards.padX)}; border-radius: ${unit(16)};
-            background: rgba(12, 16, 22, 0.38); border-color: ${ring(0.12)}; border-style: solid; border-width: ${unit(1)}; backdrop-filter: blur(${unit(16)});
+            ${frostSurface(unit(16))}; border-color: ${ring(0.12)}; border-style: solid; border-width: ${unit(1)};
             min-height: ${unit(PAGE_LAYOUT.playTop.tvCards - 2 * PAGE_LAYOUT.cards.padY - 2)}; max-width: ${cardContentMax(cardMaxWidths()[0])}; }`,
         // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
         // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
@@ -514,7 +516,7 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         `.gg-card.gg-hltb { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
         // (9/5: cards.equalFromAspect as a media query ratio.)
         `@media (min-aspect-ratio: 9/5) { .gg-card { max-width: ${cardContentMax(cardMaxWidths(PAGE_LAYOUT.cards.equalFromAspect)[0])}; } }`,
-        `.gg-label { ${pageType('label', unit)} color: rgba(255, 255, 255, 0.62); }`,
+        `.gg-label { ${pageType('label', unit)} ${labelText(unit)}; }`,
         `.gg-value { ${pageType('value', unit)} }`,
         `.gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapInfo)}; margin-top: 0; }`,
         `.gg-hltb .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
@@ -532,9 +534,9 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
 /** The actual Clean card skin and flex layout, shared with its moving Home copy. */
 export function cleanInfoCss(panel: string, unit: (n: number) => string, prefix = 'gg'): string {
     return `
-${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; background: rgba(12,16,22,.38); backdrop-filter: blur(${unit(16)}); color: #fff; }
+${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; ${frostSurface(unit(16))}; color: #fff; }
 ${panel} > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }
-${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; color: rgba(255,255,255,.62); }
+${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; ${labelText(unit)}; }
 ${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
 ${panel} .${prefix}-bar { width: ${unit(PAGE_LAYOUT.cleanInfo.barW)}; height: ${unit(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${unit(PAGE_LAYOUT.cleanInfo.barTop)}; border-radius: ${unit(3)}; background: rgba(255,255,255,.14); overflow: hidden; }
 ${panel} .${prefix}-bar > div { height: 100%; border-radius: ${unit(3)}; background: var(--gg-accent); }
@@ -675,7 +677,6 @@ export function buildLaunchCss(classes: ThemeClasses): string {
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
 /** Section 7: the in-game menu's ring on every action control, no glow or growth (tokens.focusRing). */
-const important = (decls: string) => decls.split(';').filter(Boolean).map((x) => `${x} !important;`).join(' ');
 const actionRing = important(focusRing('menu', d).replace(';transform:none', ''));
 const actionFocused = `${actionRing} transform: none !important;`;
 const actionTransition = 'transition: transform 250ms, box-shadow 250ms !important;';
@@ -743,7 +744,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rule(playButton && `${playButton} > div:has(> [role="button"])`, ` border-radius: ${R_PLAY} !important; `),
         rule(menuButton, ` border-radius: ${R_TILE} !important; `),
         rule(cloud, ` border-radius: ${R_TILE} !important; `),
-        rule(menuButton, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; backdrop-filter: blur(${d(12)}) !important; ${actionTransition} `),
+        rule(menuButton, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; ${actionTransition} `),
         rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `),
         // (Each focus look here also under DOM focus: after a tap or a click Steam keeps focus but drops gpfocus, and a page
         // opened that way has its Play focused without it, which the open transition lands on.)
@@ -753,8 +754,8 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
         // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring.
-        rule(cloud, ` background: rgba(12, 16, 22, 0.4) !important; border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
-            backdrop-filter: blur(${d(12)}) !important; box-shadow: none !important; ${actionTransition}
+        rule(cloud, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
+            box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
         rule(cloud && `${cloud} svg`, ` width: ${d(PAGE_LAYOUT.cloudIcon)} !important; height: ${d(PAGE_LAYOUT.cloudIcon)} !important; `),
@@ -806,7 +807,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Eyebrow ("Last played · Today", accent) and the 64px/800 title, at most two lines. Hidden unless the
         // full-screen layout applies (below): all-or-nothing, like the rest of the layout.
         `.gg-titleblock { display: none; flex-direction: column; gap: ${d(PAGE_LAYOUT.titleBlock.gap)}; max-width: ${d(640)}; margin: 1vh var(--gg-side); color: #fff; font-family: inherit; }`,
-        `.gg-eyebrow { ${pageType('eyebrow', d)} color: var(--glance-accent-text); }`,
+        `.gg-eyebrow { ${pageType('eyebrow', d)} color: var(--glance-accent-text); text-shadow: 0 ${d(1)} ${d(2)} #0009; }`,
         `.gg-metadata { display: flex; flex-wrap: wrap; align-items: center; column-gap: ${d(16)}; row-gap: ${d(6)}; }`,
         `.gg-availability { display: inline-flex; align-items: center; gap: ${d(6)}; font-size: ${d(PAGE_LAYOUT.titleBlock.eyebrow)}; line-height: 1.2; font-weight: 700; text-transform: uppercase; color: #fff; }`,
         `.gg-availability img { display: block; width: ${d(14)}; height: ${d(14)}; object-fit: contain; }`,

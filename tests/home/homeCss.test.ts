@@ -8,6 +8,8 @@ import {
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { NOT_MOUSE } from '../../src/home/mouseMode';
+import { labelText } from '../../src/styles/tokens';
+import { normalCardsCss } from '../../src/styles/themeCss';
 import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
@@ -123,6 +125,29 @@ describe('card and capsule focus (VDL Section 7)', () => {
         }
         expect(ruleFor(css, '.gh-cap.gh-cap-focus')).not.toContain('translateY');
         expect(css).not.toMatch(/\.gh-(card|cap)-bar/);
+    });
+});
+
+describe('frost and labels (VDL Section 7)', () => {
+    const css = homeCss();
+    it('every glass surface uses the frost and no other blur or tint', () => {
+        expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
+        expect(css).not.toMatch(/backdrop-filter:\s*blur\((10|12|14)px\)/);
+        expect(ruleFor(css, '.gh-chip')).toContain('rgba(12,16,22,.40)');
+        expect(ruleFor(css, '.gh-card')).toContain('backdrop-filter:blur(16px)');
+    });
+    it('small labels are 90% white with the shadow', () => {
+        for (const sel of ['.gh-chip-label', '.gh-feed-row-title', '.gh-card-sub']) {
+            for (const decl of labelText().split(';')) expect(ruleFor(css, sel), sel).toContain(decl);
+        }
+        expect(ruleFor(css, '.gh-eyebrow')).toMatch(/text-shadow:\s*0 1px 2px #0009/);
+    });
+    it('the open transition copies the page: twin labels and the shell match', () => {
+        const page = normalCardsCss('gg', (n) => `calc(${n} * var(--gg-d))`);   // the page's cards, as restyleRules writes them
+        expect(page).toMatch(/\.gg-label \{[^}]*color:rgba\(255,255,255,\.90\);text-shadow:0 calc\(1 \* var\(--gg-d\)\) calc\(2 \* var\(--gg-d\)\) #0009/);
+        expect(css).toMatch(/\.gh-twin\[data-role="label"\][^{]*\{[^}]*rgba\(255,255,255,\.90\)[^}]*#0009/);
+        expect(ruleFor(css, '.gh-open-shell')).toContain('rgba(12,16,22,.40)');
+        expect(ruleFor(css, '.gh-open-shell')).toContain('backdrop-filter:blur(16px)');
     });
 });
 
@@ -511,7 +536,7 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card \{[^}]*height: var\(--gh-card-h, 260px\) !important/);
         expect(css).not.toMatch(/\.gh-feed \{[^}]*height:/);
         expect(css).toMatch(/\.gh-feed-row \{[^}]*position: absolute/);
-        expect(css).toMatch(/\.gh-feed-row-title \{[^}]*height: 24px[^}]*text-transform: uppercase[^}]*color: rgba\(255,255,255,\.62\) !important; \}/);
+        expect(css).toMatch(/\.gh-feed-row-title \{[^}]*height: 24px[^}]*text-transform: uppercase[^}]*color:rgba\(255,255,255,\.90\) !important; text-shadow:0 1px 2px #0009 !important; \}/);
         expect(css).toMatch(/\.gh-card-wide \.gh-card-title \{[^}]*font-size: 14px/);
     });
     it('card and capsule edges are drawn over the art (no border beside it), so no bright bottom row can show', () => {
@@ -628,8 +653,8 @@ describe('homeCss open transition', () => {
         // The glass: the page panel's tint and blur from the start (Michael, on the Ally: moving blurred felt more seamless
         // than a blur growing in after the hand-over). 16 canvas px, the page's 16 d units.
         const shell = body((sel) => sel === '.gh-open-shell');
-        expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.38\)/);
-        expect(shell).toContain('backdrop-filter: blur(16px)');
+        expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.40\)/);
+        expect(shell).toContain('backdrop-filter:blur(16px)');
         // No backdrop blur on a pseudo-element of the panel (it would see nothing behind it); its ::before draws only the ring.
         expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
@@ -949,7 +974,7 @@ describe("a Unifideck game's cloud button (Unifideck's own look, as on its page)
             return i < 0 ? '' : css.slice(i, css.indexOf('}', i));
         };
         expect(body('.gh-open-circle')).toContain('display: none');
-        expect(body('.gh-open-circle')).toContain('backdrop-filter: blur(12px)');
+        expect(body('.gh-open-circle')).toContain('backdrop-filter:blur(16px)');
         const at = body('.gh-root[data-gh-opening="morph"] .gh-open-circle');
         for (const d of ['display: flex', 'left: calc(var(--gho-circle-extra-x) * 1px)', 'top: calc(var(--gho-circle-extra-y) * 1px)', 'width: calc(var(--gho-circle-extra-w) * 1px)']) expect(at).toContain(d);
         expect(body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-open-circle')).toContain('animation: gh-open-extras-in');

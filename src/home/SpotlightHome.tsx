@@ -19,6 +19,7 @@ import { sheetSwipe } from './rowDrag';
 import { rowWheelTarget } from './mouse';
 import { useWheelStep } from './useMouse';
 import { installMouseMode } from './mouseMode';
+import { installCalmFilter } from '../styles/tokens';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './motion';
@@ -213,6 +214,11 @@ export function SpotlightHome() {
     useEffect(() => {
         const doc = rootRef.current?.ownerDocument;
         return doc ? installMouseMode(doc) : undefined;
+    }, []);
+    // The frost's calm filter (VDL Section 7), on the same document; nothing while CALM_IN_CSS is off.
+    useEffect(() => {
+        const doc = rootRef.current?.ownerDocument;
+        return doc ? installCalmFilter(doc) : undefined;
     }, []);
     const cloud = useCloud(onLibrary ? null : data.focused?.appId ?? null);
     // The action button that last had focus. A button can leave while focused (the cloud circle when the next game

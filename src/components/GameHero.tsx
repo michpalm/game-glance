@@ -34,6 +34,7 @@ import { accentMemo, knownAccent } from '../home/accentMemo';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
+import { installCalmFilter } from '../styles/tokens';
 import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
 import { pageNavParts } from '../logic/cardNav';
 import { CleanInfo } from './CleanInfo';
@@ -203,6 +204,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => setPageDoc(heroRef.current?.ownerDocument ?? null), [game.appId]);
     // Hover looks follow a mouse (home/mouseMode), here as on Home.
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
+    // The frost's calm filter (VDL Section 7); nothing while CALM_IN_CSS is off.
+    useEffect(() => (pageDoc ? installCalmFilter(pageDoc) : undefined), [pageDoc]);
     // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
     usePageHeroFit(pageDoc, heroFit, restyle);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).

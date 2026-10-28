@@ -61,8 +61,8 @@ export const calmTable = () => Array.from({ length: 21 }, (_, i) => {
 /** One frost for every glass surface: background and backdrop only; each surface keeps its own border. */
 export const frostSurface = (blur: string, level: 'glass' | 'strong' = 'glass') =>
     `background:${level === 'glass' ? TOKENS.glass : TOKENS.strong};backdrop-filter:blur(${blur})${CALM_IN_CSS ? ` url(#${CALM_FILTER_ID})` : ''}`;
-/** Small text over art or glass: the menu's 90% white with its shadow. */
-export const labelText = () => `color:${TOKENS.label};text-shadow:${TOKENS.textShadow}`;
+/** Small text over art or glass: the menu's 90% white with its shadow (TOKENS.textShadow, in the surface's unit). */
+export const labelText = (u: (n: number) => string = (n) => `${n}px`) => `color:${TOKENS.label};text-shadow:0 ${u(1)} ${u(2)} #0009`;
 export const currentUnderline = () => `content:'';position:absolute;left:${unit(12)};right:${unit(12)};bottom:${unit(4)};height:${unit(3)};border-radius:var(--gg-r-pill);background:var(--gg-accent);pointer-events:none`;
 /** Section 6: a selected tab, option, friend or bell is a soft shade with a faint accent line. */
 export const selectedSlice = () => 'background:var(--gg-selected);color:var(--gg-text);box-shadow:var(--gg-selected-edge)';

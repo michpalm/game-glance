@@ -68,7 +68,7 @@ describe('buildThemeCss full-screen layout', () => {
         expect(row).toContain('padding: calc(var(--gg-side) / 2) !important');
         const card = ruleFor(css, `${gap} > .Panel {`);
         expect(card).toContain('margin: 0');
-        expect(card).toContain('rgba(12, 16, 22, 0.38)');
+        expect(card).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) !important;');
         expect(card).toContain('border-radius: calc(16 * var(--gg-d, 1))');
         expect(ruleFor(css, `${gap} ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) {`)).toContain('margin-top: 0');
         expect(ruleFor(css, `${gap} ~ .rt_Tabs {`)).toContain('margin-top: 0');
@@ -437,7 +437,7 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .rt_Root { background: transparent !important; }
           .rt_Tabs { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; background: rgba(14, 20, 27, 0.9) !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: calc(100vh - var(--gg-play-top) - var(--gg-row-h)) !important; padding: calc(var(--gg-side) / 2) !important; box-sizing: border-box !important; }
-          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background: rgba(12, 16, 22, 0.38) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; backdrop-filter: blur(calc(16 * var(--gg-d, 1))) !important; }
+          .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) > .Panel { margin: 0 !important; width: auto !important; max-width: none !important; box-sizing: border-box !important; background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d, 1))) !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: calc(16 * var(--gg-d, 1)) !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) { margin-top: 0 !important; }
           .rt_Play ~ *:not(.ps_Cloud):not(.rt_Tabs):has(> .Panel:not(:empty)):has(~ .rt_Tabs) ~ .rt_Tabs { margin-top: 0 !important; }
           .ad_Inner > .gg-hero { position: absolute !important; top: calc(var(--gg-play-top) + var(--gg-row-h)) !important;
@@ -491,6 +491,17 @@ const rulesMatching = (css: string, re: RegExp) => [...css.replace(/@keyframes[^
     .filter(([, sel]) => !sel.trim().startsWith('@') && sel.split(',').some((x) => re.test(x.trim()))).map(([, , body]) => body);
 
 describe('game page grammar (VDL Section 7)', () => {
+    it('every glass surface uses the frost and no other blur or tint', () => {
+        const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
+        expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
+        expect(css).not.toMatch(/blur\(calc\((10|12|14) \* var\(--gg-d/);
+        expect(css).not.toContain('url(#');   // no calm reference while CALM_IN_CSS is off
+    });
+    it('labels are 90% white with the shadow; the eyebrow keeps its accent and gains the shadow', () => {
+        const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
+        expect(css).not.toMatch(/rgba\(255,\s*255,\s*255,\s*0?\.62\)/);
+        expect(css).toMatch(/\.gg-eyebrow \{[^}]*var\(--glance-accent-text\);[^}]*text-shadow/);
+    });
     it('soft Play and tiles, menu focus everywhere, info cards lift', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildUnifideckCss(full, { restyle: true });
         // The page's corners: 22 and 18 of its 60 (the same shares of the icon height as Home's 19 and 16 of 54).
@@ -562,17 +573,16 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
     });
     it('restyle: the cloud status is the same dark circle as the others, with the re-tuned state colours and Home’s focus ring', () => {
         const cloud = rulesFor(restyled, '.ps_Cloud');
-        expect(cloud).toContain('background: rgba(12, 16, 22, 0.4) !important;');
+        expect(cloud).toContain('background:rgba(12,16,22,.40) !important; backdrop-filter:blur(calc(16 * var(--gg-d))) !important;');
         // Its ring is the menu circles' (1 d unit, the boosted ring colour), not 1 CSS px: a 1 px ring is 2 device px on the
         // Ally and settled visibly as the open transition handed over from Home's (#64).
         const menuRing = /border-width: [^;]*; border-color: [^;]*;/.exec(rulesFor(restyled, '.ps_Menu'))![0];
         expect(cloud).toContain(menuRing);
-        expect(cloud).toContain('backdrop-filter: blur(calc(12 * var(--gg-d))) !important;');
         expect(cloud).toContain('--gg-ok: #5cf2b4; --gg-warn: #ffd84d; --gg-bad: #ff8585; --gg-off: #c4c9d1;');
         expect(rulesFor(restyled, '.ps_Cloud::before')).toContain('drop-shadow');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .ps_Cloud.gpfocus')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // The menu circles' fill is the same.
-        expect(rulesFor(restyled, '.ps_Menu')).toContain('background: rgba(12, 16, 22, 0.4) !important;');
+        expect(rulesFor(restyled, '.ps_Menu')).toContain('background:rgba(12,16,22,.40) !important;');
         // Not in the 1.1.1 output.
         expect(buildThemeCss(steam)).not.toContain('#5cf2b4');
     });

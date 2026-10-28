@@ -17,7 +17,7 @@ import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
 import { RETURN_ATTR } from './openCancel';
-import { actionRadius, focusRing, frostSurface, selectedSlice, TOKENS } from '../styles/tokens';
+import { actionRadius, focusRing, frostSurface, labelText, selectedSlice, TOKENS } from '../styles/tokens';
 
 /**
  * Marks every declaration `!important` (so CSS Loader themes cannot easily restyle Home, spec section 9),
@@ -57,7 +57,8 @@ function rule(selector: string, body: string): string {
 export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-store-choice', '.gh-family', '.gh-lib-body', '.gh-card'];
 /** Hover looks apply only in mouse mode (mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
-const GLASS = 'background: rgba(12,16,22,.38); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(14px)';
+/** Section 7: the one frost (tokens.frostSurface) with Home's hairline edge. */
+const GLASS = `${frostSurface('16px')}; border: 1px solid rgba(255,255,255,.12)`;
 const SCRIM = '5,7,10';
 
 /**
@@ -254,7 +255,7 @@ export function statusCss(): string {
  * Positions are logical px on the authored canvas (1440x810 or 1280x800); `.gh-canvas` is scaled to the
  * screen. Steam's own top bar (52) and button legend (46) stay: `.gh-safe` is the area between them. Every top
  * below is before the stack shift (stackShift: the page moves down into the slack under the tab strip).
- * Handoff tokens: ink #07090c, scrim rgb(5,7,10), glass rgba(12,16,22,.38) + blur(14px), radii 8/12/16/999.
+ * Handoff tokens: ink #07090c, scrim rgb(5,7,10), glass rgba(12,16,22,.40) + blur(16px) (Section 7's one frost), radii 8/12/16/999.
  * `cardScale` sizes the recents row (recentsLayout.recentsGeometry: 1.3 handheld, 1.6 docked).
  */
 export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
@@ -322,7 +323,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-title-slot', `height: ${t.titleLines * t.titleSize}px; display: flex; flex-direction: column; justify-content: flex-end; margin: 0; padding: 0; overflow: visible`),
         // Eyebrow, between the title and the chips: always one line (ellipsis), so it never pushes the chips.
         rule('.gh-eyebrow', `margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; line-height: 1.2; height: ${t.eyebrow}px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--glance-accent-text)`),
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--glance-accent-text); text-shadow: 0 1px 2px #0009`),
         // At most two lines with an ellipsis (TITLE_BLOCK). The clip gets a bleed on every side for descenders and the
         // shadow; equal negative margins keep the layout box at exactly two 58px lines.
         rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: ${t.titleSize}px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
@@ -336,7 +337,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // One row of fixed height, present even with no chips yet, so the actions never move.
         rule('.gh-chips', `height: ${t.chipRow}px; display: flex; gap: 10px; flex-wrap: nowrap; align-items: stretch; margin: 0; padding: 0`),
         rule('.gh-chip', `display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),
-        rule('.gh-chip-label', 'font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: 1.2; color: rgba(255,255,255,.62)'),
+        rule('.gh-chip-label', `font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: 1.2; ${labelText()}`),
         rule('.gh-chip-value', 'font-size: 20px; font-weight: 700; line-height: 1.2; color: #fff; white-space: nowrap'),
         rule('.gh-chip-bar', 'height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden'),
         rule('.gh-chip-fill', `height: 100%; background: var(--glance-accent); transition: width ${ACCENT_MS}ms`),
@@ -491,7 +492,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-cap-lib', '--gh-edge: rgba(255,255,255,.14)'),
         rule('.gh-cap-lib.gh-cap-lib-on', '--gh-edge: rgba(255,255,255,.35)'),
         rule('.gh-lib-body', `position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: ${k(10)}px; padding: ${k(12)}px;
-            text-align: center; background: rgba(12,16,22,.55); backdrop-filter: blur(16px)`),
+            text-align: center; ${frostSurface('16px', 'strong')}`),
         rule('.gh-lib-grid', `display: grid; grid-template-columns: repeat(2, ${k(12)}px); gap: ${k(4)}px`),
         rule('.gh-lib-cell', `height: ${k(16)}px; border-radius: ${k(2)}px; background: rgba(255,255,255,.7)`),
         rule('.gh-lib-cell-accent', `background: var(--glance-accent); transition: background ${SHEET_MS}ms`),
@@ -529,14 +530,14 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // small header sits just above it.
         rule('.gh-feed-row', 'position: absolute; left: 0; right: 0; margin: 0; padding: 0'),
         rule('.gh-feed-row-title', `position: absolute; left: 0; height: ${FEED_ROW2_HEADER}px; margin: 0; padding: 0; display: flex; align-items: flex-start;
-            font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; line-height: 1.2; color: rgba(255,255,255,.62)`),
+            font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; line-height: 1.2; ${labelText()}`),
         rule('.gh-page-up .gh-feed', 'opacity: 1; pointer-events: auto'),
         rule('.gh-feed-track', `position: absolute; inset: 0; margin: 0; padding: 0; transition: transform ${FEED_SCROLL}`),
         rule('.gh-feed-track.gh-feed-drag', 'transition: none'),
-        rule('.gh-feed-empty', 'position: absolute; left: 0; top: 0; height: 260px; display: flex; align-items: center; font-size: 16px; font-weight: 700; letter-spacing: .02em; color: rgba(255,255,255,.62)'),
+        rule('.gh-feed-empty', `position: absolute; left: 0; top: 0; height: 260px; display: flex; align-items: center; font-size: 16px; font-weight: 700; letter-spacing: .02em; ${labelText()}`),
         rule('.gh-card', `--gh-ring: rgba(255,255,255,.25);
             position: absolute; top: 0; height: var(--gh-card-h, 260px); margin: 0; padding: 0; border-radius: var(--gh-r-card); overflow: hidden; color: #fff;
-            background: rgba(12,16,22,.4); border: none; --gh-edge: rgba(255,255,255,.1); backdrop-filter: blur(16px); box-shadow: 0 6px 20px -10px rgba(0,0,0,.6);
+            ${frostSurface('16px')}; border: none; --gh-edge: rgba(255,255,255,.1); box-shadow: 0 6px 20px -10px rgba(0,0,0,.6);
             transform: none; outline: none; cursor: pointer; transition: box-shadow 300ms, transform 300ms, --gh-card-accent ${ACCENT_MS}ms ease`),
         // The edge over the art and shade, as on the recents capsules (no un-shaded bottom row).
         rule('.gh-card::after', `content: ''; position: absolute; inset: 0; margin: 0; padding: 0; border-radius: inherit; pointer-events: none;
@@ -582,7 +583,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-featured .gh-card-title', 'font-size: 26px; -webkit-line-clamp: 2'),
         // A sale's full price, struck through (no "was" to translate), a little dimmer than the price it was cut to.
         rule('.gh-card-was', 'text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .7'),
-        rule('.gh-card-sub', `font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; color: rgba(255,255,255,.62);
+        rule('.gh-card-sub', `font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; ${labelText()};
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden`),
         // Friend avatar: a 42px square with Steam's slightly rounded corners, top-left, with a square presence ring (the
         // box-shadow follows the radius; see below).
@@ -679,15 +680,15 @@ export function openingRules(): string[] {
         // The page cards' ring drawn as the page draws it (openMotion --gho-ring-*): outside the scaled canvas, so Chromium
         // snaps it to whole device px as it does the page's; brightened by the page's --gg-ring (ringBoost).
         rule('.gh-open-ring', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; box-sizing: border-box; background: none; border-radius: var(--gho-ring-r, 16px); border: var(--gho-ring-w, 1px) solid rgba(255,255,255,calc(.12 * var(--gho-ring-boost, 1)))'),
-        rule('.gh-open-shell', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; background: rgba(12,16,22,.38); border: 1px solid transparent; backdrop-filter: blur(16px)'),
+        rule('.gh-open-shell', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; ${frostSurface('16px')}; border: 1px solid transparent`),
         // Its soft canvas ring, as Home's chips draw theirs: fades out as the crisp ring (.gh-open-ring) fades in.
         rule('.gh-open-shell::before', 'content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid rgba(255,255,255,.12); pointer-events: none; opacity: 1'),
         // A Unifideck game's page has a fourth circle (Uninstall) Home has no button for: one is drawn at its place as Home's
         // circles look at the page's size, and fades in late as the page's other parts do, so it does not pop in after the
         // hand-over. Its own fade, not the extras layer's: a backdrop blur inside a fading parent sees nothing behind it.
         rule('.gh-open-circle', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; box-sizing: border-box; aspect-ratio: 1;
-            align-items: center; justify-content: center; border-radius: 30%; color: #fff; background: rgba(12,16,22,.4); border: 1px solid rgba(255,255,255,.18);
-            backdrop-filter: blur(12px); opacity: 0`),
+            align-items: center; justify-content: center; border-radius: 30%; color: #fff; ${frostSurface('16px')}; border: 1px solid rgba(255,255,255,.18);
+            opacity: 0`),
         rule('.gh-open-circle svg', `width: ${PAGE_LAYOUT.circleIcon}px; height: ${PAGE_LAYOUT.circleIcon}px; margin: 0; fill: currentColor`),
         rule(`${M} .gh-open-circle`, 'display: flex; left: calc(var(--gho-circle-extra-x) * 1px); top: calc(var(--gho-circle-extra-y) * 1px); width: calc(var(--gho-circle-extra-w) * 1px)'),
         rule(`${MT} .gh-open-circle`, late('gh-open-extras-in')),
@@ -794,9 +795,9 @@ export function openingRules(): string[] {
         soft('.gh-twin[data-origin="pill"]', 'transform-origin: 0 0; --t-shift: 0%; width: var(--t-w); height: var(--t-h); display: flex; align-items: center; padding: 0 0 0 var(--t-inset); box-sizing: border-box'),
         soft(`${MT} .gh-twin`, `transform: var(--t-to); transition: ${move}; animation: gh-twin-in ${T.morph}ms linear both`),
         soft('.gh-twin[data-role="title"]', `${pageType('title', dd)} max-width: ${dd(640)}; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 ${dd(4)} ${dd(30)} rgba(0,0,0,.4)`),
-        soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} color: var(--glance-accent-text)`),
+        soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} color: var(--glance-accent-text); text-shadow: 0 ${dd(1)} ${dd(2)} #0009`),
         // The page's labels inherit a 1.5 line height from Steam (PAGE_TYPE leaves it out): stated here.
-        soft('.gh-twin[data-role="label"]', `${pageType('label', dd)} line-height: ${PAGE_LINES.label}; color: rgba(255,255,255,.62)`),
+        soft('.gh-twin[data-role="label"]', `${pageType('label', dd)} line-height: ${PAGE_LINES.label}; ${labelText(dd)}`),
         soft('.gh-twin[data-role="value"]', pageType('value', dd)),
         soft('.gh-twin[data-role="cleanValue"]', pageType('cleanValue', dd)),
         // Steam's fixed line height on the Play label (STEAM_PLAY_LINE): the browser places text in a 20 px line box a little
@@ -880,7 +881,7 @@ export function openingRules(): string[] {
         rule('.gh-root[data-gh-extras~="size"] .gh-x-size', 'display: flex'),
         rule(`${X} .gh-x-size .gh-x-value`, 'font-size: var(--gho-x-size-font)'),
         rule(`${MT}[data-gh-extras~="pills"] .gh-source`, `transition: ${move}; ${late('gh-open-pill-out')}`),
-        rule(`${X} .gh-x-label`, `font-size: ${dd(L.stats.label)}; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: ${PAGE_LINES.label}; white-space: nowrap; color: rgba(255,255,255,.62)`),
+        rule(`${X} .gh-x-label`, `font-size: ${dd(L.stats.label)}; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: ${PAGE_LINES.label}; white-space: nowrap; ${labelText(dd)}`),
         rule(`${X} .gh-x-stats`, `display: flex; gap: ${dd(L.stats.colGapHltb)}`),
         rule(`${X} .gh-x-stats > div`, `display: flex; flex-direction: column; gap: ${dd(L.stats.rowGap)}`),
         rule(`${X} .gh-x-value`, `font-size: ${dd(L.stats.value)}; font-weight: 700; line-height: ${PAGE_LINES.value}; white-space: nowrap`),
