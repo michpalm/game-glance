@@ -17,7 +17,7 @@ html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):h
 .gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:center;justify-content:center;gap:4px;padding:8px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
-.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex-shrink:0;min-height:44px;padding:8px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-dim);white-space:nowrap;box-shadow:none}
+.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex-shrink:0;min-height:44px;padding:8px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);white-space:nowrap;box-shadow:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton::after{${currentUnderline()};opacity:0;transition:opacity var(--gg-fast),box-shadow var(--gg-base)}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]{color:var(--gg-text)}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]::after{opacity:.55}
@@ -91,14 +91,14 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-performance-power{margin:0;color:var(--gg-text-dim);font-size:var(--gg-type-label)}
 .gg-menu .gg-menu-profile-context{flex:0 1 44%;min-width:0}.gg-menu .gg-menu-profile-context .gg-menu-setting{padding-right:0}
 .gg-menu-perf-tabs{display:flex;gap:8px;margin-bottom:12px}
-.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-dim);padding:8px 4px}
+.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);padding:8px 4px}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton::after{${currentUnderline()};opacity:0;transition:opacity var(--gg-fast),box-shadow var(--gg-base)}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]{color:var(--gg-text)}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]::after{opacity:.55}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible){outline:none;box-shadow:none;background:transparent;transform:none;color:var(--gg-text)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible)::after{opacity:1;box-shadow:0 0 14px 2px var(--gg-accent)}
 .gg-menu .gg-menu-perf-content{padding-top:8px}.gg-menu .gg-menu-performance-profile{padding:12px}.gg-menu .gg-menu-performance-profile h3{margin:0 0 8px}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:8px;border-radius:var(--gg-r-pill);border-color:var(--gg-edge)}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:8px;border-radius:var(--gg-r-pill);border-color:var(--gg-edge);background:${TOKENS.glass}}
 .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}.gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
 .gg-menu .gg-menu-error{color:#f6b5b5}
 .gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}

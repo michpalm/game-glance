@@ -5,7 +5,7 @@ export const TOKENS = {
     glass: 'rgba(12,16,22,.40)', strong: 'rgba(12,16,22,.55)', solid: 'rgba(12,16,22,.75)',
     ink: '#07090c', scrim: 'rgb(5,7,10)',
     edge: 'rgba(255,255,255,.12)', raised: 'rgba(255,255,255,.18)', active: 'rgba(255,255,255,.35)',
-    text: '#fff', dim: 'rgba(255,255,255,.62)', textShadow: '0 1px 2px #0009',
+    text: '#fff', dim: 'rgba(255,255,255,.62)', idle: 'rgba(255,255,255,.80)', textShadow: '0 1px 2px #0009',
     track: 'rgba(255,255,255,.14)', trackEdge: 'rgba(255,255,255,.22)',
     glassBlur: 16, artBlur: 42,
     radius: { small: 8, card: 12, panel: 16, pill: 999 },
@@ -21,7 +21,7 @@ ${selector}{
 --gg-glass:${TOKENS.glass};--gg-glass-strong:${TOKENS.strong};--gg-glass-solid:${TOKENS.solid};
 --gg-ink:${TOKENS.ink};--gg-scrim:${TOKENS.scrim};--gg-glass-blur:${unit(TOKENS.glassBlur)};
 --gg-edge:${TOKENS.edge};--gg-edge-raised:${TOKENS.raised};--gg-edge-active:${TOKENS.active};
---gg-text:${TOKENS.text};--gg-text-dim:${TOKENS.dim};--gg-text-shadow:${TOKENS.textShadow};
+--gg-text:${TOKENS.text};--gg-text-dim:${TOKENS.dim};--gg-text-idle:${TOKENS.idle};--gg-text-shadow:${TOKENS.textShadow};
 --gg-track:${TOKENS.track};--gg-track-edge:inset 0 0 0 1px ${TOKENS.trackEdge};
 --gg-accent:${DEFAULT_ACCENT};--gg-accent-text:${legibleAccent(DEFAULT_ACCENT)};--gg-on-accent:#fff;
 --gg-r-small:${unit(TOKENS.radius.small)};--gg-r-card:${unit(TOKENS.radius.card)};--gg-r-panel:${unit(TOKENS.radius.panel)};--gg-r-pill:${TOKENS.radius.pill}px;
