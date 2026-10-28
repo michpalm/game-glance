@@ -374,7 +374,7 @@ Every glass surface outside the menu uses the in-game frost: the status bar, the
 
 - **One blur.** Today these surfaces use 10, 12, 14 and 16 px at .38 or .40. They all move to `glass-blur` and `glass`.
 - **The game page's icon buttons keep blurring the art.** A `backdrop-filter` inside a flat container sees only that container, so every container from Steam's scene down to them keeps `transform-style: preserve-3d` (done in 3.3, 57a522a). A test keeps it.
-- **The calm curve in CSS.** A recipe, `frostSurface()`, adds the curve as an SVG filter in the same `backdrop-filter`: a per-channel transfer table (21 steps, `color-interpolation-filters: sRGB` so it works on the same encoded values as the shader) that is the identity below 0.45 and rises at 0.35 above it. It is per channel, not per luma like the shader, so a bright saturated colour can shift slightly; on Steam's screens the art under glass is mostly mid to dark, where nothing changes. If Steam's browser does not support SVG filters in `backdrop-filter` (checked on the Ally first), the recipe returns blur and glass only. That fallback is already today's spec, so nothing else waits on the check.
+- **The calm curve in CSS.** A recipe, `frostSurface()`, adds the curve as an SVG filter in the same `backdrop-filter`, built as the shader does it: a colour matrix writes each pixel's luma (Rec. 709) into all three channels, a 41-step table turns that luma into the shader's gain (1 up to 0.45, then (0.45 + (Y − 0.45) × 0.35) / Y), and an arithmetic composite multiplies the colour by it, so hue is kept. `color-interpolation-filters: sRGB` keeps it on the same encoded values as the shader. A first per-channel table greyed bright saturated colours (a quarter of the colourfulness on Dorfromantik's art) and was replaced (Q45).
 - **Blurred artwork is separate.** `art-fill` and `art-fill-dim` (Section 1) are unchanged: they erase art behind content, not frost a surface.
 
 ### Labels
@@ -405,7 +405,7 @@ Text on glass already read well; text directly on bright art did not. The weight
 
 - Style tests: no accent in any focus rule on Home, the game page or the screensaver; no `transform: scale` in their focus rules; card focus uses `focusRing('lift')` and capsule focus `focusRing('level')`; every `backdrop-filter` outside the menu comes from `frostSurface()` or `art-fill`; the feed tabs use `selectedSlice()` and no `.gh-tab-line`; the action row uses `r-action` and `r-action-icon`.
 - The `giveWay.ts` / `homeCss` stack test stays green: the tab strip keeps the tab row's height.
-- Device, first: does Steam's browser on the Ally apply an SVG filter in `backdrop-filter`? This decides whether the calm filter ships or the fallback does.
+- Device, done 28 October on the Ally: Steam's browser keeps the blur with the filter in `backdrop-filter`; a probe over white, yellow, blue and red matches the shader within one level; frame timing at 120 Hz is the same with the calm, a pass-through filter and the per-channel table (8.3 ms median, 8.5 ms 99th percentile) on Home (31 glass surfaces) and a game page. The calm ships on (`CALM_IN_CSS`).
 - Device: Home (rest and feed open), Ori's and a bright game's page, and the screensaver, over a bright and a dark scene. Check that the white ring stays visible over bright art, the Recently updated lines read on bright art, and the frost matches the menu's over the same scene.
 
 ## Testing
@@ -471,3 +471,4 @@ All on the visual reference page except Q28–Q42 (Q31–Q42 on the pages linked
 | Q42 | Small secondary text on Home, the game page and the screensaver is `text-label` with `text-shadow`; supersedes Q29's "Home keeps `text-dim`" (2026-10-28) |
 | Q43 | The status bar and the store and family chips match the in-game menu's top bar: the cards' `edge` (.12, was .18) and `bodyWeight` text (700; the status bar was 600) (2026-10-28) |
 | Q44 | The status bar and the store and family chips take `r-action` of their height (12 on 32), chosen over the pill and over `r-small` 8; the menu's status bar follows (`r-card`); supersedes the pill rule for these in Section 7 (2026-10-28) |
+| Q45 | The CSS calm scales all channels by one gain from luma, as the shader does (chosen over a per-channel table, which greyed saturated colours); it ships on after the Ally check (2026-10-28) |
