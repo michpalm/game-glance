@@ -4,14 +4,19 @@ from pathlib import Path
 import pytest
 
 from gameglance.frost.contracts import validate_frame
-from gameglance.frost.shader import STATUS_TILE_WIDTH, build_shader, stage_shader
+from gameglance.frost.shader import KEYBOARD_TILE_CSS, STATUS_TILE_WIDTH, build_shader, frost_geometry, stage_shader
 
 
-def frame(width=1920, height=1080, fit="fit"):
+# The menu keyboard is usually closed: its area is then an all-zero rectangle.
+CLOSED = {"x": 0, "y": 0, "width": 0, "height": 0, "radiusX": 0, "radiusY": 0}
+
+
+def frame(width=1920, height=1080, fit="fit", keyboard=None):
+    regions = {name: {"x": .35, "y": y, "width": w, "height": h, "radiusX": .01, "radiusY": .01}
+               for name, y, w, h in [("bar", .12, .60, .08), ("panel", .23, .60, .65), ("notifications", .04, .05, .04), ("status", .01, .20, .03)]}
+    regions["keyboard"] = dict(keyboard or CLOSED)
     return {"generation": 1, "context": {"viewportId": "v1", "background": "game", "outputWidth": width,
-            "outputHeight": height, "dpr": 1, "fit": fit, "colorMode": "sdr"},
-            "regions": {name: {"x": .35, "y": y, "width": w, "height": h, "radiusX": .01, "radiusY": .01}
-                        for name, y, w, h in [("bar", .12, .60, .08), ("panel", .23, .60, .65), ("notifications", .04, .05, .04), ("status", .01, .20, .03)]}}
+            "outputHeight": height, "dpr": 1, "fit": fit, "colorMode": "sdr"}, "regions": regions}
 
 
 @pytest.mark.parametrize("mutation", [
@@ -21,6 +26,9 @@ def frame(width=1920, height=1080, fit="fit"):
     lambda f: f["regions"]["bar"].update(width=2),
     lambda f: f["regions"].pop("notifications"),
     lambda f: f["regions"].pop("status"),
+    lambda f: f["regions"].pop("keyboard"),
+    lambda f: f["regions"]["keyboard"].update(height=.2),
+    lambda f: f["regions"]["keyboard"].update(x=.3),
     lambda f: f.update(generation=True),
     lambda f: f["context"].update(outputWidth=20000),
 ])
@@ -212,3 +220,55 @@ def test_status_blur_keeps_its_strength_in_a_tile_wider_than_the_pill():
     source, _ = build_shader(frame())
     assert "8.0 / ((Status.z + 2.0 * Pad.x) * OutputSize.x)" in _function(source, "StatusHorizontal")
     assert "8.0 / ((Status.w + 2.0 * Pad.y) * OutputSize.y)" in _function(source, "StatusVertical")
+
+
+# The floating menu keyboard (Social chat) is a fifth frost area. It is usually closed, and it opens and moves while
+# the menu is open: that must stay an update of the live effect, never a new shader.
+OPEN = {"x": .55, "y": .55, "width": .32, "height": .3, "radiusX": .01, "radiusY": .02}
+
+
+def test_a_closed_keyboard_is_an_all_zero_area_and_only_the_keyboard_may_be_all_zero():
+    assert validate_frame(frame())["regions"]["keyboard"] == CLOSED
+    assert validate_frame(frame(keyboard=OPEN))["regions"]["keyboard"] == OPEN
+
+
+@pytest.mark.parametrize("region", ["bar", "panel", "notifications", "status"])
+def test_every_other_area_must_be_present(region):
+    f = frame()
+    f["regions"][region] = dict(CLOSED)
+    with pytest.raises(ValueError):
+        validate_frame(f)
+
+
+def test_opening_or_moving_the_keyboard_keeps_its_tile_and_the_shader():
+    small = dict(OPEN, width=.05, height=.04)
+    moved = dict(OPEN, x=.1, y=.2)
+    tiles = [frost_geometry(validate_frame(frame(keyboard=k)))["tiles"]["keyboard"] for k in (None, small, OPEN, moved)]
+    assert len(set(tiles)) == 1
+    keys = {build_shader(frame(keyboard=k))[1] for k in (None, small, OPEN, moved)}
+    assert len(keys) == 1
+
+
+def test_keyboard_tile_is_sized_from_the_fixed_panel_at_the_display_scale():
+    f = _with_dpr(2)
+    geometry = frost_geometry(validate_frame(f))
+    pad = geometry["pad"]
+    assert geometry["tiles"]["keyboard"] == (-(-(KEYBOARD_TILE_CSS["width"] * 2 + 2 * pad) // 8), -(-(KEYBOARD_TILE_CSS["height"] * 2 + 2 * pad) // 8))
+    assert KEYBOARD_TILE_CSS == {"width": 409, "height": 210}
+
+
+def test_keyboard_gets_its_own_frost_area_like_the_others():
+    source, _ = build_shader(frame(keyboard=OPEN))
+    for part in ("uniform float4 Keyboard", "uniform float2 KeyboardRadius", "texture2D KeyboardD", "texture2D KeyboardH",
+                 "texture2D KeyboardV", "sampler2D KeyboardVS", "pass KeyboardDown", "pass KeyboardX", "pass KeyboardY",
+                 "Mask(outUV, Keyboard, KeyboardRadius)", "Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard)))"):
+        assert part in source
+    assert "Keyboard.z <= 0" in _function(source, "Track")
+    # Its passes run after the status passes and before the output.
+    assert source.index("pass StatusY") < source.index("pass KeyboardDown") < source.index("pass Output")
+
+
+def test_keyboard_blur_keeps_its_strength_in_a_tile_sized_from_the_panel():
+    source, _ = build_shader(frame())
+    assert "8.0 / ((Keyboard.z + 2.0 * Pad.x) * OutputSize.x)" in _function(source, "KeyboardHorizontal")
+    assert "8.0 / ((Keyboard.w + 2.0 * Pad.y) * OutputSize.y)" in _function(source, "KeyboardVertical")

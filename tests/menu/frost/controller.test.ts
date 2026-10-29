@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createFrostController, frostAllocation, STATUS_TILE_WIDTH } from '../../../src/menu/frost/controller';
+import { createFrostController, frostAllocation, KEYBOARD_TILE_CSS, STATUS_TILE_WIDTH } from '../../../src/menu/frost/controller';
 import type { Activated, FrostBridge, FrostFrame, Prepared } from '../../../src/menu/frost/types';
 function deferred<T>() {let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>resolve=r);return {promise,resolve};}
 export function frame(generation=1,background:'game'|'steam'='game'):FrostFrame {
     return {generation,context:{viewportId:'v1',background,outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},
-        regions:Object.fromEntries(['bar','panel','notifications','status'].map(id=>[id,{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.01}])) as FrostFrame['regions']};
+        regions:{...Object.fromEntries(['bar','panel','notifications','status'].map(id=>[id,{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.01}])),
+            // The menu keyboard is usually closed: an all-zero area.
+            keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}} as FrostFrame['regions']};
 }
+const OPEN_KEYBOARD={x:.55,y:.55,width:.32,height:.3,radiusX:.01,radiusY:.02};
+function withKeyboard(keyboard:FrostFrame['regions']['keyboard'],generation=1):FrostFrame {const f=frame(generation);f.regions.keyboard=keyboard;return f;}
 function fixture() {
     const bridge:FrostBridge={prepare:vi.fn(async()=>({status:'ready',key:'key'})),activate:vi.fn(async()=>({status:'active',token:'token'})),update:vi.fn(async()=>true),renew:vi.fn(async()=>true),release:vi.fn(async()=>{}),cancel:vi.fn(async()=>{})};
     const home={apply:vi.fn(()=>true),clear:vi.fn(),dispose:vi.fn()};
@@ -91,6 +95,14 @@ describe('frost controller',()=>{
         expect(f.bridge.update).toHaveBeenLastCalledWith('token',expect.any(Number),wider);
         await f.controller.dispose();
     });
+    // The Social chat's keyboard opens, moves and closes while the menu is open: always an update of the live effect.
+    it('updates the live effect when the keyboard opens, moves and closes, never cancelling or releasing it',async()=>{
+        const f=fixture();f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);await flush();
+        const opened=withKeyboard(OPEN_KEYBOARD),moved=withKeyboard({...OPEN_KEYBOARD,x:.1,y:.2}),closed=frame();
+        for(const next of [opened,moved,closed]){f.controller.frame(next);await flush();expect(f.bridge.update).toHaveBeenLastCalledWith('token',expect.any(Number),next);}
+        expect(f.bridge.cancel).not.toHaveBeenCalled();expect(f.bridge.release).not.toHaveBeenCalled();expect(f.bridge.prepare).toHaveBeenCalledTimes(1);
+        await f.controller.dispose();
+    });
     it('does not bring frost back into an opening that never had it',async()=>{
         const f=fixture(),ready=deferred<Prepared>();vi.mocked(f.bridge.prepare).mockReturnValueOnce(ready.promise);
         f.controller.begin(1);f.controller.frame(frame());f.controller.presented(1);
@@ -173,5 +185,16 @@ describe('frost shader allocation',()=>{
         expect(status(.1316)).toBe(status(.2618));
         expect(status(.2618)).toBe(status(STATUS_TILE_WIDTH));
         expect(status(STATUS_TILE_WIDTH+.05)).not.toBe(status(.2618));
+    });
+    // The keyboard's tile is sized from its fixed panel (409 x 210 CSS px at the display scale), not its rectangle.
+    it('keeps one allocation whether the keyboard is closed, small, open or moved',()=>{
+        const at=(keyboard:FrostFrame['regions']['keyboard'])=>{const f=withKeyboard(keyboard);f.context.dpr=2.32;return frostAllocation(f);};
+        const closed=at({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
+        expect(at({...OPEN_KEYBOARD,width:.05,height:.04})).toBe(closed);
+        expect(at(OPEN_KEYBOARD)).toBe(closed);
+        expect(at({...OPEN_KEYBOARD,x:.1,y:.2})).toBe(closed);
+        expect(KEYBOARD_TILE_CSS).toEqual({width:409,height:210});
+        const pad=Math.ceil(3*16*2.32);
+        expect(JSON.parse(closed).at(-1)).toEqual([Math.ceil((409*2.32+2*pad)/8),Math.ceil((210*2.32+2*pad)/8)]);
     });
 });

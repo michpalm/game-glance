@@ -18,6 +18,10 @@ DOWNSAMPLE = 8
 # opening starts. Its tile is sized to this share of the screen, wider than the full pill, so content never rebuilds
 # the shader. Same value as STATUS_TILE_WIDTH in src/menu/frost/controller.ts.
 STATUS_TILE_WIDTH = .4
+# The floating menu keyboard's panel, in CSS px (409 x 210 times the menu scale on screen). Its tile is sized from this
+# fixed size at the display scale, not from its rectangle, so opening, closing or moving the keyboard never rebuilds the
+# shader. Same value as KEYBOARD_TILE_CSS in src/menu/frost/controller.ts.
+KEYBOARD_TILE_CSS = {"width": 409, "height": 210}
 
 
 def frost_geometry(frame: dict) -> dict:
@@ -25,9 +29,13 @@ def frost_geometry(frame: dict) -> dict:
     sigma = GLASS_BLUR_CSS_PX * c["dpr"]
     # Three sigma of real game pixels around each region keeps its edges clean.
     pad = math.ceil(3 * sigma)
-    width = lambda name: max(frame["regions"][name]["width"], STATUS_TILE_WIDTH) if name == "status" else frame["regions"][name]["width"]
-    tiles = {name: (math.ceil((width(name) * c["outputWidth"] + 2 * pad) / DOWNSAMPLE),
-                    math.ceil((frame["regions"][name]["height"] * c["outputHeight"] + 2 * pad) / DOWNSAMPLE)) for name in REGIONS}
+    def span(name):
+        r = frame["regions"][name]
+        if name == "keyboard":
+            return KEYBOARD_TILE_CSS["width"] * c["dpr"], KEYBOARD_TILE_CSS["height"] * c["dpr"]
+        width = max(r["width"], STATUS_TILE_WIDTH) if name == "status" else r["width"]
+        return width * c["outputWidth"], r["height"] * c["outputHeight"]
+    tiles = {name: tuple(math.ceil((size + 2 * pad) / DOWNSAMPLE) for size in span(name)) for name in REGIONS}
     return {"sigma": sigma, "pad": pad, "tiles": tiles}
 
 

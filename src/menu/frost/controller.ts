@@ -5,12 +5,17 @@ export interface FrostWarmup {requestId:string;frame:FrostFrame;ready:Promise<Pr
 /** The status bar's tile width, as a share of the screen: its width follows its content, so its tile is sized to this
  * cap (wider than the full pill) and a change in content never rebuilds the shader. Same value in shader.py. */
 export const STATUS_TILE_WIDTH = .4;
+/** The floating keyboard's panel in CSS px (409 x 210 times the menu scale on screen). Its tile is sized from this at the
+ * display scale, not from its rectangle, so opening, closing or moving it never rebuilds the shader. Same value in shader.py. */
+export const KEYBOARD_TILE_CSS = { width: 409, height: 210 } as const;
 /** Mirrors frost_geometry() in py_modules/gameglance/frost/shader.py: equal allocations build an equal shader. */
 export function frostAllocation(frame:FrostFrame):string {
-    const pad=Math.ceil(3*16*frame.context.dpr);
+    const {dpr,outputWidth,outputHeight}=frame.context,pad=Math.ceil(3*16*dpr);
     return JSON.stringify([frame.context,...REGION_IDS.map(id=>{
-        const r=frame.regions[id],width=id==='status'?Math.max(r.width,STATUS_TILE_WIDTH):r.width;
-        return [Math.ceil((width*frame.context.outputWidth+2*pad)/8),Math.ceil((r.height*frame.context.outputHeight+2*pad)/8)];
+        const r=frame.regions[id];
+        const [width,height]=id==='keyboard'?[KEYBOARD_TILE_CSS.width*dpr,KEYBOARD_TILE_CSS.height*dpr]:
+            [(id==='status'?Math.max(r.width,STATUS_TILE_WIDTH):r.width)*outputWidth,r.height*outputHeight];
+        return [Math.ceil((width+2*pad)/8),Math.ceil((height+2*pad)/8)];
     })]);
 }
 

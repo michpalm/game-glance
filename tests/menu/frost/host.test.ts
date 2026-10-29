@@ -36,3 +36,47 @@ describe('menu frost regions',()=>{
         expect(found[3]?.className).toBe('gh-status-pill');
     });
 });
+
+// The Social chat's keyboard mounts and unmounts while the menu is open over a game. Its element appearing restarts the
+// measurement, which must not publish a null first: that would release the live effect and lose this opening's frost.
+describe('menu frost host and the keyboard',()=>{
+    function gameFixture(){
+        const owner=parseHTML('<html><body><section><div id="viewport"></div></section></body></html>');
+        const source=parseHTML('<html><body><div class="gg-menu"><i data-gg-frost-region="bar"></i><i data-gg-frost-region="panel"></i><i data-gg-frost-region="notifications"></i></div>'+
+            '<div class="gg-status-host gg-menu-status-host"><div class="gh-status"><div class="gh-status-pill"></div></div></div></body></html>');
+        const view={innerWidth:1000,innerHeight:500,devicePixelRatio:1,requestAnimationFrame:()=>0,cancelAnimationFrame:()=>{},
+            getComputedStyle:()=>({borderTopLeftRadius:'8px',visibility:'visible'}),addEventListener:()=>{},removeEventListener:()=>{}};
+        const ownerView={...view},sourceView={...view};
+        Object.defineProperty(owner.document,'defaultView',{value:ownerView,configurable:true});
+        Object.defineProperty(source.document,'defaultView',{value:sourceView,configurable:true});
+        const placeholder=owner.document.getElementById('viewport')! as unknown as HTMLElement;
+        placeholder.getBoundingClientRect=()=>({left:0,top:0,width:1000,height:500} as DOMRect);
+        const area=(e:Element,left:number,top:number)=>{
+            (e as unknown as HTMLElement).getBoundingClientRect=()=>({left,top,width:200,height:100} as DOMRect);
+            Object.defineProperties(e,{offsetWidth:{value:200,configurable:true},offsetHeight:{value:100,configurable:true}});
+        };
+        [...source.document.querySelectorAll('[data-gg-frost-region],.gh-status-pill')].forEach((e,i)=>area(e,i*210,10));
+        const host=createMenuFrostHost(owner.document as unknown as Document,source.document as unknown as Document,placeholder,
+            ()=>({viewportId:'v1',background:'game',outputWidth:1000,outputHeight:500,dpr:1,fit:'fit',colorMode:'sdr'}));
+        const openKeyboard=()=>{const k=source.document.createElement('div');k.setAttribute('data-gg-frost-region','keyboard');area(k,500,300);source.document.querySelector('.gg-menu')!.appendChild(k);return k;};
+        return {host,openKeyboard};
+    }
+    const calls=(name:string)=>rpc.mock.calls.filter(c=>c[0]===name);
+    it('sends the opened keyboard as an update of the live effect, and its closing too',async()=>{
+        vi.useFakeTimers();
+        rpc.mockImplementation(async name=>({frost_prepare:{status:'ready',key:'key'},frost_activate:{status:'active',token:'token'},frost_update:true,frost_renew:true,frost_environment:{hdr:false,maxScale:2}} as Record<string,unknown>)[name]??null);
+        const f=gameFixture();f.host.setSession({generation:1,enabled:true});await flush();
+        f.host.presented();await flush();
+        expect(calls('frost_activate')).toHaveLength(1);
+        const keyboard=f.openKeyboard();await vi.advanceTimersByTimeAsync(250);await flush();
+        const update=calls('frost_update').at(-1)!;
+        expect((update[3] as {regions:{keyboard:{x:number;width:number}}}).regions.keyboard).toMatchObject({x:.5,width:.2});
+        keyboard.remove();await vi.advanceTimersByTimeAsync(250);await flush();
+        expect((calls('frost_update').at(-1)![3] as {regions:{keyboard:{width:number}}}).regions.keyboard.width).toBe(0);
+        expect(calls('frost_cancel')).toEqual([]);expect(calls('frost_release')).toEqual([]);
+        expect(calls('frost_prepare')).toHaveLength(1);expect(calls('frost_activate')).toHaveLength(1);
+        f.host.dispose();await flush();expect(calls('frost_release')).toHaveLength(1);
+        vi.useRealTimers();
+    });
+});
+

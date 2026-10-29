@@ -8,6 +8,8 @@ def test_uniform_payloads_are_exact_float_vectors():
     assert pack_uniform("Bar", [.1, .2, .3, .4]) == struct.pack("<4f", .1, .2, .3, .4)
     assert len(pack_uniform("NotificationsRadius", [.1, .2])) == 8
     assert len(pack_uniform("Status", [.1, .2, .3, .4])) == 16 and len(pack_uniform("StatusRadius", [.1, .2])) == 8
+    assert len(pack_uniform("Keyboard", [.1, .2, .3, .4])) == 16 and len(pack_uniform("KeyboardRadius", [.1, .2])) == 8
+    assert pack_uniform("Keyboard", [0, 0, 0, 0]) == struct.pack("<4f", 0, 0, 0, 0)
     for name, value in [("foreign", [0]), ("Bar", [0]), ("PanelRadius", [float("nan"), 0])]:
         with pytest.raises(ValueError):
             pack_uniform(name, value)
@@ -71,3 +73,18 @@ def test_uniform_ownership_checks_use_property_events_without_repeated_roundtrip
     values[10]='foreign.fx';n.x.events.append(10)
     assert n.snapshot()==NativeState('foreign.fx',0)
     assert calls==[10,11,10,11]
+
+
+def test_native_connection_sends_every_frost_area_uniform_the_shader_declares():
+    from types import SimpleNamespace
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    sent = []
+    n.proxy = n.display = None
+    n.wl = SimpleNamespace(wl_proxy_marshal_flags=lambda *args: sent.append(args[5].value), wl_display_flush=lambda display: None)
+    for name in ("Bar", "Panel", "Notifications", "Status", "Keyboard"):
+        n.set_uniform(name, b"\0" * 16)
+        n.set_uniform(name + "Radius", b"\0" * 8)
+    assert sent == [s.encode() for name in ("Bar", "Panel", "Notifications", "Status", "Keyboard") for s in (name, name + "Radius")]
+    with pytest.raises(ValueError):
+        n.set_uniform("Foreign", b"\0" * 16)

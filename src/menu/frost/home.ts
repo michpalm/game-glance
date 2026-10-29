@@ -1,4 +1,4 @@
-import { REGION_IDS, type FrostFrame } from './types';
+import { OPTIONAL_REGIONS, REGION_IDS, regionAbsent, type FrostFrame } from './types';
 
 /** On Home the page's own status bar, on Home's frost, stays up under the menu (menu/host holdPageStatus): no surface for it. */
 const HOME_REGIONS=REGION_IDS.filter(id=>id!=='status');
@@ -8,9 +8,9 @@ export interface HomeFrost { apply(frame:FrostFrame):boolean; clear():void; disp
  * Never put a viewport-sized filter behind a CSS mask. */
 export function createHomeFrost(owner:Document, placeholder:HTMLElement):HomeFrost {
     const parent=placeholder.parentElement, view=owner.defaultView;
-    const surfaces:HTMLElement[]=[];
     let disposed=false;
-    function clear(){for(const surface of surfaces.splice(0))surface.remove();}
+    const surfaces:(HTMLElement|undefined)[]=[];
+    function clear(){for(const surface of surfaces.splice(0))surface?.remove();}
     function supported(){
         if(disposed||!view||!parent||!placeholder.isConnected||placeholder.ownerDocument!==owner||placeholder.parentElement!==parent)return false;
         for(let e:HTMLElement|null=parent;e;e=e.parentElement){
@@ -28,6 +28,8 @@ export function createHomeFrost(owner:Document, placeholder:HTMLElement):HomeFro
             if(frame.context.background!=='steam'||!supported()){clear();return false;}
             for(let i=0;i<HOME_REGIONS.length;i++){
                 const id=HOME_REGIONS[i],r=frame.regions[id];
+                // The keyboard closed: no surface for it, the others stay.
+                if(OPTIONAL_REGIONS.has(id)&&regionAbsent(r)){surfaces[i]?.remove();surfaces[i]=undefined;continue;}
                 if(!Object.values(r).every(Number.isFinite)||r.width<=0||r.height<=0){clear();return false;}
                 const e=surfaces[i]??owner.createElement('div');
                 e.dataset.ggMenuFrost=id; e.setAttribute('aria-hidden','true');

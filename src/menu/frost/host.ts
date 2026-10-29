@@ -3,7 +3,7 @@ import { createFrostController, type FrostWarmup } from './controller';
 import { observeFrostFrame } from './geometry';
 import { createHomeFrost } from './home';
 import { menuViewportAgrees } from '../presentation';
-import { REGION_IDS, type FrostContext, type FrostFrame, type NativeFrostEnvironment, type RegionId } from './types';
+import { OPTIONAL_REGIONS, REGION_IDS, type FrostContext, type FrostFrame, type NativeFrostEnvironment, type RegionId } from './types';
 
 export interface FrostHostOptions {takeWarmup?():FrostWarmup|null;measured?(frame:FrostFrame):void}
 
@@ -17,23 +17,25 @@ export function frostRegionElements(source:Document):(HTMLElement|null)[] {
 export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null,options:FrostHostOptions={}) {
     const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder),takeWarmup:options.takeWarmup});
     let environment:NativeFrostEnvironment|null=null,reading=false,environmentKnown=false;
-    let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:(()=>void)|undefined;
-    let visible=false,stopped=false,lastContext='',lastElements:HTMLElement[]=[];
+    let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:((quiet?:boolean)=>void)|undefined;
+    let visible=false,stopped=false,lastContext='',lastElements:(HTMLElement|null)[]=[];
     function measure(force=false){
         if(stopped||!session?.enabled)return;
         const value=context(environment),elements=frostRegionElements(source);
         const signature=JSON.stringify(value);
         if(!force&&signature===lastContext&&elements.every((e,i)=>e===lastElements[i]))return;
-        stopMeasurement?.();stopMeasurement=undefined;
-        lastContext=signature;lastElements=elements as HTMLElement[];
-        if(!value||!source.defaultView||!owner.defaultView||elements.some(e=>!e)){
+        // Only the elements changed (the keyboard opening or closing, an area remounting): the new observer measures at
+        // once, so the old one stops without a null, which would release live frost. A new context still clears it.
+        stopMeasurement?.(!force&&signature===lastContext);stopMeasurement=undefined;
+        lastContext=signature;lastElements=elements;
+        if(!value||!source.defaultView||!owner.defaultView||elements.some((e,i)=>!e&&!OPTIONAL_REGIONS.has(REGION_IDS[i]))){
             controller.frame(null);
             // Once the native environment has answered, a null context is final for
             // this opening (HDR, integer scaling): release the reveal hold now.
             if(!value&&environmentKnown)controller.unavailable(session.generation);
             return;
         }
-        const regions=Object.fromEntries(REGION_IDS.map((id,i)=>[id,elements[i]!])) as Record<RegionId,HTMLElement>;
+        const regions=Object.fromEntries(REGION_IDS.flatMap((id,i)=>elements[i]?[[id,elements[i]]]:[])) as Partial<Record<RegionId,HTMLElement>>;
         stopMeasurement=observeFrostFrame({generation:session.generation,source:source.defaultView,owner:owner.defaultView,placeholder,elements:regions,context:value},frame=>{
             if(!source.defaultView||!menuViewportAgrees(placeholder.getBoundingClientRect(),source.defaultView)){controller.frame(null);return;}
             if(frame)options.measured?.(frame);controller.frame(frame);

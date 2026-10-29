@@ -448,3 +448,12 @@ def test_worker_keeps_an_open_menus_frost_however_long_the_menu_stays_open(tmp_p
         thread.join(timeout=2)
         os.close(read_fd)
     assert not thread.is_alive()
+
+
+def test_a_closed_keyboard_arms_and_activates_with_a_zero_keyboard_mask(tmp_path):
+    w, n, _, replies = fixture(tmp_path)
+    activate(w, n, replies)
+    uniforms = {call[1]: call[2] for call in n.calls if call[0] == "uniform"}
+    assert uniforms["Keyboard"] == struct.pack("<4f", 0, 0, 0, 0)
+    assert uniforms["KeyboardRadius"] == struct.pack("<2f", 0, 0)
+    assert uniforms["Panel"] != struct.pack("<4f", 0, 0, 0, 0)

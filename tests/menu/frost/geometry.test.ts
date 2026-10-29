@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { measureFrostFrame, observeFrostFrame } from '../../../src/menu/frost/geometry';
 
 function fixture() {
-    const { window: owner, document } = parseHTML('<html><body><div id="viewport"></div><div id="bar"></div><div id="panel"></div><div id="notifications"></div><div id="status"></div></body></html>');
+    const { window: owner, document } = parseHTML('<html><body><div id="viewport"></div><div id="bar"></div><div id="panel"></div><div id="notifications"></div><div id="status"></div><div id="keyboard"></div></body></html>');
     const { window: source } = parseHTML('<html><body></body></html>');
     // Linkedom windows share several global descriptors; use independent plain viewports.
     const view = Object.assign(new EventTarget(), { innerWidth:1000, innerHeight:500, devicePixelRatio:1.25, getComputedStyle:()=>({borderTopLeftRadius:'999px'}), requestAnimationFrame:vi.fn(), cancelAnimationFrame:vi.fn() });
     const sourceView = Object.assign(new EventTarget(), view);
     const placeholder = document.getElementById('viewport')! as unknown as HTMLElement;
     placeholder.getBoundingClientRect = () => ({left:20, top:10, width:500, height:250} as DOMRect);
-    const elements = Object.fromEntries(['bar','panel','notifications','status'].map(id => {
+    const elements = Object.fromEntries(['bar','panel','notifications','status','keyboard'].map(id => {
         const e = document.getElementById(id)! as unknown as HTMLElement;
         e.getBoundingClientRect = () => ({left:100,top:80,width:400,height:200} as DOMRect);
         Object.defineProperties(e,{offsetWidth:{value:400,configurable:true},offsetHeight:{value:200,configurable:true}});
@@ -40,6 +40,41 @@ describe('frost geometry', () => {
         if(kind==='missing') delete (input.elements as Partial<typeof input.elements>).notifications;
         if(kind==='detached') input.placeholder.remove();
         expect(measureFrostFrame(input)).toBeNull();
+    });
+    // The Social chat's keyboard is usually closed: an absent, empty or hidden panel is an all-zero area, not a failure.
+    it.each(['missing','detached','empty','hidden'])('measures a %s keyboard as an all-zero area and keeps every other area', kind => {
+        const input=fixture(),open=measureFrostFrame(input)!;
+        expect(open.regions.keyboard).toMatchObject({x:.07,y:.10,width:.20,height:.20});
+        if(kind==='missing') delete (input.elements as Partial<typeof input.elements>).keyboard;
+        if(kind==='detached') input.elements.keyboard.remove();
+        if(kind==='empty') Object.defineProperties(input.elements.keyboard,{offsetWidth:{value:0},offsetHeight:{value:0}});
+        if(kind==='hidden') input.source.getComputedStyle=(e=>({borderTopLeftRadius:'999px',visibility:e===input.elements.keyboard?'hidden':'visible'})) as never;
+        const f=measureFrostFrame(input)!;
+        expect(f).not.toBeNull();
+        expect(f.regions.keyboard).toEqual({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
+        for(const id of ['bar','panel','notifications','status'] as const) expect(f.regions[id]).toEqual(open.regions[id]);
+    });
+    it('still fails the frame when a required area is empty',()=>{
+        const input=fixture();
+        Object.defineProperties(input.elements.status,{offsetWidth:{value:0},offsetHeight:{value:0}});
+        expect(measureFrostFrame(input)).toBeNull();
+    });
+    // The keyboard moves by its left/top (a drag, a spot), which no ResizeObserver reports: its style is watched.
+    it('re-measures, without a null, when the keyboard moves or shows',()=>{
+        const input=fixture(),frames=new Map<number,FrameRequestCallback>();let id=0;
+        input.source.requestAnimationFrame=fn=>{frames.set(++id,fn);return id;};
+        input.source.cancelAnimationFrame=id=>{frames.delete(id);};
+        const watched:{target:unknown;options:MutationObserverInit;fn:MutationCallback}[]=[];
+        Object.assign(input.source,{MutationObserver:class{constructor(private fn:MutationCallback){}observe(target:unknown,options:MutationObserverInit){watched.push({target,options,fn:this.fn});}disconnect(){watched.length=0;}}});
+        const publish=vi.fn(),stop=observeFrostFrame(input,publish);publish.mockClear();
+        expect(watched.map(w=>w.target)).toEqual([input.elements.keyboard]);
+        expect(watched[0].options.attributeFilter).toEqual(expect.arrayContaining(['style','class']));
+        input.elements.keyboard.getBoundingClientRect=()=>({left:200,top:100,width:400,height:200} as DOMRect);
+        watched[0].fn([],{} as MutationObserver);watched[0].fn([],{} as MutationObserver);
+        expect(publish).not.toHaveBeenCalled();expect(frames.size).toBe(1);
+        for(const fn of [...frames.values()])fn(0);frames.clear();
+        expect(publish).toHaveBeenCalledTimes(1);expect(publish.mock.calls[0][0].regions.keyboard).toMatchObject({x:.12,y:.12});
+        stop();expect(watched).toEqual([]);
     });
     it('invalidates before reallocation, coalesces observers and disposes pending work', () => {
         const input=fixture(), frames=new Map<number,FrameRequestCallback>(); let id=0;

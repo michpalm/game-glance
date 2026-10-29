@@ -2,7 +2,9 @@
 import copy
 import math
 
-REGIONS = ("bar", "panel", "notifications", "status")
+REGIONS = ("bar", "panel", "notifications", "status", "keyboard")
+# Areas that may be absent (the floating menu keyboard, usually closed): absent is an all-zero rectangle.
+OPTIONAL_REGIONS = frozenset({"keyboard"})
 
 
 def _fields(value, fields):
@@ -37,10 +39,12 @@ def validate_frame(value: object) -> dict:
         _number(c[key], 1, 16384, True)
     _number(c["dpr"], .25, 8)
     _fields(value["regions"], REGIONS)
-    for r in value["regions"].values():
+    for name, r in value["regions"].items():
         _fields(r, ("x", "y", "width", "height", "radiusX", "radiusY"))
         for n in r.values():
             _number(n, 0, 1)
+        if name in OPTIONAL_REGIONS and not any(r.values()):
+            continue
         if r["width"] <= 0 or r["height"] <= 0 or r["x"] + r["width"] > 1.000001 or r["y"] + r["height"] > 1.000001:
             raise ValueError("invalid rectangle")
         if r["radiusX"] > r["width"] / 2 or r["radiusY"] > r["height"] / 2:
