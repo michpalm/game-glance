@@ -4,11 +4,15 @@ uniform float4 Panel < source = "Panel"; defaultValue = float4(0, 0, 0, 0); > = 
 uniform float4 Notifications < source = "Notifications"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float4 Status < source = "Status"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float4 Keyboard < source = "Keyboard"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 KeyboardLeft < source = "KeyboardLeft"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 KeyboardRight < source = "KeyboardRight"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
 uniform float2 BarRadius < source = "BarRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 PanelRadius < source = "PanelRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 NotificationsRadius < source = "NotificationsRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 StatusRadius < source = "StatusRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 uniform float2 KeyboardRadius < source = "KeyboardRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 KeyboardLeftRadius < source = "KeyboardLeftRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 KeyboardRightRadius < source = "KeyboardRightRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
 // Milliseconds since Gamescope built this effect.
 uniform float Timer < source = "timer"; >;
 #define OutputSize float2(@OUT_W@, @OUT_H@)
@@ -48,8 +52,14 @@ texture2D StatusD { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; }
 texture2D StatusH { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
 texture2D StatusV { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
 texture2D KeyboardD { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftD { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightD { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
 texture2D KeyboardH { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftH { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightH { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
 texture2D KeyboardV { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftV { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightV { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
 // Render targets keep their contents between frames: the previous state is
 // copied aside, then updated, so the fade starts on the first visible frame.
 // RGBA32F, not RG32F: Gamescope can only create formats with a DRM equivalent.
@@ -68,8 +78,14 @@ sampler2D StatusDS { Texture = StatusD; MinFilter = LINEAR; MagFilter = LINEAR; 
 sampler2D StatusHS { Texture = StatusH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D StatusVS { Texture = StatusV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D KeyboardDS { Texture = KeyboardD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftDS { Texture = KeyboardLeftD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightDS { Texture = KeyboardRightD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D KeyboardHS { Texture = KeyboardH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftHS { Texture = KeyboardLeftH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightHS { Texture = KeyboardRightH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D KeyboardVS { Texture = KeyboardV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftVS { Texture = KeyboardLeftV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightVS { Texture = KeyboardRightV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D StateAS { Texture = StateA; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 sampler2D StateBS { Texture = StateB; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 void VS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0) {
@@ -109,7 +125,7 @@ float Mask(float2 uv, float4 rect, float2 radiusNorm) {
 float4 Remember(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return tex2D(StateAS, float2(0.5, 0.5)); }
 // x = timer at the first frame with visible masks, y = 1 once started.
 float4 Track(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    if (Bar.z <= 0 && Panel.z <= 0 && Notifications.z <= 0 && Status.z <= 0 && Keyboard.z <= 0) return float4(0, 0, 0, 0);
+    if (Bar.z <= 0 && Panel.z <= 0 && Notifications.z <= 0 && Status.z <= 0 && Keyboard.z <= 0 && KeyboardLeft.z <= 0 && KeyboardRight.z <= 0) return float4(0, 0, 0, 0);
     float2 previous = tex2D(StateBS, float2(0.5, 0.5)).xy;
     if (previous.y > 0.5 && previous.x <= Timer) return float4(previous, 0, 0);
     return float4(Timer, 1, 0, 0);
@@ -131,8 +147,14 @@ float4 StatusVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Targ
 // The menu keyboard is usually closed (an all-zero area) and opens and moves while the menu is open. Its tile is sized
 // from the fixed panel, not its rectangle, so its blur steps follow its own span on screen, like the status bar's.
 float4 KeyboardDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Keyboard)); }
+float4 KeyboardLeftDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, KeyboardLeft)); }
+float4 KeyboardRightDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, KeyboardRight)); }
 float4 KeyboardHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardDS, uv, float2(8.0 / ((Keyboard.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 KeyboardLeftHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardLeftDS, uv, float2(8.0 / ((KeyboardLeft.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 KeyboardRightHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardRightDS, uv, float2(8.0 / ((KeyboardRight.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
 float4 KeyboardVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardHS, uv, float2(0.0, 8.0 / ((Keyboard.w + 2.0 * Pad.y) * OutputSize.y))); }
+float4 KeyboardLeftVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardLeftHS, uv, float2(0.0, 8.0 / ((KeyboardLeft.w + 2.0 * Pad.y) * OutputSize.y))); }
+float4 KeyboardRightVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardRightHS, uv, float2(0.0, 8.0 / ((KeyboardRight.w + 2.0 * Pad.y) * OutputSize.y))); }
 float4 Calm(float4 c) {
     float y = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
     float calmed = y > CalmKnee ? CalmKnee + (y - CalmKnee) * CalmSlope : y;
@@ -151,11 +173,14 @@ float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolatio
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
     float s = Mask(outUV, Status, StatusRadius) * fade;
     float k = Mask(outUV, Keyboard, KeyboardRadius) * fade;
+    float kl = Mask(outUV, KeyboardLeft, KeyboardLeftRadius) * fade, kr = Mask(outUV, KeyboardRight, KeyboardRightRadius) * fade;
     if (b > 0) color = lerp(color, Calm(tex2D(BarVS, TileUV(outUV, Bar))), b);
     if (p > 0) color = lerp(color, Calm(tex2D(PanelVS, TileUV(outUV, Panel))), p);
     if (n > 0) color = lerp(color, Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications))), n);
     if (s > 0) color = lerp(color, Calm(tex2D(StatusVS, TileUV(outUV, Status))), s);
     if (k > 0) color = lerp(color, Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard))), k);
+    if (kl > 0) color = lerp(color, Calm(tex2D(KeyboardLeftVS, TileUV(outUV, KeyboardLeft))), kl);
+    if (kr > 0) color = lerp(color, Calm(tex2D(KeyboardRightVS, TileUV(outUV, KeyboardRight))), kr);
     return color;
 }
 technique QAMFrost {
@@ -174,7 +199,13 @@ technique QAMFrost {
     pass StatusX { VertexShader = VS; PixelShader = StatusHorizontal; RenderTarget = StatusH; }
     pass StatusY { VertexShader = VS; PixelShader = StatusVertical; RenderTarget = StatusV; }
     pass KeyboardDown { VertexShader = VS; PixelShader = KeyboardDown; RenderTarget = KeyboardD; }
+    pass KeyboardLeftDown { VertexShader = VS; PixelShader = KeyboardLeftDown; RenderTarget = KeyboardLeftD; }
+    pass KeyboardRightDown { VertexShader = VS; PixelShader = KeyboardRightDown; RenderTarget = KeyboardRightD; }
     pass KeyboardX { VertexShader = VS; PixelShader = KeyboardHorizontal; RenderTarget = KeyboardH; }
+    pass KeyboardLeftX { VertexShader = VS; PixelShader = KeyboardLeftHorizontal; RenderTarget = KeyboardLeftH; }
+    pass KeyboardRightX { VertexShader = VS; PixelShader = KeyboardRightHorizontal; RenderTarget = KeyboardRightH; }
     pass KeyboardY { VertexShader = VS; PixelShader = KeyboardVertical; RenderTarget = KeyboardV; }
+    pass KeyboardLeftY { VertexShader = VS; PixelShader = KeyboardLeftVertical; RenderTarget = KeyboardLeftV; }
+    pass KeyboardRightY { VertexShader = VS; PixelShader = KeyboardRightVertical; RenderTarget = KeyboardRightV; }
     pass Output { VertexShader = FadeVS; PixelShader = Composite; }
 }

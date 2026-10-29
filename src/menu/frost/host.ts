@@ -10,7 +10,7 @@ export interface FrostHostOptions {takeWarmup?():FrostWarmup|null;measured?(fram
 /** The frost areas' elements, in REGION_IDS order. The status bar copy is portalled to the popup's body, outside the menu root. */
 export function frostRegionElements(source:Document):(HTMLElement|null)[] {
     const root=source.querySelector('.gg-menu');
-    return REGION_IDS.map(id=>id==='status'?source.querySelector<HTMLElement>('.gg-menu-status-host .gh-status-pill'):root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`)??null);
+    return REGION_IDS.map(id=>id==='keyboard-left'||id==='keyboard-right'?source.querySelector<HTMLElement>(`.gg-radial-keyboard-host [data-gg-frost-region="${id}"]`):id==='status'?source.querySelector<HTMLElement>('.gg-menu-status-host .gh-status-pill'):root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`)??null);
 }
 
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */

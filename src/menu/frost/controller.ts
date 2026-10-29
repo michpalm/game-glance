@@ -8,13 +8,14 @@ export const STATUS_TILE_WIDTH = .4;
 /** The floating keyboard's panel in CSS px (409 x 210, its size in the menu's own units). Its tile is this size times the
  * display scale (dpr) only, not times the menu scale, and not from its rectangle, so opening, closing or moving it never
  * rebuilds the shader. Same value in shader.py. */
+export const RADIAL_TILE_CSS = { width: 280, height: 280 } as const;
 export const KEYBOARD_TILE_CSS = { width: 409, height: 210 } as const;
 /** Mirrors frost_geometry() in py_modules/gameglance/frost/shader.py: equal allocations build an equal shader. */
 export function frostAllocation(frame:FrostFrame):string {
     const {dpr,outputWidth,outputHeight}=frame.context,pad=Math.ceil(3*16*dpr);
     return JSON.stringify([frame.context,...REGION_IDS.map(id=>{
         const r=frame.regions[id];
-        const [width,height]=id==='keyboard'?[KEYBOARD_TILE_CSS.width*dpr,KEYBOARD_TILE_CSS.height*dpr]:
+        const [width,height]=id==='keyboard'?[KEYBOARD_TILE_CSS.width*dpr,KEYBOARD_TILE_CSS.height*dpr]:id==='keyboard-left'||id==='keyboard-right'?[RADIAL_TILE_CSS.width*dpr,RADIAL_TILE_CSS.height*dpr]:
             [(id==='status'?Math.max(r.width,STATUS_TILE_WIDTH):r.width)*outputWidth,r.height*outputHeight];
         return [Math.ceil((width+2*pad)/8),Math.ceil((height+2*pad)/8)];
     })]);

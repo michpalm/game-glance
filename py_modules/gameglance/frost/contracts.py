@@ -2,9 +2,11 @@
 import copy
 import math
 
-REGIONS = ("bar", "panel", "notifications", "status", "keyboard")
+REGIONS = ("bar", "panel", "notifications", "status", "keyboard", "keyboard-left", "keyboard-right")
 # Areas that may be absent (the floating menu keyboard, usually closed): absent is an all-zero rectangle.
-OPTIONAL_REGIONS = frozenset({"keyboard"})
+OPTIONAL_REGIONS = frozenset({"keyboard", "keyboard-left", "keyboard-right"})
+
+REGION_UNIFORMS = {"bar": "Bar", "panel": "Panel", "notifications": "Notifications", "status": "Status", "keyboard": "Keyboard", "keyboard-left": "KeyboardLeft", "keyboard-right": "KeyboardRight"}
 
 
 def _fields(value, fields):

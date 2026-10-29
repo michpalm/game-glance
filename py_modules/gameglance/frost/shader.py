@@ -22,6 +22,7 @@ STATUS_TILE_WIDTH = .4
 # size times the display scale (dpr) only, not times the menu scale, and not from its rectangle, so opening, closing or
 # moving the keyboard never rebuilds the shader. Same value as KEYBOARD_TILE_CSS in src/menu/frost/controller.ts.
 KEYBOARD_TILE_CSS = {"width": 409, "height": 210}
+RADIAL_TILE_CSS = {"width": 280, "height": 280}
 
 
 def frost_geometry(frame: dict) -> dict:
@@ -33,6 +34,8 @@ def frost_geometry(frame: dict) -> dict:
         r = frame["regions"][name]
         if name == "keyboard":
             return KEYBOARD_TILE_CSS["width"] * c["dpr"], KEYBOARD_TILE_CSS["height"] * c["dpr"]
+        if name in ("keyboard-left", "keyboard-right"):
+            return RADIAL_TILE_CSS["width"] * c["dpr"], RADIAL_TILE_CSS["height"] * c["dpr"]
         width = max(r["width"], STATUS_TILE_WIDTH) if name == "status" else r["width"]
         return width * c["outputWidth"], r["height"] * c["outputHeight"]
     tiles = {name: tuple(math.ceil((size + 2 * pad) / DOWNSAMPLE) for size in span(name)) for name in REGIONS}
@@ -74,8 +77,8 @@ def build_shader(frame: dict) -> tuple[str, str]:
     # the game renders below the display resolution.
     for name in REGIONS:
         width, height = geometry["tiles"][name]
-        values[name.upper() + "_W"] = str(width)
-        values[name.upper() + "_H"] = str(height)
+        values[name.upper().replace("-", "_") + "_W"] = str(width)
+        values[name.upper().replace("-", "_") + "_H"] = str(height)
     for name, value in values.items():
         source = source.replace("@" + name + "@", value)
     if "@" in source:

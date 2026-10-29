@@ -11,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 
-from .contracts import REGIONS, identifier, validate_frame
+from .contracts import REGIONS, REGION_UNIFORMS, identifier, validate_frame
 from .native import NativeConnection, pack_uniform
 from .shader import build_shader, stage_shader
 
@@ -36,7 +36,7 @@ class FrostWorker:
 
     def _uniforms(self, frame=None):
         for region in REGIONS:
-            name = region.capitalize()
+            name = REGION_UNIFORMS[region]
             r = frame["regions"][region] if frame else None
             if not self._still_owned():
                 return False

@@ -15,6 +15,8 @@ def frame(width=1920, height=1080, fit="fit", keyboard=None):
     regions = {name: {"x": .35, "y": y, "width": w, "height": h, "radiusX": .01, "radiusY": .01}
                for name, y, w, h in [("bar", .12, .60, .08), ("panel", .23, .60, .65), ("notifications", .04, .05, .04), ("status", .01, .20, .03)]}
     regions["keyboard"] = dict(keyboard or CLOSED)
+    regions["keyboard-left"] = dict(CLOSED)
+    regions["keyboard-right"] = dict(CLOSED)
     return {"generation": 1, "context": {"viewportId": "v1", "background": "game", "outputWidth": width,
             "outputHeight": height, "dpr": 1, "fit": fit, "colorMode": "sdr"}, "regions": regions}
 

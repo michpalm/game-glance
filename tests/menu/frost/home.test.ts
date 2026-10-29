@@ -8,7 +8,7 @@ function fixture(){
     const placeholder=document.getElementById('viewport')! as unknown as HTMLElement;
     return {document,placeholder,home:createHomeFrost(document as unknown as Document,placeholder)};
 }
-const frame:FrostFrame={generation:1,context:{viewportId:'v1',background:'steam',outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},regions:{bar:{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.02},panel:{x:.3,y:.23,width:.6,height:.65,radiusX:.01,radiusY:.02},notifications:{x:.8,y:.04,width:.1,height:.05,radiusX:.01,radiusY:.02},status:{x:.75,y:.01,width:.2,height:.03,radiusX:.005,radiusY:.01},keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}}};
+const frame:FrostFrame={generation:1,context:{viewportId:'v1',background:'steam',outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},regions:{bar:{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.02},panel:{x:.3,y:.23,width:.6,height:.65,radiusX:.01,radiusY:.02},notifications:{x:.8,y:.04,width:.1,height:.05,radiusX:.01,radiusY:.02},status:{x:.75,y:.01,width:.2,height:.03,radiusX:.005,radiusY:.01},keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-left':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-right':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}}};
 describe('bounded Home frost',()=>{
     // The status bar has no surface here: on Home the page's own bar, on Home's frost, stays up under the menu.
     it('inserts exactly three non-interactive tint-free bounded surfaces behind the viewport, none for the status bar',()=>{

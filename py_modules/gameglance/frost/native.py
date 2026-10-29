@@ -12,7 +12,7 @@ import struct
 from pathlib import Path
 from dataclasses import dataclass
 
-from .contracts import REGIONS
+from .contracts import REGIONS, REGION_UNIFORMS
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,7 @@ def protocol_description():
 
 
 # One uniform pair per frost area (Bar, BarRadius, ...), named as the shader declares them.
-UNIFORM_AREAS = tuple(region.capitalize() for region in REGIONS)
+UNIFORM_AREAS = tuple(REGION_UNIFORMS[region] for region in REGIONS)
 UNIFORM_NAMES = frozenset(UNIFORM_AREAS + tuple(n + "Radius" for n in UNIFORM_AREAS))
 
 

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFrostController, frostAllocation, KEYBOARD_TILE_CSS, STATUS_TILE_WIDTH } from '../../../src/menu/frost/controller';
+import {REGION_IDS} from '../../../src/menu/frost/types';
 import type { Activated, FrostBridge, FrostFrame, Prepared } from '../../../src/menu/frost/types';
 function deferred<T>() {let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>resolve=r);return {promise,resolve};}
 export function frame(generation=1,background:'game'|'steam'='game'):FrostFrame {
     return {generation,context:{viewportId:'v1',background,outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},
         regions:{...Object.fromEntries(['bar','panel','notifications','status'].map(id=>[id,{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.01}])),
             // The menu keyboard is usually closed: an all-zero area.
-            keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}} as FrostFrame['regions']};
+            keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-left':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-right':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}} as FrostFrame['regions']};
 }
 const OPEN_KEYBOARD={x:.55,y:.55,width:.32,height:.3,radiusX:.01,radiusY:.02};
 function withKeyboard(keyboard:FrostFrame['regions']['keyboard'],generation=1):FrostFrame {const f=frame(generation);f.regions.keyboard=keyboard;return f;}
@@ -195,6 +196,6 @@ describe('frost shader allocation',()=>{
         expect(at({...OPEN_KEYBOARD,x:.1,y:.2})).toBe(closed);
         expect(KEYBOARD_TILE_CSS).toEqual({width:409,height:210});
         const pad=Math.ceil(3*16*2.32);
-        expect(JSON.parse(closed).at(-1)).toEqual([Math.ceil((409*2.32+2*pad)/8),Math.ceil((210*2.32+2*pad)/8)]);
+        expect(JSON.parse(closed)[REGION_IDS.indexOf('keyboard')+1]).toEqual([Math.ceil((409*2.32+2*pad)/8),Math.ceil((210*2.32+2*pad)/8)]);
     });
 });

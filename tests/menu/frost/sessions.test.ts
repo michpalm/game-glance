@@ -1,7 +1,7 @@
 import { describe,expect,it,vi } from 'vitest';
 import { createFrostSessions } from '../../../src/menu/frost/sessions';
 import type { FrostBridge,FrostFrame } from '../../../src/menu/frost/types';
-const frame:FrostFrame={generation:1,context:{viewportId:'v1',background:'game',outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},regions:{...Object.fromEntries(['bar','panel','notifications','status'].map(id=>[id,{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.01}])),keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}} as FrostFrame['regions']};
+const frame:FrostFrame={generation:1,context:{viewportId:'v1',background:'game',outputWidth:1920,outputHeight:1080,dpr:1,fit:'fit',colorMode:'sdr'},regions:{...Object.fromEntries(['bar','panel','notifications','status'].map(id=>[id,{x:.3,y:.1,width:.6,height:.1,radiusX:.01,radiusY:.01}])),keyboard:{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-left':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0},'keyboard-right':{x:0,y:0,width:0,height:0,radiusX:0,radiusY:0}} as FrostFrame['regions']};
 function fixture(){
     const tasks:(()=>void)[]=[],bridge:FrostBridge={prepare:vi.fn(async()=>({status:'ready',key:'key'})),activate:vi.fn(async()=>({status:'active',token:'token'})),update:vi.fn(async()=>true),renew:vi.fn(async()=>true),release:vi.fn(async()=>{}),cancel:vi.fn(async()=>{})};
     const sessions=createFrostSessions(bridge,fn=>{tasks.push(fn);});
