@@ -1,8 +1,9 @@
+import { radialStyles } from './radialStyles';
 import { TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
 
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
-export const menuStyles = `
+export const menuStyles = radialStyles + `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:var(--gg-text,#fff);overflow:hidden;transform:translateZ(0)}
 .gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);--gg-text-dim:${TOKENS.label};position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
 .gg-menu *{box-sizing:border-box}

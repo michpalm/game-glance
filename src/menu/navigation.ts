@@ -45,7 +45,7 @@ export function findMenuFocus(root: ParentNode, key?: string, preferBar = false)
 export function installOutsideMenuClick(root: HTMLElement, close: () => void, inputActive: () => boolean): () => void {
     const document = root.ownerDocument;
     const onClick = (event: MouseEvent) => {
-        if (event.button > 0 || !inputActive() || !event.target || root.contains(event.target as Node)) return;
+        if (event.button > 0 || !inputActive() || !event.target || root.contains(event.target as Node) || (event.target as Element).closest?.('.gg-radial-keyboard-host')) return;
         event.preventDefault(); event.stopImmediatePropagation();
         close();
     };

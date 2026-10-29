@@ -22,7 +22,7 @@ export function prepareMenuPresentation(owner: Document, source: Document, viewp
     gate.dataset.ggMenuPresentation = 'true';
     // Opacity rests at 0 behind the gate; lifting it fades the menu in over the
     // fast motion token, alongside the frost shader's own 150 ms fade.
-    gate.textContent = '.gg-menu-native-host,.gg-menu-status-host{visibility:hidden!important}.gg-menu,.gg-menu-status-host{opacity:0!important}';
+    gate.textContent = '.gg-menu-native-host,.gg-menu-status-host{visibility:hidden!important}.gg-menu,.gg-menu-status-host{opacity:0!important}.gg-radial-keyboard-host{visibility:hidden!important;opacity:0!important}';
     source.head.append(gate);
     let stopped = false, concealed = false, frame: number | undefined;
     let stable = '', samples = 0, hiding: Promise<void> | undefined;
