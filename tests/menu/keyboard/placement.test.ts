@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,underKeyboard,markUnderKeyboard,watchUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
+import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,stickVelocity,normaliseAxis,stickStep,STICK_Y_UP_IS_POSITIVE,underKeyboard,markUnderKeyboard,watchUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
 import {memoryKv} from '../../../src/data/kv';
 
 const view:Rect={x:0,y:0,width:829,height:467};
@@ -32,6 +32,49 @@ describe('dragPosition',()=>{
     });
     it('does not slide clear of the field while dragging',()=>{
         expect(dragPosition({x:378,y:300},{x:0,y:0},1,view,size)).toEqual({x:378,y:300});
+    });
+});
+
+describe('stickVelocity',()=>{
+    it('is zero inside the radial dead zone',()=>expect(stickVelocity(.1,.1)).toEqual({x:0,y:0}));
+    it('reaches 900 px/s at full deflection',()=>expect(stickVelocity(1,0)).toEqual({x:900,y:0}));
+    it('curves: half way past the dead zone is less than half speed',()=>{
+        const half=stickVelocity(.15+.85/2,0).x;
+        expect(half).toBeGreaterThan(0);
+        expect(half).toBeLessThan(450);
+        expect(half).toBeCloseTo(225);
+    });
+    it('keeps the direction of a diagonal push',()=>{
+        const v=stickVelocity(.6,-.6);
+        expect(v.x).toBeGreaterThan(0);
+        expect(v.y).toBeCloseTo(-v.x);
+    });
+    it('caps past full deflection',()=>expect(Math.hypot(...Object.values(stickVelocity(1,1)))).toBeCloseTo(900));
+});
+
+describe('normaliseAxis',()=>{
+    it('maps the raw 16-bit range to -1..1',()=>{
+        expect(normaliseAxis(32767)).toBe(1);
+        expect(normaliseAxis(-32768)).toBe(-1);
+    });
+    it('leaves a normalised value alone',()=>expect(normaliseAxis(.5)).toBe(.5));
+    it('clamps a value just past 1 and treats a larger one as raw',()=>{
+        expect(normaliseAxis(1.2)).toBe(1);
+        expect(normaliseAxis(-1.4)).toBe(-1);
+        expect(normaliseAxis(2)).toBeCloseTo(2/32767);
+    });
+    it('reads garbage as rest',()=>{
+        expect(normaliseAxis(NaN)).toBe(0);
+        expect(normaliseAxis(undefined as unknown as number)).toBe(0);
+    });
+});
+
+describe('stickStep',()=>{
+    it('turns a stick reading into a screen delta for the elapsed time, stick up moving the panel up',()=>{
+        expect(STICK_Y_UP_IS_POSITIVE).toBe(true);
+        expect(stickStep({x:32767,y:0},.5)).toEqual({x:450,y:0});
+        expect(stickStep({x:0,y:1},.1).y).toBeCloseTo(-90);
+        expect(stickStep({x:.05,y:0},1)).toEqual({x:0,y:0});
     });
 });
 

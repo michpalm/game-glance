@@ -61,4 +61,7 @@ ${KEY}[aria-pressed=true]{background:rgba(255,255,255,.36);box-shadow:var(--gg-s
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible){outline-offset:-2px}
 .gg-keyboard-grab{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.45)}
 .gg-keyboard-strip svg{width:12px;height:12px;${labelText()}}
+.gg-keyboard-strip-label{display:none;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:14px;${labelText()}}
+.gg-keyboard-badge{box-sizing:border-box;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:50%;font-size:10px;font-weight:700;line-height:1}
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible) .gg-keyboard-strip-label{display:inline-flex}
 `;

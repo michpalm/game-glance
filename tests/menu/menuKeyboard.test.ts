@@ -16,7 +16,7 @@ vi.mock('@decky/ui', () => ({
         }
     },
 }));
-const { KeyboardPanel, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, slidOff, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
+const { KeyboardPanel, findAxesFeed, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, slidOff, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
 
 function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
     if (Array.isArray(node)) return node.flatMap(tree);
@@ -29,7 +29,7 @@ const idle: TypingState = { text: '', shift: 'off', held: null };
 function panel(layout: KeyboardLayout = spanish, change: Record<string, unknown> = {}) {
     const onKey = vi.fn(), onMove = vi.fn();
     const nodes = tree(KeyboardPanel({ layout, page: 'letters', typing: idle, canSend: true, position: { x: 10, y: 20 }, dragging: false, onKey, onMove,
-        hold: { start: vi.fn(), stop: vi.fn(), over: vi.fn() }, strip: {}, ...change }));
+        hold: { start: vi.fn(), stop: vi.fn(), over: vi.fn() }, strip: {}, pad: { down: vi.fn(), up: vi.fn() }, ...change }));
     const keys = nodes.filter(n => typeof n.props.id === 'string' && /^keyboard:\d+:\d+$/.test(n.props.id));
     const rows = nodes.filter(n => n.props.className === 'gg-keyboard-row').map(row => tree(row.props.children).filter(n => keys.includes(n)));
     return { nodes, keys, rows, onKey, onMove };
@@ -108,6 +108,29 @@ describe('the keyboard panel', () => {
         rows[1][3].props.onAction(); expect(onKey).toHaveBeenCalledWith(1, 3);
         nodes.find(n => n.props.id === 'keyboard:move')!.props.onAction(); expect(onMove).toHaveBeenCalledOnce();
     });
+    it('labels the move button "Hold to move" with an A badge after the icon, the grab bar kept', () => {
+        const { nodes } = panel();
+        const move = nodes.find(n => n.props.id === 'keyboard:move')!;
+        const inside = tree(move.props.children);
+        const label = inside.find(n => n.props.className === 'gg-keyboard-strip-label')!;
+        expect(label).toBeDefined();
+        expect(inside.some(n => n.props.className === 'gg-keyboard-grab')).toBe(true);
+        const kids = [move.props.children].flat().filter(Boolean) as ReactElement<Record<string, any>>[];
+        expect(kids.indexOf(label)).toBe(kids.length - 1);
+        const parts = [label.props.children].flat();
+        expect((parts[0] as ReactElement<Record<string, any>>).props).toMatchObject({ className: 'gg-keyboard-badge', children: 'A' });
+        expect(parts[1]).toBe('Hold to move');
+        expect(move.props.ariaLabel).toBe('Move keyboard');
+    });
+    it('hands A down and up on the strip to the controller press, and no other button', () => {
+        const pad = { down: vi.fn(), up: vi.fn() };
+        const { nodes } = panel(spanish, { pad });
+        const strip = nodes.find(n => n.props['data-gg-keyboard-strip'] !== undefined)!;
+        strip.props.onButtonDown({ detail: { button: 2 } }); strip.props.onButtonUp({ detail: { button: 2 } });
+        expect(pad.down).not.toHaveBeenCalled(); expect(pad.up).not.toHaveBeenCalled();
+        strip.props.onButtonDown({ detail: { button: 1 } }); strip.props.onButtonUp({ detail: { button: 1 } });
+        expect(pad.down).toHaveBeenCalledOnce(); expect(pad.up).toHaveBeenCalledOnce();
+    });
     it('draws the symbols page', () => {
         const { rows } = panel(BUILTIN_QWERTY, { page: 'symbols' });
         expect(rows[0].map(k => [k.props.children].flat()[0])).toEqual([...'1234567890']);
@@ -133,6 +156,23 @@ describe('holding a key', () => {
         grid.props.onPointerMove({ clientX: 30, clientY: 40, target: q, currentTarget: { ownerDocument: { elementFromPoint } } });
         expect(elementFromPoint).toHaveBeenCalledWith(30, 40);
         expect(hold.over).toHaveBeenCalledWith(w);
+    });
+});
+
+describe('finding Steam’s controller axes feed', () => {
+    const fake = (text: string) => Object.assign(() => ({}), { toString: () => text });
+    it('takes the export whose source names useControllerAxesFeed', () => {
+        const hook = fake('function(e){return useControllerAxesFeed(e)}');
+        const exports: unknown[] = [{ a: 1 }, fake('function(){return 1}'), 'useControllerAxesFeed', hook];
+        expect(findAxesFeed(filter => exports.find(e => filter(e)))).toBe(hook);
+    });
+    it('gives null when nothing matches or the lookup throws', () => {
+        expect(findAxesFeed(() => undefined)).toBeNull();
+        expect(findAxesFeed(() => { throw new Error('no cache'); })).toBeNull();
+    });
+    it('survives exports whose source cannot be read', () => {
+        const bad = Object.assign(() => 0, { toString: () => { throw new Error('proxy'); } });
+        expect(findAxesFeed(filter => [bad].find(e => filter(e)))).toBeNull();
     });
 });
 

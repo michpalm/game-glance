@@ -10,6 +10,7 @@ export const SPOTS:readonly Spot[]=['left','right','top'];
 const GAP=16;
 const KEY='menu:keyboard';
 
+const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 const clampTo=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const inside=(p:Point,v:Rect,s:Size)=>p.x>=v.x&&p.y>=v.y&&p.x+s.width<=v.x+v.width&&p.y+s.height<=v.y+v.height;
 const overlaps=(p:Point,f:Rect,s:Size)=>p.x<f.x+f.width&&p.x+s.width>f.x&&p.y<f.y+f.height&&p.y+s.height>f.y;
@@ -23,6 +24,31 @@ const clampInto=(pos:Point,view:Rect,size:Size):Point=>({
  * the field waits for the release (`settle`). */
 export const dragPosition=(from:Point,delta:Point,scale:number,view:Rect,size:Size):Point=>
     clampInto({x:from.x+delta.x/scale,y:from.y+delta.y/scale},view,size);
+
+const DEAD_ZONE=.15,STICK_SPEED=900;
+/** Steam's stick axes are not verified on the device: stick up must move the panel up. */
+export const STICK_Y_UP_IS_POSITIVE=true;
+
+/** One stick axis in -1..1, whether Steam reports it normalised or as a raw 16-bit value. */
+export function normaliseAxis(v:number):number {
+    if(!finite(v))return 0;
+    return clampTo(Math.abs(v)>1.5?v/32767:v,-1,1);
+}
+
+/** Panel speed in CSS px per second at menu scale 1 for a normalised stick: a radial dead zone, then a squared curve
+ * up to full speed so small pushes are precise. */
+export function stickVelocity(x:number,y:number):Point {
+    const r=Math.hypot(x,y);
+    if(r<=DEAD_ZONE)return {x:0,y:0};
+    const t=(Math.min(r,1)-DEAD_ZONE)/(1-DEAD_ZONE),speed=STICK_SPEED*t*t;
+    return {x:x/r*speed,y:y/r*speed};
+}
+
+/** The screen delta a raw stick reading moves the panel over `seconds`. */
+export function stickStep(raw:Point,seconds:number):Point {
+    const v=stickVelocity(normaliseAxis(raw.x),normaliseAxis(raw.y));
+    return {x:v.x*seconds,y:(STICK_Y_UP_IS_POSITIVE?0-v.y:v.y)*seconds};
+}
 
 // Clamps into the view, then slides clear of the field by the shortest move that stays in view.
 export function settle(pos:Point,view:Rect,field:Rect,size:Size):Point {
@@ -46,8 +72,6 @@ export function spotPosition(spot:Spot,view:Rect,menu:Rect,field:Rect,size:Size)
         :{x:menu.x+(menu.width-size.width)/2,y:menu.y+GAP};
     return settle(p,view,field,size);
 }
-
-const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 
 export async function loadPosition(kv:KvBackend):Promise<KeyboardPosition|null> {
     let v:unknown;

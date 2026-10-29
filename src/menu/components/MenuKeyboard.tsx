@@ -1,11 +1,12 @@
-import { Focusable, findModule, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type Ref } from 'react';
+import { Focusable, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
+import { Component, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { LuMove } from 'react-icons/lu';
 import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
-import { dragPosition, loadPosition, savePosition, watchUnderKeyboard, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
+import { dragPosition, loadPosition, normaliseAxis, savePosition, stickStep, stickVelocity, watchUnderKeyboard, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
+import { createStripPress, installDragGamepad, type StripPress } from '../keyboard/stripPress';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
@@ -26,6 +27,53 @@ export function readSteamLayouts(): Layouts {
         findModule((m: unknown) => { if (m && (typeof m === 'object' || typeof m === 'function')) modules.push(m as Record<string, unknown>); return false; });
     } catch { /* the cache could not be walked: QWERTY */ }
     return readLayouts(findSteamLayoutSource(modules));
+}
+
+type Axes = { LeftJoystick?: { x?: number; y?: number } };
+type AxesFeed = (controller: number) => Axes | undefined;
+/** Steam's controller axes hook (module 35137 today; its chat radial menu uses it), found by its source text only.
+ * Calling it starts Steam's controller state flow; unmounting the caller ends it. */
+export function findAxesFeed(lookup: (filter: (value: unknown) => boolean) => unknown = findModuleExport): AxesFeed | null {
+    try {
+        const hook = lookup(value => {
+            try { return typeof value === 'function' && value.toString().includes('useControllerAxesFeed'); } catch { return false; }
+        });
+        return typeof hook === 'function' ? hook as AxesFeed : null;
+    } catch { return null; }
+}
+let axesFeed: AxesFeed | null | undefined;
+
+/** Mounted only while the panel is lifted by A: reads the left stick each frame and moves the panel by its speed. */
+function StickFeed({ feed, view, move, busy }: { feed: AxesFeed; view: Window; move(delta: Point): void; busy(on: boolean): void }) {
+    // Read each frame, in case Steam updates the returned object in place rather than re-rendering.
+    const axes = useRef<Axes | undefined>(undefined);
+    axes.current = feed(0);
+    const live = useRef({ move, busy });
+    live.current = { move, busy };
+    useEffect(() => {
+        // The menu's own window: frames of the hidden plugin context may not run.
+        let frame = 0, last = view.performance.now();
+        const tick = (now: number) => {
+            const left = axes.current?.LeftJoystick, raw = { x: Number(left?.x ?? 0), y: Number(left?.y ?? 0) };
+            const seconds = Math.min(.1, Math.max(0, (now - last) / 1000));
+            last = now;
+            const pushed = stickVelocity(normaliseAxis(raw.x), normaliseAxis(raw.y));
+            live.current.busy(pushed.x !== 0 || pushed.y !== 0);
+            const step = stickStep(raw, seconds);
+            if (step.x || step.y) live.current.move(step);
+            frame = view.requestAnimationFrame(tick);
+        };
+        frame = view.requestAnimationFrame(tick);
+        return () => { view.cancelAnimationFrame(frame); live.current.busy(false); };
+    }, []);
+    return null;
+}
+/** A feed that throws leaves the stick to its direction events (d-pad steps) for the rest of the session. */
+class FeedGuard extends Component<{ children: ReactNode; failed(): void }, { failed: boolean }> {
+    state = { failed: false };
+    static getDerivedStateFromError() { return { failed: true }; }
+    componentDidCatch() { axesFeed = null; this.props.failed(); }
+    render() { return this.state.failed ? null : this.props.children; }
 }
 
 /** The next layout the keyboard can type (input-method layouts keep Steam's keyboard), or the same one. */
@@ -94,6 +142,7 @@ export function slidOff(id: string, target: EventTarget | null): boolean {
     return !at || keyId(at[0], at[1]) !== id;
 }
 
+type Pad = { down(): void; up(): void };
 type StripHandlers = { onPointerDown?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerMove?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerUp?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerCancel?(e: ReactPointerEvent<HTMLDivElement>): void };
 /** Rows differ in key count, so focus entering one keeps its horizontal position (Steam's MAINTAIN_X). */
 const MAINTAIN_X = 2 as NavEntryPositionPreferences;
@@ -104,10 +153,12 @@ export interface KeyboardPanelProps {
     onKey(row: number, col: number): void; onMove(): void;
     hold: { start(row: number, col: number): void; stop(): void; over(target: EventTarget | null): void };
     strip: StripHandlers;
+    /** A down and up on the strip: Steam's A acts on press, so the controller press decides on A up. */
+    pad: Pad;
 }
 
 /** Stateless drawing of the panel: keys as menu buttons in a Focusable grid, the move strip below. */
-export function KeyboardPanel({ layout, page, typing, canSend, position, dragging, panelRef, onKey, onMove, hold, strip }: KeyboardPanelProps) {
+export function KeyboardPanel({ layout, page, typing, canSend, position, dragging, panelRef, onKey, onMove, hold, strip, pad }: KeyboardPanelProps) {
     const rows = page === 'letters' ? layout.letters : layout.symbols;
     const startHold = (target: EventTarget | null) => { const at = keyAt(target); if (at) hold.start(at[0], at[1]); };
     return <div ref={panelRef} className={`gg-keyboard${dragging ? ' gg-keyboard-dragging' : ''}`} data-gg-frost-region="keyboard" role="group" aria-label="Keyboard"
@@ -126,9 +177,11 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
                 </MenuAction>)}
             </Focusable>)}
         </Focusable>
-        <div className="gg-keyboard-strip" data-gg-keyboard-strip="" {...strip}>
-            <MenuAction id="keyboard:move" className="gg-keyboard-move" ariaLabel="Move keyboard" onAction={onMove}><span className="gg-keyboard-grab" aria-hidden="true" /><LuMove aria-hidden="true" /></MenuAction>
-        </div>
+        <Focusable className="gg-keyboard-strip" data-gg-keyboard-strip="" {...strip}
+            onButtonDown={(e: GamepadEvent) => { if (e.detail.button === 1) pad.down(); }} onButtonUp={(e: GamepadEvent) => { if (e.detail.button === 1) pad.up(); }}>
+            <MenuAction id="keyboard:move" className="gg-keyboard-move" ariaLabel="Move keyboard" onAction={onMove}><span className="gg-keyboard-grab" aria-hidden="true" /><LuMove aria-hidden="true" />
+                <span className="gg-keyboard-strip-label" aria-hidden="true"><span className="gg-keyboard-badge">A</span>Hold to move</span></MenuAction>
+        </Focusable>
         </Focusable>
     </div>;
 }
@@ -141,6 +194,9 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     const [index, setIndex] = useState(layouts.current);
     const [position, setPosition] = useState<Point | null>(null);
     const [dragging, setDragging] = useState(false);
+    // Lifted by holding A: the stick feed and the drag's gamepad listeners live exactly as long as this.
+    const [padDrag, setPadDrag] = useState(false);
+    const [feedFailed, setFeedFailed] = useState(false);
     const [host, setHost] = useState<HTMLElement | null>(null);
     const panel = useRef<HTMLDivElement>(null);
     const live = useRef({ typing, draft, canSend, send, setDraft, layouts, index, position });
@@ -152,6 +208,11 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     const skipAction = useRef<{ id: string; stopped: number | null } | null>(null);
     const drag = useRef<{ pointer: number; x: number; y: number; from: Point; scale: number; view: Rect; moved: boolean } | null>(null);
     const dragEnded = useRef(0);
+    const padFrame = useRef<{ scale: number; view: Rect } | null>(null);
+    const stickBusy = useRef(false);
+    const padActions = useRef({ cycle: () => {}, lift: () => {}, drop: () => {} });
+    const stripPress = useRef<StripPress | null>(null);
+    stripPress.current ??= createStripPress({ cycle: () => padActions.current.cycle(), lift: () => padActions.current.lift(), drop: () => padActions.current.drop() });
     const layout = layouts.layouts[index] ?? layouts.layouts[0];
 
     const apply = (next: TypingState) => {
@@ -188,6 +249,8 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             alive = false;
             if (holding.current) clearTimeout(holding.current.timer);
             holding.current = null; drag.current = null;
+            // A drag cut short by closing ends without a drop: nothing is saved.
+            stripPress.current?.dispose(); padFrame.current = null; stickBusy.current = false; setPadDrag(false);
             // Closed with B or a tap while the chat still shows: the field takes focus back from the vanished keys.
             const element = field(), doc = element?.ownerDocument;
             doc?.defaultView?.requestAnimationFrame(() => {
@@ -276,6 +339,39 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
         place(spotPosition(next, g.view, g.menu, g.field, SIZE));
         void savePosition(backendKv, { spot: next });
     };
+    /** Where a drag lets go, by finger or by A: clamped, clear of the field, remembered. */
+    const finishDrag = () => {
+        dragEnded.current = Date.now();
+        const g = geometry(), at = live.current.position;
+        if (!g || !at) return;
+        const p = settle(at, g.view, g.field, SIZE);
+        spot.current = null; place(p);
+        void savePosition(backendKv, p);
+    };
+    const padMove = (delta: Point) => {
+        const f = padFrame.current, at = live.current.position;
+        if (f && at) place(dragPosition(at, delta, f.scale, f.view, SIZE));
+    };
+    padActions.current = {
+        cycle: onMove,
+        lift() {
+            const g = geometry();
+            padFrame.current = g && { scale: g.scale, view: g.view };
+            if (axesFeed === undefined) axesFeed = findAxesFeed();
+            setDragging(true); setPadDrag(true);
+        },
+        drop() {
+            const lifted = !!padFrame.current;
+            padFrame.current = null; stickBusy.current = false;
+            setPadDrag(false); setDragging(false);
+            if (lifted) finishDrag(); else dragEnded.current = Date.now();
+        },
+    };
+    useEffect(() => {
+        const doc = host?.ownerDocument;
+        if (!padDrag || !doc) return;
+        return installDragGamepad(doc, { nudge: padMove, cancel: () => stripPress.current!.cancel(), release: () => stripPress.current!.buttonUp(), stickBusy: () => stickBusy.current });
+    }, [padDrag, host]);
     const strip: StripHandlers = {
         onPointerDown(e) {
             const g = geometry(), from = live.current.position;
@@ -296,18 +392,16 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             const d = drag.current;
             if (!d || d.pointer !== e.pointerId) return;
             drag.current = null; setDragging(false);
-            if (!d.moved) return;
-            dragEnded.current = Date.now();
-            const g = geometry(), at = live.current.position;
-            if (!g || !at) return;
-            const p = settle(at, g.view, g.field, SIZE);
-            spot.current = null; place(p);
-            void savePosition(backendKv, p);
+            if (d.moved) finishDrag();
         },
         onPointerCancel(e) { strip.onPointerUp?.(e); },
     };
 
     if (!open || !host || !layout) return null;
-    return createPortal(<KeyboardPanel layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} panelRef={panel}
-        onKey={onKey} onMove={onMove} hold={hold} strip={strip} />, host);
+    const feed = padDrag && !feedFailed ? axesFeed : null, view = host.ownerDocument.defaultView;
+    return createPortal(<>
+        <KeyboardPanel layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} panelRef={panel}
+            onKey={onKey} onMove={stripPress.current.action} hold={hold} strip={strip} pad={{ down: stripPress.current.buttonDown, up: stripPress.current.buttonUp }} />
+        {feed && view && <FeedGuard failed={() => setFeedFailed(true)}><StickFeed feed={feed} view={view} move={padMove} busy={on => { stickBusy.current = on; }} /></FeedGuard>}
+    </>, host);
 }

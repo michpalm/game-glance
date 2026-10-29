@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { menuStyles } from '../../src/menu/styles';
 import { socialStyles } from '../../src/menu/socialStyles';
-import { focusRing, TOKENS, tokenCss } from '../../src/styles/tokens';
+import { focusRing, labelText, TOKENS, tokenCss } from '../../src/styles/tokens';
 const rule=(selector:string)=>menuStyles.split('\n').find(line=>line.startsWith(selector+'{'))??'';
 describe('menu glass and reveal motion',()=>{
     it('draws the bar and panel in the visual language glass over the frosted game',()=>{
@@ -147,6 +147,15 @@ describe('the menu keyboard', () => {
     });
     it('rings a focused key with the menu’s white ring', () => {
         expect(socialStyles).toContain(`:where(html:not([data-gg-mouse])) ${key}:is(.gpfocus,:focus-visible){${focusRing('menu')}`);
+    });
+    it('shows the strip’s "Hold to move" label only while the move button has controller focus', () => {
+        const label = css('.gg-keyboard-strip-label');
+        expect(label).toContain('display:none');
+        for (const part of ['font-size:11px', labelText()]) expect(label).toContain(part);
+        const focused = css(':where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible) .gg-keyboard-strip-label');
+        expect(focused).toMatch(/display:(inline-)?flex/);
+        const badge = css('.gg-keyboard-badge');
+        for (const part of ['width:14px', 'height:14px', 'border:1px solid', 'border-radius:50%', 'font-size:10px', 'font-weight:700']) expect(badge).toContain(part);
     });
     it('gives the move strip 24 px at the bottom', () => {
         expect(css('.gg-keyboard-strip')).toContain('height:24px');
