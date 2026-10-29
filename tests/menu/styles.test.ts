@@ -121,9 +121,12 @@ describe('the menu keyboard', () => {
     const key = '.gg-menu-native-host .gg-menu .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
     it('floats a 409 × 210 glass panel with the menu edge and corners', () => {
         const panel = css('.gg-menu .gg-keyboard');
-        for (const part of ['position:absolute', 'width:409px', 'height:210px', `background:${TOKENS.glass}`, 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
+        for (const part of ['position:absolute', 'width:409px', 'height:210px', `background:${TOKENS.solid}`, 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
         // Rows are 385 px wide inside the 1 px edge.
         expect(panel).toMatch(/padding:\d+px 11px/);
+    });
+    it('keeps keyboard keys free of the menu button transitions so focus moves instantly', () => {
+        expect(socialStyles).toMatch(new RegExp(key.replace(/[.]/g, '\\.') + '\\{[^}]*transition:none'));
     });
     it('blurs the Social columns under the keyboard, fading in and out', () => {
         expect(socialStyles).toContain('.gg-social-friend-list.gg-keyboard-under,.gg-social-timeline.gg-keyboard-under{filter:blur(16px)}');

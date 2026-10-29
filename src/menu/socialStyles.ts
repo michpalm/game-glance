@@ -40,12 +40,12 @@ export const socialStyles = `
 .gg-menu-native-host .gg-menu .gg-social button.gg-social-field.DialogButton{flex:1;width:100%;min-height:36px;padding:4px 0;justify-content:flex-start;border:0;background:transparent;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-social button.gg-social-field.DialogButton:is(.gpfocus,:focus-visible){outline:none;background:transparent}
 .gg-social-placeholder{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
-.gg-menu .gg-keyboard{position:absolute;z-index:2;box-sizing:border-box;width:409px;height:210px;padding:8px 11px 0;display:flex;flex-direction:column;background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel);transition:box-shadow var(--gg-fast),border-color var(--gg-fast)}
+.gg-menu .gg-keyboard{position:absolute;z-index:2;box-sizing:border-box;width:409px;height:210px;padding:8px 11px 0;display:flex;flex-direction:column;background:${TOKENS.solid};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel);transition:box-shadow var(--gg-fast),border-color var(--gg-fast)}
 .gg-menu .gg-keyboard.gg-keyboard-dragging{box-shadow:0 18px 40px -12px rgba(0,0,0,.75);border-color:var(--gg-edge-active)}
 .gg-social-friend-list.gg-keyboard-under,.gg-social-timeline.gg-keyboard-under{filter:blur(16px)}
 .gg-keyboard-keys{display:flex;flex-direction:column;gap:5px;flex:none}
 .gg-keyboard-row{display:flex;gap:5px;width:100%}
-${KEY}{position:relative;box-sizing:border-box;flex:0 1 34px;width:auto;min-width:0;height:40px;min-height:0;padding:0;border:0;border-radius:10px;background:rgba(255,255,255,.10);color:var(--gg-text);font-size:17px;line-height:1;text-shadow:var(--gg-text-shadow);white-space:nowrap}
+${KEY}{position:relative;box-sizing:border-box;flex:0 1 34px;width:auto;min-width:0;height:40px;min-height:0;padding:0;border:0;border-radius:10px;background:rgba(255,255,255,.10);color:var(--gg-text);font-size:17px;line-height:1;text-shadow:var(--gg-text-shadow);white-space:nowrap;transition:none}
 ${KEY}.gg-keyboard-mod{background:rgba(255,255,255,.20)}
 ${KEY}.gg-keyboard-wide{flex-basis:53px}
 ${KEY}.gg-keyboard-side{flex-basis:51px}

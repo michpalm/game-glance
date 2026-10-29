@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, leaveSocialConversation } from '../navigation';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, leaveSocialConversation, rememberFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -129,7 +129,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     }
     return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
-        if (key) dispatch({ type: 'focus', section: state.section, key });
+        if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>
         <style>{menuStyles}</style>
         <GameStatusBar menuOverlay />

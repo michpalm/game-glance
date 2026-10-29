@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey } from '../../src/menu/navigation';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
@@ -136,5 +136,14 @@ describe('menu keyboard session boundaries', () => {
         expect(keyboardHome(state, true, null)).toBe(null);
         expect(keyboardHome(state, true, 'a')).toBe('a');
         expect(keyboardHome(state, true, 'b')).not.toBe(keyboardHome(state, true, 'a'));
+    });
+});
+
+describe('focus memory', () => {
+    it('skips keyboard keys and the move button', () => {
+        expect(rememberFocusKey('keyboard:0:3')).toBe(false);
+        expect(rememberFocusKey('keyboard:move')).toBe(false);
+        expect(rememberFocusKey('social:compose')).toBe(true);
+        expect(rememberFocusKey(undefined)).toBe(false);
     });
 });

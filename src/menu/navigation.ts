@@ -81,3 +81,7 @@ export function installKeyboardOutsideTap(view: Window, inside: () => HTMLElemen
 export function keyboardHome(state: MenuState, active: boolean, enteredId: string | null): string | null {
     return active && enteredId && keyboardBelongs(state) ? enteredId : null;
 }
+
+export function rememberFocusKey(key: string | undefined): key is string {
+    return !!key && !key.startsWith('keyboard:');
+}
