@@ -232,3 +232,22 @@ describe('stable read keys', () => {
         expect(account.unread).toBe(true); expect(local).toMatchObject({ id: '5', unread: true });
     });
 });
+
+describe('screenshot notifications', () => {
+    // eType 14 as read on the Ally on 2026-10-29: a protobuf message with screenshot_handle(), description() (a loc token), local_url().
+    const shot = { notifications: [{ notificationID: 10015, eType: 14, rtCreated: 1793306859, bNewIndicator: true, data: { screenshot_handle: () => '7_1', description: () => '#MediaPage_TakeScreenshot', local_url: () => undefined } }] };
+    it('reads the screenshot handle and Steam’s own title', () => {
+        const [row] = readTray([shot], () => '', token => token === '#MediaPage_TakeScreenshot' ? 'Screenshot Taken' : undefined);
+        expect(row).toMatchObject({ id: '10015', kind: 'screenshot', mediaId: '7_1', title: 'Screenshot Taken', unread: true });
+        expect(readTray([shot], () => '', () => undefined)[0].title).toBe('Screenshot taken');
+    });
+    it('labels it a screenshot and opens it in the media viewer', async () => {
+        const { rowAction } = await import('../../src/menu/notificationsList');
+        const [row] = readTray([shot], () => '', () => undefined);
+        expect(rowText(row, null).label.startsWith('Screenshot')).toBe(true);
+        expect(rowText(row, null).title).toBe('Screenshot taken');
+        expect(rowAction(row, () => null)).toEqual({ label: 'View', run: { kind: 'native', request: { kind: 'media-item', item: 'screenshot', id: '7_1' } } });
+        const bare = readTray([{ notifications: [{ ...shot.notifications[0], data: { screenshot_handle: () => '' } }] }], () => '', () => undefined)[0];
+        expect(rowAction(bare, () => null).label).toBe('Open in Steam');
+    });
+});

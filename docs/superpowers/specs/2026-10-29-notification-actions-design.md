@@ -27,6 +27,7 @@ Opening a row marks it read (account: the store's `MarkItemRead(id)`; local: rem
 | Download complete (eType 1) | The game's page in Steam, as Steam's own list does (`Navigation.App(appid)`) | View game |
 | Plugin (eType 31) with `data.onClick` | Call the plugin's own `onClick` (as Steam does); close the menu first | Open |
 | Plugin without `onClick` | Only mark read | (none) |
+| Screenshot taken (eType 14; `screenshot_handle()`, `description()` loc token) | The screenshot in Steam's media viewer (`/media/item/screenshot/<handle>`, Steam's `Media.Screenshot`); camera icon. Added 2026-10-29 after one showed as a generic row on the Ally. | View |
 | Wishlist sale | Store page, or the wishlist when several games are on sale (unchanged) | View in store |
 | Friend notifications (online, in game, invite, chat message) | Our own Social chat with that friend (switch to Social, enter that friend's chat). A game invite with a `response_steamurl` opens that URL in Steam, as Steam does. | Open chat (invite: Join game) |
 | Account notification whose type is in Steam's link table (module 64884's type table, read via its exported lookup found by source text) | Open the table's `link(body)` URL in Steam's browser | Open |

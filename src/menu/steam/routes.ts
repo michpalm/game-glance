@@ -60,6 +60,11 @@ export function createRoutes(bindings:RouteBindings) {
             if(!JOIN_URL.test(request.url))throw Error('This game cannot be joined from here');
             bindings.joinGame(request.url);return;
         }
+        if(request.kind==='media-item'){
+            // Steam's Media.Screenshot opens Media.Item("screenshot", handle).
+            if(!/^[\w.-]{1,64}$/.test(request.id)||request.id.includes('..'))throw Error('This screenshot is unavailable');
+            bindings.navigate(`/media/item/${request.item}/${request.id}`);bindings.finishNavigation();return;
+        }
         if(request.kind==='app'){
             if(!Number.isInteger(request.appId)||request.appId<=0)throw Error('This game is unavailable');
             bindings.navigate(`/library/app/${request.appId}`);bindings.finishNavigation();return;

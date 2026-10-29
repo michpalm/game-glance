@@ -1,10 +1,11 @@
 import {isValidElement,type ReactNode} from 'react';
 import type { NativeRequest } from './steam/runtime';
+import { steamToken } from '../i18n/steamText';
 
 /** Steam's tray rows with plain metadata and optional supplied plugin presentation. `notificationId` marks an account
  * notification (read state kept by Steam); rows without one are local and their read state is ours. */
-export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
-    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown; onClickTarget?: object;
+export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'screenshot' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
+    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; mediaId?: string; onClick?: () => unknown; onClickTarget?: object;
     /** Stable key for our read memory; absent when Steam gave the row no id. */
     readKey?: string }
 export interface SaleInfo { name: string; price?: string }
@@ -21,7 +22,7 @@ function notificationContent(value:unknown,depth=0):ReactNode|undefined {
     if(Array.isArray(value)&&value.length>0&&value.length<=256&&depth<8&&value.every(item=>item==null||typeof item==='boolean'||notificationContent(item,depth+1)!==undefined))return value as ReactNode[];
     return undefined;
 }
-function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'|'steamid'|'response_steamurl'):unknown {
+function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'|'steamid'|'response_steamurl'|'screenshot_handle'|'description'):unknown {
     try {const value=data?.[key];return typeof value==='function'?value.call(data):value;}catch{return undefined;}
 }
 const appIdOf=(value:unknown):number|null=>{const id=Number(value);return Number.isInteger(id)&&id>0&&id<=4294967295?id:null;};
@@ -34,7 +35,7 @@ function safeName(appId:number|null,read:(id:number)=>string):string {
 }
 
 /** Steam rolls notifications up per kind; each group's first entry is what its own tab shows. */
-export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromSteam): TrayRow[] {
+export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromSteam, token:(token:string)=>string|undefined=steamToken): TrayRow[] {
     if (!Array.isArray(tray)) return [];
     const rows: TrayRow[] = [];
     for (const group of tray) {
@@ -75,6 +76,11 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
             // Keep supplied React translation elements intact; no component is invoked while reading the tray.
             const onClick=typeof data?.onClick==='function'?{onClick:data.onClick as ()=>unknown,onClickTarget:data as object}:{};
             rows.push({...base,id:`plugin:${id}`,kind:'plugin',title:notificationContent(data?.title)||'Plugin notification',body:notificationContent(data?.body),...onClick});
+        }else if(type===14){
+            // Screenshot taken: screenshot_handle() is the media viewer's id, description() a loc token Steam translates.
+            const handle=String(nativeField(data,'screenshot_handle')??'').trim(), description=nativeField(data,'description');
+            const title=typeof description==='string'&&description?(description.startsWith('#')?safe(()=>token(description)):description):undefined;
+            rows.push({...base,kind:'screenshot',...(handle?{mediaId:handle}:{}),title:title||'Screenshot taken'});
         }else if(notificationId!==undefined){
             const accountType=Number(item?.notification_type??data?.type);
             rows.push({...base,kind:'account',notificationId,accountType:Number.isFinite(accountType)?accountType:-1,accountBody:body??{}});
@@ -103,6 +109,7 @@ export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = n
     if(row.kind==='download'||row.kind==='plugin'){
         return {label:labelled(row.kind==='download'?'Download complete':'Plugin'),title:row.title||(row.kind==='download'?'Game download complete':'Plugin notification'),body:row.body};
     }
+    if (row.kind === 'screenshot') return { label: labelled('Screenshot'), title: row.title || 'Screenshot taken' };
     if (row.kind === 'friend') {
         let name: string | undefined;
         try { name = row.steamId ? friendName?.(row.steamId)?.trim() : undefined; } catch { name = undefined; }
@@ -127,6 +134,7 @@ export function rowAction(row: TrayRow, link: AccountLink): { label?: string; ru
         case 'wishlist': return !row.appId ? steam : row.count > 1 ? { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } }
             : { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'app', appId: row.appId } } };
         case 'friend': return !row.steamId ? steam : row.inviteUrl ? { label: 'Join game', run: { kind: 'native', request: { kind: 'url', url: row.inviteUrl } } } : { label: 'Open chat', run: { kind: 'chat', steamId: row.steamId } };
+        case 'screenshot': return row.mediaId ? { label: 'View', run: { kind: 'native', request: { kind: 'media-item', item: 'screenshot', id: row.mediaId } } } : steam;
         case 'account': {
             let url: string | null = null;
             try { url = row.accountType !== undefined ? link(row.accountType, row.accountBody ?? {}) : null; } catch { url = null; }

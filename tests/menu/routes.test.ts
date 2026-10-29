@@ -102,6 +102,11 @@ describe('notification actions', () => {
         expect(h.b.navigate).toHaveBeenCalledWith('/library/app/42'); expect(h.order).toEqual(['deactivate', 'close']);
         await expect(h.routes.open({ kind: 'app', appId: 0 })).rejects.toThrow();
     });
+    it('opens a screenshot in Steam’s media viewer, the route its Media.Screenshot uses', async () => {
+        const h = harness(); await h.routes.open({ kind: 'media-item', item: 'screenshot', id: '7_1' });
+        expect(h.b.navigate).toHaveBeenCalledWith('/media/item/screenshot/7_1'); expect(h.order).toEqual(['deactivate', 'close']);
+        await expect(h.routes.open({ kind: 'media-item', item: 'screenshot', id: '../x' })).rejects.toThrow();
+    });
     it.each(['https://store.steampowered.com/account/', 'steam://joinlobby/1/2/76561198000000001'])('opens %s in Steam', async url => {
         const h = harness(); await h.routes.open({ kind: 'url', url }); expect(h.b.openUrl).toHaveBeenCalledWith(url);
     });

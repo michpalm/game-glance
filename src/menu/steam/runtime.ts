@@ -18,6 +18,7 @@ export type NativeRequest =
     | { kind: 'store'; target: 'wishlist' }
     | { kind: 'join'; url: string }
     | { kind: 'app'; appId: number }
+    | { kind: 'media-item'; item: 'screenshot'; id: string }
     | { kind: 'url'; url: string };
 export interface HostAttachment {
     setFrostSession?(session:{generation:number;enabled:boolean}|null):void;

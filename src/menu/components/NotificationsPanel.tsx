@@ -1,6 +1,6 @@
 import { Focusable } from '@decky/ui';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ref } from 'react';
-import { LuArrowUpRight, LuBell, LuCheckCheck } from 'react-icons/lu';
+import { LuArrowUpRight, LuBell, LuCamera, LuCheckCheck } from 'react-icons/lu';
 import { rowText, type SaleInfo, type TrayRow } from '../notificationsList';
 import type { NotificationReads } from '../notificationReads';
 import { createNotificationVisit, type VisitDeps } from '../notificationVisit';
@@ -30,7 +30,7 @@ export function NotificationsContents({ rows, sales, unread, action, open, markA
             {rows.map(row => {
                 const text = rowText(row, row.kind==='wishlist'&&row.appId ? sales[row.appId] : null, undefined, friendName), label = action(row).label;
                 return <MenuAction key={row.id} id={`notification:${row.id}`} className={`gg-notification${unread(row) ? ' gg-notification-unread' : ''}`} onAction={() => open(row)}>
-                    {row.appId ? <img className="gg-notification-art" src={art(row.appId)} alt="" /> : <span className="gg-notification-art"><LuBell aria-hidden="true" /></span>}
+                    {row.appId ? <img className="gg-notification-art" src={art(row.appId)} alt="" /> : <span className="gg-notification-art">{row.kind === 'screenshot' ? <LuCamera aria-hidden="true" /> : <LuBell aria-hidden="true" />}</span>}
                     <span className="gg-notification-text"><small>{text.label}</small><strong>{text.title}</strong>{text.body!=null&&<span className="gg-notification-body">{text.body}</span>}</span>
                     {label && <span className="gg-notification-action">{label}</span>}
                 </MenuAction>;
