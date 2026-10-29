@@ -231,6 +231,19 @@ export function createNativeSocialBindings(deps: NativeSocialDependencies): Soci
     }
 }
 
+/** Inherited methods also match group-chat subclasses, whose conversion needs a group instance.
+ * Select the base view that actually defines all three methods; its direct-chat conversion is instance-independent. */
+export function findNativeChatHelpers(lookup:(predicate:(value:unknown)=>boolean)=>unknown):NativeChatHelpers|undefined {
+    const basePrototype=(value:unknown):NativeChatHelpers|undefined=>{
+        if(typeof value!=='function')return undefined;
+        const prototype=(value as unknown as {prototype?:Record<string,unknown>}).prototype;
+        if(!prototype||!['GetVisibilityState','ConvertMessageToBBCode','GetChatView'].every(name=>
+            Object.prototype.hasOwnProperty.call(prototype,name)&&typeof prototype[name]==='function'))return undefined;
+        return prototype as unknown as NativeChatHelpers;
+    };
+    try{return basePrototype(lookup(value=>!!basePrototype(value)));}catch{return undefined;}
+}
+
 /** Shape discovery deliberately avoids Steam's changing webpack module numbers. */
 export function discoverSocialBindings(): SocialBindings {
     const root = globalThis as unknown as { g_FriendsUIApp?: FriendsApp };
@@ -245,7 +258,7 @@ export function discoverSocialBindings(): SocialBindings {
         },
         helpers() {
             try {
-                helpers ??= findModuleExport(value => typeof value?.prototype?.GetVisibilityState === 'function' && typeof value.prototype.ConvertMessageToBBCode === 'function' && typeof value.prototype.GetChatView === 'function')?.prototype;
+                helpers ??= findNativeChatHelpers(findModuleExport);
                 return helpers;
             } catch { return undefined; }
         },

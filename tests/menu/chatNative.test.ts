@@ -151,3 +151,22 @@ describe('native conversation preview', () => {
         expect(h.raw.AddChatView).not.toHaveBeenCalled();
     });
 });
+
+describe('native one-to-one chat helper discovery',()=>{
+ it('skips a group-chat override that inherits the base view methods',async()=>{
+  const {findNativeChatHelpers}=await import('../../src/menu/steam/chatNative');
+  class DirectView {
+   GetVisibilityState(){return 0;}
+   GetChatView(){return this;}
+   ConvertMessageToBBCode(text:string){return text.replace(/\[/g,'\\[');}
+  }
+  class GroupView extends DirectView {
+   m_parentGroupView?:{ProcessMentions(text:string):string};
+   override ConvertMessageToBBCode(text:string){return this.m_parentGroupView!.ProcessMentions(text);}
+  }
+  const helpers=findNativeChatHelpers(predicate=>[GroupView,DirectView].find(predicate))!;
+  expect(helpers).toBe(DirectView.prototype);
+  expect(helpers.ConvertMessageToBBCode('[Synthetic]')).toBe('\\[Synthetic]');
+  expect(findNativeChatHelpers(predicate=>[GroupView].find(predicate))).toBeUndefined();
+ });
+});
