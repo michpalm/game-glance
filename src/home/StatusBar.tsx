@@ -1,10 +1,12 @@
-import { CSSProperties, ReactElement, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { CSSProperties, HTMLAttributes, Key, ReactElement, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { avatarView, BatteryView, ControllerBatteryView, controllerItems, batteryColour, downloadStatus, statusAway, ConnectionKind, formatClock, msToNextMinute, PersonaDot, personaDot, prefers24Hour, readSelfPersona, SelfPersona, statusPlacement, statusScale } from './statusItems';
 import { COVER_CSS, useHideSteamBar } from './useHideSteamBar';
 import { startStatus, statusState, subscribeStatus } from './statusStore';
 import { acquireDownloads, activeDownload, subscribeDownloads } from './downloadStore';
 import { tr } from '../i18n/steamText';
 import { useSettings } from '../data/settings';
+import { Focusable, type GamepadEvent } from '@decky/ui';
+import type { HomeControlId, HomeStatusControls } from './homeControls';
 
 /** Steam's clock setting, else the locale's. */
 function hours24(): boolean {
@@ -76,28 +78,23 @@ function GamepadIcon() {
     );
 }
 
-/**
- * The connected Bluetooth controllers' batteries (lowest first, at most two, then "+n"), in the low colour at or below
- * LOW_BATTERY like the system battery. Nothing without controllers. No hooks: the bar passes the store's list.
- */
-export function ControllerItems({ controllers }: { controllers: ControllerBatteryView[] }) {
-    const { shown, more } = controllerItems(controllers);
-    return (
-        <>
-            {shown.map((c, i) => (
-                <span key={`${c.name}-${i}`} className={`gh-status-item gh-controller${c.low ? ' gh-status-low' : ''}`} aria-label={`${c.name}, ${tr('battery', [c.percent])}`}>
-                    <GamepadIcon />
-                    {c.percent}%
-                </span>
-            ))}
-            {more > 0 && (
-                // English only: Steam's strings have none for this (rare: three or more controllers).
-                <span className="gh-status-item gh-controller" aria-label={`${more} more ${more === 1 ? 'controller' : 'controllers'}`}>
-                    +{more}
-                </span>
-            )}
-        </>
-    );
+/** Optional Home-only presentation; other consumers retain their original spans. */
+export function StatusCell({id,controls,cellKey,...props}:Omit<HTMLAttributes<HTMLElement>,'id'> & {id:HomeControlId;controls?:HomeStatusControls;cellKey?:Key}) {
+    if(!controls)return <span key={cellKey} {...props} />;
+    return <Focusable key={cellKey} {...props} ref={(node:HTMLElement|null)=>controls.register(id,node)}
+        className={`${props.className??''} gh-status-control`} data-gh-status={id} role="button" tabIndex={0}
+        onFocus={()=>controls.focused(id)} onGamepadFocus={()=>controls.focused(id)}
+        onButtonDown={(event:GamepadEvent)=>{if(event.detail.button===1){event.preventDefault();event.stopPropagation();}controls.button(id,event);}}
+        children={props.children} onClick={event=>{event.preventDefault();event.stopPropagation();event.currentTarget.focus();controls.focused(id);}} />;
+}
+
+/** Connected controller slots, lowest first, at most two, then +n. No additional subscriptions. */
+export function ControllerItems({controllers,controls}:{controllers:ControllerBatteryView[];controls?:HomeStatusControls}) {
+    const {shown,more}=controllerItems(controllers);
+    return <>
+        {shown.map((c,i)=>StatusCell({id:`controller:${i}`,controls,cellKey:`${c.name}-${i}`,className:`gh-status-item gh-controller${c.low?' gh-status-low':''}`,'aria-label':`${c.name}, ${tr('battery',[c.percent])}`,children:[<GamepadIcon key="icon"/>,c.percent,'%']}))}
+        {more>0&&StatusCell({id:'controllers-more',controls,className:'gh-status-item gh-controller','aria-label':`${more} more ${more===1?'controller':'controllers'}`,children:['+',more]})}
+    </>;
 }
 
 const CONNECTION: Record<ConnectionKind, { icon: () => ReactElement; label: () => string }> = {
@@ -155,7 +152,7 @@ const DOT_LABEL: Record<PersonaDot, () => string> = { online: () => tr('online')
  * then a dot for your own online status. `away` fades it all out while focus is in Steam's own top bar. An item Steam
  * has not reported is left out.
  */
-export function StatusBar({ away: topBarFocus, scale }: { away: boolean; scale: number }) {
+export function StatusBar({ away: topBarFocus, scale, controls }: { away: boolean; scale: number; controls?: HomeStatusControls }) {
     useEffect(() => startStatus(), []);
     useEffect(() => acquireDownloads(), []);
     const { battery, connection, controllers } = useSyncExternalStore(subscribeStatus, statusState, statusState);
@@ -165,7 +162,6 @@ export function StatusBar({ away: topBarFocus, scale }: { away: boolean; scale: 
     const dot = personaDot(self);
     const { statusAvatar } = useSettings();
     const avatar = avatarView(self, statusAvatar);
-    const conn = connection ? CONNECTION[connection] : null;
     // Steam's own top bar is held hidden under ours (Steam hides it on Home itself, but forgets after sleep); the document is the one this bar is drawn in.
     const [doc, setDoc] = useState<Document | null>(null);
     // Quick Access takes the window's focus while it is open (its window blurs, and focus returns when it closes), so
@@ -195,32 +191,32 @@ export function StatusBar({ away: topBarFocus, scale }: { away: boolean; scale: 
         <span ref={marker} style={{ display: 'none' }} />
         <style>{COVER_CSS}</style>
         <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away} style={style}>
-            <div className="gh-status-pill">
-                {percent !== null && (
-                    <span className="gh-status-item gh-status-download" aria-label={`${tr('download')} ${percent}%`}>
-                        <DownloadIcon />
-                        {percent}%
-                    </span>
-                )}
-                {conn && (
-                    <span className={`gh-status-item gh-status-${connection}`} aria-label={conn.label()}>
-                        <conn.icon />
-                    </span>
-                )}
-                <ControllerItems controllers={controllers} />
-                {battery && (
-                    <span className={`gh-status-item${battery.low ? ' gh-status-low' : ''}`} aria-label={`${tr('battery', [battery.percent])}${battery.charging ? `, ${tr('charging').toLowerCase()}` : ''}`}>
-                        <BatteryIcon battery={battery} />
-                        {battery.percent}%
-                    </span>
-                )}
-                <span className="gh-status-item">{clock}</span>
-                {avatar && dot && (
-                    <span className="gh-status-avatar" role="img" aria-label={DOT_LABEL[dot]()} style={{ backgroundImage: `url(${avatar.url})`, '--gh-avatar-ring': avatar.ring } as CSSProperties} />
-                )}
-            </div>
-            {dot && !avatar && <span className={`gh-status-dot gh-status-dot-${dot}`} role="img" aria-label={DOT_LABEL[dot]()} />}
+            <StatusItems percent={percent} connection={connection} controllers={controllers} battery={battery} clock={clock} avatar={avatar} dot={dot} controls={controls} />
         </div>
         </>
     );
+}
+
+/** Hook-free cells share the same data and appearance across read-only and interactive bars. */
+export function StatusItems({percent,connection,controllers,battery,clock,avatar,dot,controls}:{percent:number|null;connection:ConnectionKind|null;controllers:ControllerBatteryView[];battery:BatteryView|null;clock:string;avatar:ReturnType<typeof avatarView>;dot:PersonaDot|null;controls?:HomeStatusControls}) {
+    const conn=connection?CONNECTION[connection]:null;
+    return <>
+            <div className="gh-status-pill">
+                {percent !== null && (
+                    StatusCell({id:'download',controls,className:'gh-status-item gh-status-download','aria-label':`${tr('download')} ${percent}%`,children:[<DownloadIcon key="icon"/>,percent,'%']})
+                )}
+                {conn && (
+                    StatusCell({id:'connection',controls,className:`gh-status-item gh-status-${connection}`,'aria-label':conn.label(),children:<conn.icon/>})
+                )}
+                <ControllerItems controllers={controllers} controls={controls} />
+                {battery && (
+                    StatusCell({id:'battery',controls,className:`gh-status-item${battery.low?' gh-status-low':''}`,'aria-label':`${tr('battery',[battery.percent])}${battery.charging?`, ${tr('charging').toLowerCase()}`:''}`,children:[<BatteryIcon key="icon" battery={battery}/>,battery.percent,'%']})
+                )}
+                {StatusCell({id:'clock',controls,className:'gh-status-item',children:clock})}
+                {avatar && dot && (
+                    StatusCell({id:'profile',controls,className:'gh-status-avatar',role:'img','aria-label':DOT_LABEL[dot](),style:{backgroundImage:`url(${avatar.url})`,'--gh-avatar-ring':avatar.ring} as CSSProperties})
+                )}
+            </div>
+            {dot && !avatar && StatusCell({id:'profile',controls,className:`gh-status-dot gh-status-dot-${dot}${controls?' gh-status-dot-control':''}`,role:'img','aria-label':DOT_LABEL[dot]()})}
+    </>;
 }

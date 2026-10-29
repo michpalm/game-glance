@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useState } from 'react';
+import type { HomeStatusControls } from '../home/homeControls';
+import { homeControlsCss } from '../home/homeControlsCss';
 import { StatusBar } from '../home/StatusBar';
 import { statusCss } from '../home/homeCss';
 import { homeCanvas } from '../home/scale';
@@ -78,7 +80,7 @@ const STATUS_Z = 5000;
  * the page; the plugin's own `document` is a different window), so the page's transforms and scrolling never move it.
  * `hidden` fades only our bar (Steam's stays covered), for when the page itself runs up under the bar (Home's feed sheet).
  */
-export function GameStatusBar({ hidden = false, menuOverlay = false }: { hidden?: boolean; menuOverlay?: boolean }) {
+export function GameStatusBar({ hidden = false, menuOverlay = false, controls }: { hidden?: boolean; menuOverlay?: boolean; controls?: HomeStatusControls }) {
     const [doc, setDoc] = useState<Document | null>(null);
     // A callback ref: the window is known the moment the marker is in the page, with no extra effect pass.
     const marker = useCallback((el: HTMLSpanElement | null) => {
@@ -103,8 +105,8 @@ export function GameStatusBar({ hidden = false, menuOverlay = false }: { hidden?
                         className={`gg-status-host${menuOverlay ? ' gg-menu-status-host' : ''}${home ? ' gg-menu-status-home' : ''}`}
                         style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none', opacity: hidden ? 0 : 1, transition: 'opacity 200ms' }}
                     >
-                        <style>{statusCss()}</style>
-                        <StatusBar away={away} scale={canvas.scale} />
+                        <style>{statusCss()}{controls?homeControlsCss:null}</style>
+                        <StatusBar away={away} scale={canvas.scale} controls={!hidden&&!away?controls:undefined} />
                     </div>,
                     doc.body,
                 )}

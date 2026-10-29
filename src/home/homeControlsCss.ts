@@ -13,5 +13,8 @@ export const homeControlsCss=`
 [data-gh-footer-side=end][data-gh-footer-edge=last]{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0;padding-left:10px}
 .gh-status .gh-status-control{pointer-events:auto;cursor:default;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:${SOURCE_PILL.height-8}px;min-width:24px;padding:0 2px;border-radius:6px;outline:0}
 :where(html:not([data-gg-mouse])) .gh-status .gh-status-control:is(.gpfocus,:focus-visible){${focusRing('menu')}}
+.gh-status .gh-status-dot-control{min-width:6px;min-height:6px;width:6px;height:6px;padding:0;border-radius:50%}
+.gh-status-dot-control:before{content:"";position:absolute;inset:-9px}
+:where(html:not([data-gg-mouse])) .gh-status .gh-status-dot-control:is(.gpfocus,:focus-visible){outline-offset:8px}
 html[data-gg-mouse] .gh-status .gh-status-control:hover{background:rgba(255,255,255,.12)}
 `;
