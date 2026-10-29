@@ -41,7 +41,8 @@ describe('a visit to the Notifications page', () => {
     it('closes the menu before calling a plugin’s own onClick, and falls back to Steam’s page when it throws', async () => {
         const h = await harness(), order: string[] = [];
         h.deps.close.mockImplementation(() => { order.push('close'); });
-        h.visit.open({ ...quiet, onClick: () => { order.push('click'); } }); expect(order).toEqual(['close', 'click']);
+        const data = { onClick(this: unknown) { order.push(this === data ? 'click on data' : 'click'); } };
+        h.visit.open({ ...quiet, onClick: data.onClick, onClickTarget: data }); expect(order).toEqual(['close', 'click on data']);
         h.visit.open({ ...quiet, onClick: () => { throw Error('plugin'); } });
         expect(h.deps.handoff).toHaveBeenLastCalledWith({ kind: 'qam', tab: 'notifications' });
     });

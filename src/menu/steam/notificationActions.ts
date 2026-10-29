@@ -22,25 +22,25 @@ function exportsOf(value: unknown): unknown[] {
 
 /** Steam's account notification store and link table, found by method names and source text once, then cached. */
 export function createNotificationActions(source: ModuleSource): NotificationActions {
-    let store: AccountStore | null | undefined, lookup: ((type: number) => LinkEntry) | null | undefined;
+    let store: AccountStore | null | undefined, lookups: ((type: number) => LinkEntry)[] | undefined;
     function findStore(): AccountStore | null {
         if (store !== undefined) return store;
         store = null;
         try { for (const [, value] of source.modules()) { const found = exportsOf(value).find(isStore); if (found) { store = found as AccountStore; break; } } } catch { store = null; }
         return store;
     }
-    function findLookup() {
-        if (lookup !== undefined) return lookup;
-        lookup = null;
+    // Module 64884 exports more than one table with this lookup shape (K9 links, aq without links): keep them all.
+    function findLookups() {
+        if (lookups) return lookups;
+        const found: ((type: number) => LinkEntry)[] = [];
         try {
             for (const [id, value] of source.modules()) {
                 const text = source.source(id);
                 if (!text || !text.includes('displayNameLoc') || !text.includes('link:')) continue;
-                const found = exportsOf(value).find(item => typeof item === 'function' && LOOKUP.test(Function.prototype.toString.call(item)));
-                if (found) { lookup = found as (type: number) => LinkEntry; break; }
+                for (const item of exportsOf(value)) if (typeof item === 'function' && LOOKUP.test(Function.prototype.toString.call(item))) found.push(item as (type: number) => LinkEntry);
             }
-        } catch { lookup = null; }
-        return lookup;
+        } catch { /* keep what was found */ }
+        return lookups = found;
     }
     const attempt = (run: () => unknown) => { try { run(); } catch (error) { console.warn('[Game Glance] notification read-mark failed', error); } };
     return {
@@ -48,8 +48,9 @@ export function createNotificationActions(source: ModuleSource): NotificationAct
         markAllRead() { const found = findStore(); if (!found) return; attempt(() => found.MarkAllItemsRead()); attempt(() => found.MarkAllItemsViewed()); },
         link(type, body) {
             try {
-                const entry = findLookup()?.(type);
-                const url = entry && typeof entry.link === 'function' ? (entry.link as (body: unknown) => unknown)(body) : null;
+                let entry: LinkEntry;
+                for (const lookup of findLookups()) { const candidate = lookup(type); if (candidate && typeof candidate.link === 'function') { entry = candidate; break; } }
+                const url = entry ? (entry.link as (body: unknown) => unknown)(body) : null;
                 return typeof url === 'string' && url ? url : null;
             } catch { return null; }
         },

@@ -164,7 +164,8 @@ describe('the menu keyboard', () => {
 
 describe('Notifications page states', () => {
     it('dims Mark all read with nothing unread, without the disabled ghost, so it keeps its focus ring', () => {
-        const dim = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton');
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton')).toBe('');
+        const dim = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton>*');
         expect(dim).toContain('opacity:.5'); expect(dim).not.toContain('pointer-events');
     });
     it('centres the all-caught-up state with its line in the menu’s label grey', () => {

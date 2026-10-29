@@ -16,9 +16,9 @@ const rows: TrayRow[] = [
     { id: '1', kind: 'wishlist', appId: 2129530, count: 20, time: 0, unread: false },
     { id: '9', kind: 'other', appId: null, count: 1, time: 0, unread: false },
 ];
-function harness(list = rows, unread = (row: TrayRow) => row.unread) {
+function harness(list = rows, unread = (row: TrayRow) => row.unread, friendName?: (id: string) => string | undefined) {
     const open = vi.fn(), markAll = vi.fn(), seeAll = vi.fn();
-    const nodes = tree(NotificationsContents({ rows: list, sales: { 3339880: { name: 'OFF', price: '9,76€' }, 2129530: { name: 'REANIMAL' } }, unread, action: row => rowAction(row, () => null), open, markAll, seeAll }));
+    const nodes = tree(NotificationsContents({ rows: list, sales: { 3339880: { name: 'OFF', price: '9,76€' }, 2129530: { name: 'REANIMAL' } }, unread, action: row => rowAction(row, () => null), open, markAll, seeAll, friendName }));
     return { nodes, open, markAll, seeAll, action: (key: string) => nodes.find(n => n.props.id === key)! };
 }
 describe('Notifications page', () => {
@@ -38,7 +38,7 @@ describe('Notifications page', () => {
         h.action('notification:9').props.onAction();
         expect(h.open.mock.calls.map(c => c[0].id)).toEqual(['2', '9']);
         const label = (id: string) => tree(h.action(id).props.children).find(n => n.props.className === 'gg-notification-action')?.props.children;
-        expect(label('notification:2')).toBe('View in store'); expect(label('notification:1')).toBe('See all 20'); expect(label('notification:9')).toBe('Open in Steam');
+        expect(label('notification:2')).toBe('View in store'); expect(label('notification:1')).toBe('View in store'); expect(label('notification:9')).toBe('Open in Steam');
     });
     it('marks unread notifications, and replaces the Steam button with Mark all read', () => {
         const h = harness();
@@ -75,4 +75,9 @@ describe('notification details',()=>{
   expect(text).toContain('View game');
   expect(tree(h.action('notification:plugin:7').props.children).some(n=>n.props.className==='gg-notification-action')).toBe(false);
  });
+});
+
+it('titles friend rows with the friend’s name', () => {
+    const h = harness([{ id: '5', kind: 'friend', appId: null, count: 1, time: 0, unread: true, steamId: '76561198000000001' }], row => row.unread, () => 'Example Friend');
+    expect(strings(h.nodes)).toContain('Example Friend');
 });

@@ -47,3 +47,14 @@ describe('account link table', () => {
         expect(createNotificationActions(f.source).link(12, {})).toBeNull();
     });
 });
+
+it('uses the lookup whose entry for that type has a link, when several tables share the lookup’s shape', () => {
+    const store = new Store();
+    // eslint-disable-next-line
+    const make = (table: unknown) => new Function('S', 'return function b(e){if(e!==void 0)return S[e]}')(table);
+    const other = make({ 12: { displayNameLoc: 'no link here' } }), links = make({ 12: { link: () => 'https://store.steampowered.com/account/' } });
+    const exports = new Map<string, Record<string, unknown>>([['64884', { $Z: store, aq: other, K9: links }]]);
+    const actions = createNotificationActions({ modules: () => exports.entries(), source: () => 'displayNameLoc link:' });
+    expect(actions.link(12, {})).toBe('https://store.steampowered.com/account/');
+    expect(actions.link(13, {})).toBeNull();
+});

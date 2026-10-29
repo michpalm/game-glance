@@ -52,7 +52,8 @@ export function createNotificationVisit(deps: () => VisitDeps) {
             if (run.kind === 'native') go(run.request);
             else if (run.kind === 'chat') { let opened = false; try { opened = deps().openChat(run.steamId); } catch { opened = false; } if (!opened) go(STEAM_NOTIFICATIONS); }
             else if (run.kind === 'plugin') {
-                try { deps().close(); run.onClick(); } catch (error) { console.warn('[Game Glance] plugin notification action failed', error); go(STEAM_NOTIFICATIONS); }
+                // As Steam does: data.onClick(), a method call on the plugin's notification data.
+                try { deps().close(); run.onClick.call(run.target); } catch (error) { console.warn('[Game Glance] plugin notification action failed', error); go(STEAM_NOTIFICATIONS); }
             }
         },
         markAll(rows: TrayRow[]) {

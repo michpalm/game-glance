@@ -121,7 +121,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const accent = pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true);
     const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
     let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
-        openChat={steamId => openSocialChat(social, dispatch, steamId)} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
+        openChat={steamId => openSocialChat(social, dispatch, steamId)} friendName={steamId => social?.get().friends.find(friend => friend.steamId === steamId)?.name} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
     if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;

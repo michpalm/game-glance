@@ -59,7 +59,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-notifications-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;text-align:center;text-shadow:var(--gg-text-shadow)}
 .gg-menu .gg-notifications-empty p{margin:0 0 8px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton{opacity:.5}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton>*{opacity:.5}
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
 .gg-menu-quick-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.gg-menu-quick-sliders>[data-gg-focus="quick:brightness"],.gg-menu-quick-sliders>:only-child{grid-column:1/-1}
 .gg-menu .gg-menu-setting{padding:8px;min-height:48px;border-radius:var(--gg-r-card);font-size:var(--gg-type-body);background:transparent;transition:background var(--gg-base),box-shadow var(--gg-base),transform var(--gg-base)}

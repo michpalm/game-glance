@@ -4,7 +4,7 @@ import type { NativeRequest } from './steam/runtime';
 /** Steam's tray rows with plain metadata and optional supplied plugin presentation. `notificationId` marks an account
  * notification (read state kept by Steam); rows without one are local and their read state is ours. */
 export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
-    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown }
+    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown; onClickTarget?: object }
 export interface SaleInfo { name: string; price?: string }
 
 type AnyRecord = Record<string, unknown> | undefined | null;
@@ -66,7 +66,7 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
             rows.push({...base,kind:'download',appId:gameId,title:name||'Game download complete',body:typeof remote==='string'&&remote.trim()?`Ready to play on ${remote.trim()}`:'Ready to play'});
         }else if(type===31){
             // Keep supplied React translation elements intact; no component is invoked while reading the tray.
-            const onClick=typeof data?.onClick==='function'?{onClick:data.onClick as ()=>unknown}:{};
+            const onClick=typeof data?.onClick==='function'?{onClick:data.onClick as ()=>unknown,onClickTarget:data as object}:{};
             rows.push({...base,id:`plugin:${id}`,kind:'plugin',title:notificationContent(data?.title)||'Plugin notification',body:notificationContent(data?.body),...onClick});
         }else if(notificationId!==undefined){
             const accountType=Number(item?.notification_type??data?.type);
@@ -90,13 +90,17 @@ export function rowTime(time: number, now = new Date()): string {
     return today ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = new Date()): { label: string; title: ReactNode; body?: ReactNode } {
+export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = new Date(), friendName?: (steamId: string) => string | undefined): { label: string; title: ReactNode; body?: ReactNode } {
     const when = rowTime(row.time, now);
     const labelled = (category: string) => when ? `${category} · ${when}` : category;
     if(row.kind==='download'||row.kind==='plugin'){
         return {label:labelled(row.kind==='download'?'Download complete':'Plugin'),title:row.title||(row.kind==='download'?'Game download complete':'Plugin notification'),body:row.body};
     }
-    if (row.kind === 'friend') return { label: labelled('Friends'), title: row.inviteUrl ? 'Game invite' : 'Friend notification' };
+    if (row.kind === 'friend') {
+        let name: string | undefined;
+        try { name = row.steamId ? friendName?.(row.steamId)?.trim() : undefined; } catch { name = undefined; }
+        return { label: labelled('Friends'), title: name || (row.inviteUrl ? 'Game invite' : 'Friend notification'), ...(row.inviteUrl ? { body: 'Invited you to play' } : {}) };
+    }
     if (row.kind === 'other' || row.kind === 'account') return { label: labelled('Steam'), title: 'Steam notification' };
     const label = labelled('Wishlist sale');
     if (row.count > 1) return { label, title: sale ? `${sale.name} and ${row.count - 1} other games are on sale` : `${row.count} games on your wishlist are on sale` };
@@ -104,7 +108,7 @@ export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = n
 }
 
 export const STEAM_NOTIFICATIONS: NativeRequest = { kind: 'qam', tab: 'notifications' };
-export type RowRun = { kind: 'native'; request: NativeRequest } | { kind: 'plugin'; onClick: () => unknown } | { kind: 'chat'; steamId: string } | { kind: 'mark' };
+export type RowRun = { kind: 'native'; request: NativeRequest } | { kind: 'plugin'; onClick: () => unknown; target?: object } | { kind: 'chat'; steamId: string } | { kind: 'mark' };
 /** Steam's account link table lookup: the in-Steam URL for an account notification, or null. */
 export type AccountLink = (type: number, body: Record<string, unknown>) => string | null;
 /** What opening a row does, and its right-hand label (none when it only marks read). */
@@ -112,10 +116,10 @@ export function rowAction(row: TrayRow, link: AccountLink): { label?: string; ru
     const steam = { label: 'Open in Steam', run: { kind: 'native', request: STEAM_NOTIFICATIONS } as RowRun };
     switch (row.kind) {
         case 'download': return row.appId ? { label: 'View game', run: { kind: 'native', request: { kind: 'app', appId: row.appId } } } : steam;
-        case 'plugin': return row.onClick ? { label: 'Open', run: { kind: 'plugin', onClick: row.onClick } } : { run: { kind: 'mark' } };
-        case 'wishlist': return !row.appId ? steam : row.count > 1 ? { label: `See all ${row.count}`, run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } }
+        case 'plugin': return row.onClick ? { label: 'Open', run: { kind: 'plugin', onClick: row.onClick, target: row.onClickTarget } } : { run: { kind: 'mark' } };
+        case 'wishlist': return !row.appId ? steam : row.count > 1 ? { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } }
             : { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'app', appId: row.appId } } };
-        case 'friend': return !row.steamId ? steam : { label: 'Open chat', run: row.inviteUrl ? { kind: 'native', request: { kind: 'url', url: row.inviteUrl } } : { kind: 'chat', steamId: row.steamId } };
+        case 'friend': return !row.steamId ? steam : row.inviteUrl ? { label: 'Join game', run: { kind: 'native', request: { kind: 'url', url: row.inviteUrl } } } : { label: 'Open chat', run: { kind: 'chat', steamId: row.steamId } };
         case 'account': {
             let url: string | null = null;
             try { url = row.accountType !== undefined ? link(row.accountType, row.accountBody ?? {}) : null; } catch { url = null; }

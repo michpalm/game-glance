@@ -142,7 +142,7 @@ describe('notification kinds and read state', () => {
     it('keeps a plugin’s own onClick by reference', () => {
         const onClick = () => {};
         const [withClick, without] = readTray([{ notifications: [{ nNotificationID: 1, eType: 31, data: { title: 'a', onClick } }] }, { notifications: [{ nNotificationID: 2, eType: 31, data: { title: 'b' } }] }]);
-        expect(withClick.onClick).toBe(onClick); expect('onClick' in without).toBe(false);
+        expect(withClick.onClick).toBe(onClick); expect(withClick.onClickTarget).toMatchObject({ title: 'a', onClick }); expect('onClick' in without).toBe(false);
     });
     it('counts a local notification unread only while Steam marks it new and it is not remembered', async () => {
         const { rowUnread } = await import('../../src/menu/notificationsList');
@@ -181,12 +181,13 @@ describe('what a notification does', () => {
         const onClick = () => {};
         const link = (type: number, body: Record<string, unknown>) => type === 12 ? `https://store.steampowered.com/account/${body.n}` : null;
         expect(rowAction({ ...base, id: '1', kind: 'download', appId: 42 }, link)).toEqual({ label: 'View game', run: { kind: 'native', request: { kind: 'app', appId: 42 } } });
-        expect(rowAction({ ...base, id: 'plugin:1', kind: 'plugin', onClick }, link)).toEqual({ label: 'Open', run: { kind: 'plugin', onClick } });
+        const target = { onClick };
+        expect(rowAction({ ...base, id: 'plugin:1', kind: 'plugin', onClick, onClickTarget: target }, link)).toEqual({ label: 'Open', run: { kind: 'plugin', onClick, target } });
         expect(rowAction({ ...base, id: 'plugin:2', kind: 'plugin' }, link)).toEqual({ run: { kind: 'mark' } });
         expect(rowAction({ ...base, id: '3', kind: 'wishlist', appId: 5 }, link)).toEqual({ label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'app', appId: 5 } } });
-        expect(rowAction({ ...base, id: '4', kind: 'wishlist', appId: 5, count: 3 }, link)).toEqual({ label: 'See all 3', run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } });
+        expect(rowAction({ ...base, id: '4', kind: 'wishlist', appId: 5, count: 3 }, link)).toEqual({ label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } });
         expect(rowAction({ ...base, id: '5', kind: 'friend', steamId: '76561198000000001' }, link)).toEqual({ label: 'Open chat', run: { kind: 'chat', steamId: '76561198000000001' } });
-        expect(rowAction({ ...base, id: '6', kind: 'friend', steamId: '76561198000000001', inviteUrl: 'steam://joinlobby/1/2/3' }, link)).toEqual({ label: 'Open chat', run: { kind: 'native', request: { kind: 'url', url: 'steam://joinlobby/1/2/3' } } });
+        expect(rowAction({ ...base, id: '6', kind: 'friend', steamId: '76561198000000001', inviteUrl: 'steam://joinlobby/1/2/3' }, link)).toEqual({ label: 'Join game', run: { kind: 'native', request: { kind: 'url', url: 'steam://joinlobby/1/2/3' } } });
         expect(rowAction({ ...base, id: '7', kind: 'account', notificationId: '9', accountType: 12, accountBody: { n: 1 } }, link)).toEqual({ label: 'Open', run: { kind: 'native', request: { kind: 'url', url: 'https://store.steampowered.com/account/1' } } });
         const steam = { label: 'Open in Steam', run: { kind: 'native', request: { kind: 'qam', tab: 'notifications' } } };
         expect(rowAction({ ...base, id: '8', kind: 'account', notificationId: '9', accountType: 13, accountBody: {} }, link)).toEqual(steam);
@@ -202,4 +203,16 @@ it('does not report an unchanged account notification as a change, though its bo
     const list = createNotificationList({ getTray: () => tray, subscribe: fn => { notify = fn; return () => {}; } });
     const listener = vi.fn(); list.subscribe(listener); notify(); expect(listener).not.toHaveBeenCalled();
     tray[0].notifications[0].data.item.body_data = '{"a":2}'; notify(); expect(listener).toHaveBeenCalledOnce();
+});
+
+describe('friend rows', () => {
+    it('titles a friend row with the friend’s name from our Social data, and says what an invite is', () => {
+        const row = { id: '5', kind: 'friend' as const, appId: null, count: 1, time: 0, unread: true, steamId: '76561198000000001' };
+        const names = (id: string) => id === '76561198000000001' ? 'Example Friend' : undefined;
+        expect(rowText(row, null, now, names)).toMatchObject({ title: 'Example Friend' });
+        expect(rowText(row, null, now, names).body).toBeUndefined();
+        expect(rowText({ ...row, inviteUrl: 'steam://joinlobby/1/2/3' }, null, now, names)).toMatchObject({ title: 'Example Friend', body: 'Invited you to play' });
+        expect(rowText({ ...row, steamId: '76561198000000009' }, null, now, names)).toMatchObject({ title: 'Friend notification' });
+        expect(rowText({ ...row, inviteUrl: 'steam://x' }, null, now)).toMatchObject({ title: 'Game invite', body: 'Invited you to play' });
+    });
 });
