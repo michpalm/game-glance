@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import {createElement} from 'react';
 import { parseSale, readTray, rowText, rowTime } from '../../src/menu/notificationsList';
 
 // Shapes as read on the Ally on 2026-10-27 (NotificationStore.m_rgNotificationTray), ids synthetic.
@@ -22,6 +23,38 @@ describe('Steam notification tray', () => {
         const other = { eType: 3, notifications: [{ notificationID: 9, rtCreated: at(27, 9, 0), eType: 3, data: { type: 4, item: { body_data: '{"steamid":"x"}' } } }] };
         expect(readTray([other, { eType: 1, notifications: [] }, null, 'junk'])).toEqual([{ id: '9', kind: 'other', appId: null, count: 1, time: at(27, 9, 0), unread: false }]);
         expect(readTray(undefined)).toEqual([]);
+    });
+    it('reads native download protobuf getters with their receiver and resolves the game name', () => {
+        const data = { app: 42, appid() { return this.app; }, dlc_appid: () => 0, remote_client_name: () => '' };
+        const [row] = readTray([{ eType: 1, notifications: [{ notificationID: 7, eType: 1, rtCreated: 123, bNewIndicator: true, data }] }], id => id === 42 ? 'Synthetic game' : '');
+        expect(row).toMatchObject({ id: '7', kind: 'download', appId: 42, time: 123, unread: true, title: 'Synthetic game' });
+        expect(rowText(row, null)).toMatchObject({ label: expect.stringContaining('Download complete'), title: 'Synthetic game', body: 'Ready to play', action: 'Open in Steam' });
+    });
+    it('uses a DLC name when available and retains the remote completion information', () => {
+        const data = { appid: () => 42, dlc_appid: () => 43, remote_client_name: () => 'Other device' };
+        const [row] = readTray([{ notifications: [{ notificationID: 7, eType: 1, data }] }], id => id === 43 ? 'Synthetic expansion' : 'Synthetic game');
+        expect(row.appId).toBe(42);expect(rowText(row, null)).toMatchObject({ title: 'Synthetic expansion', body: 'Ready to play on Other device' });
+    });
+    it('retains download type when its name is unavailable and isolates broken native getters', () => {
+        const tray = [{ notifications: [{ notificationID: 1, eType: 1, data: { appid: () => { throw Error('gone'); } } }] },
+            { notifications: [{ notificationID: 2, eType: 1, data: { appid: () => 42 } }] }];
+        const rows = readTray(tray, () => { throw Error('No overview'); });
+        expect(rows).toHaveLength(2);expect(rows[0].kind).toBe('other');
+        expect(rowText(rows[1], null)).toMatchObject({ label: 'Download complete', title: 'Game download complete', body: 'Ready to play' });
+    });
+    it('reads plugin title/body, uses its native ID, and namespaces it against Steam IDs', () => {
+        const [row] = readTray([{ eType: 31, notifications: [{ nNotificationID: 7, eType: 31, decky: true, data: { title: 'Synthetic plugin update', body: 'An update is available.', timestamp: 123 } }] }]);
+        expect(row).toMatchObject({ id: 'plugin:7', kind: 'plugin', appId: null, time: 123 });
+        expect(rowText(row, null)).toMatchObject({ label: expect.stringContaining('Plugin'), title: 'Synthetic plugin update', body: 'An update is available.', action: 'Open in Steam' });
+    });
+    it('preserves rich plugin translation elements without invoking them while reading', () => {
+        const render = vi.fn(() => null), title = createElement(render, { transText: 'synthetic.title' }), body = createElement(render, { transText: 'synthetic.body' });
+        const [row] = readTray([{ notifications: [{ nNotificationID: 8, eType: 31, data: { title, body } }] }]);
+        const text = rowText(row, null);expect(text.title).toBe(title);expect(text.body).toBe(body);expect(render).not.toHaveBeenCalled();
+    });
+    it('does not coerce unsupported plugin payloads into object text', () => {
+        const [row] = readTray([{ notifications: [{ nNotificationID: 8, eType: 31, data: { title: { secret: 'ignored' }, body: () => 'not invoked' } }] }]);
+        expect(rowText(row, null)).toMatchObject({ title: 'Plugin notification' });expect(rowText(row, null).body).toBeUndefined();
     });
     it('dates today’s notifications by the clock and older ones by the day, like Steam', () => {
         expect(rowTime(at(27, 20, 42), now)).toMatch(/42/);
@@ -70,4 +103,16 @@ describe('notification sources', () => {
         expect(listener).toHaveBeenCalledTimes(1); expect(list.get()).toHaveLength(2);
         list.dispose();
     });
+});
+
+it('tracks rich plugin changes without serializing React owners or emitting unchanged snapshots',async()=>{
+ const {createNotificationList}=await import('../../src/menu/steam/notifications');
+ const owner:any={};owner.self=owner;
+ const title:any=createElement('span',null,'Synthetic update');
+ // A React owner may contain cycles; the tray must retain rich content without JSON serialization.
+ const rich={...title,_owner:owner};
+ const item={nNotificationID:8,eType:31,data:{title:rich,body:'First body'}};
+ let notify!:()=>void;const list=createNotificationList({getTray:()=>[{notifications:[item]}],subscribe:fn=>{notify=fn;return()=>{};}});
+ const listener=vi.fn();list.subscribe(listener);expect(list.get()).toHaveLength(1);notify();expect(listener).not.toHaveBeenCalled();
+ item.data.body='Changed body';notify();expect(listener).toHaveBeenCalledOnce();expect(rowText(list.get()[0],null).body).toBe('Changed body');list.dispose();
 });

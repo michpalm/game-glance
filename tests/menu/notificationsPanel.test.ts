@@ -56,3 +56,13 @@ describe('Notifications page', () => {
         expect(tree(element.props.children)[0].props.className).toBe('gg-menu-heading');
     });
 });
+
+describe('notification details',()=>{
+ it('shows download and plugin information and retains their native notification destination',()=>{
+  const details:TrayRow[]=[{id:'d',kind:'download',appId:42,count:1,time:0,unread:false,title:'Synthetic game',body:'Ready to play'},
+   {id:'plugin:7',kind:'plugin',appId:null,count:1,time:0,unread:false,title:'Synthetic plugin',body:'Update available'}];
+  const h=harness(details),text=strings(h.nodes);expect(text).toContain('Synthetic game');expect(text).toContain('Ready to play');expect(text).toContain('Update available');
+  for(const id of ['d','plugin:7'])h.action(`notification:${id}`).props.onAction();
+  expect(h.handoff.mock.calls.map(call=>call[0])).toEqual([{kind:'qam',tab:'notifications'},{kind:'qam',tab:'notifications'}]);
+ });
+});

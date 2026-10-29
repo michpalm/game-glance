@@ -54,6 +54,8 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-notification-text{flex:1;min-width:0;display:grid;gap:2px}
 .gg-menu .gg-notification-text small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);text-transform:uppercase;letter-spacing:.08em}
 .gg-menu .gg-notification-unread .gg-notification-text small::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:var(--gg-accent);vertical-align:1px}
+.gg-menu .gg-notification-body{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);white-space:pre-wrap;overflow-wrap:anywhere}
+.gg-menu .gg-notification-text strong{overflow-wrap:anywhere}
 .gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-notifications-empty{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
