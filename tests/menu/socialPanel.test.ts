@@ -1,7 +1,7 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { MenuKeyboard } from '../../src/menu/components/MenuKeyboard';
-import { closeUnusableKeyboard, SocialContents } from '../../src/menu/components/SocialPanel';
+import { closeUnusableKeyboard, focusComposeSoon, SocialContents } from '../../src/menu/components/SocialPanel';
 import { BUILTIN_QWERTY } from '../../src/menu/keyboard/layouts';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 import { defaultMenuState, reduceMenu } from '../../src/menu/model';
@@ -197,5 +197,46 @@ describe('Social panel layout (direction A)', () => {
         expect(first.armJoin).toHaveBeenCalled(); expect(first.handoff).not.toHaveBeenCalled();
         const armed = joinable(true); expect(strings(armed.nodes)).toContain('Press again to join');
         armed.action('social:join')!.props.onAction(); expect(armed.handoff).toHaveBeenCalledWith({ kind: 'join', url });
+    });
+});
+
+describe('focusing the compose field after opening a chat', () => {
+    const setup = () => {
+        const input = { focus: vi.fn(), matches: () => true, isConnected: true };
+        let query: () => unknown = () => input;
+        const root = () => ({ querySelector: () => query() }) as never;
+        let frame: (() => void) | null = null;
+        const win = { requestAnimationFrame: (f: () => void) => { frame = f; return 5; }, cancelAnimationFrame: vi.fn(() => { frame = null; }) };
+        return { input, win, root, setQuery: (q: () => unknown) => { query = q; }, run: () => frame?.() };
+    };
+    it('focuses after the frame, not during the press', () => {
+        const t = setup();
+        focusComposeSoon(t.root, t.win as never);
+        expect(t.input.focus).not.toHaveBeenCalled();
+        t.run();
+        expect(t.input.focus).toHaveBeenCalledOnce();
+    });
+    it('re-queries the field inside the frame', () => {
+        const t = setup(), later = { focus: vi.fn(), matches: () => true };
+        focusComposeSoon(t.root, t.win as never);
+        t.setQuery(() => later); t.run();
+        expect(later.focus).toHaveBeenCalledOnce(); expect(t.input.focus).not.toHaveBeenCalled();
+    });
+    it('does nothing once cancelled (chat closed or changed)', () => {
+        const t = setup();
+        focusComposeSoon(t.root, t.win as never)();
+        expect(t.win.cancelAnimationFrame).toHaveBeenCalledWith(5);
+        t.run();
+        expect(t.input.focus).not.toHaveBeenCalled();
+    });
+    it('falls back to a zero timeout without requestAnimationFrame', () => {
+        vi.useFakeTimers();
+        const t = setup();
+        const cancel = focusComposeSoon(t.root, {} as never);
+        expect(t.input.focus).not.toHaveBeenCalled();
+        vi.runAllTimers(); expect(t.input.focus).toHaveBeenCalledOnce();
+        const t2 = setup(); focusComposeSoon(t2.root, {} as never)(); vi.runAllTimers();
+        expect(t2.input.focus).not.toHaveBeenCalled();
+        cancel(); vi.useRealTimers();
     });
 });

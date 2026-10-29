@@ -127,6 +127,21 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
     </div>;
 }
 
+/** Moves focus to the message field on the next frame: Steam hands focus back to the activated friend during the press itself. Returns a cancel. */
+export function focusComposeSoon(root: () => ParentNode | null, win: Pick<Window, 'requestAnimationFrame' | 'cancelAnimationFrame'>): () => void {
+    const run = () => {
+        const compose = root()?.querySelector<HTMLElement>('[data-gg-focus="social:compose"]');
+        const input = compose?.matches('button') ? compose : compose?.querySelector<HTMLInputElement>('input');
+        input?.focus({ preventScroll: true }); if (input) takeSteamFocus(input);
+    };
+    if (typeof win.requestAnimationFrame === 'function') {
+        const frame = win.requestAnimationFrame(run);
+        return () => win.cancelAnimationFrame(frame);
+    }
+    const timer = setTimeout(run, 0);
+    return () => clearTimeout(timer);
+}
+
 export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession }) {
     const { social, entered, keyboard } = props;
     const snapshot = useSyncExternalStore(social.subscribe, social.get);
@@ -187,9 +202,7 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
         if (!entered || !snapshot.enteredId || snapshot.loading) return;
         if (focusedChat.current === snapshot.enteredId) return;
         focusedChat.current = snapshot.enteredId; bottom.current = true; historyAnchor.current = null;
-        const compose = timeline.current?.parentElement?.querySelector<HTMLElement>('[data-gg-focus="social:compose"]');
-        const input = compose?.matches('button') ? compose : compose?.querySelector<HTMLInputElement>('input');
-        input?.focus({ preventScroll: true }); if (input) takeSteamFocus(input);
+        return focusComposeSoon(() => timeline.current?.parentElement ?? null, window);
     }, [entered, snapshot.enteredId, snapshot.loading]);
     return <SocialContents {...props} snapshot={snapshot} layouts={layouts} field={field} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
         loadMore={() => { const element = timeline.current; if (element) { bottom.current = false; historyAnchor.current = captureChatAnchor(element); } void social.loadMore(); }}
