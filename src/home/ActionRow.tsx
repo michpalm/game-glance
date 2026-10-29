@@ -213,9 +213,9 @@ function backHandler(onBack: (() => void) | undefined) {
 }
 
 /** Home's only action when there are no recents: the Library pill, which takes Home's focus then. */
-export function LibraryActionRow({ preferred }: { preferred?: boolean }) {
+export function LibraryActionRow({ preferred, buttons }: { preferred?: boolean; buttons?: RowButtons }) {
     return (
-        <Focusable className="gh-actions" flow-children="row">
+        <Focusable className="gh-actions" flow-children="row" onButtonDown={buttons?.onButtonDown} onButtonUp={buttons?.onButtonUp}>
             <ActionButton className="gh-btn-library" label={tr('library')} onPress={openLibrary} preferredFocus={preferred} action="library">
                 <span className="gh-btn-icon"><IoGrid /></span>
                 <span>{tr('library')}</span>

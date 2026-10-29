@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useState } from 'react';
 import type { HomeStatusControls } from '../home/homeControls';
-import { homeControlsCss } from '../home/homeControlsCss';
 import { StatusBar } from '../home/StatusBar';
 import { statusCss } from '../home/homeCss';
 import { homeCanvas } from '../home/scale';
@@ -105,7 +104,7 @@ export function GameStatusBar({ hidden = false, menuOverlay = false, controls }:
                         className={`gg-status-host${menuOverlay ? ' gg-menu-status-host' : ''}${home ? ' gg-menu-status-home' : ''}`}
                         style={{ position: 'fixed', top: 0, right: 0, width: canvas.logicalWidth, height: 0, transformOrigin: 'top right', transform: `scale(${canvas.scale})`, zIndex: STATUS_Z, pointerEvents: 'none', opacity: hidden ? 0 : 1, transition: 'opacity 200ms' }}
                     >
-                        <style>{statusCss()}{controls?homeControlsCss:null}</style>
+                        <style>{statusCss()}</style>
                         <StatusBar away={away} scale={canvas.scale} controls={!hidden&&!away?controls:undefined} />
                     </div>,
                     doc.body,

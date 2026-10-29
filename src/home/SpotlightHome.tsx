@@ -53,6 +53,9 @@ import { collectionEyebrow } from './collections';
 import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 import { FaTrash } from 'react-icons/fa';
+import { homeReturnTarget, useHomeControls } from './useHomeControls';
+import { homeControlsCss } from './homeControlsCss';
+import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
 
 /** How often Home checks whether Quick Access has closed, and how long it then lets Steam restore focus first. */
@@ -148,7 +151,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs } = useSettings();
+    const { enabled, spotlightHome, homeExpandedControls, homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs } = useSettings();
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -357,6 +360,7 @@ export function SpotlightHome() {
     const actionRowButtons = {
         onButtonDown: (evt: GamepadEvent) => {
             try {
+                if (expanded.actionUp(evt)) return;
                 if (Number(evt?.detail?.button) === 10) {
                     evt.preventDefault?.();
                     evt.stopPropagation?.();
@@ -504,6 +508,10 @@ export function SpotlightHome() {
     const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
     const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
+    const expanded = useHomeControls({root:rootRef,enabled,spotlightHome,homeStatusBar,homeExpandedControls,mounted:contentUp,statusHidden:sheetUp,
+        launching:()=>!!data.focused&&launchPending(data.focused.appId),stopRepeats:()=>{bumpers.stop();directions.stop();},
+        returnHome:()=>{const root=rootRef.current;if(root)focusElement(homeReturnTarget(root,lastAction.current,recentsRef.current),'the Home action');},
+    });
     // A Unifideck game's size, as its page shows it right after Played (not during a fast run): the open draws that column
     // (OpenExtras), in Unifideck's own word once a page has shown it, so nothing shifts or pops in at the hand-over.
     const uniShortcut = !!game && !onLibrary && game.gameId !== undefined && !cycle.holding;
@@ -540,7 +548,7 @@ export function SpotlightHome() {
 
     return (
         <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
-            <style>{css}</style>
+            <style>{css}{expanded.footerActive?homeControlsCss:null}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
             <HeroBackground appId={resolved ? shownGame?.appId ?? null : null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
@@ -554,7 +562,7 @@ export function SpotlightHome() {
             >
                 {/* In Steam's top strip, above the safe area: clock, battery, connection and your online status. */}
                 {/* The status bar is drawn above Steam's menu layers, outside this root (components/GameStatusBar): the menus blur everything under them. */}
-                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} />}
+                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} controls={expanded.controls} />}
                 {/* Open transition: the glass panels the chips grow into, one per page card (hidden until opening). */}
                 <div className="gh-open-shell" data-i="0" />
                 <div className="gh-open-shell" data-i="1" />
@@ -613,8 +621,8 @@ export function SpotlightHome() {
                         ) : showEmptyMessage(data.games.length, data.recentsSettled) ? (
                             // No recents once the boot-time retries are over: the Library action, so Home is never
                             // a dead end. During the retries only the plain hero shows.
-                            <div className="gh-empty">
-                                <LibraryActionRow preferred />
+                            <div className="gh-empty" onFocus={expanded.controls?onActionsFocus:undefined}>
+                                <LibraryActionRow preferred buttons={{onButtonDown:expanded.actionUp}} />
                             </div>
                         ) : null}
                     </div>

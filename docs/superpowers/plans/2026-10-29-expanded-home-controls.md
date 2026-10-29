@@ -66,7 +66,7 @@ The lease discovers/rebinds native footer replacements, adds owned attributes, a
 export interface HomeStatusControls {register(id:HomeControlId,node:HTMLElement|null):void;focused(id:HomeControlId):void;button(id:HomeControlId,event:GamepadEvent):void}
 ```
 
-`StatusBar`/`GameStatusBar` receive optional `homeControls?:HomeStatusControls`; undefined retains legacy DOM/presentation. A Home-only coordinator in `src/home/HomeControls.tsx` supplies stable callbacks and an `enterStatus():boolean` entry; it exposes current active state and lease CSS through the existing Home-owned status portal. No second status store, viewport layer, keyboard or modified `Zone` type.
+`StatusBar`/`GameStatusBar` receive optional `homeControls?:HomeStatusControls`; undefined retains legacy DOM/presentation. A Home-only coordinator in `src/home/useHomeControls.ts` supplies stable callbacks and an `enterStatus():boolean` entry; it exposes current active state and lease CSS through the existing Home-owned status portal. No second status store, viewport layer, keyboard or modified `Zone` type.
 
 ### Task 1: Record verified native footer and deferred Search contracts
 
@@ -111,14 +111,14 @@ export interface HomeStatusControls {register(id:HomeControlId,node:HTMLElement|
 
 ### Task 5: Home-only focus lifecycle and opt-in integration
 
-**Files:** New `src/home/HomeControls.tsx`; `src/home/SpotlightHome.tsx`, `src/components/GameStatusBar.tsx`, scoped CSS; new `tests/home/homeControlsFocus.test.ts`.
+**Files:** New `src/home/useHomeControls.ts`; `src/home/SpotlightHome.tsx`, `src/components/GameStatusBar.tsx`, scoped CSS; new `tests/home/homeControlsFocus.test.ts`.
 **Consumes:** Policy, footer lease and status bridge. **Produces:** Home coordinator and active integration.
 
 - [ ] Write RED tests: Up from highest action row enters last visible status ID or first visible cell; left/right clamp; Down/B restores previous valid action, else Play/recents/empty-Home fallback. Use named GamepadButton enum.
 - [ ] Test deferred ref-registration repair after rerenders, download completion, controllers/persona removal, all cells gone and setting-off while focused. Never focus a detached/invisible node.
 - [ ] Preserve native header access: Up from status returns focus to the existing Home action row and lets a subsequent normal Up follow Steam's original header path. Do not consume the native Search/header's events or modify the native input. Record this explicit bridge behaviour in tests; no guessed native target/route.
 - [ ] Test menus/launches/routes/background loss suspend both status input and footer styling without focus theft; resume only in Home with input ownership. Preserve current content zones/memory and status/native-bar handoff. Stop existing held bumper/direction repeat before entering status.
-- [ ] Implement the coordinator with registered refs, one deferred repair frame per update and existing `focusElement`/`takeSteamFocus`. One action-row Up handler enters status only while active; a one-shot bypass after Up-from-status allows the next Up through to Steam. All other navigation stays original.
+- [ ] Implement the coordinator with registered refs, one deferred repair frame per update and existing `focusElement`/`takeSteamFocus`. One action-row Up handler enters status only while active; a one-shot bypass after Up-from-status allows the next Up through to Steam. Temporarily render our status cells read-only during that handoff so they cannot become native spatial-navigation targets. All other navigation stays original.
 - [ ] Explicit tests: no Search field/keyboard/provider calls, unchanged native header attributes/handlers, no new status activation. Run focused policy/lease/status/focus tests/typecheck; commit.
 
 ### Task 6: Whole-change verification and later approved trial

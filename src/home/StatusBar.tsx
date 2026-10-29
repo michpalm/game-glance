@@ -82,7 +82,7 @@ function GamepadIcon() {
 export function StatusCell({id,controls,cellKey,...props}:Omit<HTMLAttributes<HTMLElement>,'id'> & {id:HomeControlId;controls?:HomeStatusControls;cellKey?:Key}) {
     if(!controls)return <span key={cellKey} {...props} />;
     return <Focusable key={cellKey} {...props} ref={(node:HTMLElement|null)=>controls.register(id,node)}
-        className={`${props.className??''} gh-status-control`} data-gh-status={id} role="button" tabIndex={0}
+        className={`${props.className??''} gh-status-control`} data-gh-status={id} role="button" tabIndex={0} noFocusRing
         onFocus={()=>controls.focused(id)} onGamepadFocus={()=>controls.focused(id)}
         onButtonDown={(event:GamepadEvent)=>{if(event.detail.button===1){event.preventDefault();event.stopPropagation();}controls.button(id,event);}}
         children={props.children} onClick={event=>{event.preventDefault();event.stopPropagation();event.currentTarget.focus();controls.focused(id);}} />;
