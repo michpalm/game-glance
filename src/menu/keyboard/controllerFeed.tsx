@@ -14,12 +14,20 @@ export function validControllerSnapshot(axes:unknown,buttons:unknown):boolean {
  if(!axes||!buttons||typeof axes!=='object'||typeof buttons!=='object')return false;
  const a=axes as AxesSnapshot,b=buttons as ButtonsSnapshot;
  return Number.isInteger(a.nControllerIndex)&&a.nControllerIndex>=0&&a.nControllerIndex<16&&a.nControllerIndex===b.nControllerIndex&&
-  !!a.LeftJoystick&&!!a.RightJoystick&&[a.LeftJoystick.x,a.LeftJoystick.y,a.RightJoystick.x,a.RightJoystick.y].every(v=>typeof v==='number'&&Number.isFinite(v))&&buttonNames.every(k=>typeof b[k]==='boolean');
+  !!a.LeftJoystick&&!!a.RightJoystick&&[a.LeftJoystick.x,a.LeftJoystick.y,a.RightJoystick.x,a.RightJoystick.y].every(v=>typeof v==='number'&&Number.isFinite(v))&&buttonNames.every(k=>k in b&&(typeof b[k]==='boolean'||b[k]===undefined));
+}
+/** Steam may omit false protobuf values; its store still assigns every known button key as undefined.
+ * Validate the schema before converting those released buttons to the booleans consumed by the edge detector. */
+export function normalizeControllerSnapshot(axes:unknown,buttons:unknown,index:number):{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null {
+ if(!validControllerSnapshot(axes,buttons)||(axes as AxesSnapshot).nControllerIndex!==index)return null;
+ const raw=buttons as ButtonsSnapshot,normalized={nControllerIndex:raw.nControllerIndex} as ButtonsSnapshot;
+ for(const key of buttonNames)normalized[key]=raw[key]===true;
+ return {axes:axes as AxesSnapshot,buttons:normalized};
 }
 /** The hooks own Steam's matching start/end effects. Never call them in a probe or outside React. */
 export function ControllerFeed({feeds,index,snapshot}:{feeds:ControllerFeeds;index:number;snapshot(value:{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null):void}){
  const axes=feeds.useAxes(index),buttons=feeds.useButtons(index);
- useLayoutEffect(()=>{snapshot(axes&&buttons&&validControllerSnapshot(axes,buttons)&&axes.nControllerIndex===index?{axes,buttons}:null);},[axes,buttons,index,snapshot]);
+ useLayoutEffect(()=>{snapshot(normalizeControllerSnapshot(axes,buttons,index));},[axes,buttons,index,snapshot]);
  useLayoutEffect(()=>()=>snapshot(null),[snapshot]);
  return null;
 }

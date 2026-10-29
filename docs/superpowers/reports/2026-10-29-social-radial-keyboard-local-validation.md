@@ -60,3 +60,9 @@ Installed implementation revision `7d0fe87` with the in-game menu confirmed clos
 SSH `systemctl reboot` was refused because interactive authentication was unavailable. Steam's source-verified normal `SteamClient.System.RestartPC()` action requested the authorised full restart instead. A changed kernel boot ID confirms that this was a full system restart. No sudo or forced reboot was used. After boot, Decky's `plugin_loader.service` is active, Game Glance is loaded in Steam, and the installed backend exposes all seven expected regions.
 
 The saved keyboard choice remains at its existing/default value. To try the feature, choose **Social keyboard → Radial** in Game Glance settings and open the Social compose field. No messages were sent. Controller responsiveness, both sticks/triggers, frost appearance/performance and the remaining Task 7 acceptance matrix still need actual user/device testing.
+
+## First Ally finding: released button values
+
+The first opening fell back to Compact with “Radial keyboard unavailable.” Read-only inspection confirmed usable compose geometry and controller0, but Steam's button-state object assigned every released button an `undefined` value rather than explicit `false`. Strict boolean validation rejected that legitimate snapshot.
+
+The frontend correction checks the expected field schema and matching controller index, accepts only boolean/undefined button values, and normalises released values to false before the input edge detector. True pressed values are preserved; missing schema fields and malformed values still fail. A regression mirroring the device snapshot failed before the correction and now passes. Full frontend 2,293 tests, typecheck, build and diff checks pass. New bundle SHA-256: `7d7295ba43b5a62a213a0f205bef7840836ae606b416ef5edbd46c120ac8e238`. No Python change or restart required; installation is awaiting approval.
