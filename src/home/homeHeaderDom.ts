@@ -25,7 +25,7 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
         bound=bar;apply(next);const ready=next.size>0;if(last!==ready){last=ready;available(ready);}
     };
     const schedule=()=>{if(disposed||queued)return;queued=true;void Promise.resolve().then(()=>{queued=false;update();});};
-    const observer=view?.MutationObserver?new view.MutationObserver(records=>{if(records.some(record=>!bound?.isConnected||bound.contains(record.target)||[...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&((node as Element).contains(bound)||!!(node as Element).querySelector('[class*=avatarHolder]')))))schedule();}):null;
+    const observer=view?.MutationObserver?new view.MutationObserver(records=>{if(records.some(record=>!bound?.isConnected||bound.contains(record.target)||[...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&(bound?.contains(node)||(node as Element).contains(bound)||!!(node as Element).querySelector('[class*=avatarHolder]')))))schedule();}):null;
     observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});view?.addEventListener('resize',schedule);update();
     return {suspend(value){if(disposed||value===suspended)return;suspended=value;update();},dispose(){if(disposed)return;disposed=true;observer?.disconnect();view?.removeEventListener('resize',schedule);apply(new Map());}};
 }
