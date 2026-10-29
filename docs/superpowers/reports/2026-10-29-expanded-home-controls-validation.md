@@ -27,3 +27,11 @@ No product code was changed for these checks. Current-branch catch-up verificati
 Synthetic SVGs do not establish every native glyph family's appearance. Synthetic markup does not establish React/Decky focus, real Steam footer DOM fidelity after updates, Gamescope frost, route/menu handoff, live dynamic status changes or controller behaviour. Very long unbounded labels and arbitrarily many status cells are not covered. Device acceptance still requires separately approved access; none occurred during this validation.
 
 The current build checksum exactly matches the root handoff's recorded installed screenshot-notification build `7bd7331`. Home controls are ancestors of that commit, so the earlier assumption that their code was absent from every later device build is stale. The recorded installed bundle includes the Home controls implementation; the setting remains false by default. Live device checksum and setting state were not re-read, and these local checks do not establish device acceptance. No installation/reload was performed here.
+
+## Independent source review
+
+A fresh-context reviewer inspected `72b65f8..985dbf3` in current `859b7c4`, including later menu integration changes. No Critical or Important issue was established. Reviewer verdict: source is ready with one nonblocking recommendation; actual device acceptance remains open. The review was read-only and did not rerun tests.
+
+Deferred minor: `src/home/useHomeControls.ts:109` installs an unconditional 250ms watchdog even when expansion is off, adding four small runtime checks per second and departing from the plan's no-new-polling constraint. No measured lag was established. Reusing an existing runtime notification or gating the timer behind the opt-in is future cleanup; no product fix was made in this review round.
+
+Reviewer exclusions were explicitly retained: Search redesign/keyboards and status activation are deferred by user approval; unrelated newer notification behavior was checked only for Home integration; Steam/Decky/Gamescope behavior and other native glyph families still require device acceptance. None is silently treated as passing or waived. Keep the plan workspace until the acceptance gate is resolved.
