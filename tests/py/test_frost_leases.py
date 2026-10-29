@@ -414,3 +414,37 @@ def test_stdin_eof_releases_an_active_worker_without_frontend_cleanup(tmp_path):
         os.close(read_fd)
     assert not thread.is_alive()
     assert native.state == NativeState("", 7)
+
+
+def test_worker_keeps_an_open_menus_frost_however_long_the_menu_stays_open(tmp_path):
+    # An open menu sends about 8 commands a second (environment and renew). A worker that stopped after 4096 commands
+    # dropped the frost of a menu left open for ~8.5 minutes (Ally, 2026-10-29).
+    import json
+    import os
+    import queue
+    import threading
+    from gameglance.frost.worker import serve
+    native = FakeNative()
+    original_enable = native.enable
+    def enable_ready():
+        original_enable()
+        native.ready.add(native.path)
+    native.enable = enable_ready
+    read_fd, write_fd = os.pipe()
+    replies = queue.Queue()
+    thread = threading.Thread(target=serve, args=(native, str(tmp_path), read_fd, lambda rpc, value: replies.put((rpc, value))))
+    thread.start()
+    def send(rpc, operation, args):
+        os.write(write_fd, (json.dumps({"id": rpc, "operation": operation, "args": args}) + "\n").encode())
+        return replies.get(timeout=2)[1]
+    try:
+        prepared = send(1, "prepare", {"request_id": "r", "frame": frame()})
+        token = send(2, "activate", {"request_id": "r", "key": prepared["key"], "sequence": 1, "frame": frame()})["token"]
+        for rpc in range(3, 5003):
+            assert send(rpc, "renew", {"token": token}) is True
+        assert thread.is_alive() and native.state.effect
+    finally:
+        os.close(write_fd)
+        thread.join(timeout=2)
+        os.close(read_fd)
+    assert not thread.is_alive()

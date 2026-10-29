@@ -321,10 +321,11 @@ _PENDING = object()
 def serve(native, home, input_fd, reply, running=lambda: True):
     worker = None
     buffer = b""
-    commands = 0
     try:
         worker = FrostWorker(native, home, time.monotonic, reply)
-        while running() and commands < 4096:
+        # Serves until its input closes: an open menu sends about 8 commands a second (environment and renew), so any
+        # command budget would end a long-open menu's frost mid-opening.
+        while running():
             worker.tick()
             descriptors=[input_fd]
             if hasattr(native,"fileno"):
@@ -344,7 +345,6 @@ def serve(native, home, input_fd, reply, running=lambda: True):
                 if set(command) != {"id", "operation", "args"} or type(command["id"]) is not int:
                     raise ValueError("invalid envelope")
                 worker.command(command["id"], command["operation"], command["args"])
-                commands += 1
             if len(buffer) > 16384:
                 raise ValueError("oversized command")
     except (OSError, ValueError, EOFError):
