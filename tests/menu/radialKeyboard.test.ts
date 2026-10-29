@@ -11,3 +11,5 @@ it('shows separate circular wheels and blank centres without another compose fie
  expect(all.filter(n=>n.type==='input'||n.type==='textarea')).toEqual([]);
  expect(all.filter(n=>n.props.className==='gg-radial-key')).toHaveLength(26);
 });
+
+it('uses Home completion wording without altering delete/close mappings',()=>{const all=nodes(RadialKeyboardView({bounds:[{left:12,top:200,diameter:180},{left:600,top:200,diameter:180}],layout:buildRadialLayout(BUILTIN_QWERTY),state:{selection:[null,null],extra:[false,false],uppercase:false},short:'EN',type:()=>{},completionLabel:'Done'}));const text=all.flatMap(e=>typeof e.props.children==='string'?[e.props.children]:[]).join(' ');expect(text).toContain('A Done');expect(text).toContain('B Delete');expect(text).toContain('X Close');});

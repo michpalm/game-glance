@@ -10,6 +10,7 @@ import { createStripPress, finishPadDrop, installDragGamepad, installHoldWatch, 
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
+import {keyboardContext,type KeyboardContext} from '../keyboard/context';
 import { MenuAction } from './MenuAction';
 
 export type Layouts = { layouts: KeyboardLayout[]; current: number };
@@ -152,7 +153,7 @@ type StripHandlers = { onPointerDown?(e: ReactPointerEvent<HTMLDivElement>): voi
 const MAINTAIN_X = 2 as NavEntryPositionPreferences;
 
 export interface KeyboardPanelProps {
-    layout: KeyboardLayout; page: Page; typing: TypingState; canSend: boolean;
+    completionLabel?:string;frost?:boolean;layout: KeyboardLayout; page: Page; typing: TypingState; canSend: boolean;
     position: Point | null; dragging: boolean; panelRef?: Ref<HTMLDivElement>;
     onKey(row: number, col: number): void; onMove(): void;
     hold: { start(row: number, col: number): void; stop(): void; over(target: EventTarget | null): void };
@@ -162,10 +163,10 @@ export interface KeyboardPanelProps {
 }
 
 /** Stateless drawing of the panel: keys as menu buttons in a Focusable grid, the move strip below. */
-export function KeyboardPanel({ layout, page, typing, canSend, position, dragging, panelRef, onKey, onMove, hold, strip, pad }: KeyboardPanelProps) {
+export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, typing, canSend, position, dragging, panelRef, onKey, onMove, hold, strip, pad }: KeyboardPanelProps) {
     const rows = page === 'letters' ? layout.letters : layout.symbols;
     const startHold = (target: EventTarget | null) => { const at = keyAt(target); if (at) hold.start(at[0], at[1]); };
-    return <div ref={panelRef} className={`gg-keyboard${dragging ? ' gg-keyboard-dragging' : ''}`} data-gg-frost-region="keyboard" role="group" aria-label="Keyboard"
+    return <div ref={panelRef} className={`gg-keyboard${dragging ? ' gg-keyboard-dragging' : ''}`} data-gg-frost-region={frost?'keyboard':undefined} role="group" aria-label="Keyboard"
         style={{ left: position?.x ?? 0, top: position?.y ?? 0, visibility: position ? undefined : 'hidden' }}>
         <Focusable flow-children="column">
         <Focusable className="gg-keyboard-keys" flow-children="column"
@@ -174,7 +175,7 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
             onPointerMove={(e: ReactPointerEvent) => hold.over((e.currentTarget as HTMLElement).ownerDocument?.elementFromPoint?.(e.clientX, e.clientY) ?? e.target)}
             onButtonDown={(e: GamepadEvent) => { if (e.detail.button === 1) startHold(e.target); }} onButtonUp={hold.stop}>
             {rows.map((row, r) => <Focusable key={`${page}:${r}`} className="gg-keyboard-row" flow-children="row" navEntryPreferPosition={MAINTAIN_X}>
-                {row.map((k, c) => <MenuAction key={c} id={keyId(r, c)} className={`gg-keyboard-key${KIND_CLASS[k.kind] ?? ''}`} ariaLabel={ariaOf(k)}
+                {row.map((k, c) => <MenuAction key={c} id={keyId(r, c)} className={`gg-keyboard-key${KIND_CLASS[k.kind] ?? ''}`} ariaLabel={k.kind==='send'?completionLabel:ariaOf(k)}
                     selected={k.kind === 'shift' ? typing.shift !== 'off' : k.dead ? typing.held?.char === k.char : undefined}
                     disabled={k.kind === 'send' && !canSend} onAction={() => onKey(r, c)}>
                     {labelOf(k, typing)}{k.hint && k.kind !== 'space' && <span className="gg-keyboard-hint" aria-hidden="true">{k.hint}</span>}
@@ -192,7 +193,8 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
 }
 
 /** The Social chat's own keyboard, floating in the menu while the session is open. */
-export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send, field }: { session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
+export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSend, send, field }: { context?:KeyboardContext;session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
+    const ctx=keyboardContext(context);
     const open = useSyncExternalStore(session.subscribe, session.get).open;
     const [typing, setTyping] = useState<TypingState>({ text: draft, shift: 'off', held: null });
     const [page, setPage] = useState<Page>('letters');
@@ -234,7 +236,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
 
     /** The menu root, its scale and the rectangles the placement needs, in the menu's own units. */
     const geometry = () => {
-        const element = field(), root = element?.closest<HTMLElement>('.gg-menu'), view = root?.ownerDocument.defaultView;
+        const element = field(), root = element?ctx.host(element):null, view = root?.ownerDocument.defaultView;
         if (!element || !root || !view) return null;
         const box = root.getBoundingClientRect(), scale = box.width / root.offsetWidth || 1;
         const menuRect = (r: { left: number; top: number; width: number; height: number }) => toMenuRect(r, box, scale);
@@ -247,7 +249,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     useLayoutEffect(() => {
         if (!open) return;
         setTyping(t => ({ ...clearHeld(t), shift: 'off' })); setPage('letters'); setIndex(live.current.layouts.current); setPosition(null); setDragging(false);
-        setHost(field()?.closest<HTMLElement>('.gg-menu') ?? null);
+        const element=field();setHost(element?ctx.host(element):null);
         let alive = true;
         void loadPosition(backendKv).then(saved => {
             const g = alive && geometry();
@@ -267,8 +269,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             doc?.defaultView?.requestAnimationFrame(() => {
                 const active = doc?.activeElement;
                 if (!element?.isConnected || active && active !== doc.body && !panel.current?.contains(active)) return;
-                const target = element.matches('button') ? element : element.querySelector<HTMLElement>('button') ?? element;
-                target.focus({ preventScroll: true }); takeSteamFocus(target);
+                if(ctx.ownsInput())ctx.restoreFocus(element);
             });
         };
     }, [open]);
@@ -284,7 +285,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     // Frost for what the menu's shader cannot blur: the columns under the panel, after every placement; none while dragged.
     useLayoutEffect(() => {
         const view = host?.ownerDocument.defaultView;
-        if (!placed || !host || !panel.current || !view) return;
+        if (context || !placed || !host || !panel.current || !view) return;
         return followUnderKeyboard(host, panel.current, view, dragging);
     }, [placed, host, position, dragging]);
 
@@ -293,6 +294,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
         if (!open || !view) return;
         const removeTap = installKeyboardOutsideTap(view, () => [panel.current, field()].filter((e): e is HTMLElement => !!e), session.close);
         const removeKeys = installPhysicalKeys(view, event => {
+            if(!ctx.ownsInput())return false;
             const { typing: t, canSend: can, send: go } = live.current;
             const result = physicalKey(t, event, can);
             if (!result) return false;
@@ -305,6 +307,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
 
     const rowsOf = () => page === 'letters' ? layout.letters : layout.symbols;
     const onKey = (row: number, col: number) => {
+        if(!ctx.ownsInput())return;
         const id = keyId(row, col), k = rowsOf()[row]?.[col];
         const skip = skipAction.current;
         if (skip?.id === id && (skip.stopped === null || Date.now() - skip.stopped < 150)) { skipAction.current = null; return; }
@@ -320,7 +323,8 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     const hold = {
         start(row: number, col: number) {
             hold.stop(); skipAction.current = null;
-            const id = keyId(row, col), k = rowsOf()[row]?.[col];
+            if(!ctx.ownsInput())return;
+        const id = keyId(row, col), k = rowsOf()[row]?.[col];
             // With one layout the space bar has nothing to switch to, so its hold must not swallow the space.
             if (!k?.hint || k.kind === 'space' && nextLayout(live.current.layouts.layouts, live.current.index) === live.current.index) return;
             const at = Date.now();
@@ -420,7 +424,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     if (!open || !host || !layout) return null;
     const feed = padDrag && !feedFailed ? axesFeed : null, view = host.ownerDocument.defaultView;
     return createPortal(<>
-        <KeyboardPanel layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} panelRef={panel}
+        <KeyboardPanel completionLabel={ctx.completionLabel} frost={!context} layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} panelRef={panel}
             onKey={onKey} onMove={stripPress.current.action} hold={hold} strip={strip} pad={{ down: stripPress.current.buttonDown, up: stripPress.current.buttonUp, abort: stripPress.current.abort }} />
         {feed && view && <FeedGuard failed={() => setFeedFailed(true)}><StickFeed feed={feed} view={view} move={padMove} busy={on => { stickBusy.current = on; }} /></FeedGuard>}
     </>, host);

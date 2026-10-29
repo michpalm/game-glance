@@ -1,0 +1,5 @@
+import {it,expect,vi} from 'vitest';
+import {parseHTML} from 'linkedom';
+import {keyboardContext} from '../../../src/menu/keyboard/context';
+it('defaults to Social and allows a Home host without a fake menu ancestor',()=>{const {document}=parseHTML('<html><body><div class="gg-menu"><button id="social"></button></div><div id="home"><button id="search"></button></div></body></html>');const social=document.getElementById('social')! as unknown as HTMLElement,search=document.getElementById('search')! as unknown as HTMLElement,home=document.getElementById('home')! as unknown as HTMLElement;
+ expect(keyboardContext().host(social)).toBe(social.parentElement);expect(keyboardContext().host(search)).toBeNull();expect(keyboardContext().completionLabel).toBe('Send');const restore=vi.fn(),explicit=keyboardContext({host:()=>home,restoreFocus:restore,ownsInput:()=>false,completionLabel:'Done'});expect(explicit.host(search)).toBe(home);expect(explicit.ownsInput()).toBe(false);explicit.restoreFocus(search);expect(restore).toHaveBeenCalledWith(search);expect(explicit.completionLabel).toBe('Done');});

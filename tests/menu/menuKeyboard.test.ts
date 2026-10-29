@@ -265,3 +265,5 @@ describe('menu coordinates', () => {
         expect(toMenuRect({ left: 150, top: 70, width: 40, height: 20 }, { left: 100, top: 50 }, .5)).toEqual({ x: 100, y: 40, width: 80, height: 40 });
     });
 });
+
+it('labels Home completion Done while Social still defaults to Send',()=>{const home=panel(BUILTIN_QWERTY,{completionLabel:'Done'});expect(home.nodes.some(n=>n.props.ariaLabel==='Done')).toBe(true);});
