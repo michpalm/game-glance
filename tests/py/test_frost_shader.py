@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from gameglance.frost.contracts import validate_frame
-from gameglance.frost.shader import build_shader, stage_shader
+from gameglance.frost.shader import STATUS_TILE_WIDTH, build_shader, stage_shader
 
 
 def frame(width=1920, height=1080, fit="fit"):
@@ -194,3 +194,21 @@ def test_status_bar_gets_its_own_frost_area_like_the_others():
         assert part in source
     # The fade starts when any area, the status bar included, becomes visible.
     assert "Status.z <= 0" in source
+
+
+def test_status_bar_content_changing_its_width_does_not_rebuild_the_shader():
+    # Its width follows its content, which fills in as a fresh opening starts (Ally, 2026-10-29: .13 then .26).
+    narrow, wide = frame(), frame()
+    narrow["regions"]["status"]["width"] = .1316
+    wide["regions"]["status"]["width"] = .2618
+    assert build_shader(narrow)[1] == build_shader(wide)[1]
+    wider = frame()
+    wider["regions"]["status"].update(x=.5, width=STATUS_TILE_WIDTH + .05)
+    assert build_shader(wider)[1] != build_shader(wide)[1]
+
+
+def test_status_blur_keeps_its_strength_in_a_tile_wider_than_the_pill():
+    # The capped tile is wider than the pill: blur steps follow the pill's own span on screen, not the tile's texels.
+    source, _ = build_shader(frame())
+    assert "8.0 / ((Status.z + 2.0 * Pad.x) * OutputSize.x)" in _function(source, "StatusHorizontal")
+    assert "8.0 / ((Status.w + 2.0 * Pad.y) * OutputSize.y)" in _function(source, "StatusVertical")

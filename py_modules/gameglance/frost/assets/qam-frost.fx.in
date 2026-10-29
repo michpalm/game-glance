@@ -116,8 +116,10 @@ float4 NotificationsDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_T
 float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsDS, uv, float2(1.0 / @NOTIFICATIONS_W@, 0.0)); }
 float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsHS, uv, float2(0.0, 1.0 / @NOTIFICATIONS_H@)); }
 float4 StatusDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Status)); }
-float4 StatusHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusDS, uv, float2(1.0 / @STATUS_W@, 0.0)); }
-float4 StatusVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusHS, uv, float2(0.0, 1.0 / @STATUS_H@)); }
+// The status tile is sized to a cap, usually wider than the pill: one blur step is 8 output pixels of the pill's own
+// span, so the blur keeps its strength however wide the pill is.
+float4 StatusHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusDS, uv, float2(8.0 / ((Status.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 StatusVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusHS, uv, float2(0.0, 8.0 / ((Status.w + 2.0 * Pad.y) * OutputSize.y))); }
 float4 Calm(float4 c) {
     float y = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
     float calmed = y > CalmKnee ? CalmKnee + (y - CalmKnee) * CalmSlope : y;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createFrostController, frostAllocation } from '../../../src/menu/frost/controller';
+import { createFrostController, frostAllocation, STATUS_TILE_WIDTH } from '../../../src/menu/frost/controller';
 import type { Activated, FrostBridge, FrostFrame, Prepared } from '../../../src/menu/frost/types';
 function deferred<T>() {let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>resolve=r);return {promise,resolve};}
 export function frame(generation=1,background:'game'|'steam'='game'):FrostFrame {
@@ -80,6 +80,17 @@ describe('frost controller',()=>{
         expect(f.bridge.activate).toHaveBeenLastCalledWith(expect.any(String),'key',expect.any(Number),wider);
         await f.controller.dispose();
     });
+    it('sends the newest geometry once an activation in flight completes',async()=>{
+        const f=fixture(),active=deferred<Activated>();vi.mocked(f.bridge.activate).mockReturnValueOnce(active.promise);
+        const pill=(width:number)=>{const f=frame();f.regions.status.width=width;return f;};
+        f.controller.begin(1);f.controller.frame(pill(.13));await flush();f.controller.presented(1);await flush();
+        // The status bar fills in while the activation is in flight: same shader, a wider pill.
+        const wider=pill(.26);f.controller.frame(wider);await flush();
+        expect(f.bridge.cancel).not.toHaveBeenCalled();
+        active.resolve({status:'active',token:'token'});await flush();
+        expect(f.bridge.update).toHaveBeenLastCalledWith('token',expect.any(Number),wider);
+        await f.controller.dispose();
+    });
     it('does not bring frost back into an opening that never had it',async()=>{
         const f=fixture(),ready=deferred<Prepared>();vi.mocked(f.bridge.prepare).mockReturnValueOnce(ready.promise);
         f.controller.begin(1);f.controller.frame(frame());f.controller.presented(1);
@@ -153,5 +164,14 @@ describe('frost shader allocation',()=>{
     it('ignores sub-texel geometry jitter but not a display scale change',()=>{
         expect(frostAllocation(at(2.32,.601))).toBe(frostAllocation(at(2.32,.601+1/1920)));
         expect(frostAllocation(at(2.32))).not.toBe(frostAllocation(at(1)));
+    });
+    // The status bar's width follows its content (battery, controllers, a download, the clock), which fills in as a
+    // fresh opening starts (Ally, 2026-10-29: .13 then .26 of the width). Its tile is sized to a cap, so that never
+    // rebuilds the shader and drops this opening's frost.
+    it('keeps one allocation while the status bar content changes its width, up to the cap',()=>{
+        const status=(width:number)=>{const f=frame();f.context.dpr=2.32;f.regions.status.width=width;return frostAllocation(f);};
+        expect(status(.1316)).toBe(status(.2618));
+        expect(status(.2618)).toBe(status(STATUS_TILE_WIDTH));
+        expect(status(STATUS_TILE_WIDTH+.05)).not.toBe(status(.2618));
     });
 });

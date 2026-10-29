@@ -2,11 +2,15 @@ import type { HomeFrost } from './home';
 import { REGION_IDS, type FrostBridge, type FrostFrame, type Prepared } from './types';
 
 export interface FrostWarmup {requestId:string;frame:FrostFrame;ready:Promise<Prepared>}
+/** The status bar's tile width, as a share of the screen: its width follows its content, so its tile is sized to this
+ * cap (wider than the full pill) and a change in content never rebuilds the shader. Same value in shader.py. */
+export const STATUS_TILE_WIDTH = .4;
 /** Mirrors frost_geometry() in py_modules/gameglance/frost/shader.py: equal allocations build an equal shader. */
 export function frostAllocation(frame:FrostFrame):string {
     const pad=Math.ceil(3*16*frame.context.dpr);
     return JSON.stringify([frame.context,...REGION_IDS.map(id=>{
-        const r=frame.regions[id];return [Math.ceil((r.width*frame.context.outputWidth+2*pad)/8),Math.ceil((r.height*frame.context.outputHeight+2*pad)/8)];
+        const r=frame.regions[id],width=id==='status'?Math.max(r.width,STATUS_TILE_WIDTH):r.width;
+        return [Math.ceil((width*frame.context.outputWidth+2*pad)/8),Math.ceil((r.height*frame.context.outputHeight+2*pad)/8)];
     })]);
 }
 
@@ -57,6 +61,11 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             if(s.presented)activate(s);
         }).then(()=>{if(s.request===request||!s.request)settle(s);});
     }
+    /** New geometry for the live effect (same shader); a rejected update clears it. */
+    function update(s:Session,frame:FrostFrame){
+        const token=s.token!,sequence=++s.sequence;
+        void safely(async()=>{const ok=await bridge.update(token,sequence,frame);if(!ok&&session===s&&s.token===token&&s.sequence===sequence)await clear(s);});
+    }
     // Masks go live with the reveal; the shader then fades them in over the
     // same 150 ms as the menu, from the first frame they are visible.
     function activate(s:Session){
@@ -69,6 +78,8 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             if(active.status!=='active')return;
             if(!current(s,request)){await safely(()=>bridge.release(active.token));return;}
             s.token=active.token;s.hadFrost=true;heartbeat(s);
+            // The geometry moved on while this was in flight (same shader, e.g. the status bar filling in): send it now.
+            if(s.frame&&s.frame!==frame)update(s,s.frame);
         });
     }
     return {
@@ -86,10 +97,8 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             if(frame.context.background==='steam'){
                 if(s.homeActive||!s.presented)s.homeActive=home?.apply(frame)??false;
                 settle(s);
-            }else if(s.token){
-                const token=s.token,sequence=++s.sequence;
-                void safely(async()=>{const ok=await bridge.update(token,sequence,frame);if(!ok&&session===s&&s.token===token&&s.sequence===sequence)await clear(s);});
-            }else if(changed)prepare(s,frame);
+            }else if(s.token)update(s,frame);
+            else if(changed)prepare(s,frame);
         },
         presented(generation:number){
             const s=session;if(!s||s.generation!==generation)return;

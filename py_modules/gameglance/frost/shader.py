@@ -14,6 +14,10 @@ from .contracts import REGIONS, validate_frame
 GLASS_BLUR_CSS_PX = 16
 # Tiles are blurred at 1/8 resolution after an exact 8x8 box average.
 DOWNSAMPLE = 8
+# The status bar's width follows its content (battery, controllers, a download, the clock), which fills in as a fresh
+# opening starts. Its tile is sized to this share of the screen, wider than the full pill, so content never rebuilds
+# the shader. Same value as STATUS_TILE_WIDTH in src/menu/frost/controller.ts.
+STATUS_TILE_WIDTH = .4
 
 
 def frost_geometry(frame: dict) -> dict:
@@ -21,7 +25,8 @@ def frost_geometry(frame: dict) -> dict:
     sigma = GLASS_BLUR_CSS_PX * c["dpr"]
     # Three sigma of real game pixels around each region keeps its edges clean.
     pad = math.ceil(3 * sigma)
-    tiles = {name: (math.ceil((frame["regions"][name]["width"] * c["outputWidth"] + 2 * pad) / DOWNSAMPLE),
+    width = lambda name: max(frame["regions"][name]["width"], STATUS_TILE_WIDTH) if name == "status" else frame["regions"][name]["width"]
+    tiles = {name: (math.ceil((width(name) * c["outputWidth"] + 2 * pad) / DOWNSAMPLE),
                     math.ceil((frame["regions"][name]["height"] * c["outputHeight"] + 2 * pad) / DOWNSAMPLE)) for name in REGIONS}
     return {"sigma": sigma, "pad": pad, "tiles": tiles}
 

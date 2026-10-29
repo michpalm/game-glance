@@ -50,7 +50,14 @@ describe('frost geometry', () => {
         const publish=vi.fn(), stop=observeFrostFrame(input,publish);
         for(const fn of [...frames.values()])fn(0); frames.clear(); publish.mockClear();
         callbacks[0]([],{} as ResizeObserver); callbacks[0]([],{} as ResizeObserver);
-        expect(publish).toHaveBeenCalledWith(null); expect(frames.size).toBe(1);
+        // An area resizing (the status bar filling in, the bell's count) keeps the current frame until the re-measure:
+        // a null would clear frost still activating at the reveal (Ally, 2026-10-29).
+        expect(publish).not.toHaveBeenCalled(); expect(frames.size).toBe(1);
+        for(const fn of [...frames.values()])fn(0); frames.clear();
+        expect(publish).toHaveBeenCalledTimes(1); expect(publish.mock.calls[0][0]).not.toBeNull();
+        // The window resizing does invalidate first: until it is measured again, the geometry is not known.
+        input.source.dispatchEvent(new Event('resize'));
+        expect(publish).toHaveBeenLastCalledWith(null); expect(frames.size).toBe(1);
         stop(); expect(frames.size).toBe(0);
     });
     it('preserves initial frost when ResizeObserver delivers unchanged initial bounds after reveal',()=>{

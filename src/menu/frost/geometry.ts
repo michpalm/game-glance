@@ -39,10 +39,16 @@ export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
 export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame|null)=>void):()=>void {
     const {source,owner}=input;
     let stopped=false, frame:number|undefined;
+    const remeasure=()=>{
+        if(stopped)return;
+        if(frame===undefined) frame=source.requestAnimationFrame(()=>{frame=undefined;if(!stopped)publish(measureFrostFrame(input));});
+    };
+    // A window resize leaves the geometry unknown until it is measured again. An area resizing (the status bar filling
+    // in, the bell's count) keeps the current frame until then: a null would clear frost still activating at the reveal.
     const invalidate=()=>{
         if(stopped)return;
         publish(null);
-        if(frame===undefined) frame=source.requestAnimationFrame(()=>{frame=undefined;if(!stopped)publish(measureFrostFrame(input));});
+        remeasure();
     };
     const boundsKey=(element:Element)=>{const r=element.getBoundingClientRect();return [r.left,r.top,r.width,r.height].join(',');};
     const initialBounds=new Map<Element,string>([input.placeholder,...REGION_IDS.map(id=>input.elements[id])].filter(Boolean).map(e=>[e,boundsKey(e)]));
@@ -55,7 +61,7 @@ export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame
             if(initialBounds.get(target)!==boundsKey(target))changed=true;
             initialBounds.delete(target);
         }
-        if(changed)invalidate();
+        if(changed)remeasure();
     }) : undefined;
     observer?.observe(input.placeholder);
     for(const id of REGION_IDS) if(input.elements[id])observer?.observe(input.elements[id]);
