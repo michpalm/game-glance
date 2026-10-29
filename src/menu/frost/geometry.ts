@@ -95,7 +95,15 @@ export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame
     // The keyboard moves by its left/top (a drag, a spot) and shows by its visibility once placed, which no
     // ResizeObserver reports: watch its style. A move keeps the current frame until the re-measure, like a resize.
     const Mutation=(source as Window & {MutationObserver?:typeof MutationObserver}).MutationObserver;
-    const moves=Mutation ? new Mutation(remeasure) : undefined;
+    // The first dragging-class mutation removes keyboard frost. Later left/top changes do not affect any mask.
+    // ResizeObserver and viewport invalidation still remeasure the other regions while the keyboard is moving.
+    let dragHidden=!!input.elements.keyboard?.classList.contains(DRAGGING_CLASS);
+    const moves=Mutation ? new Mutation(records=>{
+        const dragging=!!input.elements.keyboard?.classList.contains(DRAGGING_CLASS);
+        const keyboardOnly=records.length===0||records.every(record=>record.target===input.elements.keyboard);
+        if(keyboardOnly&&dragging&&dragHidden)return;
+        dragHidden=dragging;remeasure();
+    }) : undefined;
     for(const id of REGION_IDS) if(OPTIONAL_REGIONS.has(id)&&input.elements[id])moves?.observe(input.elements[id]!,{attributes:true,attributeFilter:['style','class']});
     source.addEventListener('resize',invalidate); owner.addEventListener('resize',invalidate);
     source.visualViewport?.addEventListener('resize',invalidate); owner.visualViewport?.addEventListener('resize',invalidate);

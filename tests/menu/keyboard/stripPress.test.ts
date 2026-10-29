@@ -174,3 +174,18 @@ describe('the controller during a drag', () => {
         expect(later).toHaveBeenCalledTimes(2);
     });
 });
+
+describe('pad drop commit ordering',()=>{
+ it('saves the live position before flag clearing can synchronously render the stale starting state',async()=>{
+  const {finishPadDrop}=await import('../../../src/menu/keyboard/stripPress');
+  const live={position:{x:320,y:210}},start={x:10,y:10};let saved:typeof start|null=null;
+  finishPadDrop({lifted:true,finish:()=>{saved={...live.position};},release:()=>{live.position=start;},idle:()=>{throw Error('not idle');}});
+  expect(saved).toEqual({x:320,y:210});
+ });
+ it('releases flags even if finishing fails and never saves an unlifted drag',async()=>{
+  const {finishPadDrop}=await import('../../../src/menu/keyboard/stripPress');let released=0,idle=0;
+  expect(()=>finishPadDrop({lifted:true,finish:()=>{throw Error('retired');},release:()=>released++,idle:()=>idle++})).toThrow('retired');
+  finishPadDrop({lifted:false,finish:()=>{throw Error('not lifted');},release:()=>released++,idle:()=>idle++});
+  expect([released,idle]).toEqual([2,1]);
+ });
+});

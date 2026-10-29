@@ -19,6 +19,11 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     let environment:NativeFrostEnvironment|null=null,reading=false,environmentKnown=false;
     let session:{generation:number;enabled:boolean}|null=null,stopMeasurement:((quiet?:boolean)=>void)|undefined;
     let visible=false,stopped=false,lastContext='',lastElements:(HTMLElement|null)[]=[];
+    // A direct null bypasses the observer's dedupe. Retire it so equal recovered geometry is measured and forwarded.
+    function invalidateMeasurement(){
+        const stop=stopMeasurement;stopMeasurement=undefined;lastContext='';lastElements=[];
+        try{stop?.(true);}finally{controller.frame(null);}
+    }
     function measure(force=false){
         if(stopped||!session?.enabled)return;
         const value=context(environment),elements=frostRegionElements(source);
@@ -45,11 +50,11 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
     // measurement itself is observer-driven and coalesced to one RAF.
     const refresh=()=>{
         if(reading||stopped||!session?.enabled)return;reading=true;
-        void bridge.environment?.().then(value=>{if(!stopped){environment=value;environmentKnown=true;measure();if(session&&!context(environment))controller.unavailable(session.generation);}},()=>{environment=null;controller.frame(null);}).finally(()=>{reading=false;});
+        void bridge.environment?.().then(value=>{if(!stopped){environment=value;environmentKnown=true;measure();if(session&&!context(environment))controller.unavailable(session.generation);}},()=>{if(!stopped){environment=null;invalidateMeasurement();}}).finally(()=>{reading=false;});
     };
-    const timer=setInterval(()=>{try{measure();refresh();}catch{controller.frame(null);}},250);
+    const timer=setInterval(()=>{try{measure();refresh();}catch{invalidateMeasurement();}},250);
     const Observer=(source.defaultView as (Window & {MutationObserver?:typeof MutationObserver})|null)?.MutationObserver;
-    const observer=Observer?new Observer(()=>{try{measure();}catch{controller.frame(null);}}):undefined;
+    const observer=Observer?new Observer(()=>{try{measure();}catch{invalidateMeasurement();}}):undefined;
     observer?.observe(source.body,{childList:true,subtree:true});
     return {
         setSession(value:typeof session){

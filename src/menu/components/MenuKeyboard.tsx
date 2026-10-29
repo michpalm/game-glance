@@ -6,7 +6,7 @@ import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
 import { dragPosition, followUnderKeyboard, loadPosition, movePanel, normaliseAxis, savePosition, stickStep, stickVelocity, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
-import { createStripPress, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
+import { createStripPress, finishPadDrop, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
@@ -386,9 +386,10 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
         drop() {
             const lifted = !!padFrame.current;
             stopListening('drag');
-            padFrame.current = null; stickBusy.current = false; moving.current = false;
-            setPadDrag(false); setDragging(false);
-            if (lifted) finishDrag(); else dragEnded.current = Date.now();
+            finishPadDrop({ lifted, finish: finishDrag, idle: () => { dragEnded.current = Date.now(); }, release: () => {
+                padFrame.current = null; stickBusy.current = false; moving.current = false;
+                setPadDrag(false); setDragging(false);
+            } });
         },
     };
     const strip: StripHandlers = {

@@ -103,3 +103,9 @@ export function installDragGamepad(doc: EventTarget, on: DragHandlers): () => vo
     for (const [type, fn] of listeners) doc.addEventListener(type, fn, { capture: true });
     return () => { for (const [type, fn] of listeners) doc.removeEventListener(type, fn, { capture: true }); };
 }
+
+/** Commit the live drag position before state-clearing callbacks can synchronously render old position props. */
+export function finishPadDrop(on:{lifted:boolean;finish():void;release():void;idle():void}):void {
+    try { if(on.lifted)on.finish();else on.idle(); }
+    finally { on.release(); }
+}

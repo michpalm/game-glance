@@ -176,3 +176,17 @@ describe('frost geometry', () => {
         expect(publish).not.toHaveBeenCalled();stop();
     });
 });
+
+it('measures drag start/drop but skips repeated keyboard movement; real resizes still measure',()=>{
+ const input=fixture(),frames=new Map<number,FrameRequestCallback>();let id=0;let mutation!:MutationCallback,resize!:ResizeObserverCallback;
+ input.source.requestAnimationFrame=fn=>{frames.set(++id,fn);return id;};input.source.cancelAnimationFrame=id=>{frames.delete(id);};
+ Object.assign(input.source,{MutationObserver:class{constructor(fn:MutationCallback){mutation=fn;}observe(){}disconnect(){}},ResizeObserver:class{constructor(fn:ResizeObserverCallback){resize=fn;}observe(){}disconnect(){}}});
+ const rect=vi.spyOn(input.placeholder,'getBoundingClientRect'),publish=vi.fn(),stop=observeFrostFrame(input,publish);
+ const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn(0);};
+ input.elements.keyboard!.classList.add('gg-keyboard-dragging');mutation([],{} as MutationObserver);flush();
+ expect(publish.mock.calls.at(-1)![0].regions.keyboard.width).toBe(0);rect.mockClear();
+ for(let i=0;i<4;i++){mutation([],{} as MutationObserver);flush();}expect(rect).not.toHaveBeenCalled();
+ input.elements.status!.getBoundingClientRect=()=>({left:100,top:80,width:300,height:200} as DOMRect);resize([],{} as ResizeObserver);flush();expect(rect).toHaveBeenCalled();
+ input.elements.keyboard!.classList.remove('gg-keyboard-dragging');mutation([],{} as MutationObserver);flush();
+ expect(publish.mock.calls.at(-1)![0].regions.keyboard.width).toBeGreaterThan(0);stop();
+});

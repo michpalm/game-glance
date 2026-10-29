@@ -12,12 +12,12 @@
 
 ## Verification evidence
 
-- `npm test`: **2,288 tests passed**, 202 files.
+- `npm test`: **2,292 tests passed**, 202 files.
 - `npm run typecheck`: passed.
 - `npm run build`: passed.
 - Existing verified scratch venv, `pytest tests/py -q`: **132 passed**.
 - `git diff --check`: passed.
-- Built `dist/index.js` SHA-256: `4fc8ccaf024561f297c8d03f5b053b9f664882fedbebaa494a479d846ddca326`.
+- Built `dist/index.js` SHA-256: `83ea5fcd90207e8e302b58f883f04bd0a6bf5ec4eb3a3edfa0ea600e09322a71`.
 - Local browser rendered the actual hook-free production wheel view and production CSS in eight combinations: 829×467 / 1500×845, letters / symbols / uppercase / blank centres. No browser errors or compose overlap; 28 letter keys / 32 extra-character keys. This checks drawing and geometry, not mounted Steam hooks.
 - Screenshots: `/Users/micpaal/.codex/visualizations/2026/10/29/01a1879f-94e5-7f42-b497-62344233cc9c/radial-implemented-829-letters.png` and matching `radial-implemented-*` variants.
 
@@ -41,11 +41,13 @@ No deferred minor findings from this feature review. No second review was substi
 
 Actual Steam hook initialization, both sticks/triggers/buttons together, controller changes, focus behavior, shader compilation/performance and Home/game/docked rendering remain untested for this new feature. Do not infer these from the automated checks.
 
-The existing handoff at `/Users/micpaal/Documents/Claude/Bazzite/handoff-social-keyboard-2026-10-29.md` also records a blocking Compact drag-drop ordering issue in baseline `bab6d32`, plus two observer findings. Those fixes remain paused and outside this feature's scope. Its instruction not to install that baseline before the drop fix still applies to a build inheriting it; resolve the installation blocker before the Ally trial.
+Michael subsequently authorised resuming the inherited Compact handoff fixes. The drop now commits its live position before drag flags/React state are cleared. Frost-host error paths retire and reset their measurement observer, allowing identical recovered geometry to forward. Repeated keyboard-move measurements are skipped during a no-frost drag; drag start/drop and real region/viewport resizes still measure.
+
+Four new failing regressions were reproduced before the fixes. The focused suite passes 45 tests and the full frontend suite passes 2,292. Typecheck/build/diff checks pass. A separate scoped review approved all three handoff findings for device validation with no actionable correctness findings. React wiring was inspected rather than mounted; timer/context-error recovery and observer callbacks are covered, but not every browser/CEF error path. Device drag smoothness remains unverified. The inherited local installation blocker is resolved.
 
 ## Proposed Ally trial after approval
 
-1. Resolve the inherited Compact drop blocker and rerun relevant checks/build, updating the checksum above if the bundle changes.
+1. Confirm the checked revision and bundle checksum above; the inherited Compact drop blocker has been fixed and reviewed locally.
 2. With explicit installation/restart approval, confirm the in-game menu is closed. Back up the installed frontend and entire `py_modules/gameglance/frost/` directory under a timestamped home-directory backup.
 3. Transfer and verify the checked frontend and paired frost backend, then perform the full device restart needed to load Python changes. No sudo or effect-atom injection.
 4. Select Radial in Game Glance's menu preferences. Check the plan's Task 7 matrix with Michael. Do not send a test message to anyone without explicit authorization.
