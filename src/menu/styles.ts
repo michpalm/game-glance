@@ -32,6 +32,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 12px}.gg-menu-heading h2{margin:0}.gg-menu-heading>span{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-notifications>.gg-menu-heading,.gg-menu .gg-social>.gg-menu-heading{flex:none;margin:0}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.gg-menu .gg-menu-grid.gg-menu-grid-navigate{grid-template-columns:repeat(4,minmax(0,1fr))}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
 .gg-menu .gg-ingame{display:flex;flex-direction:column;gap:16px;min-height:100%}

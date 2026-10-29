@@ -1,5 +1,4 @@
 import { type ReactElement, type ReactNode } from 'react';
-import { LuArrowUpRight } from 'react-icons/lu';
 import { expect, it, vi } from 'vitest';
 import { NavigatePanel } from '../../src/menu/components/NavigatePanel';
 
@@ -10,13 +9,20 @@ function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
     const element = node as ReactElement<Record<string, any>>;
     return [element, ...tree(element.props.children)];
 }
-const text = (nodes: ReturnType<typeof tree>) => nodes.flatMap(n => [n.props.children].flat().filter((c: unknown) => typeof c === 'string')).join(' | ');
 
-it('puts Steam menu in the title row as a card button with the arrow', () => {
+it('has no Steam menu button: the heading is the title alone', () => {
     const nodes = tree(NavigatePanel({ handoff: vi.fn() }));
     const heading = nodes.find(n => n.props.className === 'gg-menu-heading')!;
-    const button = tree(heading).find(n => n.props.id === 'navigate:native')!;
-    expect(text(tree(button))).toBe('Steam menu');
-    expect(tree(button).some(n => n.type === LuArrowUpRight)).toBe(true);
-    expect(nodes.some(n => n.props.className === 'gg-menu-secondary')).toBe(false);
+    expect(tree(heading).some(n => typeof n.props.id === 'string')).toBe(false);
+    expect(nodes.some(n => n.props.id === 'navigate:native')).toBe(false);
+});
+
+it('lists Media after Store, in Steam’s menu order, on a four-column grid', () => {
+    const handoff = vi.fn();
+    const nodes = tree(NavigatePanel({ handoff }));
+    expect(nodes.find(n => String(n.props.className).includes('gg-menu-grid'))?.props.className).toBe('gg-menu-grid gg-menu-grid-navigate');
+    const ids = nodes.map(n => n.props.id).filter((id): id is string => typeof id === 'string');
+    expect(ids).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:power']);
+    nodes.find(n => n.props.id === 'navigate:media')!.props.onAction();
+    expect(handoff).toHaveBeenCalledWith({ kind: 'navigate', destination: 'media' });
 });

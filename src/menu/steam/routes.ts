@@ -36,6 +36,7 @@ export function createRoutes(bindings:RouteBindings) {
                 case 'home':bindings.navigate(HOME_ROUTE);break;
                 case 'library':bindings.library();break;
                 case 'store':bindings.navigate('/steamweb');break;
+                case 'media':bindings.navigate('/media');break;
                 case 'downloads':bindings.navigate('/library/downloads');break;
                 case 'settings':bindings.navigate('/settings');break;
                 case 'power':bindings.power();return;

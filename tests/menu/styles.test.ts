@@ -79,6 +79,9 @@ describe('menu glass and reveal motion',()=>{
     it('lets a slider without a partner take the full row', () => {
         expect(menuStyles).toContain('.gg-menu-quick-sliders>:only-child{grid-column:1/-1}');
     });
+    it('lays Navigate out four across, so its seven tiles fill two rows', () => {
+        expect(rule('.gg-menu .gg-menu-grid.gg-menu-grid-navigate')).toContain('grid-template-columns:repeat(4,minmax(0,1fr))');
+    });
     it('gives tiles one height on every page', () => {
         expect(rule('.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton')).toMatch(/height:112px/);
         expect(rule('.gg-menu .gg-ingame-grid')).not.toMatch(/flex:1/);
