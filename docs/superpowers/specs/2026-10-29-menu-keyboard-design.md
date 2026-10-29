@@ -42,7 +42,8 @@ Typing a message in the menu's Social chat opens Steam's docked keyboard. It tak
 
 - The keyboard floats in the menu window, above the menu's panels.
 - Touch: drag the full-width strip at the bottom (about 24 px tall, the grab bar plus a small move icon). Keys never start a drag. While dragging, the panel lifts (a soft shadow and a brighter edge). On release it stays where it was dropped, clamped inside the window and nudged clear of the message field if dropped over it.
-- Controller: A on the strip cycles through set spots: left of the chat (the default, board A), the right side (board B) and the top. No spot covers the message field.
+- Controller: a quick press of A on the strip cycles through set spots: left of the chat (the default, board A), the right side (board B) and the top. No spot covers the message field.
+- Controller drag (Michael, 2026-10-29, after the first Ally checks): while the strip has focus it shows a short label beside the move icon, "Ⓐ Hold to move" (hidden otherwise). Holding A on the strip for 400 ms lifts the panel as a touch drag does; while A stays held the left stick moves it smoothly (speed follows how far the stick is pushed, with a small dead zone) and the d-pad nudges it in small steps; the stick does not move focus meanwhile. Releasing A drops it exactly like a finger: clamped inside the window, nudged clear of the message field, remembered. The stick is read with Steam's controller axes feed (module 35137, `useControllerAxesFeed`, found by that source text; the same feed Steam's chat radial menu uses), mounted only during the drag. Without it the stick moves the panel in d-pad steps.
 - The last position is remembered with the menu preferences and restored when the keyboard next opens.
 
 ### Look
