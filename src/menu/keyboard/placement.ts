@@ -79,3 +79,33 @@ export const markUnderKeyboard=(root:ParentNode,panel:Element):(()=>void)=>{
     for(const el of els)el.classList.toggle(UNDER_CLASS,hit.includes(el));
     return ()=>{for(const el of els)el.classList.remove(UNDER_CLASS);};
 };
+
+type WatchView={
+    requestAnimationFrame(cb:()=>void):number;
+    cancelAnimationFrame(id:number):void;
+    ResizeObserver?:new(cb:()=>void)=>{observe(el:Element):void;disconnect():void};
+};
+
+/** Marks the columns under the panel now, again on the next frame (the final geometry may land after the first mark)
+ * and whenever the panel or a column resizes. Classes are only touched when the covered set changes, so the blur
+ * does not restart on every move. The returned function stops watching and clears every mark. */
+export const watchUnderKeyboard=(root:ParentNode,panel:Element,view:WatchView):(()=>void)=>{
+    const els=[...root.querySelectorAll<HTMLElement>(UNDER_SELECTOR)];
+    let last:string|null=null;
+    const mark=()=>{
+        const hit=underKeyboard(panel.getBoundingClientRect(),els.map(el=>({el,rect:el.getBoundingClientRect()})));
+        const key=els.map(el=>hit.includes(el)?'1':'0').join('');
+        if(key===last)return;
+        last=key;
+        for(const el of els)el.classList.toggle(UNDER_CLASS,hit.includes(el));
+    };
+    mark();
+    const frame=view.requestAnimationFrame(mark);
+    const observer=view.ResizeObserver?new view.ResizeObserver(mark):null;
+    if(observer){observer.observe(panel);for(const el of els)observer.observe(el);}
+    return ()=>{
+        view.cancelAnimationFrame(frame);
+        observer?.disconnect();
+        for(const el of els)el.classList.remove(UNDER_CLASS);
+    };
+};

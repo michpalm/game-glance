@@ -26,6 +26,31 @@ function harness(entered = true, change: Partial<SocialSnapshot> = {}) {
     const action = (key: string) => nodes.find(n => n.props.id === key)!;
     return { social, snapshot, enter, leave, handoff, nodes, action };
 }
+describe('Social panel focus layout', () => {
+    const MAINTAIN_Y = 3;
+    it.each([[true], [false]])('lets the controller cross from the friends list to the conversation (entered=%s)', entered => {
+        const h = harness(entered);
+        const split = h.nodes.find(n => n.props.className === 'gg-social-split')!;
+        expect(split.type).toBe('div'); // the mocked Focusable
+        expect(split.props['flow-children']).toBe('row');
+        const kids = tree(split.props.children).filter(n => ['gg-social-friends', 'gg-social-conversation'].includes(n.props.className));
+        const direct = (Array.isArray(split.props.children) ? split.props.children : [split.props.children]).map((c: ReactElement<Record<string, any>>) => c.props.className);
+        expect(direct).toEqual(['gg-social-friends', 'gg-social-conversation']);
+        expect(kids.length).toBe(2);
+        const conversation = h.nodes.find(n => n.props.className === 'gg-social-conversation')!;
+        expect(conversation.props['flow-children']).toBe('column');
+        expect(conversation.props.navEntryPreferPosition).toBe(MAINTAIN_Y);
+        const friends = h.nodes.find(n => n.props.className === 'gg-social-friend-list')!;
+        expect(friends.props['flow-children']).toBe('column');
+    });
+    it('still renders the preview and write action inside the conversation when not entered', () => {
+        const h = harness(false);
+        const conversation = h.nodes.find(n => n.props.className === 'gg-social-conversation')!;
+        const inside = tree(conversation.props.children);
+        expect(inside.some(n => n.props.className === 'gg-social-preview')).toBe(true);
+        expect(inside.some(n => n.props.id === 'social:open')).toBe(true);
+    });
+});
 describe('Social panel interaction', () => {
     it('reserves the Back action in preview without exposing an inactive navigation target', () => {
         const preview = harness(false), chat = harness(true);

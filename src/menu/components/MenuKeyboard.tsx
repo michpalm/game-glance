@@ -5,7 +5,7 @@ import { LuMove } from 'react-icons/lu';
 import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
-import { dragPosition, loadPosition, savePosition, markUnderKeyboard, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
+import { dragPosition, loadPosition, savePosition, watchUnderKeyboard, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
@@ -209,8 +209,9 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
 
     // Frost for what the menu's shader cannot blur: the columns under the panel, after every placement.
     useLayoutEffect(() => {
-        if (!placed || !host || !panel.current) return;
-        return markUnderKeyboard(host, panel.current);
+        const view = host?.ownerDocument.defaultView;
+        if (!placed || !host || !panel.current || !view) return;
+        return watchUnderKeyboard(host, panel.current, view);
     }, [placed, host, position]);
 
     useEffect(() => {

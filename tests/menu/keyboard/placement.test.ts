@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,underKeyboard,markUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
+import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,underKeyboard,markUnderKeyboard,watchUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
 import {memoryKv} from '../../../src/data/kv';
 
 const view:Rect={x:0,y:0,width:829,height:467};
@@ -110,5 +110,49 @@ describe('what the keyboard covers',()=>{
         expect([...under.set]).toEqual(['gg-keyboard-under']); expect([...away.set]).toEqual([]);
         clear();
         expect([...under.set]).toEqual([]);
+    });
+});
+
+describe('watchUnderKeyboard',()=>{
+    type Cb=()=>void;
+    const mk=()=>{
+        const rects:{kb:Rect;col:Rect}={kb:{x:0,y:0,width:10,height:10},col:{x:100,y:100,width:20,height:20}};
+        const set=new Set<string>(),toggles:boolean[]=[];
+        const col={getBoundingClientRect:()=>rects.col,classList:{toggle:(c:string,on:boolean)=>{toggles.push(on);on?set.add(c):set.delete(c);},remove:(c:string)=>{set.delete(c);}}};
+        const panel={getBoundingClientRect:()=>rects.kb};
+        const root={querySelectorAll:()=>[col]};
+        let frame:Cb|null=null,cancelled:number[]=[],resize:Cb|null=null,observed:unknown[]=[],disconnected=0;
+        const view={requestAnimationFrame:(f:Cb)=>{frame=f;return 7;},cancelAnimationFrame:(n:number)=>{cancelled.push(n);frame=null;},
+            ResizeObserver:class{constructor(cb:Cb){resize=cb;}observe(e:unknown){observed.push(e);}disconnect(){disconnected++;}}};
+        return {rects,set,toggles,col,panel,root,view,runFrame:()=>{const f=frame;frame=null;f?.();},fireResize:()=>resize?.(),observed,get disconnected(){return disconnected;},cancelled};
+    };
+    it('marks at once and again on the next frame when the rects have changed',()=>{
+        const t=mk();
+        watchUnderKeyboard(t.root as never,t.panel as never,t.view as never);
+        expect([...t.set]).toEqual([]);
+        t.rects.kb={x:100,y:100,width:30,height:30};
+        t.runFrame();
+        expect([...t.set]).toEqual(['gg-keyboard-under']);
+    });
+    it('marks again when the panel or a column resizes, touching classes only when the set changes',()=>{
+        const t=mk();
+        t.rects.kb={x:100,y:100,width:30,height:30};
+        watchUnderKeyboard(t.root as never,t.panel as never,t.view as never);
+        expect(t.observed).toEqual([t.panel,t.col]);
+        const n=t.toggles.length;
+        t.fireResize(); expect(t.toggles.length).toBe(n);
+        t.rects.kb={x:0,y:0,width:10,height:10};
+        t.fireResize();
+        expect([...t.set]).toEqual([]);
+    });
+    it('stop clears the classes, disconnects and cancels the pending frame',()=>{
+        const t=mk();
+        t.rects.kb={x:100,y:100,width:30,height:30};
+        const stop=watchUnderKeyboard(t.root as never,t.panel as never,t.view as never);
+        expect([...t.set]).toEqual(['gg-keyboard-under']);
+        stop();
+        expect([...t.set]).toEqual([]);
+        expect(t.disconnected).toBe(1);
+        expect(t.cancelled).toEqual([7]);
     });
 });

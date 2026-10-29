@@ -1,4 +1,5 @@
 import { Focusable, TextField } from '@decky/ui';
+import type { NavEntryPositionPreferences } from '@decky/ui';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
 import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
 import type { KeyboardSession } from '../keyboard/session';
@@ -10,6 +11,9 @@ import { socialStyles } from '../socialStyles';
 import { captureChatAnchor, restoreChatAnchor, type ChatScrollAnchor } from '../socialScroll';
 import { MenuAction } from './MenuAction';
 import { MenuKeyboard, readSteamLayouts, type Layouts } from './MenuKeyboard';
+
+/** NavEntryPositionPreferences.MAINTAIN_Y in @decky/ui: entering from the friends list keeps the row, landing on the nearest control. */
+const MAINTAIN_Y = 3;
 
 function Avatar({ friend }: { friend: SocialFriend }) {
     const ring = friendRing(friend.state);
@@ -71,7 +75,7 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
     return <div className="gg-social">
         <style>{socialStyles}</style>
         <div className="gg-menu-heading"><h2>Social</h2><span>{counts}</span></div>
-        <div className="gg-social-split">
+        <Focusable className="gg-social-split" flow-children="row">
             <div className="gg-social-friends">
                 <div className="gg-social-list-heading"><span>Friends</span></div>
                 <Focusable className="gg-social-friend-list" flow-children="column">
@@ -83,7 +87,7 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
                     {!snapshot.friends.length && <p className="gg-social-empty">{statusText}</p>}
                 </Focusable>
             </div>
-            <div className="gg-social-conversation">
+            <Focusable className="gg-social-conversation" flow-children="column" navEntryPreferPosition={MAINTAIN_Y as NavEntryPositionPreferences}>
                 {friend ? <div className="gg-social-chat-heading"><Avatar friend={friend} /><div className="gg-social-identity"><strong>{friend.name || 'Steam friend'}</strong><small>{friend.sub}</small></div><div className="gg-social-back-slot" inert={!entered} aria-hidden={!entered}><MenuAction id="social:back" disabled={!entered} onAction={leave}>Back</MenuAction></div></div> : <p className="gg-social-empty">Select a friend to open a conversation.</p>}
                 {snapshot.error && <p className="gg-menu-error gg-social-error" role="alert">{snapshot.error}</p>}
                 {entered && snapshot.enteredId ? <>
@@ -118,8 +122,8 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
                         {extras}
                     </div>
                 </>}
-            </div>
-        </div>
+            </Focusable>
+        </Focusable>
     </div>;
 }
 
