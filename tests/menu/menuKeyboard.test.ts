@@ -86,6 +86,23 @@ describe('the keyboard panel', () => {
         expect(send(true).props.disabled).toBe(false);
         expect(send(false).props.disabled).toBe(true);
     });
+    it('puts the move button and the keys grid in one column Focusable, grid first', () => {
+        const { nodes } = panel();
+        const move = nodes.find(n => n.props.id === 'keyboard:move')!;
+        const grid = nodes.find(n => n.props.className === 'gg-keyboard-keys')!;
+        const parent = nodes.find(n => n.props['flow-children'] === 'column' && n !== grid && tree(n.props.children).includes(move) && tree(n.props.children).includes(grid))!;
+        expect(parent).toBeDefined();
+        const kids = (Array.isArray(parent.props.children) ? parent.props.children : [parent.props.children]).filter(Boolean) as ReactElement<Record<string, any>>[];
+        expect(kids[0]).toBe(grid);
+        expect(kids[1].props['data-gg-keyboard-strip']).toBeDefined();
+        expect(tree(kids[1]).includes(move)).toBe(true);
+    });
+    it('makes every row keep the horizontal position when focus enters it', () => {
+        const { nodes } = panel();
+        const rows = nodes.filter(n => n.props.className === 'gg-keyboard-row');
+        expect(rows).toHaveLength(4);
+        for (const row of rows) expect(row.props.navEntryPreferPosition).toBe(2);
+    });
     it('types on the key’s own action and moves on the strip’s', () => {
         const { rows, onKey, nodes, onMove } = panel();
         rows[1][3].props.onAction(); expect(onKey).toHaveBeenCalledWith(1, 3);

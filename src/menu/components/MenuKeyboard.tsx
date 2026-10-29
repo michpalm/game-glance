@@ -1,4 +1,4 @@
-import { Focusable, findModule, type GamepadEvent } from '@decky/ui';
+import { Focusable, findModule, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { LuMove } from 'react-icons/lu';
@@ -95,6 +95,9 @@ export function slidOff(id: string, target: EventTarget | null): boolean {
 }
 
 type StripHandlers = { onPointerDown?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerMove?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerUp?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerCancel?(e: ReactPointerEvent<HTMLDivElement>): void };
+/** Rows differ in key count, so focus entering one keeps its horizontal position (Steam's MAINTAIN_X). */
+const MAINTAIN_X = 2 as NavEntryPositionPreferences;
+
 export interface KeyboardPanelProps {
     layout: KeyboardLayout; page: Page; typing: TypingState; canSend: boolean;
     position: Point | null; dragging: boolean; panelRef?: Ref<HTMLDivElement>;
@@ -109,12 +112,13 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
     const startHold = (target: EventTarget | null) => { const at = keyAt(target); if (at) hold.start(at[0], at[1]); };
     return <div ref={panelRef} className={`gg-keyboard${dragging ? ' gg-keyboard-dragging' : ''}`} data-gg-frost-region="keyboard" role="group" aria-label="Keyboard"
         style={{ left: position?.x ?? 0, top: position?.y ?? 0, visibility: position ? undefined : 'hidden' }}>
+        <Focusable flow-children="column">
         <Focusable className="gg-keyboard-keys" flow-children="column"
             onPointerDown={(e: ReactPointerEvent) => startHold(e.target)} onPointerUp={hold.stop} onPointerCancel={hold.stop} onPointerLeave={hold.stop}
             // A touch stays captured by the pressed key, so the element under the pointer tells when it slides off.
             onPointerMove={(e: ReactPointerEvent) => hold.over((e.currentTarget as HTMLElement).ownerDocument?.elementFromPoint?.(e.clientX, e.clientY) ?? e.target)}
             onButtonDown={(e: GamepadEvent) => { if (e.detail.button === 1) startHold(e.target); }} onButtonUp={hold.stop}>
-            {rows.map((row, r) => <Focusable key={`${page}:${r}`} className="gg-keyboard-row" flow-children="row">
+            {rows.map((row, r) => <Focusable key={`${page}:${r}`} className="gg-keyboard-row" flow-children="row" navEntryPreferPosition={MAINTAIN_X}>
                 {row.map((k, c) => <MenuAction key={c} id={keyId(r, c)} className={`gg-keyboard-key${KIND_CLASS[k.kind] ?? ''}`} ariaLabel={ariaOf(k)}
                     selected={k.kind === 'shift' ? typing.shift !== 'off' : k.dead ? typing.held?.char === k.char : undefined}
                     disabled={k.kind === 'send' && !canSend} onAction={() => onKey(r, c)}>
@@ -125,6 +129,7 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
         <div className="gg-keyboard-strip" data-gg-keyboard-strip="" {...strip}>
             <MenuAction id="keyboard:move" className="gg-keyboard-move" ariaLabel="Move keyboard" onAction={onMove}><span className="gg-keyboard-grab" aria-hidden="true" /><LuMove aria-hidden="true" /></MenuAction>
         </div>
+        </Focusable>
     </div>;
 }
 
