@@ -7,6 +7,7 @@ export interface RouteBindings {
     exitGame(gameId:string): void;
     openStore(url:string): void;
     joinGame(url:string): void;
+    openUrl(url:string): void;
     profile: { allowed():boolean; resolve():string; open(url:string):void };
     fallback?(request: NativeRequest): Promise<void>;
 }
@@ -17,6 +18,8 @@ const GAME_PAGES: Record<string,(appId:number)=>string> = {
 };
 // The two urls Steam's own friends menu opens for Join Game (home/join.ts builds them); nothing else.
 const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;
+// Notification links (Steam's account link table, invite urls): Steam pages or steam:// urls only.
+const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
 export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
 export function createRoutes(bindings:RouteBindings) {
@@ -54,6 +57,14 @@ export function createRoutes(bindings:RouteBindings) {
         if(request.kind==='join'){
             if(!JOIN_URL.test(request.url))throw Error('This game cannot be joined from here');
             bindings.joinGame(request.url);return;
+        }
+        if(request.kind==='app'){
+            if(!Number.isInteger(request.appId)||request.appId<=0)throw Error('This game is unavailable');
+            bindings.navigate(`/library/app/${request.appId}`);bindings.finishNavigation();return;
+        }
+        if(request.kind==='url'){
+            if(!NOTIFICATION_URL.test(request.url))throw Error('This link cannot be opened from here');
+            bindings.openUrl(request.url);return;
         }
         if(request.kind==='store'){
             if(request.target==='wishlist'){bindings.openStore('https://store.steampowered.com/wishlist/');return;}

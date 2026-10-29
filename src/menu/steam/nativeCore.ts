@@ -8,7 +8,7 @@ import type { RouteBindings } from './routes';
 interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
 interface CoreGlobals {
-    SteamClient?: { System?:{Audio?:Audio;Display?:Display};Window?:{SetGamepadUIAutoDisplayScale?(value:boolean):void};WebChat?:{ShowFriendChatDialog?(id:string):void};Apps?:{TerminateApp?(gameId:string,force:boolean):void};URL?:{ExecuteSteamURL?(url:string):void} };
+    SteamClient?: { System?:{Audio?:Audio;Display?:Display};Window?:{SetGamepadUIAutoDisplayScale?(value:boolean):void};WebChat?:{ShowFriendChatDialog?(id:string):void;OpenURLInClient?(url:string,pid:number,external:boolean):void};Apps?:{TerminateApp?(gameId:string,force:boolean):void};URL?:{ExecuteSteamURL?(url:string):void} };
     SystemStoragStore?: { DisplayBrightness?:number|{Value?:number};AirplaneModeEnabled?:boolean|{Value?:boolean};msgSettings?:{display_nightmode_enabled?:boolean;is_display_brightness_available?:boolean};SetDisplayBrightness?(value:number):void;SetAirplaneMode?(value:boolean):void;SetNightModeEnabled?(value:boolean):void };
     SystemNetworkStore?:{hasWirelessDevice?:boolean;isWifiEnabled?:boolean;SetWifiEnabled?(value:boolean):void};
     settingsStore?:{GetClientSetting(key:string):[unknown,((value:unknown)=>unknown)?]};
@@ -35,6 +35,8 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
         library(){navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
         power(){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');Router.OpenPowerMenu();},
         joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
+        // As Steam's own notification list opens invite urls and account links.
+        openUrl(url){const chat=root.SteamClient?.WebChat;if(typeof chat?.OpenURLInClient!=='function')throw Error('Steam cannot open this link');chat.OpenURLInClient(url,0,false);},
         openStore(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('The Steam store is unavailable');steamUrl.ExecuteSteamURL(`steam://openurl/${url}`);},
         exitGame(gameId){const apps=root.SteamClient?.Apps;if(typeof apps?.TerminateApp!=='function')throw Error('Steam cannot exit this game');apps.TerminateApp(gameId,false);},
         profile:{allowed:()=>friendsOnline(root)&&parentalAllowed(3),resolve:()=>root.urlStore?.ResolveURL('SteamIDMyProfile')??'',open(url){if(!window.Navigator?.ExternalWeb)throw Error('Steam Profile is unavailable');window.Navigator.ExternalWeb(url);}},

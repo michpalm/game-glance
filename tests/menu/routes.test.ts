@@ -4,7 +4,7 @@ function harness() {
     const order: string[] = [];
     const b = { deactivate: vi.fn(() => { order.push('deactivate'); }), openMain: vi.fn(), openQam: vi.fn(),
         tabs: { Notifications: 10, Friends: 13, Settings: 14, Perf: 15, Help: 16, Music: 17, Decky: 999 },
-        library: vi.fn(() => { order.push('library'); }), navigate: vi.fn(), finishNavigation: vi.fn(() => { order.push('close'); }), power: vi.fn(), exitGame: vi.fn(), openStore: vi.fn(), joinGame: vi.fn(),
+        library: vi.fn(() => { order.push('library'); }), navigate: vi.fn(), finishNavigation: vi.fn(() => { order.push('close'); }), power: vi.fn(), exitGame: vi.fn(), openStore: vi.fn(), joinGame: vi.fn(), openUrl: vi.fn(),
         profile: { allowed: vi.fn(() => true), resolve: vi.fn(() => 'https://steamcommunity.com/profiles/76561190000000000'), open: vi.fn() },
     };
     return { b, order, routes: createRoutes(b) };
@@ -94,4 +94,26 @@ describe('selected friend profile destination',()=>{
   await expect(h.routes.open({kind:'friend-profile',steamId:'https://example.com'})).rejects.toThrow();
   expect(h.b.profile.open).not.toHaveBeenCalled();
  });
+});
+
+describe('notification actions', () => {
+    it('opens a game’s page in the library and closes the side menu', async () => {
+        const h = harness(); await h.routes.open({ kind: 'app', appId: 42 });
+        expect(h.b.navigate).toHaveBeenCalledWith('/library/app/42'); expect(h.order).toEqual(['deactivate', 'close']);
+        await expect(h.routes.open({ kind: 'app', appId: 0 })).rejects.toThrow();
+    });
+    it.each(['https://store.steampowered.com/account/', 'steam://joinlobby/1/2/76561198000000001'])('opens %s in Steam', async url => {
+        const h = harness(); await h.routes.open({ kind: 'url', url }); expect(h.b.openUrl).toHaveBeenCalledWith(url);
+    });
+    it.each(['http://example.com', 'javascript:alert(1)', 'https://a b', ''])('refuses %s', async url => {
+        const h = harness(); await expect(h.routes.open({ kind: 'url', url })).rejects.toThrow(); expect(h.b.openUrl).not.toHaveBeenCalled();
+    });
+    it('opens urls the way Steam’s notification list does', () => {
+        const open = vi.fn(); (globalThis as any).SteamClient = { WebChat: { OpenURLInClient: open } };
+        try {
+            const owner = { MenuStore: { CloseSideMenus: vi.fn() } } as unknown as NativeOwner;
+            nativeRouteBindings(owner, vi.fn(), async () => {}).openUrl('steam://joinlobby/1/2/3');
+            expect(open).toHaveBeenCalledWith('steam://joinlobby/1/2/3', 0, false);
+        } finally { delete (globalThis as any).SteamClient; }
+    });
 });

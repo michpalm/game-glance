@@ -16,7 +16,9 @@ export type NativeRequest =
     | { kind: 'friend-profile'; steamId: string }
     | { kind: 'store'; target: 'app'; appId: number }
     | { kind: 'store'; target: 'wishlist' }
-    | { kind: 'join'; url: string };
+    | { kind: 'join'; url: string }
+    | { kind: 'app'; appId: number }
+    | { kind: 'url'; url: string };
 export interface HostAttachment {
     setFrostSession?(session:{generation:number;enabled:boolean}|null):void;
     clearFrost?(generation:number):Promise<void>;
