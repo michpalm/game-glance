@@ -68,6 +68,8 @@ export function NotificationsPanel({ list, reads, actions, handoff, close, openC
     useSyncExternalStore(visit.subscribe, visit.version);
     const rows = visit.visible(all);
     const root = useRef<HTMLDivElement>(null);
+    // Opening the page counts as viewing it, as Steam's own page does on render: the bell clears.
+    useEffect(() => { deps.current.actions?.viewed(); }, []);
     useLayoutEffect(() => {
         const panel = root.current?.closest<HTMLElement>('.gg-menu-panel');
         return panel ? installNotificationScroll(panel) : undefined;

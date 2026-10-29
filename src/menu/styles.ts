@@ -47,7 +47,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-ingame-label small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-ingame-bar{display:block;width:70%;height:6px;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
 .gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
-.gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px}
+.gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px;min-height:100%}
 .gg-menu .gg-notifications-list{display:flex;flex-direction:column;gap:12px}
 .gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
 .gg-menu .gg-notification-art{flex:none;width:112px;height:52px;border-radius:var(--gg-r-small);object-fit:cover;display:grid;place-items:center;background:var(--gg-edge)}
@@ -57,7 +57,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-notification-body{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);white-space:pre-wrap;overflow-wrap:anywhere}
 .gg-menu .gg-notification-text strong{overflow-wrap:anywhere}
 .gg-menu .gg-notification-action{flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
-.gg-menu .gg-notifications-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;text-align:center;text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-notifications-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px 16px;text-align:center;text-shadow:var(--gg-text-shadow)}
 .gg-menu .gg-notifications-empty p{margin:0 0 8px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-notifications-mark-all-dim.DialogButton>*{opacity:.5}
 .gg-menu-secondary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}

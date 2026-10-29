@@ -3,8 +3,9 @@ import type { AccountLink } from '../notificationsList';
 
 interface AccountStore { MarkAllItemsRead(): unknown; MarkAllItemsViewed(): unknown; MarkItemRead(id: string | number): unknown }
 type LinkEntry = { link?: unknown } | undefined;
-export interface ModuleSource { modules(): Iterable<[string, unknown]>; source(id: string): string | undefined }
-export interface NotificationActions { markRead(id: string | number): void; markAllRead(): void; link: AccountLink }
+/** `tray` is Steam's NotificationStore: its `Viewed()` is what Steam's own notifications page calls on render (bell to 0, account items viewed). */
+export interface ModuleSource { modules(): Iterable<[string, unknown]>; source(id: string): string | undefined; tray?(): { Viewed?: unknown } | undefined }
+export interface NotificationActions { markRead(id: string | number): void; markAllRead(): void; viewed(): void; link: AccountLink }
 
 const isStore = (value: unknown): value is AccountStore => !!value && typeof value === 'object'
     && typeof (value as AccountStore).MarkAllItemsRead === 'function' && typeof (value as AccountStore).MarkAllItemsViewed === 'function' && typeof (value as AccountStore).MarkItemRead === 'function';
@@ -43,9 +44,11 @@ export function createNotificationActions(source: ModuleSource): NotificationAct
         return lookups = found;
     }
     const attempt = (run: () => unknown) => { try { run(); } catch (error) { console.warn('[Game Glance] notification read-mark failed', error); } };
+    const viewed = () => attempt(() => { const tray = source.tray?.(); if (typeof tray?.Viewed === 'function') tray.Viewed(); });
     return {
         markRead(id) { const found = findStore(); if (found) attempt(() => found.MarkItemRead(id)); },
-        markAllRead() { const found = findStore(); if (!found) return; attempt(() => found.MarkAllItemsRead()); attempt(() => found.MarkAllItemsViewed()); },
+        markAllRead() { const found = findStore(); if (found) { attempt(() => found.MarkAllItemsRead()); attempt(() => found.MarkAllItemsViewed()); } viewed(); },
+        viewed,
         link(type, body) {
             try {
                 let entry: LinkEntry;
@@ -69,5 +72,5 @@ function factorySource(id: string): string | undefined {
     try { return typeof factory === 'function' ? Function.prototype.toString.call(factory) : undefined; } catch { return undefined; }
 }
 export function nativeNotificationActions(): NotificationActions {
-    return createNotificationActions({ modules: () => deckyModules.entries(), source: factorySource });
+    return createNotificationActions({ modules: () => deckyModules.entries(), source: factorySource, tray: () => (globalThis as unknown as { NotificationStore?: { Viewed?: unknown } }).NotificationStore });
 }

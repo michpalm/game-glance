@@ -27,6 +27,15 @@ describe('account notification store', () => {
         const f = fixture(); f.store.MarkAllItemsRead.mockImplementation(() => { throw Error('x'); });
         const actions = createNotificationActions(f.source); actions.markAllRead(); expect(f.store.MarkAllItemsViewed).toHaveBeenCalled();
     });
+    it('tells Steam’s tray the page was viewed, as its own notifications page does, so the bell clears', () => {
+        const f = fixture(), tray = { Viewed: vi.fn() }, actions = createNotificationActions({ ...f.source, tray: () => tray });
+        actions.viewed(); expect(tray.Viewed).toHaveBeenCalledTimes(1);
+        actions.markAllRead(); expect(tray.Viewed).toHaveBeenCalledTimes(2);
+        tray.Viewed.mockImplementation(() => { throw Error('x'); });
+        expect(() => actions.viewed()).not.toThrow();
+        expect(() => createNotificationActions({ ...f.source, tray: () => undefined }).viewed()).not.toThrow();
+        expect(() => createNotificationActions(f.source).viewed()).not.toThrow();
+    });
     it('looks up modules once', () => {
         const f = fixture(), modules = vi.fn(f.source.modules), actions = createNotificationActions({ ...f.source, modules });
         actions.markRead('1'); actions.markRead('2'); actions.link(12, { n: 1 }); actions.link(12, { n: 1 });

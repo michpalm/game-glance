@@ -171,6 +171,10 @@ describe('Notifications page states', () => {
     it('centres the all-caught-up state with its line in the menu’s label grey', () => {
         expect(rule('.gg-menu .gg-notifications-empty')).toContain('flex-direction:column');
         expect(rule('.gg-menu .gg-notifications-empty')).toContain('text-align:center');
+        // The page fills the panel and the state takes the room under the heading, so it sits in the middle, not near the top.
+        expect(rule('.gg-menu .gg-notifications')).toContain('min-height:100%');
+        expect(rule('.gg-menu .gg-notifications-empty')).toContain('flex:1');
+        expect(rule('.gg-menu .gg-notifications-empty')).toContain('justify-content:center');
         expect(rule('.gg-menu .gg-notifications-empty p')).toContain('color:var(--gg-text-dim)');
     });
 });
