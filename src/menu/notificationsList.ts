@@ -1,7 +1,10 @@
 import {isValidElement,type ReactNode} from 'react';
+import type { NativeRequest } from './steam/runtime';
 
-/** Steam's tray rows with plain metadata and optional supplied plugin presentation. */
-export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode }
+/** Steam's tray rows with plain metadata and optional supplied plugin presentation. `notificationId` marks an account
+ * notification (read state kept by Steam); rows without one are local and their read state is ours. */
+export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
+    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown }
 export interface SaleInfo { name: string; price?: string }
 
 type AnyRecord = Record<string, unknown> | undefined | null;
@@ -15,7 +18,7 @@ function notificationContent(value:unknown,depth=0):ReactNode|undefined {
     if(Array.isArray(value)&&value.length>0&&value.length<=256&&depth<8&&value.every(item=>item==null||typeof item==='boolean'||notificationContent(item,depth+1)!==undefined))return value as ReactNode[];
     return undefined;
 }
-function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'):unknown {
+function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'|'steamid'|'response_steamurl'):unknown {
     try {const value=data?.[key];return typeof value==='function'?value.call(data):value;}catch{return undefined;}
 }
 const appIdOf=(value:unknown):number|null=>{const id=Number(value);return Number.isInteger(id)&&id>0&&id<=4294967295?id:null;};
@@ -38,16 +41,22 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
         const data = record(first.data);
         const type=Number(first.eType??record(group)?.eType);
         const time = Number(type===31?(first.rtCreated??data?.timestamp):(data?.timestamp??first.rtCreated));
-        const unread = first.bNewIndicator === true || (Array.isArray(data?.rgunread) && data!.rgunread.length > 0);
+        const item = record(data?.item);
+        const rawId = item?.notification_id;
+        const notificationId = typeof rawId === 'string' && rawId ? rawId : typeof rawId === 'number' && Number.isFinite(rawId) ? rawId : undefined;
+        // Account notifications are read through the account store; bNewIndicator only says Steam has not shown them yet.
+        const unread = notificationId === undefined ? first.bNewIndicator === true || (Array.isArray(data?.rgunread) && data!.rgunread.length > 0)
+            : Array.isArray(data?.rgunread) ? data!.rgunread.length > 0 : item?.read === false;
         // A wishlist sale carries the game and how many wishlist games are on sale (the shape Steam's
         // own tab renders as "Wishlist Sale"); classify by that shape, not by an enum number.
-        const body = parse(record(data?.item)?.body_data);
+        const body = parse(item?.body_data);
         const appId = Number(body?.appid), count = Number(body?.count);
         const wishlist = Number.isInteger(appId) && appId > 0 && Number.isInteger(count) && count > 0 && Array.isArray(body?.appids);
         const id=String(first.notificationID??first.nNotificationID??rows.length);
         const base={id,appId:null,count:1,time:Number.isFinite(time)?time:0,unread};
+        const account=notificationId===undefined?{}:{notificationId};
         const downloadId=type===1?appIdOf(nativeField(data,'appid')):null;
-        if(wishlist)rows.push({...base,kind:'wishlist',appId,count});
+        if(wishlist)rows.push({...base,kind:'wishlist',appId,count,...account});
         // Steam eType 1 uses CClientNotificationDownloadCompleted protobuf getters, not body_data JSON.
         else if(downloadId){
             const gameId=downloadId;
@@ -57,8 +66,18 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
             rows.push({...base,kind:'download',appId:gameId,title:name||'Game download complete',body:typeof remote==='string'&&remote.trim()?`Ready to play on ${remote.trim()}`:'Ready to play'});
         }else if(type===31){
             // Keep supplied React translation elements intact; no component is invoked while reading the tray.
-            rows.push({...base,id:`plugin:${id}`,kind:'plugin',title:notificationContent(data?.title)||'Plugin notification',body:notificationContent(data?.body)});
-        }else rows.push({...base,kind:'other'});
+            const onClick=typeof data?.onClick==='function'?{onClick:data.onClick as ()=>unknown}:{};
+            rows.push({...base,id:`plugin:${id}`,kind:'plugin',title:notificationContent(data?.title)||'Plugin notification',body:notificationContent(data?.body),...onClick});
+        }else if(notificationId!==undefined){
+            const accountType=Number(item?.notification_type??data?.type);
+            rows.push({...base,kind:'account',notificationId,accountType:Number.isFinite(accountType)?accountType:-1,accountBody:body??{}});
+        }else{
+            // Friend notifications are protobuf messages with a steamid() getter; classify by that shape, not by eType.
+            const steamId=String(nativeField(data,'steamid')??'');
+            const invite=nativeField(data,'response_steamurl');
+            if(/^\d{17}$/.test(steamId)&&!appIdOf(nativeField(data,'appid')))rows.push({...base,kind:'friend',steamId,...(typeof invite==='string'&&invite.trim()?{inviteUrl:invite.trim()}:{})});
+            else rows.push({...base,kind:'other'});
+        }
       }catch{ /* A malformed entry must not discard every other notification. */ }
     }
     return rows;
@@ -71,16 +90,52 @@ export function rowTime(time: number, now = new Date()): string {
     return today ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = new Date()): { label: string; title: ReactNode; action: string; body?: ReactNode } {
+export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = new Date()): { label: string; title: ReactNode; body?: ReactNode } {
     const when = rowTime(row.time, now);
+    const labelled = (category: string) => when ? `${category} · ${when}` : category;
     if(row.kind==='download'||row.kind==='plugin'){
-        const category=row.kind==='download'?'Download complete':'Plugin';
-        return {label:when?`${category} · ${when}`:category,title:row.title||(row.kind==='download'?'Game download complete':'Plugin notification'),body:row.body,action:'Open in Steam'};
+        return {label:labelled(row.kind==='download'?'Download complete':'Plugin'),title:row.title||(row.kind==='download'?'Game download complete':'Plugin notification'),body:row.body};
     }
-    if (row.kind === 'other') return { label: when ? `Steam · ${when}` : 'Steam', title: 'Steam notification', action: 'Open in Steam' };
-    const label = when ? `Wishlist sale · ${when}` : 'Wishlist sale';
-    if (row.count > 1) return { label, action: `See all ${row.count}`, title: sale ? `${sale.name} and ${row.count - 1} other games are on sale` : `${row.count} games on your wishlist are on sale` };
-    return { label, action: 'View in store', title: !sale ? 'A game on your wishlist is on sale' : sale.price ? `${sale.name} is on sale for ${sale.price}` : `${sale.name} is on sale` };
+    if (row.kind === 'friend') return { label: labelled('Friends'), title: row.inviteUrl ? 'Game invite' : 'Friend notification' };
+    if (row.kind === 'other' || row.kind === 'account') return { label: labelled('Steam'), title: 'Steam notification' };
+    const label = labelled('Wishlist sale');
+    if (row.count > 1) return { label, title: sale ? `${sale.name} and ${row.count - 1} other games are on sale` : `${row.count} games on your wishlist are on sale` };
+    return { label, title: !sale ? 'A game on your wishlist is on sale' : sale.price ? `${sale.name} is on sale for ${sale.price}` : `${sale.name} is on sale` };
+}
+
+export const STEAM_NOTIFICATIONS: NativeRequest = { kind: 'qam', tab: 'notifications' };
+export type RowRun = { kind: 'native'; request: NativeRequest } | { kind: 'plugin'; onClick: () => unknown } | { kind: 'chat'; steamId: string } | { kind: 'mark' };
+/** Steam's account link table lookup: the in-Steam URL for an account notification, or null. */
+export type AccountLink = (type: number, body: Record<string, unknown>) => string | null;
+/** What opening a row does, and its right-hand label (none when it only marks read). */
+export function rowAction(row: TrayRow, link: AccountLink): { label?: string; run: RowRun } {
+    const steam = { label: 'Open in Steam', run: { kind: 'native', request: STEAM_NOTIFICATIONS } as RowRun };
+    switch (row.kind) {
+        case 'download': return row.appId ? { label: 'View game', run: { kind: 'native', request: { kind: 'app', appId: row.appId } } } : steam;
+        case 'plugin': return row.onClick ? { label: 'Open', run: { kind: 'plugin', onClick: row.onClick } } : { run: { kind: 'mark' } };
+        case 'wishlist': return !row.appId ? steam : row.count > 1 ? { label: `See all ${row.count}`, run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } }
+            : { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'app', appId: row.appId } } };
+        case 'friend': return !row.steamId ? steam : { label: 'Open chat', run: row.inviteUrl ? { kind: 'native', request: { kind: 'url', url: row.inviteUrl } } : { kind: 'chat', steamId: row.steamId } };
+        case 'account': {
+            let url: string | null = null;
+            try { url = row.accountType !== undefined ? link(row.accountType, row.accountBody ?? {}) : null; } catch { url = null; }
+            return typeof url === 'string' && url ? { label: 'Open', run: { kind: 'native', request: { kind: 'url', url } } } : steam;
+        }
+        default: return steam;
+    }
+}
+
+export const isLocalRow = (row: TrayRow) => row.notificationId === undefined;
+/** Local rows: unread while Steam marks them new and we have not remembered them read. */
+export const rowUnread = (row: TrayRow, remembered: ReadonlySet<string>) => row.unread && !(isLocalRow(row) && remembered.has(row.id));
+/** The page-entry snapshot: rows already read when the page opens stay out for this visit. */
+export const entryHidden = (rows: TrayRow[], remembered: ReadonlySet<string>): ReadonlySet<string> => new Set(rows.filter(row => !rowUnread(row, remembered)).map(row => row.id));
+export const visibleRows = (rows: TrayRow[], hiddenAtEntry: ReadonlySet<string>) => rows.filter(row => !hiddenAtEntry.has(row.id));
+export const READ_MEMORY_CAP = 200;
+/** Newest last, no repeats, only the most recent `cap` ids. */
+export function rememberIds(previous: readonly string[], ids: readonly string[], cap = READ_MEMORY_CAP): string[] {
+    const added = new Set(ids);
+    return [...previous.filter(id => !added.has(id)), ...added].slice(-cap);
 }
 
 /** Steam's store appdetails answer for one app: its name, and its price while discounted. */

@@ -13,7 +13,8 @@ interface TrayBindings { getTray():unknown; subscribe(listener:Stop):Stop }
 export function createNotificationList(bindings:TrayBindings) {
     const read=()=>{try{return readTray(bindings.getTray());}catch{return [];}};
     // Rich plugin elements can have cyclic React owners; compare the row's primitive values and immutable node references.
-    const same=(next:TrayRow[],previous:TrayRow[])=>next.length===previous.length&&next.every((row,index)=>{const keys=Object.keys(row) as (keyof TrayRow)[];return keys.length===Object.keys(previous[index]).length&&keys.every(key=>Object.is(row[key],previous[index][key]));});
+    // An account body is parsed JSON, new on every read: compare it by value.
+    const same=(next:TrayRow[],previous:TrayRow[])=>next.length===previous.length&&next.every((row,index)=>{const keys=Object.keys(row) as (keyof TrayRow)[];return keys.length===Object.keys(previous[index]).length&&keys.every(key=>key==='accountBody'?JSON.stringify(row[key])===JSON.stringify(previous[index][key]):Object.is(row[key],previous[index][key]));});
     let current=read(),disposed=false;const listeners=new Set<Stop>();
     const stop=bindings.subscribe(()=>{if(disposed)return;const next=read();if(!same(next,current)){current=next;listeners.forEach(fn=>fn());}});
     return {get:()=>current,subscribe(listener:Stop):Stop{if(disposed)return()=>{};listeners.add(listener);return()=>{listeners.delete(listener);};},dispose(){if(disposed)return;disposed=true;listeners.clear();stop();}};

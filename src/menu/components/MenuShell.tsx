@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, rememberFocusKey } from '../navigation';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -27,6 +27,8 @@ import { SocialPanel } from './SocialPanel';
 import { InGamePanel } from './InGamePanel';
 import { NotificationsPanel } from './NotificationsPanel';
 import type { SocialService } from '../steam/social';
+import type { NotificationReads } from '../notificationReads';
+import type { NotificationActions } from '../steam/notificationActions';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
     state: MenuState;
@@ -39,12 +41,14 @@ export interface MenuShellProps {
     quickSettings?: ReturnType<typeof createQuickSettings>;
     notificationBadge?: ReturnType<typeof createNotificationBadge>;
     notifications?: ReturnType<typeof createNotificationList>;
+    notificationReads?: NotificationReads;
+    notificationActions?: NotificationActions;
     performance?: ReturnType<typeof createPerformance>;
     social?: SocialService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
 const NO_SUBSCRIBE = () => () => {};
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, performance, social, panels = {} }: MenuShellProps) {
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
@@ -116,7 +120,8 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const owner = (globalThis as unknown as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { BIsOverlayPath?(): boolean } } } }).SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance;
     const accent = pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true);
     const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
-    let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} handoff={enterNative} /> : panels[state.section];
+    let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
+        openChat={steamId => openSocialChat(social, dispatch, steamId)} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
     if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;

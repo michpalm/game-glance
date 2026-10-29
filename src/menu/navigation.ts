@@ -11,6 +11,18 @@ export function menuInputActive(owner: NativeInputOwner | undefined): boolean {
     return !!owner && !owner.GetShowingGlobalModal?.() && !owner.ModalManager?.active_modal && !owner.VirtualKeyboardManager?.IsShowingVirtualKeyboard?.Value;
 }
 
+/** A notification opens our own Social on that friend's chat; false when Social could not chat with them. */
+export function openSocialChat(social: { get(): { status: string; canChat: boolean; friends: { steamId: string; blocked?: boolean }[] }; enter(steamId: string): Promise<void> } | undefined, dispatch: (event: MenuEvent) => void, steamId: string): boolean {
+    const snapshot = social?.get();
+    const friend = snapshot?.friends.find(f => f.steamId === steamId);
+    if (!social || snapshot?.status !== 'ready' || !snapshot.canChat || !friend || friend.blocked) return false;
+    dispatch({ type: 'select', section: 'social' });
+    dispatch({ type: 'focus', section: 'social', key: `social:friend:${steamId}` });
+    dispatch({ type: 'push', viewId: 'social-chat' });
+    void social.enter(steamId);
+    return true;
+}
+
 /** B returns to the same friend before a second B closes Social. Keyboard ownership is checked by the caller. */
 export function leaveSocialConversation(state: MenuState, social: { get(): { selectedId: string | null }; leave(): void } | undefined, dispatch: (event: MenuEvent) => void): boolean {
     if (!social || state.section !== 'social' || state.stack[state.stack.length - 1] !== 'social-chat') return false;

@@ -12,12 +12,15 @@ import { createPerformance } from './steam/performance';
 import { discoverPerformanceBindings } from './steam/performanceNative';
 import { createQuickSettings } from './steam/quickSettings';
 import { createNotificationBadge, createNotificationList } from './steam/notifications';
+import { nativeNotificationActions, type NotificationActions } from './steam/notificationActions';
+import { createNotificationReads } from './notificationReads';
 import { discoverQuickSettingsBindings, nativeNotificationBindings } from './steam/nativeCore';
 import { MenuShell } from './components/MenuShell';
 import { createSocial, type SocialService } from './steam/social';
 import { discoverSocialBindings } from './steam/chatNative';
 
 export const menuPreferences = createMenuPreferences(backendKv);
+const notificationReads = createNotificationReads(backendKv);
 let currentService: object | undefined;
 const serviceListeners = new Set<Stop>();
 export const isMenuServiceCurrent = () => currentService !== undefined;
@@ -50,6 +53,7 @@ export function startMenu(options?: Partial<Options>): Stop {
     let quickSettings: ReturnType<typeof createQuickSettings> | undefined;
     let notificationBadge: ReturnType<typeof createNotificationBadge> | undefined;
     let notifications: ReturnType<typeof createNotificationList> | undefined;
+    let notificationActions: NotificationActions | undefined;
     let performance: ReturnType<typeof createPerformance> | undefined;
     let social: SocialService | undefined;
     let state = defaultMenuState();
@@ -61,7 +65,7 @@ export function startMenu(options?: Partial<Options>): Stop {
     function release() {
         const friends = social; social = undefined;
         const perf = performance; performance = undefined;
-        const quick = quickSettings, badge = notificationBadge, tray = notifications; quickSettings = undefined; notificationBadge = undefined; notifications = undefined;
+        const quick = quickSettings, badge = notificationBadge, tray = notifications; quickSettings = undefined; notificationBadge = undefined; notifications = undefined; notificationActions = undefined;
         const steps = [stopSession, () => friends?.dispose(), () => quick?.dispose(), () => badge?.dispose(), () => tray?.dispose(), () => perf?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
         for (const stop of steps) { try { stop?.(); } catch (error) { console.warn('[Game Glance] menu release failed', error); } }
     }
@@ -78,13 +82,13 @@ export function startMenu(options?: Partial<Options>): Stop {
                 try { quickSettings = createQuickSettings(discoverQuickSettingsBindings()); } catch (error) { console.warn('[Game Glance] custom Quick Settings unavailable', error); }
                 try { performance = createPerformance(discoverPerformanceBindings()); } catch (error) { console.warn('[Game Glance] custom Performance unavailable', error); }
                 try { notificationBadge = createNotificationBadge(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification badge unavailable', error); }
-                try { notifications = createNotificationList(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification list unavailable', error); }
+                try { notifications = createNotificationList(nativeNotificationBindings()); notificationActions = nativeNotificationActions(); void notificationReads.load(); } catch (error) { console.warn('[Game Glance] notification list unavailable', error); }
             }
             state = reduceMenu(defaultMenuState(), { type: 'enable', value: true });
             dispatch({ type: 'pins', value: [...preferences.get().pins] });
             function ConnectedShell() {
                 const snapshot = useSyncExternalStore(subscribe, () => state);
-                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, performance, social });
+                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social });
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();

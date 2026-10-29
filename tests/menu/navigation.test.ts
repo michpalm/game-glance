@@ -158,3 +158,23 @@ it('the radial shell fallback consumes L3/R3 rather than Select or Start',async(
  for(const button of [15,16])expect(radialOwnsButton({button},s)).toBe(true);
  for(const button of [13,14,27,28])expect(radialOwnsButton({button},s)).toBe(false);
 });
+
+describe('Social chat from a notification', () => {
+    const friend = { steamId: '76561198000000001', name: 'Example', state: 'online' };
+    const social = (over: Record<string, unknown> = {}) => ({ get: () => ({ status: 'ready', canChat: true, friends: [friend], ...over }) as never, enter: vi.fn(async () => {}) });
+    it('switches to Social and enters that friend’s chat, so B returns to the friend row', async () => {
+        const { openSocialChat } = await import('../../src/menu/navigation');
+        let state = reduceMenu(reduceMenu(defaultMenuState(), { type: 'enable', value: true }), { type: 'open', entry: 'home' });
+        state = reduceMenu(state, { type: 'push', viewId: 'notifications' });
+        const s = social();
+        expect(openSocialChat(s, event => { state = reduceMenu(state, event); }, friend.steamId)).toBe(true);
+        expect(state.section).toBe('social'); expect(state.stack).toEqual(['social-chat']); expect(state.focus.social).toBe(`social:friend:${friend.steamId}`);
+        expect(s.enter).toHaveBeenCalledWith(friend.steamId);
+    });
+    it.each([[{ friends: [] }], [{ canChat: false }], [{ status: 'offline' }], [{ friends: [{ ...friend, blocked: true }] }]])('declines when chat is unavailable (%o)', async over => {
+        const { openSocialChat } = await import('../../src/menu/navigation');
+        const dispatch = vi.fn(), s = social(over);
+        expect(openSocialChat(s, dispatch, friend.steamId)).toBe(false); expect(dispatch).not.toHaveBeenCalled(); expect(s.enter).not.toHaveBeenCalled();
+        expect(openSocialChat(undefined, dispatch, friend.steamId)).toBe(false);
+    });
+});
