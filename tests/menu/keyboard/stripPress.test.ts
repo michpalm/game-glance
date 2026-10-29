@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStripPress, dpadStep, installDragGamepad, NUDGE } from '../../../src/menu/keyboard/stripPress';
+import { createStripPress, dpadStep, installDragGamepad, installHoldWatch, NUDGE } from '../../../src/menu/keyboard/stripPress';
 
 function setup() {
-    const deps = { cycle: vi.fn(), lift: vi.fn(), drop: vi.fn() };
+    const deps = { cycle: vi.fn(), lift: vi.fn(), drop: vi.fn(), held: vi.fn() };
     return { deps, press: createStripPress(deps) };
 }
 
@@ -63,6 +63,34 @@ describe('pressing A on the move strip', () => {
         expect(deps.drop).toHaveBeenCalledTimes(1);
         expect(deps.cycle).not.toHaveBeenCalled();
     });
+    it('gives up the hold when focus leaves the strip before 400 ms: no lift, no cycle, the late A up and click ignored', () => {
+        const { deps, press } = setup();
+        press.buttonDown();
+        vi.advanceTimersByTime(200);
+        press.abort();
+        vi.advanceTimersByTime(1000);
+        press.buttonUp(); press.action();
+        vi.advanceTimersByTime(1000);
+        expect(deps.lift).not.toHaveBeenCalled();
+        expect(deps.cycle).not.toHaveBeenCalled();
+        expect(deps.drop).not.toHaveBeenCalled();
+    });
+    it('does not let go of a lifted panel on abort (only A up or B drop it)', () => {
+        const { deps, press } = setup();
+        press.buttonDown(); vi.advanceTimersByTime(400);
+        press.abort();
+        expect(press.dragging()).toBe(true);
+        press.buttonUp();
+        expect(deps.drop).toHaveBeenCalledOnce();
+    });
+    it('reports while a hold is pending, so a watcher can catch focus moving away', () => {
+        const { deps, press } = setup();
+        press.buttonDown(); expect(deps.held).toHaveBeenLastCalledWith(true);
+        press.buttonUp(); expect(deps.held).toHaveBeenLastCalledWith(false);
+        press.buttonDown(); vi.advanceTimersByTime(400); expect(deps.held).toHaveBeenLastCalledWith(false);
+        press.buttonUp(); press.buttonDown(); press.abort(); expect(deps.held).toHaveBeenLastCalledWith(false);
+        press.buttonDown(); press.dispose(); expect(deps.held).toHaveBeenLastCalledWith(false);
+    });
     it('ends cleanly when the keyboard closes: no lift, cycle or drop afterwards', () => {
         const { deps, press } = setup();
         press.action(); press.dispose();
@@ -76,6 +104,20 @@ describe('pressing A on the move strip', () => {
         expect(deps.cycle).not.toHaveBeenCalled();
         press.buttonDown(); press.dispose(); vi.advanceTimersByTime(1000);
         expect(deps.lift).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('watching a pending hold', () => {
+    it('gives up the hold on any direction, letting it move focus as usual, until removed', () => {
+        const doc = new EventTarget(), abort = vi.fn();
+        const remove = installHoldWatch(doc, abort);
+        const event = new CustomEvent('vgp_ondirection', { detail: { button: 10 }, cancelable: true });
+        doc.dispatchEvent(event);
+        expect(abort).toHaveBeenCalledOnce();
+        expect(event.defaultPrevented).toBe(false);
+        remove();
+        doc.dispatchEvent(new CustomEvent('vgp_ondirection', { detail: { button: 10 } }));
+        expect(abort).toHaveBeenCalledOnce();
     });
 });
 

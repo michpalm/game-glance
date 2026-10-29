@@ -4,9 +4,10 @@ import { BUILTIN_QWERTY, compactLayout, type KeyboardLayout } from '../../src/me
 import type { TypingState } from '../../src/menu/keyboard/typing';
 import { SPANISH_ROWS } from './keyboard/spanish.fixture';
 
-const webpack = vi.hoisted(() => ({ modules: [] as unknown[] }));
+const webpack = vi.hoisted(() => ({ modules: [] as unknown[], feed: Object.assign(() => ({}), { toString: () => 'useControllerAxesFeed' }), exportLookups: 0 }));
 vi.mock('@decky/ui', () => ({
     Focusable: 'div', DialogButton: 'button', TextField: 'input',
+    findModuleExport: (filter: (e: unknown) => boolean) => { webpack.exportLookups++; return [webpack.feed].find(e => filter(e)); },
     // Decky's findModule: tries each module (default export first) until the filter says true.
     findModule: (filter: (m: unknown) => boolean) => {
         for (const m of webpack.modules) {
@@ -16,7 +17,7 @@ vi.mock('@decky/ui', () => ({
         }
     },
 }));
-const { KeyboardPanel, findAxesFeed, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, slidOff, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
+const { KeyboardPanel, currentAxesFeed, findAxesFeed, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, slidOff, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
 
 function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
     if (Array.isArray(node)) return node.flatMap(tree);
@@ -29,7 +30,7 @@ const idle: TypingState = { text: '', shift: 'off', held: null };
 function panel(layout: KeyboardLayout = spanish, change: Record<string, unknown> = {}) {
     const onKey = vi.fn(), onMove = vi.fn();
     const nodes = tree(KeyboardPanel({ layout, page: 'letters', typing: idle, canSend: true, position: { x: 10, y: 20 }, dragging: false, onKey, onMove,
-        hold: { start: vi.fn(), stop: vi.fn(), over: vi.fn() }, strip: {}, pad: { down: vi.fn(), up: vi.fn() }, ...change }));
+        hold: { start: vi.fn(), stop: vi.fn(), over: vi.fn() }, strip: {}, pad: { down: vi.fn(), up: vi.fn(), abort: vi.fn() }, ...change }));
     const keys = nodes.filter(n => typeof n.props.id === 'string' && /^keyboard:\d+:\d+$/.test(n.props.id));
     const rows = nodes.filter(n => n.props.className === 'gg-keyboard-row').map(row => tree(row.props.children).filter(n => keys.includes(n)));
     return { nodes, keys, rows, onKey, onMove };
@@ -46,6 +47,11 @@ describe('reading the layouts', () => {
         const read = readSteamLayouts();
         expect(read.layouts.map(l => l.short)).toEqual(['ES']);
         expect(seen).toHaveBeenCalledTimes(1);
+    });
+    it('looks up Steam’s controller axes feed once, with the first layouts read, and keeps it', () => {
+        readSteamLayouts(); readSteamLayouts();
+        expect(webpack.exportLookups).toBe(1);
+        expect(currentAxesFeed()).toBe(webpack.feed);
     });
     it('falls back to the built-in QWERTY when nothing matches', () => {
         webpack.modules = [{ a: 1 }];
@@ -123,13 +129,19 @@ describe('the keyboard panel', () => {
         expect(move.props.ariaLabel).toBe('Move keyboard');
     });
     it('hands A down and up on the strip to the controller press, and no other button', () => {
-        const pad = { down: vi.fn(), up: vi.fn() };
+        const pad = { down: vi.fn(), up: vi.fn(), abort: vi.fn() };
         const { nodes } = panel(spanish, { pad });
         const strip = nodes.find(n => n.props['data-gg-keyboard-strip'] !== undefined)!;
         strip.props.onButtonDown({ detail: { button: 2 } }); strip.props.onButtonUp({ detail: { button: 2 } });
         expect(pad.down).not.toHaveBeenCalled(); expect(pad.up).not.toHaveBeenCalled();
         strip.props.onButtonDown({ detail: { button: 1 } }); strip.props.onButtonUp({ detail: { button: 1 } });
         expect(pad.down).toHaveBeenCalledOnce(); expect(pad.up).toHaveBeenCalledOnce();
+    });
+    it('gives up a pending A hold when the strip loses focus', () => {
+        const pad = { down: vi.fn(), up: vi.fn(), abort: vi.fn() };
+        const strip = panel(spanish, { pad }).nodes.find(n => n.props['data-gg-keyboard-strip'] !== undefined)!;
+        strip.props.onGamepadBlur({}); strip.props.onBlur({});
+        expect(pad.abort).toHaveBeenCalledTimes(2);
     });
     it('draws the symbols page', () => {
         const { rows } = panel(BUILTIN_QWERTY, { page: 'symbols' });

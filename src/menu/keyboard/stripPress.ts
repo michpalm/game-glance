@@ -11,6 +11,8 @@ export interface StripPress {
     buttonUp(): void;
     /** The strip button's click: a touch tap or mouse click cycles; the click of a gamepad press is ignored. */
     action(): void;
+    /** Focus left the strip (a direction, or blur) before the lift: the hold is given up, with no lift and no cycle. */
+    abort(): void;
     /** B during the drag drops the panel; true when it did, so B goes no further. */
     cancel(): boolean;
     dragging(): boolean;
@@ -20,11 +22,12 @@ export interface StripPress {
 
 /** Exactly one path acts per press: a gamepad press decides on A up (or the hold timer); any click it causes is
  * swallowed, and a click with no gamepad press waits a tick so an A down arriving just after it can claim it. */
-export function createStripPress(deps: { cycle(): void; lift(): void; drop(): void }, holdMs = STRIP_HOLD_MS): StripPress {
+export function createStripPress(deps: { cycle(): void; lift(): void; drop(): void; held?(pending: boolean): void }, holdMs = STRIP_HOLD_MS): StripPress {
     let hold: ReturnType<typeof setTimeout> | null = null, click: ReturnType<typeof setTimeout> | null = null;
-    let down = false, lifted = false, padEnded = -Infinity;
+    // `stale`: a hold given up while A is still down; its A up (if the strip sees it) only marks the press as ended.
+    let down = false, lifted = false, stale = false, padEnded = -Infinity;
     const clear = () => {
-        if (hold) clearTimeout(hold);
+        if (hold) { clearTimeout(hold); deps.held?.(false); }
         if (click) clearTimeout(click);
         hold = click = null;
     };
@@ -32,10 +35,12 @@ export function createStripPress(deps: { cycle(): void; lift(): void; drop(): vo
     return {
         buttonDown() {
             if (down) return;
-            clear(); down = true; lifted = false;
-            hold = setTimeout(() => { hold = null; lifted = true; deps.lift(); }, holdMs);
+            clear(); down = true; lifted = false; stale = false;
+            hold = setTimeout(() => { hold = null; deps.held?.(false); lifted = true; deps.lift(); }, holdMs);
+            deps.held?.(true);
         },
         buttonUp() {
+            if (stale) { stale = false; padEnded = Date.now(); return; }
             if (!down) return;
             end();
             if (hold) { clear(); deps.cycle(); }
@@ -46,13 +51,17 @@ export function createStripPress(deps: { cycle(): void; lift(): void; drop(): vo
             if (click) clearTimeout(click);
             click = setTimeout(() => { click = null; deps.cycle(); }, 0);
         },
+        abort() {
+            if (!down || !hold) return;
+            clear(); down = false; stale = true; padEnded = Date.now();
+        },
         cancel() {
             if (!lifted) return false;
             lifted = false; end(); deps.drop();
             return true;
         },
         dragging: () => lifted,
-        dispose() { clear(); down = lifted = false; },
+        dispose() { clear(); down = lifted = stale = false; },
     };
 }
 
@@ -65,6 +74,14 @@ export function dpadStep(button: number): { x: number; y: number } | null {
         case 12: return { x: NUDGE, y: 0 };
     }
     return null;
+}
+
+/** On the document while a hold is pending: a direction (stick or d-pad) is about to move focus off the strip, so the
+ * hold is given up. The event goes on to move focus as usual. */
+export function installHoldWatch(doc: EventTarget, abort: () => void): () => void {
+    const onDirection = () => abort();
+    doc.addEventListener('vgp_ondirection', onDirection, { capture: true });
+    return () => doc.removeEventListener('vgp_ondirection', onDirection, { capture: true });
 }
 
 type DragHandlers = { nudge(step: { x: number; y: number }): void; cancel(): boolean; release(): void; stickBusy(): boolean };
