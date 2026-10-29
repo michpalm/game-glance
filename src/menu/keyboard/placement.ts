@@ -14,12 +14,19 @@ const clampTo=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const inside=(p:Point,v:Rect,s:Size)=>p.x>=v.x&&p.y>=v.y&&p.x+s.width<=v.x+v.width&&p.y+s.height<=v.y+v.height;
 const overlaps=(p:Point,f:Rect,s:Size)=>p.x<f.x+f.width&&p.x+s.width>f.x&&p.y<f.y+f.height&&p.y+s.height>f.y;
 
+const clampInto=(pos:Point,view:Rect,size:Size):Point=>({
+    x:clampTo(pos.x,view.x,Math.max(view.x,view.x+view.width-size.width)),
+    y:clampTo(pos.y,view.y,Math.max(view.y,view.y+view.height-size.height)),
+});
+
+/** Where a drag puts the panel: `from` moved by the pointer's screen delta in menu units, kept inside the view. Clearing
+ * the field waits for the release (`settle`). */
+export const dragPosition=(from:Point,delta:Point,scale:number,view:Rect,size:Size):Point=>
+    clampInto({x:from.x+delta.x/scale,y:from.y+delta.y/scale},view,size);
+
 // Clamps into the view, then slides clear of the field by the shortest move that stays in view.
 export function settle(pos:Point,view:Rect,field:Rect,size:Size):Point {
-    const p={
-        x:clampTo(pos.x,view.x,Math.max(view.x,view.x+view.width-size.width)),
-        y:clampTo(pos.y,view.y,Math.max(view.y,view.y+view.height-size.height)),
-    };
+    const p=clampInto(pos,view,size);
     if(!overlaps(p,field,size))return p;
     const shifts:Point[]=[
         {x:field.x-size.width,y:p.y},{x:field.x+field.width,y:p.y},
@@ -52,4 +59,7 @@ export async function loadPosition(kv:KvBackend):Promise<KeyboardPosition|null> 
     return null;
 }
 
-export const savePosition=(kv:KvBackend,value:KeyboardPosition):Promise<void>=>kv.set(KEY,value);
+/** Never rejects: a position that could not be stored is simply not remembered. */
+export async function savePosition(kv:KvBackend,value:KeyboardPosition):Promise<void> {
+    try{await kv.set(KEY,value);}catch{/* not remembered */}
+}

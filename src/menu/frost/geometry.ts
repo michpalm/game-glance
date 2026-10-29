@@ -7,6 +7,11 @@ interface GeometryInput {
 function radius(value:string, dimension:number):number {
     return value.endsWith('%') ? parseFloat(value)*dimension/100 : value.endsWith('px') || value==='0' ? parseFloat(value) : NaN;
 }
+function clipToOutput(r:Region):Region {
+    const x=Math.max(0,r.x), y=Math.max(0,r.y), width=Math.min(1,r.x+r.width)-x, height=Math.min(1,r.y+r.height)-y;
+    if (width<=0 || height<=0) return {...EMPTY_REGION};
+    return {x,y,width,height,radiusX:Math.min(r.radiusX,width/2),radiusY:Math.min(r.radiusY,height/2)};
+}
 export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
     const {source,owner,placeholder,elements,context,generation}=input;
     if (!placeholder.isConnected || !Number.isSafeInteger(generation) || generation<0) return null;
@@ -36,9 +41,11 @@ export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
         const rx=requestedX*factor, ry=requestedY*factor;
         const region:Region={x:(p.left+r.left*sx)/ow,y:(p.top+r.top*sy)/oh,width:r.width*sx/ow,height:r.height*sy/oh,
             radiusX:rx*(r.width/offsetWidth)*sx/ow,radiusY:ry*(r.height/offsetHeight)*sy/oh};
-        if (!Object.values(region).every(Number.isFinite) || region.width<=0 || region.height<=0 || region.radiusX<0 || region.radiusY<0 ||
-            region.x<0 || region.y<0 || region.x+region.width>1.000001 || region.y+region.height>1.000001) return null;
-        regions[id]=region;
+        if (!Object.values(region).every(Number.isFinite) || region.width<=0 || region.height<=0 || region.radiusX<0 || region.radiusY<0) return null;
+        const outside=region.x<0 || region.y<0 || region.x+region.width>1.000001 || region.y+region.height>1.000001;
+        if (outside && !OPTIONAL_REGIONS.has(id)) return null;
+        // An optional area (the keyboard, dragged past an edge) is clipped to the output, or absent when nothing remains.
+        regions[id]=outside ? clipToOutput(region) : region;
     }
     return {generation,context,regions};
 }

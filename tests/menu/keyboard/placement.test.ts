@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SPOTS,spotPosition,settle,loadPosition,savePosition,type Rect} from '../../../src/menu/keyboard/placement';
+import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,type Rect} from '../../../src/menu/keyboard/placement';
 import {memoryKv} from '../../../src/data/kv';
 
 const view:Rect={x:0,y:0,width:829,height:467};
@@ -20,6 +20,18 @@ describe('spotPosition',()=>{
         expect(spotPosition('left',view,menu,field,size)).toEqual({x:97,y:274});
         expect(spotPosition('right',view,menu,field,size)).toEqual({x:383,y:198});
         expect(spotPosition('top',view,menu,field,size)).toEqual({x:282.5,y:135});
+    });
+});
+
+describe('dragPosition',()=>{
+    // While dragging the panel stays inside the view (the frost of the whole menu depends on it); only release clears the field.
+    it('follows the pointer in menu units, clamped inside the view',()=>{
+        expect(dragPosition({x:100,y:100},{x:20,y:-10},.5,view,size)).toEqual({x:140,y:80});
+        expect(dragPosition({x:100,y:100},{x:-900,y:-900},1,view,size)).toEqual({x:0,y:0});
+        expect(dragPosition({x:100,y:100},{x:9000,y:9000},1,view,size)).toEqual({x:564,y:331});
+    });
+    it('does not slide clear of the field while dragging',()=>{
+        expect(dragPosition({x:378,y:300},{x:0,y:0},1,view,size)).toEqual({x:378,y:300});
     });
 });
 
@@ -58,6 +70,12 @@ describe('remembered position',()=>{
         await savePosition(kv,{x:12,y:34});
         expect(await loadPosition(kv)).toEqual({x:12,y:34});
         expect(await kv.get('menu:keyboard')).toEqual({x:12,y:34});
+    });
+    it('never rejects when the store fails',async()=>{
+        const kv={...memoryKv(),set:()=>Promise.reject(new Error('backend gone'))};
+        await expect(savePosition(kv,{spot:'left'})).resolves.toBeUndefined();
+        const throws={...memoryKv(),set:()=>{throw new Error('sync');}};
+        await expect(savePosition(throws,{x:1,y:2})).resolves.toBeUndefined();
     });
     it('loads null when nothing is stored',async()=>expect(await loadPosition(memoryKv())).toBeNull());
     it.each([

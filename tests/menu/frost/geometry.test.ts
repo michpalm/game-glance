@@ -54,6 +54,28 @@ describe('frost geometry', () => {
         expect(f.regions.keyboard).toEqual({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
         for(const id of ['bar','panel','notifications','status'] as const) expect(f.regions[id]).toEqual(open.regions[id]);
     });
+    // A drag can carry the keyboard past an edge: the frame stays, with the keyboard clipped to the output.
+    it('clips a keyboard partly off the output and keeps every other area',()=>{
+        const input=fixture(),open=measureFrostFrame(input)!;
+        input.elements.keyboard.getBoundingClientRect=()=>({left:1700,top:-100,width:400,height:200} as DOMRect);
+        const f=measureFrostFrame(input)!;
+        expect(f).not.toBeNull();
+        const k=f.regions.keyboard;
+        expect(k.x).toBeCloseTo(.87); expect(k.width).toBeCloseTo(.13);
+        expect(k.y).toBe(0); expect(k.height).toBeCloseTo(.12);
+        expect(k.radiusX).toBeLessThanOrEqual(k.width/2); expect(k.radiusY).toBeLessThanOrEqual(k.height/2);
+        for(const id of ['bar','panel','notifications','status'] as const) expect(f.regions[id]).toEqual(open.regions[id]);
+    });
+    it('measures a keyboard wholly off the output as an all-zero area',()=>{
+        const input=fixture();
+        input.elements.keyboard.getBoundingClientRect=()=>({left:2200,top:80,width:400,height:200} as DOMRect);
+        expect(measureFrostFrame(input)!.regions.keyboard).toEqual({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
+    });
+    it('still fails the frame when a required area leaves the output',()=>{
+        const input=fixture();
+        input.elements.panel.getBoundingClientRect=()=>({left:1700,top:80,width:400,height:200} as DOMRect);
+        expect(measureFrostFrame(input)).toBeNull();
+    });
     it('still fails the frame when a required area is empty',()=>{
         const input=fixture();
         Object.defineProperties(input.elements.status,{offsetWidth:{value:0},offsetHeight:{value:0}});
