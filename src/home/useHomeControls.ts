@@ -4,6 +4,8 @@ import {homeControlsMode,nextHomeControl,orderHomeControls,repairHomeControl,typ
 import {acquireHomeFooter} from './homeControlsDom';
 import {focusElement} from './homeNav';
 import {menuOpen,steamMenuStore} from './steamMenu';
+import {acquireHomeHeader} from './homeHeaderDom';
+import {getSteamUiState,subscribeSteamUiState,type SteamUiState} from './steamUiState';
 
 export function visibleHomeControl(node:HTMLElement):boolean {
     if(!node.isConnected||node.closest('[hidden],[inert],[aria-hidden="true"]'))return false;
@@ -72,7 +74,7 @@ export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls &
     };
 }
 interface HomeControlsOptions {
-    root:RefObject<HTMLElement|null>;enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean;mounted:boolean;statusHidden:boolean;
+    search?:HomeSearchFocus;root:RefObject<HTMLElement|null>;enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean;mounted:boolean;statusHidden:boolean;
     launching():boolean;stopRepeats():void;returnHome():void;
 }
 const optedIn=(o:HomeControlsOptions)=>o.enabled&&o.spotlightHome&&o.homeStatusBar&&o.homeExpandedControls&&o.mounted;
@@ -81,12 +83,14 @@ function suspendedNow(o:HomeControlsOptions):boolean {
     return homeRuntimeSuspended({foreground:!!doc?.hasFocus(),menu:menuOpen(steamMenuStore(),!!doc?.hasFocus()),opening:!!root?.hasAttribute('data-gh-opening'),launching:o.launching(),connected:!!root?.isConnected,hidden:doc?.visibilityState==='hidden'||!!root?.closest('[hidden],[inert],[aria-hidden="true"]')});
 }
 /** One Home-owned footer lease and focus bridge; it never probes or edits the native header/Search. */
-export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;footerActive:boolean} {
+export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;footerActive:boolean;ui:SteamUiState|null} {
     const live=useRef(options);live.current=options;
     const ready=useRef(false),runtime=useRef<{sync():void}|null>(null);
+    const [ui,setUi]=useState<SteamUiState|null>(null);
     const [mode,setMode]=useState<HomeControlsMode>('off');
     const [headerHandoff,setHeaderHandoff]=useState(false);
     const focus=useMemo(()=>createHomeStatusFocus({
+        search:options.search?{reveal:()=>live.current.search?.reveal(),hide:()=>live.current.search?.hide(),activate:()=>live.current.search?.activate(),editing:()=>live.current.search?.editing()??false,contains:target=>live.current.search?.contains(target)??false}:undefined,
         canUse:()=>ready.current&&optedIn(live.current)&&!live.current.statusHidden&&!suspendedNow(live.current),
         headerHandoff:setHeaderHandoff,
         focus:node=>focusElement(node,'the Home status item'),returnHome:()=>live.current.returnHome(),stopRepeats:()=>live.current.stopRepeats(),
@@ -95,14 +99,18 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
     useLayoutEffect(()=>{
         const root=live.current.root.current;if(!root)return undefined;
         const doc=root.ownerDocument,win=doc.defaultView;
+        let header:ReturnType<typeof acquireHomeHeader>|null=null,headerReady=false,footerReady=false;
         let disposed=false,queued=false,lease:ReturnType<typeof acquireHomeFooter>|null=null;
         const queue=()=>{if(disposed||queued)return;queued=true;void Promise.resolve().then(()=>{queued=false;if(!disposed)sync();});};
         const sync=()=>{
             if(disposed)return;
             const o=live.current,wanted=optedIn(o),suspended=suspendedNow(o);
-            if(!wanted&&lease){lease.dispose();lease=null;ready.current=false;}
-            if(wanted&&!suspended&&!lease)lease=acquireHomeFooter(root,value=>{ready.current=value;queue();});
+            if(!wanted){lease?.dispose();lease=null;header?.dispose();header=null;footerReady=false;headerReady=false;}
+            if(wanted&&!suspended&&!lease)lease=acquireHomeFooter(root,value=>{footerReady=value;queue();});
             lease?.suspend(suspended);
+            if(wanted&&!suspended&&footerReady&&!header)header=acquireHomeHeader(root,value=>{headerReady=value;queue();});
+            header?.suspend(suspended||!footerReady);ready.current=footerReady&&headerReady;
+            setUi(getSteamUiState(doc));
             const next=homeControlsMode({...o,homeMounted:o.mounted,nativeReady:ready.current,suspended});
             focus.setActive(next==='active'&&!o.statusHidden,!suspended);
             setMode(previous=>previous===next?previous:next);
@@ -112,9 +120,9 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
         doc.addEventListener('focusin',onFocus);doc.addEventListener('visibilitychange',sync);win?.addEventListener('focus',sync);win?.addEventListener('blur',sync);
         const observer=win?.MutationObserver?new win.MutationObserver(queue):null;
         for(let node:HTMLElement|null=root;node;node=node.parentElement)observer?.observe(node,{attributes:true,attributeFilter:['data-gh-opening','hidden','inert','aria-hidden']});
-        const timer=setInterval(sync,250);
-        return ()=>{disposed=true;runtime.current=null;clearInterval(timer);observer?.disconnect();doc.removeEventListener('focusin',onFocus);doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);focus.setActive(false,false);lease?.dispose();ready.current=false;};
+        const stopRuntime=subscribeSteamUiState(doc,sync);
+        return ()=>{disposed=true;runtime.current=null;stopRuntime();observer?.disconnect();doc.removeEventListener('focusin',onFocus);doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);focus.setActive(false,false);lease?.dispose();header?.dispose();ready.current=false;};
     },[focus]);
     useLayoutEffect(()=>runtime.current?.sync());
-    return {controls:mode==='active'&&!options.statusHidden&&!headerHandoff?focus:undefined,actionUp:focus.actionUp,footerActive:mode==='active'};
+    return {controls:mode==='active'&&!options.statusHidden&&!headerHandoff?focus:undefined,actionUp:focus.actionUp,ui,footerActive:mode==='active'};
 }
