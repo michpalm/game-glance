@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey, focusPrefersBar } from '../../src/menu/navigation';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
@@ -37,6 +37,12 @@ describe('menu input boundary',()=>{
         expect(findMenuFocus(root,'section:in-game')?.textContent).toBe('Quick settings');
         expect(findMenuFocus(root,'quick:brightness',true)?.textContent).toBe('Quick settings');
         expect(findMenuFocus(root,'quick:brightness')?.textContent).toBe('Brightness');
+    });
+    it('starts on the active tab when the menu opens, and keeps bar focus only when it was there on a tab switch', () => {
+        expect(focusPrefersBar(false, false)).toBe(true);
+        expect(focusPrefersBar(false, true)).toBe(true);
+        expect(focusPrefersBar(true, true)).toBe(true);
+        expect(focusPrefersBar(true, false)).toBe(false);
     });
     it('restores a valid stable focus key and skips unavailable or hidden controls',()=>{
         const {document}=parseHTML('<main><button data-gg-focus="first">First</button><button data-gg-focus="saved" disabled>Disabled</button><div hidden><button data-gg-focus="hidden">Hidden</button></div><button data-gg-focus="last">Last</button></main>');

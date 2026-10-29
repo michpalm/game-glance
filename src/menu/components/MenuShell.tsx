@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey } from '../navigation';
+import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -68,11 +68,14 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         return () => { alive = false; };
     }, [active, appId]);
     const enterNative = (request: NativeRequest) => { void handoff(request).catch(() => setError('Could not open Steam’s view. Use the menu button to return.')); };
+    const focusedSinceOpen = useRef(false);
     useLayoutEffect(() => {
         const element = root.current;
+        if (!active) focusedSinceOpen.current = false;
         if (!element || !active || !inputActive()) return;
         const key = state.focus[state.section];
-        const preferBar = !!element.ownerDocument.activeElement?.closest('.gg-menu-bar');
+        const preferBar = focusPrefersBar(focusedSinceOpen.current, !!element.ownerDocument.activeElement?.closest('.gg-menu-bar'));
+        focusedSinceOpen.current = true;
         const focus = () => {
             const target = findMenuFocus(element, key, preferBar);
             if (target) { target.focus({ preventScroll: true }); takeSteamFocus(target); }

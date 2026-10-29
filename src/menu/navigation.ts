@@ -39,6 +39,8 @@ export function handleMenuButton(detail: { button: number; is_repeat?: boolean }
     if (!detail.is_repeat) dispatch(detail.button === 2 ? { type: 'back' } : { type: 'step', direction: detail.button === 5 ? -1 : 1 });
     return true;
 }
+/** A fresh opening (menu or quick-access button) starts on its active tab; a tab switch keeps bar focus only if it was there. */
+export const focusPrefersBar = (wasOpen: boolean, focusInBar: boolean) => !wasOpen || focusInBar;
 export function findMenuFocus(root: ParentNode, key?: string, preferBar = false): HTMLElement | null {
     const selector = 'button,input,select,textarea,a[href],.Focusable,[tabindex]';
     const elements = Array.from(root.querySelectorAll<HTMLElement>('[data-gg-focus]')).map(wrapper => ({
