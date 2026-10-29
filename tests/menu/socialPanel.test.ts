@@ -1,11 +1,14 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { MenuKeyboard } from '../../src/menu/components/MenuKeyboard';
 import { SocialContents } from '../../src/menu/components/SocialPanel';
+import { BUILTIN_QWERTY } from '../../src/menu/keyboard/layouts';
+import { createKeyboardSession } from '../../src/menu/keyboard/session';
 import { defaultMenuState, reduceMenu } from '../../src/menu/model';
 import { leaveSocialConversation } from '../../src/menu/navigation';
 import type { SocialService, SocialSnapshot } from '../../src/menu/steam/social';
 
-vi.mock('@decky/ui', () => ({ Focusable: 'div', TextField: 'input', DialogButton: 'button' }));
+vi.mock('@decky/ui', () => ({ Focusable: 'div', TextField: 'input', DialogButton: 'button', findModule: () => undefined }));
 const id = '76561198000000001';
 function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
     if (Array.isArray(node)) return node.flatMap(tree);
@@ -73,6 +76,49 @@ describe('Social panel interaction', () => {
         const leave = vi.fn();
         expect(leaveSocialConversation(state, { get: () => ({ selectedId: id }), leave }, event => { state = reduceMenu(state, event); })).toBe(true);
         expect(leave).toHaveBeenCalledOnce(); expect(state).toMatchObject({ phase: 'custom-open', stack: [], focus: { social: `social:friend:${id}` } });
+    });
+});
+
+describe('Social chat with the menu keyboard', () => {
+    const qwerty = { layouts: [BUILTIN_QWERTY], current: 0 };
+    function chat(change: Partial<SocialSnapshot> = {}, layouts = qwerty, entered = true) {
+        const snapshot: SocialSnapshot = { accountId: 'test', status: 'ready', canChat: true, friends: [{ steamId: id, name: 'Synthetic player', avatarUrl: null, state: 'online', appId: null, lastAppId: null, sub: 'Online', game: '', gameInLibrary: false, joinUrl: null }],
+            selectedId: id, enteredId: entered ? id : null, messages: [], more: false, loading: false, sending: false, draft: '', error: '', ...change };
+        const social = { preview: vi.fn(), send: vi.fn(), retry: vi.fn(), setDraft: vi.fn(), reload: vi.fn() } as unknown as SocialService;
+        const keyboard = createKeyboardSession(), field = () => null;
+        const nodes = tree(SocialContents({ snapshot, social, entered, enter: vi.fn(), leave: vi.fn(), handoff: vi.fn(), loadMore: vi.fn(), latest: vi.fn(), keyboard, layouts, field }));
+        return { nodes, social, keyboard, field, action: (key: string) => nodes.find(n => n.props.id === key), board: nodes.find(n => n.type === MenuKeyboard) };
+    }
+    it('makes the message field a button that opens the keyboard, never a text input', () => {
+        const c = chat();
+        expect(c.nodes.some(n => n.type === 'input' || n.props['aria-label'] === 'Message' && n.props.onChange)).toBe(false);
+        const compose = c.action('social:compose')!;
+        expect([compose.props.children].flat()).toContainEqual(expect.objectContaining({ props: expect.objectContaining({ children: 'Message' }) }));
+        compose.props.onAction(); expect(c.keyboard.get().open).toBe(true);
+    });
+    it('shows the draft in the field', () => {
+        expect([chat({ draft: 'Hola' }).action('social:compose')!.props.children].flat()).toContain('Hola');
+    });
+    it('keeps Steam’s text field for a layout that needs an input method', () => {
+        const c = chat({}, { layouts: [{ ...BUILTIN_QWERTY, name: 'japanese', ime: true }], current: 0 });
+        expect(c.action('social:compose')).toBeUndefined();
+        expect(c.nodes.find(n => n.props['aria-label'] === 'Message')?.props.onChange).toBeTypeOf('function');
+        expect(c.board).toBeUndefined();
+    });
+    it('mounts the keyboard only in an entered chat, wired to the draft and Send', () => {
+        expect(chat({}, qwerty, false).board).toBeUndefined();
+        const c = chat({ draft: 'Hola' });
+        expect(c.board!.props).toMatchObject({ session: c.keyboard, layouts: qwerty, draft: 'Hola', field: c.field });
+        c.board!.props.setDraft('Hola!'); expect(c.social.setDraft).toHaveBeenCalledWith('Hola!');
+        c.board!.props.send(); expect(c.social.send).toHaveBeenCalledOnce();
+    });
+    it('enables ✓ exactly when Send is enabled', () => {
+        const cases: Partial<SocialSnapshot>[] = [{ draft: 'Hola' }, { draft: '  ' }, { draft: 'Hola', sending: true }, { draft: 'Hola', loading: true }, { draft: 'Hola', canChat: false },
+            { draft: 'Hola', messages: [{ id: 'p', text: 'x', own: true, timestamp: 1, state: 'pending' }] }];
+        for (const change of cases) {
+            const c = chat(change);
+            expect(c.board!.props.canSend, JSON.stringify(change)).toBe(!c.action('social:send')!.props.disabled);
+        }
     });
 });
 

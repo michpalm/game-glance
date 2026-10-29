@@ -1,5 +1,5 @@
 import { Focusable, TextField } from '@decky/ui';
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
 import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
 import type { KeyboardSession } from '../keyboard/session';
 import { FRIEND_COLOURS, friendRing } from '../../home/friends';
@@ -9,6 +9,7 @@ import type { ChatMessage, SocialFriend, SocialService, SocialSnapshot } from '.
 import { socialStyles } from '../socialStyles';
 import { captureChatAnchor, restoreChatAnchor, type ChatScrollAnchor } from '../socialScroll';
 import { MenuAction } from './MenuAction';
+import { MenuKeyboard, readSteamLayouts, type Layouts } from './MenuKeyboard';
 
 function Avatar({ friend }: { friend: SocialFriend }) {
     const ring = friendRing(friend.state);
@@ -32,17 +33,24 @@ interface SocialContentsProps {
     onScroll?: UIEventHandler<HTMLDivElement>;
     joinArmed?: boolean;
     armJoin?(): void;
+    /** With a session and layouts the field opens the menu keyboard, unless the current layout needs an input method. */
+    keyboard?: KeyboardSession;
+    layouts?: Layouts | null;
+    field?(): HTMLElement | null;
 }
+const NO_SUBSCRIBE = () => () => {};
 const RANK: Record<string, number> = { ingame: 0, online: 1 };
 /** In a game first, then online, then everyone else; Steam's order within each group. */
 const ordered = (friends: SocialFriend[]) => friends.map((f, i) => ({ f, i })).sort((a, b) => (RANK[a.f.state] ?? 2) - (RANK[b.f.state] ?? 2) || a.i - b.i).map(x => x.f);
 const previewMessage = (message: ChatMessage) => <div key={message.id} className={`gg-social-message ${message.own ? 'gg-social-own' : ''}`}><div className="gg-social-bubble"><span>{message.rich ? 'Message with an attachment' : message.text}</span></div></div>;
 
 /** Stateless presentation; native operations are confined to explicit actions on the session. */
-export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {} }: SocialContentsProps) {
+export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null }: SocialContentsProps) {
     const friend = snapshot.friends.find(f => f.steamId === (entered ? snapshot.enteredId : snapshot.selectedId));
     const native = () => handoff(entered && snapshot.enteredId ? { kind: 'friend-chat', steamId: snapshot.enteredId } : { kind: 'qam', tab: 'friends' });
     const pending = snapshot.messages.some(m => m.own && m.state === 'pending');
+    const sendDisabled = snapshot.sending || snapshot.loading || pending || !snapshot.canChat || !snapshot.draft.trim();
+    const ownKeyboard = keyboard && layouts && !layouts.layouts[layouts.current]?.ime ? keyboard : null;
     const inGame = snapshot.friends.filter(f => f.state === 'ingame').length, online = snapshot.friends.filter(f => f.state !== 'offline' && f.state !== 'ingame').length;
     const counts = [inGame && `${inGame} in game`, online && `${online} online`].filter(Boolean).join(' · ') || 'Nobody online';
     // Steam's own chat and Join game sit beside the reply, one small pill each.
@@ -83,10 +91,13 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
                     </Focusable>
                     {(!atBottom || snapshot.newer) && <MenuAction id="social:latest" disabled={snapshot.loading} onAction={latest}>Latest messages ↓</MenuAction>}
                     <div className="gg-social-compose">
-                        <div className="gg-social-input" data-gg-focus="social:compose"><TextField aria-label="Message" label="Message" value={snapshot.draft} disabled={snapshot.loading || !snapshot.canChat} onChange={event => social.setDraft(event.target.value)} /></div>
-                        <MenuAction id="social:send" className="gg-social-send" disabled={snapshot.sending || snapshot.loading || pending || !snapshot.canChat || !snapshot.draft.trim()} onAction={() => { void social.send(); }}><LuSend aria-hidden="true" />{snapshot.sending ? 'Sending…' : 'Send'}</MenuAction>
+                        {ownKeyboard ? <div className="gg-social-input">
+                            <MenuAction id="social:compose" className="gg-social-field" ariaLabel="Message" disabled={snapshot.loading || !snapshot.canChat} onAction={ownKeyboard.open}>{snapshot.draft || <span className="gg-social-placeholder">Message</span>}</MenuAction>
+                        </div> : <div className="gg-social-input" data-gg-focus="social:compose"><TextField aria-label="Message" label="Message" value={snapshot.draft} disabled={snapshot.loading || !snapshot.canChat} onChange={event => social.setDraft(event.target.value)} /></div>}
+                        <MenuAction id="social:send" className="gg-social-send" disabled={sendDisabled} onAction={() => { void social.send(); }}><LuSend aria-hidden="true" />{snapshot.sending ? 'Sending…' : 'Send'}</MenuAction>
                         {extras}
                     </div>
+                    {ownKeyboard && layouts && <MenuKeyboard session={ownKeyboard} layouts={layouts} draft={snapshot.draft} setDraft={text => social.setDraft(text)} canSend={!sendDisabled} send={() => { void social.send(); }} field={field} />}
                 </> : friend && <>
                     <div className="gg-social-preview" aria-label="Recent messages">
                         {!snapshot.canChat ? <p className="gg-social-empty">Embedded chat is unavailable. You can open Social in Steam.</p>
@@ -105,9 +116,16 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
 }
 
 export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession }) {
-    const { social, entered } = props;
+    const { social, entered, keyboard } = props;
     const snapshot = useSyncExternalStore(social.subscribe, social.get);
+    const keyboardOpen = useSyncExternalStore(keyboard?.subscribe ?? NO_SUBSCRIBE, () => keyboard?.get().open ?? false);
+    // Read on entering (the field depends on the current layout) and again on each opening of the keyboard, never per render.
+    const openings = useRef(0), wasOpen = useRef(false);
+    if (keyboardOpen && !wasOpen.current) openings.current++;
+    wasOpen.current = keyboardOpen;
+    const layouts = useMemo(() => entered && keyboard ? readSteamLayouts() : null, [entered, keyboard, openings.current]);
     const timeline = useRef<HTMLDivElement>(null);
+    const field = () => timeline.current?.parentElement?.querySelector<HTMLElement>('.gg-social-input') ?? null;
     const bottom = useRef(true);
     const historyAnchor = useRef<ChatScrollAnchor | null>(null);
     const focusedChat = useRef<string | null>(null);
@@ -156,10 +174,11 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
         if (!entered || !snapshot.enteredId || snapshot.loading) return;
         if (focusedChat.current === snapshot.enteredId) return;
         focusedChat.current = snapshot.enteredId; bottom.current = true; historyAnchor.current = null;
-        const input = timeline.current?.parentElement?.querySelector<HTMLInputElement>('[data-gg-focus="social:compose"] input');
+        const compose = timeline.current?.parentElement?.querySelector<HTMLElement>('[data-gg-focus="social:compose"]');
+        const input = compose?.matches('button') ? compose : compose?.querySelector<HTMLInputElement>('input');
         input?.focus({ preventScroll: true }); if (input) takeSteamFocus(input);
     }, [entered, snapshot.enteredId, snapshot.loading]);
-    return <SocialContents {...props} snapshot={snapshot} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
+    return <SocialContents {...props} snapshot={snapshot} layouts={layouts} field={field} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
         loadMore={() => { const element = timeline.current; if (element) { bottom.current = false; historyAnchor.current = captureChatAnchor(element); } void social.loadMore(); }}
         latest={() => { bottom.current = true; social.latest(); }} />;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { menuStyles } from '../../src/menu/styles';
 import { socialStyles } from '../../src/menu/socialStyles';
-import { TOKENS, tokenCss } from '../../src/styles/tokens';
+import { focusRing, TOKENS, tokenCss } from '../../src/styles/tokens';
 const rule=(selector:string)=>menuStyles.split('\n').find(line=>line.startsWith(selector+'{'))??'';
 describe('menu glass and reveal motion',()=>{
     it('draws the bar and panel in the visual language glass over the frosted game',()=>{
@@ -113,4 +113,34 @@ it('the end options of a track take its corners, so their focus ring and selecti
     const track = ':is(.gg-menu-segmented,.gg-menu-perf-tabs)';
     expect(menuStyles).toContain(`${track} button.gg-menu-action.DialogButton:first-child{border-radius:calc(var(--gg-r-card) - 1px) 0 0 calc(var(--gg-r-card) - 1px)}`);
     expect(menuStyles).toContain(`${track} button.gg-menu-action.DialogButton:last-child{border-radius:0 calc(var(--gg-r-card) - 1px) calc(var(--gg-r-card) - 1px) 0}`);
+});
+
+describe('the menu keyboard', () => {
+    const lines = socialStyles.split('\n');
+    const css = (selector: string) => lines.find(line => line.startsWith(selector + '{')) ?? '';
+    const key = '.gg-menu-native-host .gg-menu .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
+    it('floats a 409 × 210 glass panel with the menu edge and corners', () => {
+        const panel = css('.gg-menu .gg-keyboard');
+        for (const part of ['position:absolute', 'width:409px', 'height:210px', `background:${TOKENS.glass}`, 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
+        // Rows are 385 px wide inside the 1 px edge.
+        expect(panel).toMatch(/padding:\d+px 11px/);
+    });
+    it('lifts the panel while it is dragged', () => {
+        const lifted = css('.gg-menu .gg-keyboard.gg-keyboard-dragging');
+        expect(lifted).toContain('box-shadow:'); expect(lifted).toContain('border-color:var(--gg-edge-active)');
+    });
+    it('draws 34 × 40 keys with 5 px gaps and 10 px corners that narrow to fit a long row', () => {
+        expect(css('.gg-keyboard-row')).toContain('gap:5px');
+        expect(css('.gg-keyboard-keys')).toContain('gap:5px');
+        const k = css(key);
+        for (const part of ['flex:0 1 34px', 'min-width:0', 'height:40px', 'border-radius:10px', 'background:rgba(255,255,255,.10)']) expect(k).toContain(part);
+        expect(css(`${key}.gg-keyboard-mod`)).toContain('background:rgba(255,255,255,.20)');
+        expect(css(`${key}.gg-keyboard-send`)).toContain('background:var(--gg-accent)');
+    });
+    it('rings a focused key with the menu’s white ring', () => {
+        expect(socialStyles).toContain(`:where(html:not([data-gg-mouse])) ${key}:is(.gpfocus,:focus-visible){${focusRing('menu')}`);
+    });
+    it('gives the move strip 24 px at the bottom', () => {
+        expect(css('.gg-keyboard-strip')).toContain('height:24px');
+    });
 });

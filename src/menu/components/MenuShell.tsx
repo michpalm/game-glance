@@ -43,6 +43,7 @@ export interface MenuShellProps {
     social?: SocialService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
+const NO_SUBSCRIBE = () => () => {};
 export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, performance, social, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const [error, setError] = useState('');
@@ -92,7 +93,8 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         return installOutsideMenuClick(element, close, inputActive);
     }, [active, close, inputActive]);
     const keyboard = useMemo(createKeyboardSession, []);
-    const enteredId = useSyncExternalStore(social?.subscribe ?? (() => () => {}), () => social?.get().enteredId ?? null);
+    // Only an open menu follows the chat: subscribing may start the social service.
+    const enteredId = useSyncExternalStore(active && social ? social.subscribe : NO_SUBSCRIBE, () => active ? social?.get().enteredId ?? null : null);
     const keyboardFriend = keyboardHome(state, active, enteredId);
     useEffect(() => { keyboard.close(); }, [keyboard, keyboardFriend]);
     if (!active) return null;
