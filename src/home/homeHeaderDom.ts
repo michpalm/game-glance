@@ -12,7 +12,7 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
             const map=claims.get(node),claim=map?.get(name);if(!claim)continue;claim.owners.delete(owner);
             if(!claim.owners.size){if(node.getAttribute(name)===claim.value){if(claim.before===null)node.removeAttribute(name);else node.setAttribute(name,claim.before);}map!.delete(name);}
         }
-        for(const [node,attrs] of next)for(const [name,value] of attrs){let map=claims.get(node);if(!map){map=new Map();claims.set(node,map);}let claim=map.get(name);if(!claim){claim={before:node.getAttribute(name),value,owners:new Set()};map.set(name,claim);}claim.owners.add(owner);if(node.getAttribute(name)!==value)node.setAttribute(name,value);}
+        for(const [node,attrs] of next)for(const [name,value] of attrs){let map=claims.get(node);if(!map){map=new Map();claims.set(node,map);}let claim=map.get(name);if(!claim){claim={before:node.getAttribute(name),value,owners:new Set()};map.set(name,claim);}else if(node.getAttribute(name)!==claim.value){claim.before=node.getAttribute(name);}claim.owners.add(owner);if(node.getAttribute(name)!==value)node.setAttribute(name,value);}
         owned=next;
     };
     const update=()=>{
@@ -25,8 +25,16 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
         bound=bar;apply(next);const ready=next.size>0;if(last!==ready){last=ready;available(ready);}
     };
     const schedule=()=>{if(disposed||queued)return;queued=true;void Promise.resolve().then(()=>{queued=false;update();});};
-    const observer=view?.MutationObserver?new view.MutationObserver(records=>{if(records.some(record=>!bound?.isConnected||bound.contains(record.target)||[...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&(bound?.contains(node)||(node as Element).contains(bound)||!!(node as Element).querySelector('[class*=avatarHolder]')))))schedule();}):null;
-    observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});view?.addEventListener('resize',schedule);update();
+    const relevant=(record:MutationRecord)=>{
+        if(record.type==='attributes'&&record.attributeName){
+            const claim=claims.get(record.target as Element)?.get(record.attributeName);
+            if(claim&&(record.target as Element).getAttribute(record.attributeName)===claim.value)return false;
+        }
+        if(!bound?.isConnected||bound.contains(record.target))return true;
+        return [...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&(bound?.contains(node)||(node as Element).contains(bound)||!!(node as Element).querySelector('[class*=avatarHolder]')));
+    };
+    const observer=view?.MutationObserver?new view.MutationObserver(records=>{if(records.some(relevant))schedule();}):null;
+    observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','tabindex','inert','aria-hidden',MARK]});view?.addEventListener('resize',schedule);update();
     return {suspend(value){if(disposed||value===suspended)return;suspended=value;update();},dispose(){if(disposed)return;disposed=true;observer?.disconnect();view?.removeEventListener('resize',schedule);apply(new Map());}};
 }
 export const homeHeaderCss=`[${MARK}=true],[${MARK}=true] *{visibility:hidden!important;pointer-events:none!important}`;

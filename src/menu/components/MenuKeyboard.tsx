@@ -194,7 +194,8 @@ export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, 
 
 /** The Social chat's own keyboard, floating in the menu while the session is open. */
 export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSend, send, field }: { context?:KeyboardContext;session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
-    const ctx=keyboardContext(context);
+    const ctx=keyboardContext(context),contextRef=useRef(ctx);contextRef.current=ctx;
+    const openedHost=useRef<HTMLElement|null>(null);
     const open = useSyncExternalStore(session.subscribe, session.get).open;
     const [typing, setTyping] = useState<TypingState>({ text: draft, shift: 'off', held: null });
     const [page, setPage] = useState<Page>('letters');
@@ -236,8 +237,8 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
 
     /** The menu root, its scale and the rectangles the placement needs, in the menu's own units. */
     const geometry = () => {
-        const element = field(), root = element?ctx.host(element):null, view = root?.ownerDocument.defaultView;
-        if (!element || !root || !view) return null;
+        const element = field(), root = element?contextRef.current.host(element):null, view = root?.ownerDocument.defaultView;
+        if (!session.get().open || !contextRef.current.ownsInput() || !element?.isConnected || !root?.isConnected || root!==openedHost.current || !view) return null;
         const box = root.getBoundingClientRect(), scale = box.width / root.offsetWidth || 1;
         const menuRect = (r: { left: number; top: number; width: number; height: number }) => toMenuRect(r, box, scale);
         return { scale, view: menuRect({ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight }),
@@ -249,7 +250,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     useLayoutEffect(() => {
         if (!open) return;
         setTyping(t => ({ ...clearHeld(t), shift: 'off' })); setPage('letters'); setIndex(live.current.layouts.current); setPosition(null); setDragging(false);
-        const element=field();setHost(element?ctx.host(element):null);
+        const element=field();openedHost.current=element?contextRef.current.host(element):null;setHost(openedHost.current);
         let alive = true;
         void loadPosition(backendKv).then(saved => {
             const g = alive && geometry();
@@ -258,7 +259,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
             place(spot.current ? spotPosition(spot.current, g.view, g.menu, g.field, SIZE) : settle(saved as Point, g.view, g.field, SIZE));
         });
         return () => {
-            alive = false;
+            alive = false;openedHost.current=null;
             if (holding.current) clearTimeout(holding.current.timer);
             holding.current = null; drag.current = null;
             // A drag cut short by closing ends without a drop: nothing is saved.
@@ -277,10 +278,19 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     // The first key takes focus once the panel is placed.
     const placed = open && !!position && !!host;
     useEffect(() => {
-        if (!placed) return;
+        if (!placed || !session.get().open || !contextRef.current.ownsInput() || !host?.isConnected || host!==openedHost.current) return;
         const first = panel.current?.querySelector<HTMLElement>('button');
         if (first && !panel.current!.contains(first.ownerDocument.activeElement)) { first.focus({ preventScroll: true }); takeSteamFocus(first); }
     }, [placed]);
+
+    // Resizing cancels an in-flight drag, then keeps the current/anchored position inside the live viewport.
+    useEffect(()=>{
+        const view=host?.ownerDocument.defaultView;if(!open||!host||!view)return;
+        const resize=()=>{const g=geometry();if(!g||!live.current.position)return;stripPress.current?.dispose();stopListening('hold');stopListening('drag');drag.current=null;padFrame.current=null;moving.current=false;setPadDrag(false);setDragging(false);place(spot.current?spotPosition(spot.current,g.view,g.menu,g.field,SIZE):settle(live.current.position,g.view,g.field,SIZE));};
+        view.addEventListener('resize',resize);view.visualViewport?.addEventListener('resize',resize);
+        const observer=view.ResizeObserver?new view.ResizeObserver(resize):null;const element=field();if(element)observer?.observe(element);
+        return()=>{view.removeEventListener('resize',resize);view.visualViewport?.removeEventListener('resize',resize);observer?.disconnect();};
+    },[open,host,session]);
 
     // Frost for what the menu's shader cannot blur: the columns under the panel, after every placement; none while dragged.
     useLayoutEffect(() => {
