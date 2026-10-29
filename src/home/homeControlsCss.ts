@@ -2,7 +2,7 @@ import {SOURCE_PILL,sourcePillLook} from '../styles/sourcePill';
 import {focusRing} from '../styles/tokens';
 /** Only owned native footer groups and explicitly interactive Home cells. */
 export const homeControlsCss=`
-[data-gh-footer=true]{background:transparent!important;box-shadow:none!important}
+[data-gh-footer=true]{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
 [data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
 [data-gh-footer-side]>:first-child{display:flex;align-items:center;height:20px}
