@@ -5,7 +5,7 @@ import {takeSteamFocus} from '../../home/steamFocus';
 import {ControllerFeed,ControllerFeedGuard,activeControllerIndex,discoverControllerFeeds} from '../keyboard/controllerFeed';
 import {buildRadialLayout,type RadialLayout,type Side} from '../keyboard/radialLayout';
 import {radialBounds,type WheelBounds} from '../keyboard/radialPlacement';
-import {applyRadialCommand,type AxesSnapshot,type ButtonsSnapshot,type RadialViewState} from '../keyboard/radialInput';
+import {applyRadialCommand,syncRadialDraft,type AxesSnapshot,type ButtonsSnapshot,type RadialViewState} from '../keyboard/radialInput';
 import {startRadialRuntime} from '../keyboard/radialRuntime';
 import {installRadialSurface} from '../keyboard/radialSurface';
 import type {KeyboardSession} from '../keyboard/session';
@@ -41,7 +41,9 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
  const [host,setHost]=useState<HTMLElement|null>(null),[bounds,setBounds]=useState<[WheelBounds,WheelBounds]|null>(null);
  const [index,setIndex]=useState(activeControllerIndex),[layoutIndex,setLayoutIndex]=useState(props.layouts.current),[state,setState]=useState<RadialViewState>(EMPTY);
  const stateRef=useRef(state);stateRef.current=state;
- const typing=useRef<TypingState>({text:props.draft,shift:'off',held:null});typing.current={...typing.current,text:props.draft};
+ const typing=useRef<TypingState>({text:props.draft,shift:'off',held:null}),previousDraft=useRef(props.draft);
+ if(previousDraft.current!==props.draft){typing.current=syncRadialDraft(typing.current,props.draft);previousDraft.current=props.draft;}
+ const layoutIndexRef=useRef(layoutIndex);layoutIndexRef.current=layoutIndex;
  const snapshot=useRef<{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null>(null);
  const onSnapshot=useCallback((value:typeof snapshot.current)=>{snapshot.current=value;},[]);
  const feeds=useMemo(()=>discoverControllerFeeds(findModuleExport),[]);
@@ -65,10 +67,10 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   if(!host||!bounds)return;
   const doc=host.ownerDocument,view=doc.defaultView!;
   const owns=()=>{const next=activeControllerIndex();if(next!==index){snapshot.current=null;setIndex(next);return false;}return live.current.session.get().open&&live.current.ownsInput()&&host.isConnected&&view.getComputedStyle(host).visibility!=='hidden'&&doc.visibilityState!=='hidden';};
-  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,changed:setState,failed:()=>live.current.unavailable(),command:command=>{
+  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,canChangeLayout:()=>nextLayout(live.current.layouts.layouts,layoutIndexRef.current)!==layoutIndexRef.current,changed:setState,failed:()=>live.current.unavailable(),command:command=>{
    if(command.type==='close'){close();return;}
    if(command.type==='send'){if(live.current.canSend)live.current.send();return;}
-   if(command.type==='layout'){typing.current=clearHeld(typing.current);setLayoutIndex(i=>nextLayout(live.current.layouts.layouts,i));return;}
+   if(command.type==='layout'){const next=nextLayout(live.current.layouts.layouts,layoutIndexRef.current);if(next!==layoutIndexRef.current){typing.current=clearHeld(typing.current);setLayoutIndex(next);}return;}
    commit(applyRadialCommand(typing.current,command));
   }});
   const keys=installPhysicalKeys(view,event=>{if(!owns())return false;const action=physicalKey(typing.current,event,live.current.canSend);if(!action)return false;if(action.send)live.current.send();if(action.state)commit(action.state);return true;});

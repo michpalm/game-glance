@@ -46,3 +46,18 @@ it('composes accents across trigger release and applies uppercase only to letter
  expect(applyRadialCommand({...s,text:'hi👩‍🚀'},{type:'delete'}).text).toBe('hi');
  expect(applyRadialCommand({...s,text:'',held:acute},{type:'space'}).text).toBe('´');
 });
+it('treats R1 as a no-op with only one supported layout',()=>{
+ const input=createRadialInput(),b=buttons(),a=axes();input.sample(a,b,layout,false);
+ b.bRightBumper=true;const result=input.sample(a,b,layout,false);
+ expect(result.commands).toEqual([]);expect(result.selection).toEqual([1,1]);
+ b.bRightBumper=false;input.sample(a,b,layout,false);b.bLeftStickClick=true;
+ expect(input.sample(a,b,layout,false).commands[0].type).toBe('key');
+});
+it('clears a pending accent when a sent draft is externally replaced, retaining it for an unchanged draft',async()=>{
+ const {syncRadialDraft}=await import('../../../src/menu/keyboard/radialInput');
+ const held:KeyDef={char:'´',kind:'char',dead:{next:'a',combined:'á'}};
+ const state={text:'hi',shift:'off' as const,held};
+ expect(syncRadialDraft(state,'hi').held).toBe(held);
+ const next=syncRadialDraft(state,'');expect(next.held).toBeNull();
+ expect(applyRadialCommand(next,{type:'key',key:{char:'a',kind:'char'},uppercase:false}).text).toBe('a');
+});

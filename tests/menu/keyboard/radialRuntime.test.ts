@@ -14,3 +14,11 @@ it('gates input, baselines after interruption, swallows routing and releases its
  buttons.bButtonSouth=false;tick();buttons.bButtonSouth=true;tick();expect(commands).toEqual(['send']);
  stop();expect(frame).toBeUndefined();const after=new Event('vgp_oncancel',{cancelable:true});doc.dispatchEvent(after);expect(after.defaultPrevented).toBe(false);
 });
+it('consumes both stick-click routing events while leaving Select, Start and system buttons alone',()=>{
+ const doc=new EventTarget(),view={requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{}} as unknown as Window;
+ const stop=startRadialRuntime({document:doc as Document,view,read:()=>null,layout:()=>buildRadialLayout(BUILTIN_QWERTY),ownsInput:()=>true,changed:()=>{},command:()=>{},failed:()=>{}});
+ for(const [button,want] of [[15,true],[16,true],[13,false],[14,false],[27,false],[28,false]] as const){
+  const event=new Event('vgp_onbuttondown',{cancelable:true});Object.defineProperty(event,'detail',{value:{button}});doc.dispatchEvent(event);expect(event.defaultPrevented,`button ${button}`).toBe(want);
+ }
+ stop();
+});

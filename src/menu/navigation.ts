@@ -1,3 +1,4 @@
+import { isRadialControl } from './keyboard/radialControls';
 import type { MenuEvent, MenuState } from './model';
 import type { KeyboardSession } from './keyboard/session';
 
@@ -88,5 +89,5 @@ export function rememberFocusKey(key: string | undefined): key is string {
 
 /** Scoped fallback when a Steam routing event reaches the shell before the radial document listener. */
 export function radialOwnsButton(detail:{button:number},session:KeyboardSession):boolean {
-    return session.get().open && session.mode() === 'radial' && detail.button >= 1 && detail.button <= 14;
+    return session.get().open && session.mode() === 'radial' && isRadialControl(detail.button);
 }

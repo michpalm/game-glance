@@ -153,3 +153,8 @@ describe('radial keyboard routing',()=>{
   s.setMode('compact');expect(keyboardTakesCancel({button:2},true,s)).toBe(true);
  });
 });
+it('the radial shell fallback consumes L3/R3 rather than Select or Start',async()=>{
+ const {radialOwnsButton}=await import('../../src/menu/navigation');const s=createKeyboardSession();s.open();s.setMode('radial');
+ for(const button of [15,16])expect(radialOwnsButton({button},s)).toBe(true);
+ for(const button of [13,14,27,28])expect(radialOwnsButton({button},s)).toBe(false);
+});

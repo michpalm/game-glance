@@ -1,12 +1,13 @@
+import {isRadialControl} from './radialControls';
 import {createRadialInput,type AxesSnapshot,type ButtonsSnapshot,type RadialCommand,type RadialViewState} from './radialInput';
 import type {RadialLayout} from './radialLayout';
-export function startRadialRuntime(deps:{view:Window;document:Document;read():{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null;layout():RadialLayout;ownsInput():boolean;changed(view:RadialViewState):void;command(value:RadialCommand):void;failed():void}):()=>void {
+export function startRadialRuntime(deps:{view:Window;document:Document;read():{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null;layout():RadialLayout;ownsInput():boolean;canChangeLayout?():boolean;changed(view:RadialViewState):void;command(value:RadialCommand):void;failed():void}):()=>void {
  const input=createRadialInput();let stopped=false,frame:number|undefined,last='',owned=false;
  const swallow=(event:Event)=>{
   if(stopped||!deps.ownsInput())return;
   if(event.type==='vgp_onbuttondown'||event.type==='vgp_onbuttonup'){
    const button=Number((event as CustomEvent<{button:number}>).detail?.button);
-   if(![1,2,3,4,5,6,7,8,9,10,11,12,13,14].includes(button))return;
+   if(!isRadialControl(button))return;
   }
   event.preventDefault();event.stopImmediatePropagation();
  };
@@ -21,7 +22,7 @@ export function startRadialRuntime(deps:{view:Window;document:Document;read():{a
    else {
     if(!owned){input.reset();owned=true;}
     const snapshot=deps.read();if(!snapshot){stop();deps.failed();return;}
-    const result=input.sample(snapshot.axes,snapshot.buttons,deps.layout());
+    const result=input.sample(snapshot.axes,snapshot.buttons,deps.layout(),deps.canChangeLayout?.()??true);
     const view={selection:result.selection,extra:result.extra,uppercase:result.uppercase};
     const key=JSON.stringify(view);if(key!==last){last=key;deps.changed(view);}
     for(const command of result.commands){if(stopped||!deps.ownsInput())break;deps.command(command);}

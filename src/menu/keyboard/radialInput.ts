@@ -10,7 +10,7 @@ export type RadialViewState={selection:[number|null,number|null];extra:[boolean,
 export function createRadialInput(){
  let previous:ButtonsSnapshot|null=null,selection:[number|null,number|null]=[null,null],blocked=[false,false],layers=[false,false];
  const reset=()=>{previous=null;selection=[null,null];blocked=[false,false];layers=[false,false];};
- return {reset,sample(axes:AxesSnapshot,buttons:ButtonsSnapshot,layout:RadialLayout):RadialViewState&{commands:RadialCommand[]}{
+ return {reset,sample(axes:AxesSnapshot,buttons:ButtonsSnapshot,layout:RadialLayout,canChangeLayout=true):RadialViewState&{commands:RadialCommand[]}{
   if(previous?.nControllerIndex!==buttons.nControllerIndex)reset();
   const edge=(key:keyof ButtonsSnapshot)=>!!previous&&!previous[key]&&!!buttons[key];
   const extra:[boolean,boolean]=[buttons.bLeftTrigger,buttons.bRightTrigger],uppercase=buttons.bLeftBumper;
@@ -22,7 +22,7 @@ export function createRadialInput(){
    selection[side]=blocked[side]?null:selectRadial(layers[side]===extra[side]?selection[side]:null,axis,keys.length);
   }
   if(edge('bButtonWest'))commands.push({type:'close'});
-  else if(edge('bRightBumper')){commands.push({type:'layout'});blocked=[true,true];selection=[null,null];}
+  else if(edge('bRightBumper')&&canChangeLayout){commands.push({type:'layout'});blocked=[true,true];selection=[null,null];}
   else {
    for(const side of [0,1] as const){const key=selection[side];if(key!==null&&edge(side===0?'bLeftStickClick':'bRightStickClick'))commands.push({type:'key',key:(extra[side]?layout.symbols:layout.letters)[side][key],uppercase});}
    if(edge('bButtonNorth'))commands.push({type:'space'});
@@ -39,4 +39,9 @@ export function applyRadialCommand(state:TypingState,command:RadialCommand):Typi
  }
  if(command.type==='space'||command.type==='delete')return press({...state,shift:'off'},{char:command.type==='space'?' ':'⌫',kind:command.type==='space'?'space':'backspace'});
  return state;
+}
+
+/** External draft replacement (including a successful send) starts a fresh composition. */
+export function syncRadialDraft(state:TypingState,draft:string):TypingState {
+ return state.text===draft?state:{text:draft,shift:'off',held:null};
 }
