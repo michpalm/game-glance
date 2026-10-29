@@ -38,6 +38,11 @@ describe('settle',()=>{
         const p=settle({x:335,y:264},{x:0,y:0,width:600,height:400},field,size);
         expect(p).toEqual({x:335,y:214});
     });
+    it('clamps a saved position beyond a smaller view, then clears the field',()=>{
+        const small:Rect={x:0,y:0,width:600,height:400};
+        expect(settle({x:700,y:500},small,field,size)).toEqual({x:335,y:214});
+        expect(settle({x:-40,y:-30},small,field,size)).toEqual({x:0,y:0});
+    });
     it('keeps the clamped position when nothing fits',()=>{
         const tiny:Rect={x:0,y:0,width:300,height:150};
         const f:Rect={x:0,y:0,width:300,height:150};
