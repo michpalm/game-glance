@@ -18,9 +18,9 @@ DOWNSAMPLE = 8
 # opening starts. Its tile is sized to this share of the screen, wider than the full pill, so content never rebuilds
 # the shader. Same value as STATUS_TILE_WIDTH in src/menu/frost/controller.ts.
 STATUS_TILE_WIDTH = .4
-# The floating menu keyboard's panel, in CSS px (409 x 210 times the menu scale on screen). Its tile is sized from this
-# fixed size at the display scale, not from its rectangle, so opening, closing or moving the keyboard never rebuilds the
-# shader. Same value as KEYBOARD_TILE_CSS in src/menu/frost/controller.ts.
+# The floating menu keyboard's panel, in CSS px (409 x 210, its size in the menu's own units). Its tile is this fixed
+# size times the display scale (dpr) only, not times the menu scale, and not from its rectangle, so opening, closing or
+# moving the keyboard never rebuilds the shader. Same value as KEYBOARD_TILE_CSS in src/menu/frost/controller.ts.
 KEYBOARD_TILE_CSS = {"width": 409, "height": 210}
 
 

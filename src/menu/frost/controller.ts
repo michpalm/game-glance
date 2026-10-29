@@ -5,8 +5,9 @@ export interface FrostWarmup {requestId:string;frame:FrostFrame;ready:Promise<Pr
 /** The status bar's tile width, as a share of the screen: its width follows its content, so its tile is sized to this
  * cap (wider than the full pill) and a change in content never rebuilds the shader. Same value in shader.py. */
 export const STATUS_TILE_WIDTH = .4;
-/** The floating keyboard's panel in CSS px (409 x 210 times the menu scale on screen). Its tile is sized from this at the
- * display scale, not from its rectangle, so opening, closing or moving it never rebuilds the shader. Same value in shader.py. */
+/** The floating keyboard's panel in CSS px (409 x 210, its size in the menu's own units). Its tile is this size times the
+ * display scale (dpr) only, not times the menu scale, and not from its rectangle, so opening, closing or moving it never
+ * rebuilds the shader. Same value in shader.py. */
 export const KEYBOARD_TILE_CSS = { width: 409, height: 210 } as const;
 /** Mirrors frost_geometry() in py_modules/gameglance/frost/shader.py: equal allocations build an equal shader. */
 export function frostAllocation(frame:FrostFrame):string {
