@@ -5,7 +5,7 @@ import { LuMove } from 'react-icons/lu';
 import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
-import { dragPosition, loadPosition, normaliseAxis, savePosition, stickStep, stickVelocity, watchUnderKeyboard, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
+import { dragPosition, followUnderKeyboard, loadPosition, movePanel, normaliseAxis, savePosition, stickStep, stickVelocity, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
 import { createStripPress, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
@@ -204,8 +204,10 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     const [feedFailed, setFeedFailed] = useState(false);
     const [host, setHost] = useState<HTMLElement | null>(null);
     const panel = useRef<HTMLDivElement>(null);
+    // While a drag moves the panel outside React, a render (the lift, a new message) must not put back the old position.
+    const moving = useRef(false);
     const live = useRef({ typing, draft, canSend, send, setDraft, layouts, index, position });
-    live.current = { typing, draft, canSend, send, setDraft, layouts, index, position };
+    live.current = { typing, draft, canSend, send, setDraft, layouts, index, position: moving.current ? live.current.position : position };
     const spot = useRef<Spot | null>(null);
     const holding = useRef<{ timer: ReturnType<typeof setTimeout>; id: string; at: number } | null>(null);
     const lastTyped = useRef<{ id: string; before: TypingState; at: number } | null>(null);
@@ -259,7 +261,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             holding.current = null; drag.current = null;
             // A drag cut short by closing ends without a drop: nothing is saved.
             stripPress.current?.dispose(); stopListening('hold'); stopListening('drag');
-            padFrame.current = null; stickBusy.current = false; setPadDrag(false); setDragging(false);
+            padFrame.current = null; stickBusy.current = false; moving.current = false; setPadDrag(false); setDragging(false);
             // Closed with B or a tap while the chat still shows: the field takes focus back from the vanished keys.
             const element = field(), doc = element?.ownerDocument;
             doc?.defaultView?.requestAnimationFrame(() => {
@@ -279,12 +281,12 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
         if (first && !panel.current!.contains(first.ownerDocument.activeElement)) { first.focus({ preventScroll: true }); takeSteamFocus(first); }
     }, [placed]);
 
-    // Frost for what the menu's shader cannot blur: the columns under the panel, after every placement.
+    // Frost for what the menu's shader cannot blur: the columns under the panel, after every placement; none while dragged.
     useLayoutEffect(() => {
         const view = host?.ownerDocument.defaultView;
         if (!placed || !host || !panel.current || !view) return;
-        return watchUnderKeyboard(host, panel.current, view);
-    }, [placed, host, position]);
+        return followUnderKeyboard(host, panel.current, view, dragging);
+    }, [placed, host, position, dragging]);
 
     useEffect(() => {
         const view = host?.ownerDocument.defaultView;
@@ -349,17 +351,21 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
         void savePosition(backendKv, { spot: next });
     };
     /** Where a drag lets go, by finger or by A: clamped, clear of the field, remembered. */
+    // Drag frames move the panel without React (movePanel); the drop commits the position to state once.
     const finishDrag = () => {
         dragEnded.current = Date.now();
         const g = geometry(), at = live.current.position;
-        if (!g || !at) return;
-        const p = settle(at, g.view, g.field, SIZE);
-        spot.current = null; place(p);
+        moving.current = false;
+        if (!at) return;
+        const p = g ? settle(at, g.view, g.field, SIZE) : at;
+        movePanel(panel.current, live.current, p); place(p);
+        if (!g) return;
+        spot.current = null;
         void savePosition(backendKv, p);
     };
     const padMove = (delta: Point) => {
         const f = padFrame.current, at = live.current.position;
-        if (f && at) place(dragPosition(at, delta, f.scale, f.view, SIZE));
+        if (f && at) movePanel(panel.current, live.current, dragPosition(at, delta, f.scale, f.view, SIZE));
     };
     padActions.current = {
         cycle: onMove,
@@ -375,12 +381,12 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             const doc = host?.ownerDocument;
             stopListening('drag');
             if (doc) padListen.current.drag = installDragGamepad(doc, { nudge: padMove, cancel: () => stripPress.current!.cancel(), release: () => stripPress.current!.buttonUp(), stickBusy: () => stickBusy.current });
-            setDragging(true); setPadDrag(true);
+            moving.current = true; setDragging(true); setPadDrag(true);
         },
         drop() {
             const lifted = !!padFrame.current;
             stopListening('drag');
-            padFrame.current = null; stickBusy.current = false;
+            padFrame.current = null; stickBusy.current = false; moving.current = false;
             setPadDrag(false); setDragging(false);
             if (lifted) finishDrag(); else dragEnded.current = Date.now();
         },
@@ -397,9 +403,9 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             if (!d || d.pointer !== e.pointerId) return;
             const dx = e.clientX - d.x, dy = e.clientY - d.y;
             if (!d.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
-            if (!d.moved) { d.moved = true; setDragging(true); }
+            if (!d.moved) { d.moved = true; moving.current = true; setDragging(true); }
             // Kept inside the view while dragging (an area past the edge would cost the menu its frost); the release clears the field.
-            place(dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));
+            movePanel(panel.current, live.current, dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));
         },
         onPointerUp(e) {
             const d = drag.current;

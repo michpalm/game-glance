@@ -54,6 +54,55 @@ describe('frost geometry', () => {
         expect(f.regions.keyboard).toEqual({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
         for(const id of ['bar','panel','notifications','status'] as const) expect(f.regions[id]).toEqual(open.regions[id]);
     });
+    // A dragged keyboard has no frost until it is dropped (Michael, 2026-10-29: the drag was choppy on the Ally).
+    it('measures a keyboard being dragged as an all-zero area and keeps every other area',()=>{
+        const input=fixture(),open=measureFrostFrame(input)!;
+        input.elements.keyboard.classList.add('gg-keyboard-dragging');
+        const f=measureFrostFrame(input)!;
+        expect(f.regions.keyboard).toEqual({x:0,y:0,width:0,height:0,radiusX:0,radiusY:0});
+        for(const id of ['bar','panel','notifications','status'] as const) expect(f.regions[id]).toEqual(open.regions[id]);
+        input.elements.keyboard.classList.remove('gg-keyboard-dragging');
+        expect(measureFrostFrame(input)!.regions.keyboard).toEqual(open.regions.keyboard);
+    });
+    it('only an optional area drops out while it carries the dragging class',()=>{
+        const input=fixture();
+        input.elements.panel.classList.add('gg-keyboard-dragging');
+        expect(measureFrostFrame(input)!.regions.panel.width).toBeGreaterThan(0);
+    });
+    it('does not publish a frame equal to the last one, but always publishes null and the next frame after it',()=>{
+        const input=fixture(),frames=new Map<number,FrameRequestCallback>();let id=0;
+        input.source.requestAnimationFrame=fn=>{frames.set(++id,fn);return id;};
+        input.source.cancelAnimationFrame=id=>{frames.delete(id);};
+        const watched:MutationCallback[]=[];
+        Object.assign(input.source,{MutationObserver:class{constructor(private fn:MutationCallback){}observe(){watched.push(this.fn);}disconnect(){}}});
+        const run=()=>{for(const fn of [...frames.values()])fn(0);frames.clear();};
+        const publish=vi.fn(),stop=observeFrostFrame(input,publish);
+        expect(publish).toHaveBeenCalledTimes(1);
+        watched[0]([],{} as MutationObserver);run();
+        expect(publish).toHaveBeenCalledTimes(1);
+        input.elements.keyboard.getBoundingClientRect=()=>({left:200,top:100,width:400,height:200} as DOMRect);
+        watched[0]([],{} as MutationObserver);run();
+        expect(publish).toHaveBeenCalledTimes(2);
+        input.source.dispatchEvent(new Event('resize'));run();
+        expect(publish.mock.calls.slice(2).map(c=>c[0]===null)).toEqual([true,false]);
+        input.generation=2;
+        watched[0]([],{} as MutationObserver);run();
+        expect(publish).toHaveBeenCalledTimes(5);
+        stop();expect(publish).toHaveBeenLastCalledWith(null);
+    });
+    it('sends an equal frame again after the receiver turned the last one away',()=>{
+        const input=fixture(),frames=new Map<number,FrameRequestCallback>();let id=0;
+        input.source.requestAnimationFrame=fn=>{frames.set(++id,fn);return id;};
+        const watched:MutationCallback[]=[];
+        Object.assign(input.source,{MutationObserver:class{constructor(private fn:MutationCallback){}observe(){watched.push(this.fn);}disconnect(){}}});
+        const run=()=>{for(const fn of [...frames.values()])fn(0);frames.clear();};
+        let accept=false;
+        const publish=vi.fn(()=>accept?undefined:false as const);observeFrostFrame(input,publish);
+        accept=true;watched[0]([],{} as MutationObserver);run();
+        expect(publish).toHaveBeenCalledTimes(2);
+        watched[0]([],{} as MutationObserver);run();
+        expect(publish).toHaveBeenCalledTimes(2);
+    });
     // A drag can carry the keyboard past an edge: the frame stays, with the keyboard clipped to the output.
     it('clips a keyboard partly off the output and keeps every other area',()=>{
         const input=fixture(),open=measureFrostFrame(input)!;
@@ -106,6 +155,7 @@ describe('frost geometry', () => {
         Object.assign(input.source,{ResizeObserver:class {constructor(fn:ResizeObserverCallback){callbacks.push(fn);}observe(){}disconnect(){}}});
         const publish=vi.fn(), stop=observeFrostFrame(input,publish);
         for(const fn of [...frames.values()])fn(0); frames.clear(); publish.mockClear();
+        input.elements.status.getBoundingClientRect=()=>({left:100,top:80,width:300,height:200} as DOMRect);
         callbacks[0]([],{} as ResizeObserver); callbacks[0]([],{} as ResizeObserver);
         // An area resizing (the status bar filling in, the bell's count) keeps the current frame until the re-measure:
         // a null would clear frost still activating at the reveal (Ally, 2026-10-29).

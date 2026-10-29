@@ -37,8 +37,8 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
         }
         const regions=Object.fromEntries(REGION_IDS.flatMap((id,i)=>elements[i]?[[id,elements[i]]]:[])) as Partial<Record<RegionId,HTMLElement>>;
         stopMeasurement=observeFrostFrame({generation:session.generation,source:source.defaultView,owner:owner.defaultView,placeholder,elements:regions,context:value},frame=>{
-            if(!source.defaultView||!menuViewportAgrees(placeholder.getBoundingClientRect(),source.defaultView)){controller.frame(null);return;}
-            if(frame)options.measured?.(frame);controller.frame(frame);
+            if(!source.defaultView||!menuViewportAgrees(placeholder.getBoundingClientRect(),source.defaultView)){controller.frame(null);return false;}
+            if(frame)options.measured?.(frame);controller.frame(frame);return undefined;
         });
     }
     // These are cheap context reads inside the active host lease. Geometry

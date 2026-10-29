@@ -133,3 +133,17 @@ export const watchUnderKeyboard=(root:ParentNode,panel:Element,view:WatchView):(
         for(const el of els)el.classList.remove(UNDER_CLASS);
     };
 };
+
+/** The under-blur follows the panel except while it is dragged: then every mark is cleared and nothing is watched, so
+ * the drag stays smooth; the caller follows again after the drop. */
+export const followUnderKeyboard=(root:ParentNode,panel:Element,view:WatchView,dragging:boolean):(()=>void)=>{
+    if(!dragging)return watchUnderKeyboard(root,panel,view);
+    for(const el of root.querySelectorAll<HTMLElement>(UNDER_SELECTOR))el.classList.remove(UNDER_CLASS);
+    return ()=>{};
+};
+
+/** A drag frame: the panel's left/top written straight onto its style (no React render); state follows on the drop. */
+export function movePanel(panel:{style:{left:string;top:string}}|null,live:{position:Point|null},p:Point):void {
+    live.position=p;
+    if(panel){panel.style.left=`${p.x}px`;panel.style.top=`${p.y}px`;}
+}

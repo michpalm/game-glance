@@ -12,6 +12,7 @@ function clipToOutput(r:Region):Region {
     if (width<=0 || height<=0) return {...EMPTY_REGION};
     return {x,y,width,height,radiusX:Math.min(r.radiusX,width/2),radiusY:Math.min(r.radiusY,height/2)};
 }
+const DRAGGING_CLASS='gg-keyboard-dragging';
 export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
     const {source,owner,placeholder,elements,context,generation}=input;
     if (!placeholder.isConnected || !Number.isSafeInteger(generation) || generation<0) return null;
@@ -25,8 +26,9 @@ export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
     for (const id of REGION_IDS) {
         const element=elements[id];
         const style=element?.isConnected && element.offsetWidth>0 && element.offsetHeight>0 ? source.getComputedStyle(element) : null;
-        if (!style || OPTIONAL_REGIONS.has(id) && style.visibility==='hidden') {
-            // The keyboard closed, or mounted but not yet placed: no area. Every other area must be there.
+        if (!style || OPTIONAL_REGIONS.has(id) && (style.visibility==='hidden' || element!.classList.contains(DRAGGING_CLASS))) {
+            // The keyboard closed, mounted but not yet placed, or being dragged (no frost until it is dropped, so the
+            // drag stays smooth): no area. Every other area must be there.
             if (!OPTIONAL_REGIONS.has(id)) return null;
             regions[id]={...EMPTY_REGION};
             continue;
@@ -50,10 +52,20 @@ export function measureFrostFrame(input:GeometryInput):FrostFrame|null {
     return {generation,context,regions};
 }
 
-/** The returned stop publishes null (geometry unknown), unless `quiet`: a restart whose next frame follows at once. */
-export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame|null)=>void):(quiet?:boolean)=>void {
+/** The returned stop publishes null (geometry unknown), unless `quiet`: a restart whose next frame follows at once.
+ * `publish` returns false when it did not pass the frame on, so an equal frame is sent again next time. */
+export function observeFrostFrame(input:GeometryInput, publish:(frame:FrostFrame|null)=>void|false):(quiet?:boolean)=>void {
     const {source,owner}=input;
     let stopped=false, frame:number|undefined;
+    // An unchanged frame (the keyboard re-measured mid-drag) is not sent again; null and the frame after it always are.
+    const publishInput=publish;
+    let last:string|null=null;
+    publish=next=>{
+        const key=next?JSON.stringify(next):null;
+        if(key!==null&&key===last)return;
+        last=key;
+        if(publishInput(next)===false)last=null;
+    };
     const remeasure=()=>{
         if(stopped)return;
         if(frame===undefined) frame=source.requestAnimationFrame(()=>{frame=undefined;if(!stopped)publish(measureFrostFrame(input));});

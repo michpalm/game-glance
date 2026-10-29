@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,stickVelocity,normaliseAxis,stickStep,STICK_Y_UP_IS_POSITIVE,underKeyboard,markUnderKeyboard,watchUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
+import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,stickVelocity,normaliseAxis,stickStep,STICK_Y_UP_IS_POSITIVE,underKeyboard,markUnderKeyboard,watchUnderKeyboard,followUnderKeyboard,movePanel,type Rect} from '../../../src/menu/keyboard/placement';
 import {memoryKv} from '../../../src/data/kv';
 
 const view:Rect={x:0,y:0,width:829,height:467};
@@ -197,5 +197,31 @@ describe('watchUnderKeyboard',()=>{
         expect([...t.set]).toEqual([]);
         expect(t.disconnected).toBe(1);
         expect(t.cancelled).toEqual([7]);
+    });
+    it('follows only while not dragging: a drag clears every mark and watches nothing until it is dropped',()=>{
+        const t=mk();
+        t.rects.kb={x:100,y:100,width:30,height:30};
+        const stop=followUnderKeyboard(t.root as never,t.panel as never,t.view as never,false);
+        expect([...t.set]).toEqual(['gg-keyboard-under']);
+        stop();
+        const idle=followUnderKeyboard(t.root as never,t.panel as never,t.view as never,true);
+        expect([...t.set]).toEqual([]);
+        expect(t.observed).toEqual([t.panel,t.col]);
+        t.runFrame(); t.fireResize();
+        expect([...t.set]).toEqual([]);
+        idle();
+        followUnderKeyboard(t.root as never,t.panel as never,t.view as never,false);
+        expect([...t.set]).toEqual(['gg-keyboard-under']);
+    });
+});
+
+describe('movePanel',()=>{
+    it('writes the position straight onto the panel’s style and the live position, without React',()=>{
+        const style={left:'',top:''},live={position:{x:0,y:0}};
+        movePanel({style} as never,live,{x:12.5,y:40});
+        expect(style).toEqual({left:'12.5px',top:'40px'});
+        expect(live.position).toEqual({x:12.5,y:40});
+        movePanel(null,live,{x:1,y:2});
+        expect(live.position).toEqual({x:1,y:2});
     });
 });
