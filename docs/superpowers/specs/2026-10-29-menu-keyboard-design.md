@@ -57,7 +57,7 @@ Typing a message in the menu's Social chat opens Steam's docked keyboard. It tak
 - Getting the rows means running two Steam functions: the current-layout getter and the entry's `rgLayout`. Both only assemble data (their source was read on 2026-10-29). They run once per keyboard opening, inside a guard.
 - The module is found by shape (an export that is a function returning an object with `name`, `layout` and a function `rgLayout`), never by its minified names.
 - The result is checked before use: rows of strings, `[normal, shifted, altGr?]` arrays or dead-key objects with matching `dead_next` / `dead_combined` lengths. Anything else, a throw, or no module: the built-in QWERTY, typed exactly as on the canvas, with `´` and `¨` as dead keys.
-- Open: whether the entries of all selected layouts (not only the current one) are reachable. The first implementation task checks this on the Ally; without it, the space bar shows the current layout only.
+- All selected layouts are reachable (checked read-only on the Ally, 2026-10-29): the module exports a function whose source reads `GetKeyboardLayoutSettings()` and returns the layout list filtered to `currentLayout` / `selectedLayouts` (export `G$`, function `le`, today). It is found by that source text. It already leaves out input-method layouts unless an input method (IBus) is set up. Another export switches Steam's own layout setting (`SetKeyboardLayout`): never call it; the space bar switches only within our keyboard.
 
 ## Structure
 
