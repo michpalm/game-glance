@@ -96,12 +96,13 @@ export function readLayouts(source:SteamLayoutSource|null):{layouts:KeyboardLayo
         const layouts=all.map(e=>compactLayout(e as Entry)).filter((l):l is KeyboardLayout=>!!l);
         if(!layouts.length)return fallback;
         const sel=source.selected();
-        const chosen=Array.isArray(sel?.selectedLayouts)?sel.selectedLayouts.map(id=>layouts.find(l=>l.id===id)).filter((l):l is KeyboardLayout=>!!l):[];
-        const label=(chosen.length?chosen:layouts).map(l=>l.short).join(' · ');
-        const relabel=(r:KeyDef[][])=>r.map(x=>x.map(k=>k.kind==='space'?{...k,hint:label}:k));
-        const cur=(source.current() as {layout?:unknown}|null)?.layout;
+        let cur:unknown;
+        try{cur=(source.current() as {layout?:unknown}|null)?.layout;}catch{/* fall back to the stored selection */}
         const id=typeof cur==='number'?cur:sel?.currentLayout;
         const current=Math.max(0,layouts.findIndex(l=>l.id===id));
+        const chosen=Array.isArray(sel?.selectedLayouts)?sel.selectedLayouts.map(i=>layouts.find(l=>l.id===i)).filter((l):l is KeyboardLayout=>!!l):[];
+        const label=(chosen.length?chosen:[layouts[current]]).map(l=>l.short).join(' · ');
+        const relabel=(r:KeyDef[][])=>r.map(x=>x.map(k=>k.kind==='space'?{...k,hint:label}:k));
         return {layouts:layouts.map(l=>({...l,letters:relabel(l.letters),symbols:relabel(l.symbols)})),current};
     }catch{return fallback;}
 }
@@ -118,6 +119,7 @@ export function findSteamLayoutSource(modules:Iterable<Record<string,unknown>>):
                 // The setter changes Steam's own setting: never selected, whatever else its text says.
                 if(!t.includes('GetKeyboardLayoutSettings')||t.includes('SetKeyboardLayout'))continue;
                 if(t.includes('selectedLayouts')&&t.includes('.filter(')){all??=v as ()=>unknown;}
+                // The list getter's text also has currentLayout, so selectedLayouts must rule it out here.
                 else if(t.includes('currentLayout')&&!t.includes('selectedLayouts')){current??=v as ()=>unknown;}
             }else if(v&&typeof v==='object'&&!store){
                 try{if('m_userLayoutSettings' in v)store=v as Record<string,unknown>;}catch{/* opaque proxy */}

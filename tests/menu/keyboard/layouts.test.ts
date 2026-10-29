@@ -95,6 +95,19 @@ describe('reading layouts',()=>{
         const s=readLayouts(source({all:()=>[qwerty(),spanish()],selected:()=>({currentLayout:19,selectedLayouts:[0,19]})}));
         expect(s.current).toBe(1);
     });
+    it('labels the space bar with only the current layout when the selection is unknown',()=>{
+        const swedish={name:'swedish',layout:7,rgLayout:()=>QWERTY_ROWS};
+        const r=readLayouts(source({all:()=>[qwerty(),spanish(),swedish],current:()=>({layout:19})}));
+        expect(r.layouts.length).toBe(3);
+        for(const l of r.layouts)expect(l.letters[3][3].hint).toBe('ES');
+    });
+    it('keeps the real layouts when the current getter throws',()=>{
+        const r=readLayouts(source({all:()=>[qwerty(),spanish()],current:()=>{throw Error('x');},selected:()=>({currentLayout:19,selectedLayouts:[0,19]})}));
+        expect(r.layouts.map(l=>l.id)).toEqual([0,19]);
+        expect(r.current).toBe(1);
+        const none=readLayouts(source({all:()=>[qwerty(),spanish()],current:()=>{throw Error('x');}}));
+        expect([none.layouts.length,none.current]).toEqual([2,0]);
+    });
     it('labels the space bar with the selected layouts',()=>{
         const r=readLayouts(source({all:()=>[qwerty(),spanish()],selected:()=>({currentLayout:0,selectedLayouts:[0,19]})}));
         for(const l of r.layouts){
