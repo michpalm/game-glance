@@ -147,3 +147,9 @@ describe('focus memory', () => {
         expect(rememberFocusKey(undefined)).toBe(false);
     });
 });
+describe('radial keyboard routing',()=>{
+ it('leaves B to radial typing while retaining Compact cancel behavior',()=>{
+  const s=createKeyboardSession();s.open();s.setMode('radial');expect(keyboardTakesCancel({button:2},true,s)).toBe(false);expect(s.get().open).toBe(true);
+  s.setMode('compact');expect(keyboardTakesCancel({button:2},true,s)).toBe(true);
+ });
+});

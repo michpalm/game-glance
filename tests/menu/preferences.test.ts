@@ -6,16 +6,16 @@ const defaults=['navigate','quick-settings','performance','social'];
 describe('menu preferences', () => {
     it('starts disabled and persists choices independently of master settings',async()=>{
         const kv=memoryKv(),store=createMenuPreferences(kv);await store.load();
-        expect(store.get()).toEqual({version:1,enabled:false,pins:defaults});
+        expect(store.get()).toEqual({version:1,socialKeyboard:'compact',enabled:false,pins:defaults});
         const listener=vi.fn();store.subscribe(listener);
         await store.setEnabled(true);await store.setPins(['plugins']);
         const reload=createMenuPreferences(kv);await reload.load();
-        expect(reload.get()).toEqual({version:1,enabled:true,pins:['plugins']});
+        expect(reload.get()).toEqual({version:1,socialKeyboard:'compact',enabled:true,pins:['plugins']});
         expect(await kv.get('settings')).toBeNull();expect(listener).toHaveBeenCalledTimes(2);
     });
     it.each([null,'invalid',{pins:[]},{pins:['unknown']},{pins:['in-game','more']}])('repairs missing or corrupt pins %j',async raw=>{
         const kv=memoryKv();await kv.set('menu:preferences',raw);const store=createMenuPreferences(kv);await store.load();
-        expect(store.get()).toEqual({version:1,enabled:false,pins:defaults});
+        expect(store.get()).toEqual({version:1,socialKeyboard:'compact',enabled:false,pins:defaults});
     });
     it('removes invalid/duplicate choices and retains the first four valid old pins',async()=>{
         const kv=memoryKv();await kv.set('menu:preferences',{enabled:true,pins:['social','social','bad','help','plugins','navigate','performance']});
@@ -43,12 +43,24 @@ describe('menu preferences', () => {
         const set=kv.set;kv.set=async(k,v)=>{if(++count===1)await gate;await set(k,v);};
         const store=createMenuPreferences(kv);await store.load();
         const first=store.setEnabled(true),second=store.setPins(['plugins']);release();await Promise.all([first,second]);
-        expect(await kv.get('menu:preferences')).toEqual({version:1,enabled:true,pins:['plugins']});
+        expect(await kv.get('menu:preferences')).toEqual({version:1,socialKeyboard:'compact',enabled:true,pins:['plugins']});
     });
     it('does not lose later saves after a rejected write or expose mutable snapshots',async()=>{
         const kv=memoryKv(),set=kv.set;let reject=true;kv.set=async(k,v)=>{if(reject){reject=false;throw Error('disk full');}await set(k,v);};
         const store=createMenuPreferences(kv);await store.load();await expect(store.setEnabled(true)).rejects.toThrow('disk full');
-        await store.setPins(['help']);expect(await kv.get('menu:preferences')).toEqual({version:1,enabled:true,pins:['help']});
+        await store.setPins(['help']);expect(await kv.get('menu:preferences')).toEqual({version:1,socialKeyboard:'compact',enabled:true,pins:['help']});
         expect(()=>{(store.get().pins as string[]).push('plugins');}).toThrow();
     });
+});
+describe('Social keyboard preference',()=>{
+ it.each([undefined,null,'broken'])('defaults malformed mode %j to Compact',async value=>{
+  const kv=memoryKv();await kv.set('menu:preferences',{socialKeyboard:value});const store=createMenuPreferences(kv);await store.load();expect(store.get().socialKeyboard).toBe('compact');
+ });
+ it('persists Radial across other preference saves and reloads',async()=>{
+  const kv=memoryKv(),store=createMenuPreferences(kv);await store.load();await store.setSocialKeyboard('radial');await store.setEnabled(true);await store.setPins(['social']);
+  const restored=createMenuPreferences(kv);await restored.load();expect(restored.get().socialKeyboard).toBe('radial');
+ });
+ it('cannot overwrite a future schema through the new mode setter',async()=>{
+  const kv=memoryKv();await kv.set('menu:preferences',{version:9,socialKeyboard:'future'});const store=createMenuPreferences(kv);await store.load();await expect(store.setSocialKeyboard('radial')).rejects.toThrow();
+ });
 });

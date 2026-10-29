@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, leaveSocialConversation, rememberFocusKey } from '../navigation';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, rememberFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -46,6 +46,7 @@ export interface MenuShellProps {
 const NO_SUBSCRIBE = () => () => {};
 export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, performance, social, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
+    const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
     const [cachedAccent, setCachedAccent] = useState<{ appId: number; color: string | undefined }>();
     const badgeCount = useSyncExternalStore(notificationBadge?.subscribe ?? (() => () => {}), notificationBadge?.get ?? (() => unreadCount));
@@ -99,6 +100,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     useEffect(() => { keyboard.close(); }, [keyboard, keyboardFriend]);
     if (!active) return null;
     const onButton = (event: GamepadEvent, cancel = false) => {
+        if (inputActive() && radialOwnsButton(event.detail, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         if (event.detail.button === 2 && !cancel) return;
         if (keyboardTakesCancel(event.detail, cancel, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         const next: MenuEvent[] = [];
@@ -119,7 +121,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
-    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard}
+    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;

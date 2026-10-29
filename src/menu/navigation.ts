@@ -55,7 +55,7 @@ export function installOutsideMenuClick(root: HTMLElement, close: () => void, in
 
 /** The first B only closes an open keyboard; the caller consumes the event when this returns true. */
 export function keyboardTakesCancel(detail: { button: number }, cancel: boolean, session: KeyboardSession): boolean {
-    if (detail.button !== 2 || !cancel || !session.get().open) return false;
+    if (detail.button !== 2 || !cancel || !session.get().open || session.mode() === 'radial') return false;
     session.close();
     return true;
 }
@@ -84,4 +84,9 @@ export function keyboardHome(state: MenuState, active: boolean, enteredId: strin
 
 export function rememberFocusKey(key: string | undefined): key is string {
     return !!key && !key.startsWith('keyboard:');
+}
+
+/** Scoped fallback when a Steam routing event reaches the shell before the radial document listener. */
+export function radialOwnsButton(detail:{button:number},session:KeyboardSession):boolean {
+    return session.get().open && session.mode() === 'radial' && detail.button >= 1 && detail.button <= 14;
 }

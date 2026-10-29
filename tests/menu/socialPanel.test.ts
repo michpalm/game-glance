@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { RadialKeyboard } from '../../src/menu/components/RadialKeyboard';
 import { MenuKeyboard } from '../../src/menu/components/MenuKeyboard';
 import { closeUnusableKeyboard, focusComposeSoon, SocialContents } from '../../src/menu/components/SocialPanel';
 import { BUILTIN_QWERTY } from '../../src/menu/keyboard/layouts';
@@ -239,4 +240,12 @@ describe('focusing the compose field after opening a chat', () => {
         expect(t2.input.focus).not.toHaveBeenCalled();
         cancel(); vi.useRealTimers();
     });
+});
+
+it('selects the radial renderer without duplicating the Social draft or changing send eligibility',()=>{
+ const h=harness(true,{draft:'Hello'}),keyboard=createKeyboardSession();
+ const result=SocialContents({snapshot:h.snapshot,social:h.social,entered:true,enter:()=>{},leave:()=>{},handoff:()=>{},loadMore:()=>{},latest:()=>{},keyboard,layouts:{layouts:[BUILTIN_QWERTY],current:0},keyboardMode:'radial',radialUnavailable:()=>{}});
+ const all=tree(result),radial=all.find(n=>n.type===RadialKeyboard)!;
+ expect(radial).toBeDefined();expect(all.some(n=>n.type===MenuKeyboard)).toBe(false);
+ expect(radial.props.draft).toBe('Hello');expect(radial.props.canSend).toBe(true);
 });

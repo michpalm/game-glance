@@ -2,6 +2,8 @@ import { Focusable, TextField } from '@decky/ui';
 import type { NavEntryPositionPreferences } from '@decky/ui';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
 import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
+import type { SocialKeyboardMode } from '../preferences';
+import { RadialKeyboard } from './RadialKeyboard';
 import type { KeyboardSession } from '../keyboard/session';
 import { FRIEND_COLOURS, friendRing } from '../../home/friends';
 import { takeSteamFocus } from '../../home/steamFocus';
@@ -39,6 +41,10 @@ interface SocialContentsProps {
     armJoin?(): void;
     /** With a session and layouts the field opens the menu keyboard, unless the current layout needs an input method. */
     keyboard?: KeyboardSession;
+    keyboardMode?: SocialKeyboardMode;
+    ownsInput?(): boolean;
+    radialUnavailable?(): void;
+    keyboardError?: string;
     layouts?: Layouts | null;
     field?(): HTMLElement | null;
 }
@@ -57,7 +63,7 @@ export function closeUnusableKeyboard(keyboard: KeyboardSession | undefined, lay
 }
 
 /** Stateless presentation; native operations are confined to explicit actions on the session. */
-export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null }: SocialContentsProps) {
+export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null, keyboardMode = 'compact', ownsInput = () => true, radialUnavailable = () => {}, keyboardError = '' }: SocialContentsProps) {
     const friend = snapshot.friends.find(f => f.steamId === (entered ? snapshot.enteredId : snapshot.selectedId));
     const native = () => handoff(entered && snapshot.enteredId ? { kind: 'friend-chat', steamId: snapshot.enteredId } : { kind: 'qam', tab: 'friends' });
     const pending = snapshot.messages.some(m => m.own && m.state === 'pending');
@@ -109,7 +115,8 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
                         <MenuAction id="social:send" className="gg-social-send" disabled={sendDisabled} onAction={() => { void social.send(); }}><LuSend aria-hidden="true" />{snapshot.sending ? 'Sending…' : 'Send'}</MenuAction>
                         {extras}
                     </div>
-                    {ownKeyboard && layouts && <MenuKeyboard session={ownKeyboard} layouts={layouts} draft={snapshot.draft} setDraft={text => social.setDraft(text)} canSend={!sendDisabled} send={() => { void social.send(); }} field={field} />}
+                    {keyboardError && <p className="gg-social-error" role="status">{keyboardError}</p>}
+                    {ownKeyboard && layouts && (keyboardMode === 'radial' ? <RadialKeyboard session={ownKeyboard} layouts={layouts} draft={snapshot.draft} setDraft={text => social.setDraft(text)} canSend={!sendDisabled} send={() => { void social.send(); }} field={field} ownsInput={ownsInput} unavailable={radialUnavailable} /> : <MenuKeyboard session={ownKeyboard} layouts={layouts} draft={snapshot.draft} setDraft={text => social.setDraft(text)} canSend={!sendDisabled} send={() => { void social.send(); }} field={field} />)}
                 </> : friend && <>
                     <div className="gg-social-preview" aria-label="Recent messages">
                         {!snapshot.canChat ? <p className="gg-social-empty">Embedded chat is unavailable. You can open Social in Steam.</p>
@@ -142,10 +149,14 @@ export function focusComposeSoon(root: () => ParentNode | null, win: Pick<Window
     return () => clearTimeout(timer);
 }
 
-export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession }) {
+export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession; keyboardMode?: SocialKeyboardMode; ownsInput?(): boolean }) {
     const { social, entered, keyboard } = props;
     const snapshot = useSyncExternalStore(social.subscribe, social.get);
+    const [radialFailed,setRadialFailed] = useState(false);
+    const previousMode = useRef(props.keyboardMode);
+    useEffect(() => { if (previousMode.current !== props.keyboardMode) { keyboard?.close(); previousMode.current = props.keyboardMode; setRadialFailed(false); } }, [props.keyboardMode, keyboard]);
     const keyboardOpen = useSyncExternalStore(keyboard?.subscribe ?? NO_SUBSCRIBE, () => keyboard?.get().open ?? false);
+    useEffect(() => { if (!keyboardOpen) setRadialFailed(false); }, [keyboardOpen]);
     // Read on entering (the field depends on the current layout) and again on each opening of the keyboard, never per render.
     const openings = useRef(0), wasOpen = useRef(false);
     if (keyboardOpen && !wasOpen.current) openings.current++;
@@ -204,7 +215,7 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
         focusedChat.current = snapshot.enteredId; bottom.current = true; historyAnchor.current = null;
         return focusComposeSoon(() => timeline.current?.parentElement ?? null, window);
     }, [entered, snapshot.enteredId, snapshot.loading]);
-    return <SocialContents {...props} snapshot={snapshot} layouts={layouts} field={field} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
+    return <SocialContents {...props} keyboardMode={radialFailed ? 'compact' : props.keyboardMode} radialUnavailable={() => setRadialFailed(true)} keyboardError={radialFailed ? 'Radial keyboard unavailable. Using Compact for this opening.' : ''} snapshot={snapshot} layouts={layouts} field={field} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
         loadMore={() => { const element = timeline.current; if (element) { bottom.current = false; historyAnchor.current = captureChatAnchor(element); } void social.loadMore(); }}
         latest={() => { bottom.current = true; social.latest(); }} />;
 }
