@@ -54,6 +54,8 @@ import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 import { FaTrash } from 'react-icons/fa';
 import { homeReturnTarget, useHomeControls } from './useHomeControls';
+import {HomeSearch} from './HomeSearchControl';
+import {createHomeSearch} from './homeSearch';
 import { homeControlsCss } from './homeControlsCss';
 import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
@@ -508,7 +510,9 @@ export function SpotlightHome() {
     const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
     const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
-    const expanded = useHomeControls({root:rootRef,enabled,spotlightHome,homeStatusBar,homeExpandedControls,mounted:contentUp,statusHidden:sheetUp,
+    const search=useMemo(createHomeSearch,[]);
+    const searchFocus=useMemo(()=>({reveal:()=>search.dispatch({type:'enter'}),hide:()=>search.dispatch({type:'content'}),activate:()=>search.dispatch({type:'edit'}),editing:()=>search.get().phase==='editing',contains:(target:Element|null)=>!!target?.closest('[data-home-search],.gh-keyboard-surface')}),[search]);
+    const expanded = useHomeControls({search:searchFocus,root:rootRef,enabled,spotlightHome,homeStatusBar,homeExpandedControls,mounted:contentUp,statusHidden:sheetUp,
         launching:()=>!!data.focused&&launchPending(data.focused.appId),stopRepeats:()=>{bumpers.stop();directions.stop();},
         returnHome:()=>{const root=rootRef.current;if(root)focusElement(homeReturnTarget(root,lastAction.current,recentsRef.current),'the Home action');},
     });
@@ -562,7 +566,8 @@ export function SpotlightHome() {
             >
                 {/* In Steam's top strip, above the safe area: clock, battery, connection and your online status. */}
                 {/* The status bar is drawn above Steam's menu layers, outside this root (components/GameStatusBar): the menus blur everything under them. */}
-                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} controls={expanded.controls} />}
+                <HomeSearch search={search} active={expanded.footerActive&&!sheetUp} account={expanded.ui?.account??null} controls={expanded.controls} ownsInput={expanded.ownsInput} document={rootRef.current?.ownerDocument} />
+                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} controls={expanded.controls} replacement={expanded.footerActive} />}
                 {/* Open transition: the glass panels the chips grow into, one per page card (hidden until opening). */}
                 <div className="gh-open-shell" data-i="0" />
                 <div className="gh-open-shell" data-i="1" />

@@ -5,7 +5,8 @@ import { settings } from '../data/settings';
 import { createMenuCoordinator } from './coordinator';
 import { registerDiscoveredMenuHost } from './host';
 import { defaultMenuState, reduceMenu, type MenuEvent, type Stop } from './model';
-import { createMenuPreferences } from './preferences';
+import { createMenuPreferences,menuPreferences } from './preferences';
+export {menuPreferences} from './preferences';
 import { discoverMenuRuntime, type NativeBindings } from './steam/runtime';
 import { menuInputActive, type NativeInputOwner } from './navigation';
 import { createPerformance } from './steam/performance';
@@ -19,7 +20,6 @@ import { MenuShell } from './components/MenuShell';
 import { createSocial, type SocialService } from './steam/social';
 import { discoverSocialBindings } from './steam/chatNative';
 
-export const menuPreferences = createMenuPreferences(backendKv);
 const notificationReads = createNotificationReads(backendKv);
 let currentService: object | undefined;
 const serviceListeners = new Set<Stop>();

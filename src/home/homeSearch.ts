@@ -14,3 +14,9 @@ export function homeSearchBounds(viewport:{width:number;height:number},status:{l
     const width=Math.min(editing?360:140,available),left=Math.max(12,Math.min((viewport.width-width)/2,end-width));
     return {left,top:Math.max(4,Math.min(status.top,viewport.height-36)),width};
 }
+/** A Home-local draft store. It has no provider, persistence or Social side effects. */
+export function createHomeSearch(){
+    let state:HomeSearchState={phase:'hidden',draft:'',account:null};const listeners=new Set<()=>void>();
+    return {get:()=>state,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},dispatch(event:HomeSearchEvent){const next=reduceHomeSearch(state,event);if(next===state)return;state=next;for(const fn of [...listeners])fn();}};
+}
+export type HomeSearchSession=ReturnType<typeof createHomeSearch>;

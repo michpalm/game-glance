@@ -1,4 +1,4 @@
-import type { KvBackend } from '../data/kv';
+import {backendKv,type KvBackend} from '../data/kv';
 import { DEFAULT_PINS, isPinnedSection, validPins, type PinnedSectionId, type Stop } from './model';
 
 export type SocialKeyboardMode = 'compact' | 'radial';
@@ -64,3 +64,6 @@ export function createMenuPreferences(kv: KvBackend) {
         },
     };
 }
+
+/** Shared choice can be read by Home without starting the menu service. */
+export const menuPreferences=createMenuPreferences(backendKv);

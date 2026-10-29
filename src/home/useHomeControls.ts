@@ -83,7 +83,7 @@ function suspendedNow(o:HomeControlsOptions):boolean {
     return homeRuntimeSuspended({foreground:!!doc?.hasFocus(),menu:menuOpen(steamMenuStore(),!!doc?.hasFocus()),opening:!!root?.hasAttribute('data-gh-opening'),launching:o.launching(),connected:!!root?.isConnected,hidden:doc?.visibilityState==='hidden'||!!root?.closest('[hidden],[inert],[aria-hidden="true"]')});
 }
 /** One Home-owned footer lease and focus bridge; it never probes or edits the native header/Search. */
-export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;footerActive:boolean;ui:SteamUiState|null} {
+export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;footerActive:boolean;ui:SteamUiState|null;ownsInput():boolean} {
     const live=useRef(options);live.current=options;
     const ready=useRef(false),runtime=useRef<{sync():void}|null>(null);
     const [ui,setUi]=useState<SteamUiState|null>(null);
@@ -124,5 +124,5 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
         return ()=>{disposed=true;runtime.current=null;stopRuntime();observer?.disconnect();doc.removeEventListener('focusin',onFocus);doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);focus.setActive(false,false);lease?.dispose();header?.dispose();ready.current=false;};
     },[focus]);
     useLayoutEffect(()=>runtime.current?.sync());
-    return {controls:mode==='active'&&!options.statusHidden&&!headerHandoff?focus:undefined,actionUp:focus.actionUp,ui,footerActive:mode==='active'};
+    return {ownsInput:()=>ready.current&&optedIn(live.current)&&!live.current.statusHidden&&!suspendedNow(live.current),controls:mode==='active'&&!options.statusHidden&&!headerHandoff?focus:undefined,actionUp:focus.actionUp,ui,footerActive:mode==='active'};
 }

@@ -4,6 +4,15 @@ import {focusRing} from '../styles/tokens';
 /** Only owned native footer groups and explicitly interactive Home cells. */
 export const homeControlsCss=`
 ${homeHeaderCss}
+.gh-search-position{position:absolute;pointer-events:auto;height:32px}
+.gh-keyboard-surface button.gh-search-control.DialogButton{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:32px;min-height:0;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font-family:inherit;text-align:left;transition:width 150ms ease;box-shadow:none}
+.gh-search-control svg{width:16px;height:16px;flex:none}
+.gh-search-control span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+:where(html:not([data-gg-mouse])) .gh-keyboard-surface button.gh-search-control.DialogButton:is(.gpfocus,:focus-visible){${focusRing('menu')}}
+.gh-search-error{display:block;margin-top:8px;color:#fff;text-shadow:0 1px 2px #000;background:rgba(12,16,22,.75);padding:8px;border-radius:8px}
+.gh-keyboard-surface .gg-keyboard{pointer-events:auto}
+.gh-keyboard-surface .gg-keyboard-row button.DialogButton{display:flex;align-items:center;justify-content:center}
+
 [data-gh-footer=true]{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
 [data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
