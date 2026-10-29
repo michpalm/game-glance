@@ -45,6 +45,12 @@ export function createRoutes(bindings:RouteBindings) {
             }
             bindings.finishNavigation();return;
         }
+        if(request.kind==='friend-profile'){
+            if(!/^\d{17}$/.test(request.steamId))throw Error('Friend profile is unavailable');
+            if(!bindings.profile.allowed())throw Error('Profile is unavailable offline or under the current parental restrictions');
+            bindings.profile.open(`https://steamcommunity.com/profiles/${request.steamId}`);
+            bindings.finishNavigation();return;
+        }
         if(request.kind==='join'){
             if(!JOIN_URL.test(request.url))throw Error('This game cannot be joined from here');
             bindings.joinGame(request.url);return;

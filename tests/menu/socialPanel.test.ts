@@ -53,25 +53,20 @@ describe('Social panel focus layout', () => {
     });
 });
 describe('Social panel interaction', () => {
-    it('reserves the Back action in preview without exposing an inactive navigation target', () => {
-        const preview = harness(false), chat = harness(true);
-        const reserved = preview.nodes.find(n => n.props.className === 'gg-social-back-slot');
-        expect(reserved).toBeDefined();
-        expect(reserved!.props.inert).toBe(true);
-        expect(reserved!.props['aria-hidden']).toBe(true);
-        expect(preview.action('social:back').props.disabled).toBe(true);
-        expect(chat.action('social:back').props.disabled).toBe(false);
-        chat.action('social:back').props.onAction(); expect(chat.leave).toHaveBeenCalledOnce();
+    it.each([false,true])('offers the selected friend profile and no Back/Steam compose button (entered=%s)',entered=>{
+        const h=harness(entered);
+        expect(h.action('social:back')).toBeUndefined();expect(h.action('social:native')).toBeUndefined();
+        h.action('social:profile').props.onAction();expect(h.handoff).toHaveBeenCalledWith({kind:'friend-profile',steamId:id});
     });
     it('enters a friend only on activation, leaving preview side-effect free', () => {
         const h = harness(false), row = h.action(`social:friend:${id}`);
         expect(h.enter).not.toHaveBeenCalled(); row.props.onAction(); expect(h.enter).toHaveBeenCalledWith(id);
-        h.action('social:native').props.onAction(); expect(h.handoff).toHaveBeenCalledWith({ kind: 'qam', tab: 'friends' });
+        expect(h.action('social:native')).toBeUndefined();
     });
     it('keeps native fallback and disables send for empty or pending messages', () => {
         const h = harness(true, { draft: 'Text', messages: [{ id: 'pending', text: 'Text', own: true, timestamp: 1, state: 'pending' }] });
         expect(h.action('social:send').props.disabled).toBe(true);
-        h.action('social:native').props.onAction(); expect(h.handoff).toHaveBeenCalledWith({ kind: 'friend-chat', steamId: id });
+        expect(h.action('social:native')).toBeUndefined();
     });
     it('forwards composition and explicit send to the session service', () => {
         const h = harness(true, { draft: 'Text' }); h.action('social:send').props.onAction(); expect(h.social.send).toHaveBeenCalledOnce();
@@ -119,7 +114,7 @@ describe('Social chat with the menu keyboard', () => {
         const c = chat();
         expect(c.nodes.some(n => n.type === 'input' || n.props['aria-label'] === 'Message' && n.props.onChange)).toBe(false);
         const compose = c.action('social:compose')!;
-        expect([compose.props.children].flat()).toContainEqual(expect.objectContaining({ props: expect.objectContaining({ children: 'Message' }) }));
+        expect([compose.props.children].flat()).toContainEqual(expect.objectContaining({ props: expect.objectContaining({ children: 'Write a message…' }) }));
         compose.props.onAction(); expect(c.keyboard.get().open).toBe(true);
     });
     it('shows the draft in the field', () => {
@@ -182,10 +177,10 @@ describe('Social panel layout (direction A)', () => {
     it('previews the last messages read-only and enters on Write a message', () => {
         const v = view({ preview: { id, state: 'ready', messages: [{ id: 'p1', text: 'Example hello', timestamp: 1, own: false, state: 'received' }] } });
         expect(strings(v.nodes)).toContain('Example hello');
-        expect(v.action('social:back')!.props.disabled).toBe(true); expect(v.action('social:send')).toBeUndefined();
+        expect(v.action('social:back')).toBeUndefined(); expect(v.action('social:send')!.props.disabled).toBe(true);
         v.action('social:open')!.props.onAction(); expect(v.enter).toHaveBeenCalledWith(id);
         expect(strings(v.nodes)).toContain('Write a message…');
-        v.action('social:native')!.props.onAction(); expect(v.handoff).toHaveBeenCalledWith({ kind: 'qam', tab: 'friends' });
+        v.action('social:profile')!.props.onAction(); expect(v.handoff).toHaveBeenCalledWith({ kind: 'friend-profile', steamId: id });
     });
     it('says when there is no conversation yet', () => {
         expect(strings(view({ preview: { id, state: 'none', messages: [] } }).nodes)).toContain('No messages yet.');
@@ -248,4 +243,21 @@ it('selects the radial renderer without duplicating the Social draft or changing
  const all=tree(result),radial=all.find(n=>n.type===RadialKeyboard)!;
  expect(radial).toBeDefined();expect(all.some(n=>n.type===MenuKeyboard)).toBe(false);
  expect(radial.props.draft).toBe('Hello');expect(radial.props.canSend).toBe(true);
+});
+
+describe('consistent preview conversation presentation',()=>{
+ it('shows the same timestamp and delivery status before entering a conversation',()=>{
+  const message={id:'sent',text:'Synthetic message',timestamp:1700000000,own:true,state:'sent' as const};
+  const preview=harness(false,{preview:{id,state:'ready',messages:[message]}}),entered=harness(true,{messages:[message]});
+  const meta=(h:typeof preview)=>h.nodes.filter(n=>n.type==='small').map(n=>n.props.children).filter(c=>typeof c==='string'&&c.includes('Sent'));
+  expect(meta(preview)).toHaveLength(1);expect(meta(preview)).toEqual(meta(entered));
+  expect(preview.social.preview).not.toHaveBeenCalled();expect(preview.enter).not.toHaveBeenCalled();
+ });
+ it('keeps the Send button as the rightmost compose action in both states, disabled in preview',()=>{
+  for(const entered of [false,true]){
+   const h=harness(entered,{draft:'Synthetic draft'}),compose=h.nodes.find(n=>n.props.className==='gg-social-compose')!;
+   const actions=tree(compose.props.children).filter(n=>typeof n.props.id==='string');
+   expect(actions.at(-1)!.props.id).toBe('social:send');expect(h.action('social:send').props.disabled).toBe(!entered);
+  }
+ });
 });

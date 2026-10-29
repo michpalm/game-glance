@@ -14,3 +14,37 @@ it('preserves the visible message when a bounded history window changes without 
     restoreChatAnchor(container, anchor);
     expect(container.scrollTop).toBe(600);
 });
+
+it('moves focused rows clear of the complete focus ring at both edges under menu scaling',async()=>{
+ const {revealFriendRow}=await import('../../src/menu/socialScroll');
+ const {document}=parseHTML('<div id="list"><button class="gg-social-friend"></button></div>');
+ const list=document.getElementById('list')! as unknown as HTMLElement,row=list.firstElementChild as HTMLElement;
+ Object.defineProperties(list,{clientHeight:{value:200},scrollHeight:{value:600}});
+ list.getBoundingClientRect=()=>({top:100,bottom:500,height:400} as DOMRect);list.scrollTop=20;
+ row.getBoundingClientRect=()=>({top:102,bottom:230,height:128} as DOMRect);revealFriendRow(list,row);expect(list.scrollTop).toBe(1);
+ list.scrollTop=20;row.getBoundingClientRect=()=>({top:370,bottom:498,height:128} as DOMRect);revealFriendRow(list,row);expect(list.scrollTop).toBe(39);
+ row.getBoundingClientRect=()=>({top:200,bottom:328,height:128} as DOMRect);revealFriendRow(list,row);expect(list.scrollTop).toBe(39);
+});
+it('shows edge fades only where more rows exist and releases the scroll listener',async()=>{
+ const {installFriendScroll}=await import('../../src/menu/socialScroll');
+ const {document,window}=parseHTML('<div id="list"><button class="gg-social-friend"></button></div>');
+ const list=document.getElementById('list')! as unknown as HTMLElement;
+ Object.defineProperties(list,{clientHeight:{value:200},scrollHeight:{value:600}});
+ list.scrollTop=0;const stop=installFriendScroll(list);expect(list.dataset.scrollTop).toBe('false');expect(list.dataset.scrollBottom).toBe('true');
+ list.scrollTop=30;list.dispatchEvent(new window.Event('scroll') as unknown as Event);expect(list.dataset.scrollTop).toBe('true');
+ list.scrollTop=400;list.dispatchEvent(new window.Event('scroll') as unknown as Event);expect(list.dataset.scrollBottom).toBe('false');
+ stop();list.scrollTop=0;list.dispatchEvent(new window.Event('scroll') as unknown as Event);expect(list.dataset.scrollTop).toBeUndefined();
+});
+
+it('waits for Steam focus scrolling before reserving room, and cancels a pending reveal on cleanup',async()=>{
+ const {installFriendScroll}=await import('../../src/menu/socialScroll');
+ const {document,window}=parseHTML('<div id="list"><button class="gg-social-friend"><span>Example</span></button></div>');
+ const list=document.getElementById('list')! as unknown as HTMLElement,row=list.firstElementChild as HTMLElement;
+ Object.defineProperties(list,{clientHeight:{value:200},scrollHeight:{value:600}});list.scrollTop=20;
+ list.getBoundingClientRect=()=>({top:100,bottom:500,height:400} as DOMRect);row.getBoundingClientRect=()=>({top:102,bottom:230,height:128} as DOMRect);
+ let callback:FrameRequestCallback|undefined;window.requestAnimationFrame=(run:FrameRequestCallback)=>{callback=run;return 7;};window.cancelAnimationFrame=()=>{callback=undefined;};
+ const tick=()=>{const run=callback;callback=undefined;run?.(0);};
+ const stop=installFriendScroll(list);row.firstElementChild!.dispatchEvent(new window.Event('focusin',{bubbles:true}) as unknown as Event);
+ expect(list.scrollTop).toBe(20);tick();expect(list.scrollTop).toBe(20);tick();expect(list.scrollTop).toBe(1);
+ list.scrollTop=20;row.dispatchEvent(new window.Event('focusin',{bubbles:true}) as unknown as Event);stop();tick();tick();expect(list.scrollTop).toBe(20);
+});

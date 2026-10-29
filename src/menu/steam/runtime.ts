@@ -13,6 +13,7 @@ export type NativeRequest =
     | { kind: 'game-action'; appId: number; gameId: string; actionId: string }
     | { kind: 'guide-article'; appId: number; fileId: string }
     | { kind: 'friend-chat'; steamId: string }
+    | { kind: 'friend-profile'; steamId: string }
     | { kind: 'store'; target: 'app'; appId: number }
     | { kind: 'store'; target: 'wishlist' }
     | { kind: 'join'; url: string };

@@ -80,3 +80,18 @@ describe('join a friend', () => {
         const h = harness(); await expect(h.routes.open({ kind: 'join', url })).rejects.toThrow(); expect(h.b.joinGame).not.toHaveBeenCalled();
     });
 });
+
+describe('selected friend profile destination',()=>{
+ it('opens the requested friend rather than the current-user profile and closes the side menu',async()=>{
+  const h=harness();await h.routes.open({kind:'friend-profile',steamId:'76561198000000001'});
+  expect(h.b.profile.open).toHaveBeenCalledWith('https://steamcommunity.com/profiles/76561198000000001');
+  expect(h.b.profile.resolve).not.toHaveBeenCalled();expect(h.order).toEqual(['deactivate','close']);
+ });
+ it('retains profile restrictions and rejects malformed friend identities',async()=>{
+  const h=harness();h.b.profile.allowed.mockReturnValue(false);
+  await expect(h.routes.open({kind:'friend-profile',steamId:'76561198000000001'})).rejects.toThrow();
+  h.b.profile.allowed.mockReturnValue(true);
+  await expect(h.routes.open({kind:'friend-profile',steamId:'https://example.com'})).rejects.toThrow();
+  expect(h.b.profile.open).not.toHaveBeenCalled();
+ });
+});
