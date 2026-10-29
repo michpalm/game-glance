@@ -10,7 +10,7 @@ function harness() {
     return { b, order, routes: createRoutes(b) };
 }
 describe('menu native destinations', () => {
-    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['media','/media']] as const)('maps %s to its native route', async (destination,path) => {
+    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['media','/media/grid']] as const)('maps %s to its native route', async (destination,path) => {
         const h = harness(); await h.routes.open({kind:'navigate',destination}); expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.b.deactivate).toHaveBeenCalledTimes(1);
     });
     it('deactivates before navigation and closes the side menu after navigation', async () => {
