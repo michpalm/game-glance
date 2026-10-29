@@ -27,7 +27,7 @@ Typing a message in the menu's Social chat opens Steam's docked keyboard. It tak
 - Rows come from Steam's own layout data, so the keyboard follows the layouts chosen in Steam (Settings > Keyboard). On the Ally: QWERTY (layout 0) and Spanish (layout 19, current).
 - Compact rows, as on the canvas: the layout's three letter rows (Spanish: `q`–`p` with digit hints, `a`–`ñ`, `⇧ z`–`m ⌫`), then `?123`, `,`, the layout's main accent key (its first dead key in reading order: Spanish `´`; a layout with none shows `'`), the space bar, `.` and `✓`. The `?123` page holds digits, common symbols, the layout's other dead keys (Spanish `¨`) and its inverted marks (`¿ ¡`); `ABC` returns.
 - A digit hint types its digit when the key is held (400 ms).
-- The space bar shows the selected layouts ("ES · EN"); a tap or A on it switches to the next. If only the current layout can be read (see Reading Steam's layouts), it shows that one and does not switch.
+- With more than one selected layout, a globe key sits between the accent key and the space bar; a tap or A on it switches to the next layout (chosen by Michael on 2026-10-29 from four options on the canvas: hold the space bar, globe key, a chip on the space bar, a key on the `?123` page). The space bar types a space and shows the current layout's short name ("ES"). With one layout there is no globe key.
 - Layouts that need an input method (Chinese, Japanese, Korean) keep Steam's keyboard for the field.
 
 ### Typing
@@ -57,7 +57,7 @@ Typing a message in the menu's Social chat opens Steam's docked keyboard. It tak
 - Getting the rows means running two Steam functions: the current-layout getter and the entry's `rgLayout`. Both only assemble data (their source was read on 2026-10-29). They run once per keyboard opening, inside a guard.
 - The module is found by shape (an export that is a function returning an object with `name`, `layout` and a function `rgLayout`), never by its minified names.
 - The result is checked before use: rows of strings, `[normal, shifted, altGr?]` arrays or dead-key objects with matching `dead_next` / `dead_combined` lengths. Anything else, a throw, or no module: the built-in QWERTY, typed exactly as on the canvas, with `´` and `¨` as dead keys.
-- All selected layouts are reachable (checked read-only on the Ally, 2026-10-29): the module exports a function whose source reads `GetKeyboardLayoutSettings()` and returns the layout list filtered to `currentLayout` / `selectedLayouts` (export `G$`, function `le`, today). It is found by that source text. It already leaves out input-method layouts unless an input method (IBus) is set up. Another export switches Steam's own layout setting (`SetKeyboardLayout`): never call it; the space bar switches only within our keyboard.
+- All selected layouts are reachable (checked read-only on the Ally, 2026-10-29): the module exports a function whose source reads `GetKeyboardLayoutSettings()` and returns the layout list filtered to `currentLayout` / `selectedLayouts` (export `G$`, function `le`, today). It is found by that source text. It already leaves out input-method layouts unless an input method (IBus) is set up. Another export switches Steam's own layout setting (`SetKeyboardLayout`): never call it; the globe key switches only within our keyboard.
 
 ## Structure
 
