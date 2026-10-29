@@ -5,7 +5,7 @@ import { LuMove } from 'react-icons/lu';
 import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
-import { loadPosition, savePosition, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
+import { dragPosition, loadPosition, savePosition, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
@@ -47,10 +47,16 @@ export function physicalKey(state: TypingState, event: KeyboardEvent, canSend: b
     return null;
 }
 
+const EDITABLE = 'input, textarea, [contenteditable]:not([contenteditable="false"])';
+/** Listens before Steam's own window handlers (capture), and a handled key goes no further. A key being composed by an
+ * input method, or typed into an editable element, is left alone. */
 export function installPhysicalKeys(view: Window, handle: (event: KeyboardEvent) => boolean): () => void {
-    const onKey = (event: KeyboardEvent) => { if (handle(event)) { event.preventDefault(); event.stopPropagation(); } };
-    view.addEventListener('keydown', onKey);
-    return () => view.removeEventListener('keydown', onKey);
+    const onKey = (event: KeyboardEvent) => {
+        if (event.isComposing || (event.target as Element | null)?.closest?.(EDITABLE)) return;
+        if (handle(event)) { event.preventDefault(); event.stopImmediatePropagation(); }
+    };
+    view.addEventListener('keydown', onKey, { capture: true });
+    return () => view.removeEventListener('keydown', onKey, { capture: true });
 }
 
 /** A viewport rectangle in the menu's own units: the menu is drawn scaled from its box at `origin`. */
@@ -82,13 +88,18 @@ function keyAt(target: EventTarget | null): [number, number] | null {
     const match = id && /^keyboard:(\d+):(\d+)$/.exec(id);
     return match ? [Number(match[1]), Number(match[2])] : null;
 }
+/** Whether the pointer, now over `target`, has left the held key `id` (for another key or no key). */
+export function slidOff(id: string, target: EventTarget | null): boolean {
+    const at = keyAt(target);
+    return !at || keyId(at[0], at[1]) !== id;
+}
 
 type StripHandlers = { onPointerDown?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerMove?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerUp?(e: ReactPointerEvent<HTMLDivElement>): void; onPointerCancel?(e: ReactPointerEvent<HTMLDivElement>): void };
 export interface KeyboardPanelProps {
     layout: KeyboardLayout; page: Page; typing: TypingState; canSend: boolean;
     position: Point | null; dragging: boolean; panelRef?: Ref<HTMLDivElement>;
     onKey(row: number, col: number): void; onMove(): void;
-    hold: { start(row: number, col: number): void; stop(): void };
+    hold: { start(row: number, col: number): void; stop(): void; over(target: EventTarget | null): void };
     strip: StripHandlers;
 }
 
@@ -100,6 +111,8 @@ export function KeyboardPanel({ layout, page, typing, canSend, position, draggin
         style={{ left: position?.x ?? 0, top: position?.y ?? 0, visibility: position ? undefined : 'hidden' }}>
         <Focusable className="gg-keyboard-keys" flow-children="column"
             onPointerDown={(e: ReactPointerEvent) => startHold(e.target)} onPointerUp={hold.stop} onPointerCancel={hold.stop} onPointerLeave={hold.stop}
+            // A touch stays captured by the pressed key, so the element under the pointer tells when it slides off.
+            onPointerMove={(e: ReactPointerEvent) => hold.over((e.currentTarget as HTMLElement).ownerDocument?.elementFromPoint?.(e.clientX, e.clientY) ?? e.target)}
             onButtonDown={(e: GamepadEvent) => { if (e.detail.button === 1) startHold(e.target); }} onButtonUp={hold.stop}>
             {rows.map((row, r) => <Focusable key={`${page}:${r}`} className="gg-keyboard-row" flow-children="row">
                 {row.map((k, c) => <MenuAction key={c} id={keyId(r, c)} className={`gg-keyboard-key${KIND_CLASS[k.kind] ?? ''}`} ariaLabel={ariaOf(k)}
@@ -132,7 +145,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
     const lastTyped = useRef<{ id: string; before: TypingState; at: number } | null>(null);
     // A hold that typed its hint swallows the click that ends the same press (touch release, or A if Steam acts on release).
     const skipAction = useRef<{ id: string; stopped: number | null } | null>(null);
-    const drag = useRef<{ pointer: number; x: number; y: number; from: Point; scale: number; moved: boolean } | null>(null);
+    const drag = useRef<{ pointer: number; x: number; y: number; from: Point; scale: number; view: Rect; moved: boolean } | null>(null);
     const dragEnded = useRef(0);
     const layout = layouts.layouts[index] ?? layouts.layouts[0];
 
@@ -239,6 +252,8 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             holding.current = null;
             if (skipAction.current && skipAction.current.stopped === null) skipAction.current.stopped = Date.now();
         },
+        // Sliding off the pressed key types nothing: its hold stops.
+        over(target: EventTarget | null) { if (holding.current && slidOff(holding.current.id, target)) hold.stop(); },
     };
     const onMove = () => {
         if (Date.now() - dragEnded.current < 300) return;
@@ -254,7 +269,7 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             const g = geometry(), from = live.current.position;
             if (!g || !from) return;
             e.currentTarget.setPointerCapture?.(e.pointerId);
-            drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, from, scale: g.scale, moved: false };
+            drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, from, scale: g.scale, view: g.view, moved: false };
         },
         onPointerMove(e) {
             const d = drag.current;
@@ -262,7 +277,8 @@ export function MenuKeyboard({ session, layouts, draft, setDraft, canSend, send,
             const dx = e.clientX - d.x, dy = e.clientY - d.y;
             if (!d.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
             if (!d.moved) { d.moved = true; setDragging(true); }
-            place({ x: d.from.x + dx / d.scale, y: d.from.y + dy / d.scale });
+            // Kept inside the view while dragging (an area past the edge would cost the menu its frost); the release clears the field.
+            place(dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));
         },
         onPointerUp(e) {
             const d = drag.current;

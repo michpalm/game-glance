@@ -16,7 +16,7 @@ vi.mock('@decky/ui', () => ({
         }
     },
 }));
-const { KeyboardPanel, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
+const { KeyboardPanel, installPhysicalKeys, nextLayout, physicalKey, readSteamLayouts, slidOff, toMenuRect } = await import('../../src/menu/components/MenuKeyboard');
 
 function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
     if (Array.isArray(node)) return node.flatMap(tree);
@@ -29,7 +29,7 @@ const idle: TypingState = { text: '', shift: 'off', held: null };
 function panel(layout: KeyboardLayout = spanish, change: Record<string, unknown> = {}) {
     const onKey = vi.fn(), onMove = vi.fn();
     const nodes = tree(KeyboardPanel({ layout, page: 'letters', typing: idle, canSend: true, position: { x: 10, y: 20 }, dragging: false, onKey, onMove,
-        hold: { start: vi.fn(), stop: vi.fn() }, strip: {}, ...change }));
+        hold: { start: vi.fn(), stop: vi.fn(), over: vi.fn() }, strip: {}, ...change }));
     const keys = nodes.filter(n => typeof n.props.id === 'string' && /^keyboard:\d+:\d+$/.test(n.props.id));
     const rows = nodes.filter(n => n.props.className === 'gg-keyboard-row').map(row => tree(row.props.children).filter(n => keys.includes(n)));
     return { nodes, keys, rows, onKey, onMove };
@@ -98,6 +98,27 @@ describe('the keyboard panel', () => {
     });
 });
 
+describe('holding a key', () => {
+    const keyEl = (id: string) => ({ closest: (sel: string) => sel.includes('keyboard:') ? { dataset: { ggFocus: id } } : null });
+    // Pressing q, sliding to w and holding must type nothing: the hold belongs to the pressed key only.
+    it('counts sliding to another key, or off every key, as leaving the held key', () => {
+        expect(slidOff('keyboard:0:0', keyEl('keyboard:0:1') as unknown as EventTarget)).toBe(true);
+        expect(slidOff('keyboard:0:0', { closest: () => null } as unknown as EventTarget)).toBe(true);
+        expect(slidOff('keyboard:0:0', null)).toBe(true);
+        expect(slidOff('keyboard:0:0', keyEl('keyboard:0:0') as unknown as EventTarget)).toBe(false);
+    });
+    it('reports the element under a moving pointer to the hold, not the press target', () => {
+        const hold = { start: vi.fn(), stop: vi.fn(), over: vi.fn() };
+        const { nodes } = panel(spanish, { hold });
+        const grid = nodes.find(n => n.props.className === 'gg-keyboard-keys')!;
+        const w = keyEl('keyboard:0:1'), q = keyEl('keyboard:0:0');
+        const elementFromPoint = vi.fn(() => w);
+        grid.props.onPointerMove({ clientX: 30, clientY: 40, target: q, currentTarget: { ownerDocument: { elementFromPoint } } });
+        expect(elementFromPoint).toHaveBeenCalledWith(30, 40);
+        expect(hold.over).toHaveBeenCalledWith(w);
+    });
+});
+
 describe('switching layouts', () => {
     const qwerty = BUILTIN_QWERTY, ime: KeyboardLayout = { ...BUILTIN_QWERTY, id: 30, name: 'japanese', ime: true };
     it('goes to the next layout, skipping input-method ones, and stays when there is only one', () => {
@@ -132,6 +153,40 @@ describe('a physical keyboard', () => {
         expect(seen).toHaveBeenCalledOnce(); expect(event.defaultPrevented).toBe(true);
         remove(); view.dispatchEvent(Object.assign(new Event('keydown'), { key: 'b' }));
         expect(seen).toHaveBeenCalledOnce();
+    });
+    // Steam's own keydown handlers on the window must not also act on a key the draft took.
+    it('listens in the capture phase and stops handled keys before any other listener', () => {
+        const view = new EventTarget() as unknown as Window, add = vi.spyOn(view, 'addEventListener'), drop = vi.spyOn(view, 'removeEventListener');
+        const remove = installPhysicalKeys(view, () => true);
+        expect(add).toHaveBeenCalledWith('keydown', expect.any(Function), { capture: true });
+        const later = vi.fn(); view.addEventListener('keydown', later);
+        view.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'a' }));
+        expect(later).not.toHaveBeenCalled();
+        remove();
+        expect(drop).toHaveBeenCalledWith('keydown', add.mock.calls[0][1], { capture: true });
+        const unhandled = new EventTarget() as unknown as Window, after = vi.fn();
+        installPhysicalKeys(unhandled, () => false); unhandled.addEventListener('keydown', after);
+        unhandled.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'x' }));
+        expect(after).toHaveBeenCalledOnce();
+    });
+    it('leaves composing keys and keys typed into an editable element alone', () => {
+        let listener: ((e: KeyboardEvent) => void) | undefined;
+        const view = { addEventListener: (_: string, fn: (e: KeyboardEvent) => void) => { listener = fn; }, removeEventListener: vi.fn() } as unknown as Window;
+        const seen = vi.fn(() => true);
+        installPhysicalKeys(view, seen);
+        const fire = (more: Record<string, unknown>) => {
+            const e = { key: 'a', isComposing: false, target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(), stopImmediatePropagation: vi.fn(), ...more };
+            listener!(e as unknown as KeyboardEvent); return e;
+        };
+        const editable = (sel: string) => ({ closest: (s: string) => s.includes(sel) ? {} : null });
+        for (const target of [editable('input'), editable('textarea'), editable('[contenteditable')]) {
+            const e = fire({ target });
+            expect(e.preventDefault).not.toHaveBeenCalled(); expect(e.stopImmediatePropagation).not.toHaveBeenCalled();
+        }
+        fire({ isComposing: true });
+        expect(seen).not.toHaveBeenCalled();
+        const plain = fire({ target: { closest: () => null } });
+        expect(seen).toHaveBeenCalledOnce(); expect(plain.preventDefault).toHaveBeenCalled(); expect(plain.stopImmediatePropagation).toHaveBeenCalled();
     });
 });
 
