@@ -16,6 +16,7 @@ The page is meant to replace Steam's notification menu, but every row opens the 
 ### Which rows show
 - On entering the page, the rows already read at that moment are left out. Rows read while the page is open (opened, or Mark all read) stay until the next visit; only their unread dot goes.
 - Local notifications (download complete, eType 1; plugin, eType 31) have no account read state: their ids are remembered as read in the menu preferences (backend kv), capped to the most recent 200 ids. A local notification counts as unread when Steam marks it new (`bNewIndicator`) and its id is not remembered.
+- Friend notifications (online, in game, invite, chat message) have no account read state either and are remembered locally the same way.
 - Empty page: "You're all caught up", a line "Read notifications are still in Steam." and a **See all in Steam** button (the old handoff to Steam's notifications). The heading button is hidden.
 
 ### What a row does
@@ -27,7 +28,7 @@ Opening a row marks it read (account: the store's `MarkItemRead(id)`; local: rem
 | Plugin (eType 31) with `data.onClick` | Call the plugin's own `onClick` (as Steam does); close the menu first | Open |
 | Plugin without `onClick` | Only mark read | (none) |
 | Wishlist sale | Store page, or the wishlist when several games are on sale (unchanged) | View in store |
-| Friend notifications (online, in game, invite, chat message) | Our own Social chat with that friend (switch to Social, enter that friend's chat). A game invite with a `response_steamurl` opens that URL in Steam, as Steam does. | Open chat |
+| Friend notifications (online, in game, invite, chat message) | Our own Social chat with that friend (switch to Social, enter that friend's chat). A game invite with a `response_steamurl` opens that URL in Steam, as Steam does. | Open chat (invite: Join game) |
 | Account notification whose type is in Steam's link table (module 64884's type table, read via its exported lookup found by source text) | Open the table's `link(body)` URL in Steam's browser | Open |
 | Anything else | Steam's notifications page (today's behaviour) | Open in Steam |
 
