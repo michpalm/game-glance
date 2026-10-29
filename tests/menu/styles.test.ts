@@ -121,15 +121,15 @@ it('the end options of a track take its corners, so their focus ring and selecti
 describe('the menu keyboard', () => {
     const lines = socialStyles.split('\n');
     const css = (selector: string) => lines.find(line => line.startsWith(selector + '{')) ?? '';
-    const key = '.gg-menu-native-host .gg-menu .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
+    const key = ':is(.gg-menu-native-host .gg-menu,.gh-keyboard-surface) .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
     it('floats a 409 × 210 glass panel with the menu edge and corners', () => {
-        const panel = css('.gg-menu .gg-keyboard');
+        const panel = css(':is(.gg-menu,.gh-keyboard-surface) .gg-keyboard');
         for (const part of ['position:absolute', 'width:409px', 'height:210px', `background:${TOKENS.solid}`, 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
         // Rows are 385 px wide inside the 1 px edge.
         expect(panel).toMatch(/padding:\d+px 11px/);
     });
     it('keeps keyboard keys free of the menu button transitions so focus moves instantly', () => {
-        expect(socialStyles).toMatch(new RegExp(key.replace(/[.]/g, '\\.') + '\\{[^}]*transition:none'));
+        expect(css(key)).toContain('transition:none');
     });
     it('blurs the Social columns under the keyboard, fading in and out', () => {
         expect(socialStyles).toContain('.gg-social-friend-list.gg-keyboard-under,.gg-social-timeline.gg-keyboard-under{filter:blur(16px)}');
@@ -137,7 +137,7 @@ describe('the menu keyboard', () => {
         expect(css('.gg-social-timeline')).toContain('transition:filter var(--gg-fast) linear');
     });
     it('lifts the panel while it is dragged', () => {
-        const lifted = css('.gg-menu .gg-keyboard.gg-keyboard-dragging');
+        const lifted = css(':is(.gg-menu,.gh-keyboard-surface) .gg-keyboard.gg-keyboard-dragging');
         expect(lifted).toContain('box-shadow:'); expect(lifted).toContain('border-color:var(--gg-edge-active)');
     });
     it('draws 34 × 40 keys with 5 px gaps and 10 px corners that narrow to fit a long row', () => {
@@ -155,7 +155,7 @@ describe('the menu keyboard', () => {
         const label = css('.gg-keyboard-strip-label');
         expect(label).toContain('display:none');
         for (const part of ['font-size:11px', labelText()]) expect(label).toContain(part);
-        const focused = css(':where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible) .gg-keyboard-strip-label');
+        const focused = css(':where(html:not([data-gg-mouse])) :is(.gg-menu-native-host .gg-menu,.gh-keyboard-surface) .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible) .gg-keyboard-strip-label');
         expect(focused).toMatch(/display:(inline-)?flex/);
         const badge = css('.gg-keyboard-badge');
         for (const part of ['width:14px', 'height:14px', 'border:1px solid', 'border-radius:50%', 'font-size:10px', 'font-weight:700']) expect(badge).toContain(part);

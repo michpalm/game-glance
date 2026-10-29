@@ -4,6 +4,7 @@ import {focusRing} from '../styles/tokens';
 /** Only owned native footer groups and explicitly interactive Home cells. */
 export const homeControlsCss=`
 ${homeHeaderCss}
+html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true] *{visibility:hidden!important}
 .gh-search-position{position:absolute;pointer-events:auto;height:32px}
 .gh-keyboard-surface button.gh-search-control.DialogButton{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:32px;min-height:0;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font-family:inherit;text-align:left;transition:width 150ms ease;box-shadow:none}
 .gh-search-control svg{width:16px;height:16px;flex:none}
