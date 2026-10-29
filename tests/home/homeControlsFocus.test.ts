@@ -4,14 +4,15 @@ import {GamepadButton as B} from '@decky/ui/dist/components/FooterLegend.js';
 import {createHomeStatusFocus,homeReturnTarget,homeRuntimeSuspended} from '../../src/home/useHomeControls';
 import type {HomeControlId} from '../../src/home/homeControls';
 vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Navigation:{},Focusable:()=>null}));
-function fixture(){
+function fixture(search=false){
  const {document}=parseHTML('<html><body><main id="home"><div class="gh-actions"><button id="play" class="gh-btn"></button><button id="info" class="gh-btn"></button></div><div id="recents" tabindex="0"></div></main><header><input type="search" data-native="keep"/></header><aside id="status"></aside></body></html>');
+ let editing=false;const reveal=vi.fn(),hide=vi.fn(),activate=vi.fn();
  let pending:(()=>void)|null=null,available=true;const moved:HTMLElement[]=[],home=vi.fn(),stop=vi.fn(),handoff=vi.fn();
- const focus=createHomeStatusFocus({canUse:()=>available,visible:n=>n.isConnected&&!n.hidden,focus:n=>moved.push(n),returnHome:home,stopRepeats:stop,headerHandoff:handoff,schedule:callback=>{pending=callback;return ()=>{pending=null;};}});
+ const focus=createHomeStatusFocus({search:search?{reveal,hide,activate,editing:()=>editing,contains:target=>target?.id==='editor'}:undefined,canUse:()=>available,visible:n=>n.isConnected&&!n.hidden,focus:n=>moved.push(n),returnHome:home,stopRepeats:stop,headerHandoff:handoff,schedule:callback=>{pending=callback;return ()=>{pending=null;};}});
  const add=(id:HomeControlId)=>{const node=document.createElement('button') as unknown as HTMLElement;document.getElementById('status')!.append(node);focus.register(id,node);return node;};
  const flush=()=>{const run=pending;pending=null;run?.();};
  focus.setActive(true,false);
- return {document,root:document.getElementById('home')! as unknown as HTMLElement,focus,add,flush,moved,home,stop,handoff,available:(value:boolean)=>{available=value;}};
+ return {editing:(value:boolean)=>{editing=value;},reveal,hide,activate,document,root:document.getElementById('home')! as unknown as HTMLElement,focus,add,flush,moved,home,stop,handoff,available:(value:boolean)=>{available=value;}};
 }
 const event=(button:number)=>({detail:{button,is_repeat:false},preventDefault:vi.fn(),stopPropagation:vi.fn()}) as any;
 describe('Home status focus coordinator',()=>{
@@ -30,4 +31,10 @@ describe('Home return and runtime ownership',()=>{
  it('returns to the valid previous action, then Play, recents and empty-Home Library',()=>{const f=fixture(),play=f.document.getElementById('play') as unknown as HTMLElement,info=f.document.getElementById('info') as unknown as HTMLElement,recents=f.document.getElementById('recents') as unknown as HTMLElement;expect(homeReturnTarget(f.root,info,recents)).toBe(info);info.remove();expect(homeReturnTarget(f.root,info,recents)).toBe(play);play.remove();expect(homeReturnTarget(f.root,info,recents)).toBe(recents);recents.remove();const library=f.document.createElement('button');library.className='gh-btn';f.document.querySelector('.gh-actions')!.append(library);expect(homeReturnTarget(f.root,null,null)).toBe(library);});
  it.each([{foreground:false},{menu:true},{opening:true},{launching:true},{connected:false},{hidden:true}])('suspends for %j',patch=>{expect(homeRuntimeSuspended({foreground:true,menu:false,opening:false,launching:false,connected:true,hidden:false,...patch})).toBe(true);});
  it('does not suspend an owned, visible Home',()=>{expect(homeRuntimeSuspended({foreground:true,menu:false,opening:false,launching:false,connected:true,hidden:false})).toBe(false);});
+});
+
+describe('Home replacement Search navigation',()=>{
+ it('reveals Search and waits for its ref before taking focus',()=>{const f=fixture(true);f.add('clock');f.flush();const up=event(B.DIR_UP);expect(f.focus.actionUp(up)).toBe(true);expect(f.reveal).toHaveBeenCalledOnce();expect(f.moved).toHaveLength(0);const search=f.add('search');f.flush();expect(f.moved.at(-1)).toBe(search);f.focus.button('search',event(B.OK));expect(f.activate).toHaveBeenCalledOnce();});
+ it('enters Search every time, clamps Up and returns to content with Down',()=>{const f=fixture(true),search=f.add('search'),clock=f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(search);f.focus.button('search',event(B.DIR_RIGHT));expect(f.moved.at(-1)).toBe(clock);f.focus.button('clock',event(B.DIR_UP));expect(f.home).not.toHaveBeenCalled();f.focus.button('clock',event(B.DIR_DOWN));expect(f.hide).toHaveBeenCalled();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(search);expect(f.handoff).not.toHaveBeenCalledWith(true);});
+ it('keeps editing ownership through neutral DOM focus and cancels a delayed entry on suspend',()=>{const f=fixture(true);f.add('search');f.flush();f.focus.actionUp(event(B.DIR_UP));f.editing(true);f.focus.externalFocus(f.document.body as unknown as HTMLElement);expect(f.hide).not.toHaveBeenCalled();f.focus.setActive(false,false);expect(f.hide).toHaveBeenCalled();const g=fixture(true);g.focus.actionUp(event(B.DIR_UP));g.focus.setActive(false,false);g.add('search');g.flush();expect(g.moved).toHaveLength(0);});
 });
