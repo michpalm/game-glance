@@ -32,3 +32,13 @@ The synthetic missing-title regression failed before the fix, then passed. Focus
 ### Game-name correction installed
 
 User explicitly approved “install it in the meantime.” Frontend `7855eab` installed with menu closed; previous frontend backup `/home/deck/gg-backup-social-game-name-20261029-3ztqm2yl`. Staged/installed SHA-256 verified; independent post-reload checksum matched `761a418d99b93adc7d0aa9cd687ff2255ed061ce36d18609b35fdc27e8ec82cc`. Read confirmed Game Glance loaded. No backend change, reboot or agent-sent message. User visual confirmation of the game title remains pending.
+
+## Approved in-game friend hero cards — local validation
+
+User approved the rendered hero proposal. In-game Social friend rows now show decorative, cropped hero artwork under the existing avatar and identity; online/away/offline rows remain plain. Existing row sizing, selected stripe, focus outline, profile/join actions and keyboard behavior are unchanged. Image alpha fades from 4% at the left to 60% at the right, keeping the text readable without painting an opaque overlay when art is missing.
+
+Sources reuse existing Steam custom/known hero lookup and shared hero paths for valid Steam app IDs, including games outside the local library. Images load lazily and decode asynchronously. Errors advance one candidate at a time using the current DOM src, preserving progress across presence rerenders; the final failure hides the image. A changed source list remounts the image. No bulk parallel fallback downloads or new game/store navigation.
+
+RED: missing in-game decoration assertion failed before product edits; new artwork module was absent. GREEN: 43 focused tests and 2,321 full frontend tests (203 files), typecheck, build and diff check passed. Browser fixture uses real hook-free SocialContents, CSS and fallback helper with synthetic data, native DOM representations of Decky controls, and intercepted image requests. At 1500×845 and 829×467, successful first source, successful fallback and all-missing cases passed: identical hero/plain row height, no horizontal overflow, decorative non-interactive image, one request on success/two on fallback or exhaustion, no page errors. Screenshots inspected. Independent scoped review found no actionable correctness issue. This fixture does not mount Steam React lifecycle.
+
+Frontend SHA-256: `7e508490e265175a439c9976901216eadae9161d8a648b56b99e9db6b74024e0`. No Ally access or installation for the hero change yet. Device approval, Steam asset availability, actual controller rendering and decoding performance remain pending. Logs: `/private/tmp/gg-social-hero-{red,green,suite,types,build,browser}.log`. Production-view fixture: `.superpowers/sdd/2026-10-29-social-polish/`.

@@ -10,6 +10,7 @@ import { takeSteamFocus } from '../../home/steamFocus';
 import type { NativeRequest } from '../steam/runtime';
 import type { ChatMessage, SocialFriend, SocialService, SocialSnapshot } from '../steam/social';
 import { socialStyles } from '../socialStyles';
+import { advanceFriendHero, friendHeroUrls } from '../socialArt';
 import { captureChatAnchor, restoreChatAnchor, installFriendScroll, type ChatScrollAnchor } from '../socialScroll';
 import { MenuAction } from './MenuAction';
 import { MenuKeyboard, readSteamLayouts, type Layouts } from './MenuKeyboard';
@@ -99,11 +100,12 @@ export function SocialContents({ snapshot, social, entered, enter, handoff, load
             <div className="gg-social-friends">
                 <div className="gg-social-list-heading"><span>Friends</span></div>
                 <Focusable ref={friendsRef} className="gg-social-friend-list" flow-children="column">
-                    {ordered(snapshot.friends).map(f => <div key={f.steamId} onFocus={() => social.preview(f.steamId)} onMouseEnter={() => social.preview(f.steamId)}>
+                    {ordered(snapshot.friends).map(f => { const hero=friendHeroUrls(f);return <div key={f.steamId} onFocus={() => social.preview(f.steamId)} onMouseEnter={() => social.preview(f.steamId)}>
                         <MenuAction id={`social:friend:${f.steamId}`} className="gg-social-friend" selected={f.steamId === snapshot.selectedId} disabled={f.blocked} onAction={() => enter(f.steamId)}>
+                            {hero.length>0&&<img key={hero.join('\n')} className="gg-social-friend-art" src={hero[0]} alt="" aria-hidden={true} loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={event=>advanceFriendHero(event.currentTarget,hero)} />}
                             <Avatar friend={f} /><span className="gg-social-identity"><strong>{f.name || 'Steam friend'}</strong><small>{f.blocked ? 'Blocked' : f.sub}</small></span>
                         </MenuAction>
-                    </div>)}
+                    </div>;})}
                     {!snapshot.friends.length && <p className="gg-social-empty">{statusText}</p>}
                 </Focusable>
             </div>

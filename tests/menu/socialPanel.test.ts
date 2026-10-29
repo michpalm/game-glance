@@ -174,6 +174,21 @@ describe('Social panel layout (direction A)', () => {
         expect(strings(tree(heading))).toBe('Social | 1 in game · 1 online');
         expect(strings(tree(v.nodes.find(n => n.props.className === 'gg-social-list-heading')!))).toBe('Friends');
     });
+    it('decorates only in-game friend rows with non-interactive art, retaining text and entry behavior', () => {
+        const v = view();
+        const ingame = v.action(`social:friend:${id}`)!;
+        const art = tree(ingame).find(n => n.props.className === 'gg-social-friend-art');
+        expect(art).toBeDefined();
+        expect(art!.props['aria-hidden']).toBe(true);
+        expect(art!.props.src).toContain('/1057090/library_hero.jpg');
+        expect(art!.props.loading).toBe('lazy');
+        expect(art!.props.alt).toBe('');
+        for (const other of v.nodes.filter(n => n.props.id?.startsWith('social:friend:') && n.props.id !== ingame.props.id)) {
+            expect(tree(other).some(n => n.props.className === 'gg-social-friend-art')).toBe(false);
+        }
+        expect(strings(tree(ingame))).toContain('Ori and the Will of the Wisps');
+        ingame.props.onAction(); expect(v.enter).toHaveBeenCalledWith(id);
+    });
     it('previews the last messages read-only and enters on Write a message', () => {
         const v = view({ preview: { id, state: 'ready', messages: [{ id: 'p1', text: 'Example hello', timestamp: 1, own: false, state: 'received' }] } });
         expect(strings(v.nodes)).toContain('Example hello');

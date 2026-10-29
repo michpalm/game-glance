@@ -16,6 +16,8 @@ export const socialStyles = `
 .gg-social-friend-list::-webkit-scrollbar,.gg-social-timeline::-webkit-scrollbar{display:none}
 .gg-menu-native-host .gg-menu .gg-social button.gg-social-friend.DialogButton{position:relative;display:flex;justify-content:flex-start;width:100%;gap:8px;min-height:64px;scroll-margin-block:20px;padding:12px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
 .gg-menu-native-host .gg-menu .gg-social button.gg-social-friend.DialogButton[aria-pressed=true]{${selectedSlice()}}
+.gg-social-friend-art{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);object-fit:cover;object-position:center;border-radius:calc(var(--gg-r-card) - 2px);pointer-events:none;mask-image:linear-gradient(to right,rgba(0,0,0,.04),rgba(0,0,0,.6))}
+.gg-social-friend>.gg-social-avatar,.gg-social-friend>.gg-social-identity{position:relative}
 .gg-social-avatar{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:4px;border:2px solid;overflow:hidden;flex:none;background:var(--gg-glass)}
 .gg-social-avatar img{width:100%;height:100%;object-fit:cover}.gg-social-avatar svg{width:20px;height:20px}
 .gg-social-identity{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}.gg-social-identity strong{font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
