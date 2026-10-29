@@ -1,6 +1,6 @@
 # Home Search preview and complete header replacement
 
-Status: proposed written amendment, awaiting user review. Follows the approved Floating pills mockup and the user's clarified Search reveal/keyboard behaviour. Supersedes the footer/status-only header and Search exclusions in the earlier Expanded Home controls spec for this next phase. Search queries and results remain deferred.
+Status: approved by the user (“yes, continue”); implementation plan prepared for review. Follows the approved Floating pills mockup and the user's clarified Search reveal/keyboard behaviour. Supersedes the footer/status-only header and Search exclusions in the earlier Expanded Home controls spec for this next phase. Search queries and results remain deferred.
 
 ## User intent
 
