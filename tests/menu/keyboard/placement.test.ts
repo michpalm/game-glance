@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,type Rect} from '../../../src/menu/keyboard/placement';
+import {SPOTS,spotPosition,settle,loadPosition,savePosition,dragPosition,underKeyboard,markUnderKeyboard,type Rect} from '../../../src/menu/keyboard/placement';
 import {memoryKv} from '../../../src/data/kv';
 
 const view:Rect={x:0,y:0,width:829,height:467};
@@ -88,5 +88,27 @@ describe('remembered position',()=>{
     it('loads null when kv throws',async()=>{
         const kv={...memoryKv(),get:async()=>{throw new Error('x');}};
         expect(await loadPosition(kv)).toBeNull();
+    });
+});
+
+describe('what the keyboard covers',()=>{
+    const kb:Rect={x:100,y:100,width:50,height:50};
+    const at=(x:number,y:number,width=20,height=20):Rect=>({x,y,width,height});
+    it('picks the candidates whose rect overlaps the keyboard',()=>{
+        const a={el:'a',rect:at(140,140)},b={el:'b',rect:at(0,0)},c={el:'c',rect:at(90,90,20,20)};
+        expect(underKeyboard(kb,[a,b,c])).toEqual(['a','c']);
+    });
+    it('treats touching edges as no overlap, and none as empty',()=>{
+        expect(underKeyboard(kb,[{el:'r',rect:at(150,100)},{el:'l',rect:at(80,100)},{el:'t',rect:at(100,80)},{el:'d',rect:at(100,150)}])).toEqual([]);
+        expect(underKeyboard(kb,[])).toEqual([]);
+    });
+    const fake=(r:Rect)=>{const set=new Set<string>();return {set,getBoundingClientRect:()=>r,classList:{toggle:(c:string,on:boolean)=>{on?set.add(c):set.delete(c);},remove:(c:string)=>{set.delete(c);}}};};
+    it('marks only the covered columns and the cleanup clears them',()=>{
+        const under=fake(at(120,120)),away=fake(at(0,0));
+        const root={querySelectorAll:()=>[under,away]};
+        const clear=markUnderKeyboard(root as never,fake(kb) as never);
+        expect([...under.set]).toEqual(['gg-keyboard-under']); expect([...away.set]).toEqual([]);
+        clear();
+        expect([...under.set]).toEqual([]);
     });
 });

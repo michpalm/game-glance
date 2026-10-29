@@ -63,3 +63,19 @@ export async function loadPosition(kv:KvBackend):Promise<KeyboardPosition|null> 
 export async function savePosition(kv:KvBackend,value:KeyboardPosition):Promise<void> {
     try{await kv.set(KEY,value);}catch{/* not remembered */}
 }
+
+/** The candidates whose rectangle overlaps the keyboard's (touching edges do not count). */
+export const underKeyboard=<T,>(keyboard:Rect,candidates:{el:T;rect:Rect}[]):T[]=>
+    candidates.filter(({rect:r})=>r.x<keyboard.x+keyboard.width&&r.x+r.width>keyboard.x&&r.y<keyboard.y+keyboard.height&&r.y+r.height>keyboard.y).map(c=>c.el);
+
+/** Social columns the keyboard can cover; the menu's shader frost cannot blur them, so CSS blurs them instead. */
+export const UNDER_SELECTOR='.gg-social-friend-list, .gg-social-timeline';
+export const UNDER_CLASS='gg-keyboard-under';
+
+/** Marks the columns under the panel with the blur class; the returned function clears them all. */
+export const markUnderKeyboard=(root:ParentNode,panel:Element):(()=>void)=>{
+    const els=[...root.querySelectorAll<HTMLElement>(UNDER_SELECTOR)];
+    const hit=underKeyboard(panel.getBoundingClientRect(),els.map(el=>({el,rect:el.getBoundingClientRect()})));
+    for(const el of els)el.classList.toggle(UNDER_CLASS,hit.includes(el));
+    return ()=>{for(const el of els)el.classList.remove(UNDER_CLASS);};
+};
