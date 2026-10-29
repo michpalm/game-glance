@@ -1,7 +1,8 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs } from '../../src/menu/navigation';
+import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
         let state=reduceMenu(defaultMenuState(),{type:'enable',value:true});state=reduceMenu(state,{type:'open',entry:'home'});
@@ -63,5 +64,67 @@ describe('outside menu dismissal', () => {
         const { close, active, stop, click } = setup();
         active.mockReturnValue(false);
         expect(click('#outside').defaultPrevented).toBe(false); expect(close).not.toHaveBeenCalled(); stop();
+    });
+});
+
+describe('menu keyboard session boundaries', () => {
+    /** linkedom has no window in the event path, so a stand-in window runs its capture listeners first, as a browser does. */
+    function setup() {
+        const { document, window } = parseHTML('<html><body><div id="menu"><div id="panel"><input id="field"></div><button id="control"></button></div><div id="outside"></div></body></html>');
+        const el = (id: string) => document.querySelector(id)! as unknown as HTMLElement;
+        const listeners = new Set<(event: MouseEvent) => void>();
+        const view = {
+            addEventListener: (_type: string, fn: (event: MouseEvent) => void) => { listeners.add(fn); },
+            removeEventListener: (_type: string, fn: (event: MouseEvent) => void) => { listeners.delete(fn); },
+        } as unknown as Window;
+        const click = (id: string) => {
+            const event = new window.Event('click', { bubbles: true, cancelable: true });
+            let stopped = false;
+            const stop = event.stopImmediatePropagation.bind(event);
+            event.stopImmediatePropagation = () => { stopped = true; stop(); };
+            Object.defineProperty(event, 'target', { value: el(id), configurable: true });
+            for (const fn of [...listeners]) { fn(event as unknown as MouseEvent); if (stopped) return event; }
+            el(id).dispatchEvent(event);
+            return event;
+        };
+        return { window: view, el, click };
+    }
+    it('the first outside tap closes only the keyboard; the second closes the menu', () => {
+        const { window, el, click } = setup();
+        const closeMenu = vi.fn(), session = createKeyboardSession();
+        installOutsideMenuClick(el('#menu'), closeMenu, () => true);
+        session.open();
+        let stop = () => {};
+        const close = () => { session.close(); stop(); };
+        stop = installKeyboardOutsideTap(window, () => [el('#panel')], close);
+        expect(click('#field').defaultPrevented).toBe(false);
+        expect(session.get().open).toBe(true);
+        expect(click('#outside').defaultPrevented).toBe(true);
+        expect(session.get().open).toBe(false); expect(closeMenu).not.toHaveBeenCalled();
+        click('#outside'); expect(closeMenu).toHaveBeenCalledTimes(1);
+    });
+    it('stops listening once removed', () => {
+        const { window, el, click } = setup(), close = vi.fn();
+        const stop = installKeyboardOutsideTap(window, () => [el('#panel')], close);
+        stop(); stop(); click('#outside'); expect(close).not.toHaveBeenCalled();
+    });
+    it('B closes an open keyboard and is consumed; otherwise it is left alone', () => {
+        const session = createKeyboardSession();
+        expect(keyboardTakesCancel({ button: 2 }, true, session)).toBe(false);
+        session.open();
+        expect(keyboardTakesCancel({ button: 4 }, true, session)).toBe(false);
+        expect(keyboardTakesCancel({ button: 2 }, false, session)).toBe(false);
+        expect(session.get().open).toBe(true);
+        expect(keyboardTakesCancel({ button: 2 }, true, session)).toBe(true);
+        expect(session.get().open).toBe(false);
+    });
+    it('the keyboard belongs only to the social chat view', () => {
+        let state = reduceMenu(defaultMenuState(), { type: 'enable', value: true }); state = reduceMenu(state, { type: 'open', entry: 'home' });
+        state = reduceMenu(state, { type: 'select', section: 'social' });
+        expect(keyboardBelongs(state)).toBe(false);
+        state = reduceMenu(state, { type: 'push', viewId: 'social-chat' });
+        expect(keyboardBelongs(state)).toBe(true);
+        expect(keyboardBelongs(reduceMenu(state, { type: 'back' }))).toBe(false);
+        expect(keyboardBelongs(reduceMenu(state, { type: 'select', section: 'more' }))).toBe(false);
     });
 });

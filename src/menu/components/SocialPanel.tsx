@@ -1,6 +1,7 @@
 import { Focusable, TextField } from '@decky/ui';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject, type UIEventHandler } from 'react';
 import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
+import type { KeyboardSession } from '../keyboard/session';
 import { FRIEND_COLOURS, friendRing } from '../../home/friends';
 import { takeSteamFocus } from '../../home/steamFocus';
 import type { NativeRequest } from '../steam/runtime';
@@ -103,7 +104,7 @@ export function SocialContents({ snapshot, social, entered, enter, leave, handof
     </div>;
 }
 
-export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void }) {
+export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession }) {
     const { social, entered } = props;
     const snapshot = useSyncExternalStore(social.subscribe, social.get);
     const timeline = useRef<HTMLDivElement>(null);

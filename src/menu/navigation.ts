@@ -1,4 +1,5 @@
 import type { MenuEvent, MenuState } from './model';
+import type { KeyboardSession } from './keyboard/session';
 
 export interface NativeInputOwner {
     GetShowingGlobalModal?(): boolean;
@@ -50,4 +51,28 @@ export function installOutsideMenuClick(root: HTMLElement, close: () => void, in
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
+}
+
+/** The first B only closes an open keyboard; the caller consumes the event when this returns true. */
+export function keyboardTakesCancel(detail: { button: number }, cancel: boolean, session: KeyboardSession): boolean {
+    if (detail.button !== 2 || !cancel || !session.get().open) return false;
+    session.close();
+    return true;
+}
+
+/** The keyboard lives only in the Social chat view. */
+export function keyboardBelongs(state: MenuState): boolean {
+    return state.section === 'social' && state.stack[state.stack.length - 1] === 'social-chat';
+}
+
+/** On the window so it runs before the menu's document-capture dismissal: the first outside tap only closes the keyboard. */
+export function installKeyboardOutsideTap(view: Window, inside: () => HTMLElement[], close: () => void): () => void {
+    const onClick = (event: MouseEvent) => {
+        const target = event.target as Node | null;
+        if (!target || inside().some(element => element.contains(target))) return;
+        event.preventDefault(); event.stopImmediatePropagation();
+        close();
+    };
+    view.addEventListener('click', onClick, true);
+    return () => view.removeEventListener('click', onClick, true);
 }

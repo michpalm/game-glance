@@ -1,5 +1,5 @@
 import { Focusable, type GamepadEvent } from '@decky/ui';
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuArrowUpRight, LuBell } from 'react-icons/lu';
 import { pickMenuAccent, resolveMenuAccent } from '../accent';
 import { shownAccent } from '../../home/shownAccent';
@@ -8,7 +8,8 @@ import { legibleAccent } from '../../home/accent';
 import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, leaveSocialConversation } from '../navigation';
+import { createKeyboardSession } from '../keyboard/session';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardBelongs, keyboardTakesCancel, leaveSocialConversation } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -90,9 +91,13 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         if (!element || !active) return;
         return installOutsideMenuClick(element, close, inputActive);
     }, [active, close, inputActive]);
+    const keyboard = useMemo(createKeyboardSession, []);
+    const keyboardHome = keyboardBelongs(state);
+    useEffect(() => { if (!keyboardHome) keyboard.close(); }, [keyboard, keyboardHome]);
     if (!active) return null;
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (event.detail.button === 2 && !cancel) return;
+        if (keyboardTakesCancel(event.detail, cancel, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         const next: MenuEvent[] = [];
         if (!handleMenuButton(event.detail, state, value => next.push(value), inputActive())) return;
         event.preventDefault(); event.stopPropagation();
@@ -111,7 +116,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
-    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'}
+    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
