@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardBelongs, keyboardTakesCancel, leaveSocialConversation } from '../navigation';
+import { findMenuFocus, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, leaveSocialConversation } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -92,8 +92,9 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         return installOutsideMenuClick(element, close, inputActive);
     }, [active, close, inputActive]);
     const keyboard = useMemo(createKeyboardSession, []);
-    const keyboardHome = keyboardBelongs(state);
-    useEffect(() => { if (!keyboardHome) keyboard.close(); }, [keyboard, keyboardHome]);
+    const enteredId = useSyncExternalStore(social?.subscribe ?? (() => () => {}), () => social?.get().enteredId ?? null);
+    const keyboardFriend = keyboardHome(state, active, enteredId);
+    useEffect(() => { keyboard.close(); }, [keyboard, keyboardFriend]);
     if (!active) return null;
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (event.detail.button === 2 && !cancel) return;

@@ -76,3 +76,8 @@ export function installKeyboardOutsideTap(view: Window, inside: () => HTMLElemen
     view.addEventListener('click', onClick, true);
     return () => view.removeEventListener('click', onClick, true);
 }
+
+/** The friend whose chat may hold the keyboard; a change of value (or null) means the keyboard must close. */
+export function keyboardHome(state: MenuState, active: boolean, enteredId: string | null): string | null {
+    return active && enteredId && keyboardBelongs(state) ? enteredId : null;
+}

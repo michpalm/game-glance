@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome } from '../../src/menu/navigation';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
@@ -126,5 +126,15 @@ describe('menu keyboard session boundaries', () => {
         expect(keyboardBelongs(state)).toBe(true);
         expect(keyboardBelongs(reduceMenu(state, { type: 'back' }))).toBe(false);
         expect(keyboardBelongs(reduceMenu(state, { type: 'select', section: 'more' }))).toBe(false);
+    });
+    it('names the friend the keyboard belongs to, or none when it may not exist', () => {
+        let state = reduceMenu(defaultMenuState(), { type: 'enable', value: true }); state = reduceMenu(state, { type: 'open', entry: 'home' });
+        state = reduceMenu(state, { type: 'select', section: 'social' });
+        expect(keyboardHome(state, true, 'a')).toBe(null);
+        state = reduceMenu(state, { type: 'push', viewId: 'social-chat' });
+        expect(keyboardHome(state, false, 'a')).toBe(null);
+        expect(keyboardHome(state, true, null)).toBe(null);
+        expect(keyboardHome(state, true, 'a')).toBe('a');
+        expect(keyboardHome(state, true, 'b')).not.toBe(keyboardHome(state, true, 'a'));
     });
 });
