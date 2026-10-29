@@ -165,4 +165,4 @@
 
 ## Execution status
 
-Tasks 1–6 implemented and checked locally under Native execution. Task 7 remains pending installation/restart approval. The inherited Compact drag installation blocker was subsequently fixed and independently reviewed. Validation report: `docs/superpowers/reports/2026-10-29-social-radial-keyboard-local-validation.md`.
+Tasks 1–6 implemented and checked locally under Native execution. Task 7 installation/restart was subsequently approved and completed on the Ally; post-boot file checks, Decky service and Game Glance load passed. Interactive controller/shader acceptance checks remain pending. The inherited Compact drag installation blocker was fixed and independently reviewed. Validation report: `docs/superpowers/reports/2026-10-29-social-radial-keyboard-local-validation.md`.

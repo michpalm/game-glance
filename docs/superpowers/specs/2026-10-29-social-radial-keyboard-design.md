@@ -1,6 +1,6 @@
 # Social radial keyboard — design spec and controller investigation
 
-2026-10-29. Status: written spec and Native implementation plan approved by Michael; local implementation and automated/browser checks complete. Ally acceptance pending; no install, push, PR, or release. See `docs/superpowers/reports/2026-10-29-social-radial-keyboard-local-validation.md`.
+2026-10-29. Status: written spec and Native implementation plan approved by Michael; local implementation and automated/browser checks complete. Installed on the Ally with explicit approval and a verified full restart; interactive acceptance pending. No push, PR, or release. See `docs/superpowers/reports/2026-10-29-social-radial-keyboard-local-validation.md`.
 
 ## Approved direction
 

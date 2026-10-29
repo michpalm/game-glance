@@ -1,6 +1,6 @@
 # Social radial keyboard — local validation
 
-2026-10-29. Native execution. Implementation is local on `codex/social-chat`; no push, PR, release, installation or device restart was performed.
+2026-10-29. Native execution. Implementation remains local on `codex/social-chat`. Michael authorised the paired build installation and full Ally restart; these are now completed and verified. No push, PR or release was performed.
 
 ## Implemented
 
@@ -45,10 +45,18 @@ Michael subsequently authorised resuming the inherited Compact handoff fixes. Th
 
 Four new failing regressions were reproduced before the fixes. The focused suite passes 45 tests and the full frontend suite passes 2,292. Typecheck/build/diff checks pass. A separate scoped review approved all three handoff findings for device validation with no actionable correctness findings. React wiring was inspected rather than mounted; timer/context-error recovery and observer callbacks are covered, but not every browser/CEF error path. Device drag smoothness remains unverified. The inherited local installation blocker is resolved.
 
-## Proposed Ally trial after approval
+## Authorised Ally installation and remaining trial
 
 1. Confirm the checked revision and bundle checksum above; the inherited Compact drop blocker has been fixed and reviewed locally.
 2. With explicit installation/restart approval, confirm the in-game menu is closed. Back up the installed frontend and entire `py_modules/gameglance/frost/` directory under a timestamped home-directory backup.
 3. Transfer and verify the checked frontend and paired frost backend, then perform the full device restart needed to load Python changes. No sudo or effect-atom injection.
 4. Select Radial in Game Glance's menu preferences. Check the plan's Task 7 matrix with Michael. Do not send a test message to anyone without explicit authorization.
 5. Restore the matched frontend/backend backup and restart if the trial requires rollback. Record actual device findings before marking acceptance complete.
+
+## Installation result
+
+Installed implementation revision `7d0fe87` with the in-game menu confirmed closed immediately beforehand. The frontend and complete frost backend (eight files) were checked against the SHA-256 manifest before and after reboot. Backup: `/home/deck/gg-backup-radial-20261029-fedgw2kb` (original frontend, frost directory and installed manifest).
+
+SSH `systemctl reboot` was refused because interactive authentication was unavailable. Steam's source-verified normal `SteamClient.System.RestartPC()` action requested the authorised full restart instead. A changed kernel boot ID confirms that this was a full system restart. No sudo or forced reboot was used. After boot, Decky's `plugin_loader.service` is active, Game Glance is loaded in Steam, and the installed backend exposes all seven expected regions.
+
+The saved keyboard choice remains at its existing/default value. To try the feature, choose **Social keyboard → Radial** in Game Glance settings and open the Social compose field. No messages were sent. Controller responsiveness, both sticks/triggers, frost appearance/performance and the remaining Task 7 acceptance matrix still need actual user/device testing.
