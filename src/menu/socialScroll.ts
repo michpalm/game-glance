@@ -17,11 +17,12 @@ export function restoreChatAnchor(container: HTMLElement, anchor: ChatScrollAnch
 
 /** Space for the 12px edge fade plus the menu's 4px outside focus outline. Units are unscaled list CSS pixels. */
 export const FRIEND_FOCUS_INSET=20;
-export function revealFriendRow(list:HTMLElement,row:HTMLElement):void {
+export const revealFriendRow=(list:HTMLElement,row:HTMLElement):void=>revealWithin(list,row,FRIEND_FOCUS_INSET);
+function revealWithin(list:HTMLElement,row:HTMLElement,unscaledInset:number):void {
     const bounds=list.getBoundingClientRect(),target=row.getBoundingClientRect();
     const scale=bounds.height/list.clientHeight;
     if(!Number.isFinite(scale)||scale<=0)return;
-    const inset=FRIEND_FOCUS_INSET*scale;
+    const inset=unscaledInset*scale;
     const delta=target.top<bounds.top+inset?target.top-bounds.top-inset:target.bottom>bounds.bottom-inset?target.bottom-bounds.bottom+inset:0;
     if(delta)list.scrollTop=Math.max(0,Math.min(list.scrollHeight-list.clientHeight,list.scrollTop+delta/scale));
 }
@@ -54,4 +55,28 @@ export function installFriendScroll(list:HTMLElement):()=>void {
     const mutation=Mutation?new Mutation(records=>{if(records.some(record=>record.type==='childList'||record.type==='characterData'))edges();}):undefined;mutation?.observe(list,{childList:true,subtree:true,characterData:true});
     edges();
     return ()=>{stopped=true;if(frame!==undefined)view?.cancelAnimationFrame(frame);resize?.disconnect();mutation?.disconnect();list.removeEventListener('scroll',edges);list.removeEventListener('focusin',focus);delete list.dataset.scrollTop;delete list.dataset.scrollBottom;};
+}
+
+/** The menu panel's 24px padding plus the 4px focus outline. */
+export const NOTIFICATION_FOCUS_INSET=28;
+/** Steam's focus scroll leaves the heading hidden (scrollTop 46 on the Ally); after it settles, the heading button and
+ * first row take the panel to the very top and other rows keep clear of its edges. */
+export function installNotificationScroll(panel:HTMLElement):()=>void {
+    const view=panel.ownerDocument.defaultView;
+    let stopped=false,frame:number|undefined,focused:HTMLElement|null=null;
+    const correct=()=>{
+        if(stopped||!focused?.isConnected)return;
+        const first=panel.querySelector('.gg-notification');
+        if(focused.closest('.gg-menu-heading')||focused===first)panel.scrollTop=0;
+        else revealWithin(panel,focused,NOTIFICATION_FOCUS_INSET);
+    };
+    const focus=(event:Event)=>{
+        const target=(event.target as Element|null)?.closest?.<HTMLElement>('button, .gg-notification');
+        if(!target||!panel.contains(target))return;
+        focused=target;
+        if(frame!==undefined||!view?.requestAnimationFrame)return;
+        frame=view.requestAnimationFrame(()=>{if(!stopped)frame=view.requestAnimationFrame(()=>{frame=undefined;correct();});});
+    };
+    panel.addEventListener('focusin',focus);
+    return ()=>{stopped=true;if(frame!==undefined)view?.cancelAnimationFrame(frame);panel.removeEventListener('focusin',focus);};
 }
