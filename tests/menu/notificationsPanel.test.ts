@@ -81,3 +81,10 @@ it('titles friend rows with the friend’s name', () => {
     const h = harness([{ id: '5', kind: 'friend', appId: null, count: 1, time: 0, unread: true, steamId: '76561198000000001' }], row => row.unread, () => 'Example Friend');
     expect(strings(h.nodes)).toContain('Example Friend');
 });
+
+it('reads friend names from the current Social snapshot', async () => {
+    const { friendNameFrom } = await import('../../src/menu/components/NotificationsPanel');
+    const named = friendNameFrom({ friends: [{ steamId: '76561198000000001', name: 'Example Friend' }] });
+    expect(named('76561198000000001')).toBe('Example Friend'); expect(named('76561198000000002')).toBeUndefined();
+    expect(friendNameFrom(null)('76561198000000001')).toBeUndefined();
+});

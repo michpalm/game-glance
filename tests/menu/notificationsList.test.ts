@@ -15,13 +15,13 @@ describe('Steam notification tray', () => {
     it('reads wishlist sales in Steam’s order, with their game, count, time and unread state', () => {
         const rows = readTray([sale(2, 3339880, 1, at(27, 20, 42), true), sale(1, 2129530, 20, at(26, 18, 0))]);
         expect(rows).toEqual([
-            { id: '2', kind: 'wishlist', appId: 3339880, count: 1, time: at(27, 20, 42), unread: true },
-            { id: '1', kind: 'wishlist', appId: 2129530, count: 20, time: at(26, 18, 0), unread: false },
+            { id: '2', kind: 'wishlist', appId: 3339880, count: 1, time: at(27, 20, 42), unread: true, readKey: `28:${at(27, 20, 42)}:2` },
+            { id: '1', kind: 'wishlist', appId: 2129530, count: 20, time: at(26, 18, 0), unread: false, readKey: `28:${at(26, 18, 0)}:1` },
         ]);
     });
     it('keeps notifications it does not recognise, so nothing is hidden', () => {
         const other = { eType: 3, notifications: [{ notificationID: 9, rtCreated: at(27, 9, 0), eType: 3, data: { type: 4, item: { body_data: '{"steamid":"x"}' } } }] };
-        expect(readTray([other, { eType: 1, notifications: [] }, null, 'junk'])).toEqual([{ id: '9', kind: 'other', appId: null, count: 1, time: at(27, 9, 0), unread: false }]);
+        expect(readTray([other, { eType: 1, notifications: [] }, null, 'junk'])).toEqual([{ id: '9', kind: 'other', appId: null, count: 1, time: at(27, 9, 0), unread: true, readKey: `3:${at(27, 9, 0)}:9` }]);
         expect(readTray(undefined)).toEqual([]);
     });
     it('reads native download protobuf getters with their receiver and resolves the game name', () => {
@@ -122,7 +122,7 @@ describe('notification kinds and read state', () => {
         data: { type, rollup_key: 'k', item: { notification_id, notification_type: type, body_data: JSON.stringify(body), read, viewed: false, hidden: false }, rgunread: read ? [] : [notification_id], rgread: read ? [notification_id] : [] } }] });
     it('reads account notifications with their store id, type and body, and their read state from the account', () => {
         const [row, done] = readTray([account(4, '900001', 12, { title: 'x' }, false), account(5, '900002', 12, {}, true)]);
-        expect(row).toEqual({ id: '4', kind: 'account', appId: null, count: 1, time: 5, unread: true, notificationId: '900001', accountType: 12, accountBody: { title: 'x' } });
+        expect(row).toEqual({ id: '4', kind: 'account', appId: null, count: 1, time: 5, unread: true, readKey: '28:900001:4', notificationId: '900001', accountType: 12, accountBody: { title: 'x' } });
         expect(done).toMatchObject({ kind: 'account', unread: false });
     });
     it('keeps the account id on wishlist sales so they can be marked read', () => {
@@ -135,7 +135,7 @@ describe('notification kinds and read state', () => {
         const rows = readTray([{ eType: 4, notifications: [{ notificationID: 11, eType: 4, bNewIndicator: true, data: friend }] },
             { eType: 7, notifications: [{ notificationID: 12, eType: 7, bNewIndicator: false, data: invite }] },
             { eType: 9, notifications: [{ notificationID: 13, eType: 9, data: { steamid: () => 'nope' } }] }]);
-        expect(rows[0]).toEqual({ id: '11', kind: 'friend', appId: null, count: 1, time: 0, unread: true, steamId: '76561198000000001' });
+        expect(rows[0]).toEqual({ id: '11', kind: 'friend', appId: null, count: 1, time: 0, unread: true, readKey: '4::11', steamId: '76561198000000001' });
         expect(rows[1]).toMatchObject({ kind: 'friend', steamId: '76561198000000002', inviteUrl: 'steam://joinlobby/1/2/76561198000000002', unread: false });
         expect(rows[2].kind).toBe('other');
     });
@@ -146,12 +146,14 @@ describe('notification kinds and read state', () => {
     });
     it('counts a local notification unread only while Steam marks it new and it is not remembered', async () => {
         const { rowUnread } = await import('../../src/menu/notificationsList');
-        const download = { id: '7', kind: 'download', appId: 1, count: 1, time: 0, unread: true } as const;
-        const sale = { id: '8', kind: 'wishlist', appId: 1, count: 1, time: 0, unread: true, notificationId: '9' } as const;
+        const download = { id: '7', kind: 'download', appId: 1, count: 1, time: 0, unread: true, readKey: '1:5:7' } as const;
+        const sale = { id: '8', kind: 'wishlist', appId: 1, count: 1, time: 0, unread: true, notificationId: '9', readKey: '28:9:8' } as const;
         expect(rowUnread(download, new Set())).toBe(true);
-        expect(rowUnread(download, new Set(['7']))).toBe(false);
+        expect(rowUnread(download, new Set(['1:5:7']))).toBe(false);
         expect(rowUnread({ ...download, unread: false }, new Set())).toBe(false);
-        expect(rowUnread(sale, new Set(['8']))).toBe(true);
+        // Account rows fall back to our memory when Steam's read state does not follow MarkItemRead.
+        expect(rowUnread(sale, new Set(['28:9:8']))).toBe(false);
+        expect(rowUnread({ ...download, readKey: undefined }, new Set(['7']))).toBe(true);
     });
 });
 
@@ -168,6 +170,7 @@ describe('which notifications show', () => {
     it('remembers local read ids newest last, without repeats, capped at 200', async () => {
         const { rememberIds } = await import('../../src/menu/notificationsList');
         expect(rememberIds(['a', 'b'], ['b', 'c'])).toEqual(['a', 'b', 'c']);
+        expect(rememberIds(['a', 'b', 'c'], ['a'])).toEqual(['b', 'c', 'a']);
         const many = Array.from({ length: 200 }, (_, i) => String(i));
         const next = rememberIds(many, ['new']);
         expect(next).toHaveLength(200); expect(next[0]).toBe('1'); expect(next[199]).toBe('new');
@@ -214,5 +217,18 @@ describe('friend rows', () => {
         expect(rowText({ ...row, inviteUrl: 'steam://joinlobby/1/2/3' }, null, now, names)).toMatchObject({ title: 'Example Friend', body: 'Invited you to play' });
         expect(rowText({ ...row, steamId: '76561198000000009' }, null, now, names)).toMatchObject({ title: 'Friend notification' });
         expect(rowText({ ...row, inviteUrl: 'steam://x' }, null, now)).toMatchObject({ title: 'Game invite', body: 'Invited you to play' });
+    });
+});
+
+describe('stable read keys', () => {
+    it('keys local rows by type, creation time and id, account rows by their notification id, and never a fallback id', () => {
+        const rows = readTray([{ eType: 1, notifications: [{ notificationID: 7, eType: 1, rtCreated: 123, bNewIndicator: true, data: { appid: () => 42 } }] },
+            { eType: 31, notifications: [{ eType: 31, data: { title: 'no id' } }] }], () => 'g');
+        expect(rows[0].readKey).toBe('1:123:7'); expect(rows[1].readKey).toBeUndefined();
+    });
+    it('counts a row unread when Steam’s read fields are missing or unreadable', () => {
+        const [account, local] = readTray([{ eType: 28, notifications: [{ notificationID: 4, eType: 28, data: { item: { notification_id: '9', notification_type: 12 } } }] },
+            { eType: 3, notifications: [{ notificationID: 5, eType: 3, get bNewIndicator() { throw Error('gone'); }, data: {} }] }]);
+        expect(account.unread).toBe(true); expect(local).toMatchObject({ id: '5', unread: true });
     });
 });

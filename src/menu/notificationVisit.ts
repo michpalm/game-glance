@@ -32,16 +32,21 @@ export function createNotificationVisit(deps: () => VisitDeps) {
         mark([row.id]);
         const { reads, actions } = deps();
         try {
-            if (isLocalRow(row)) void reads?.remember([row.id]);
-            else actions?.markRead(row.notificationId!);
+            if (row.readKey) void reads?.remember([row.readKey]);
+            if (!isLocalRow(row)) actions?.markRead(row.notificationId!);
         } catch (error) { console.warn('[Game Glance] notification read-mark failed', error); }
     }
     return {
         subscribe(listener: Stop): Stop { listeners.add(listener); return () => { listeners.delete(listener); }; },
         version: () => version,
         visible(rows: TrayRow[]): TrayRow[] {
-            if (!hidden && (deps().reads?.ready() ?? true)) hidden = entryHidden(rows, remembered());
-            return visibleRows(rows, hidden ?? entryHidden(rows, remembered()));
+            // Nothing shows until the remembered keys load: a row would otherwise flash in and vanish.
+            if (!hidden) {
+                if (!(deps().reads?.ready() ?? true)) return [];
+                const read = entryHidden(rows, remembered());
+                hidden = new Set([...read].filter(id => !marked.has(id)));
+            }
+            return visibleRows(rows, hidden);
         },
         unread,
         anyUnread: (rows: TrayRow[]) => rows.some(unread),
@@ -60,7 +65,7 @@ export function createNotificationVisit(deps: () => VisitDeps) {
             if (!rows.some(unread)) return;
             const { reads, actions } = deps();
             try { actions?.markAllRead(); } catch (error) { console.warn('[Game Glance] mark all read failed', error); }
-            void reads?.remember(rows.filter(isLocalRow).map(row => row.id));
+            void reads?.remember(rows.flatMap(row => row.readKey ? [row.readKey] : []));
             mark(rows.map(row => row.id));
         },
         seeAll: () => go(STEAM_NOTIFICATIONS),

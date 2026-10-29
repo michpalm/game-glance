@@ -4,11 +4,14 @@ import type { NativeRequest } from './steam/runtime';
 /** Steam's tray rows with plain metadata and optional supplied plugin presentation. `notificationId` marks an account
  * notification (read state kept by Steam); rows without one are local and their read state is ours. */
 export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
-    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown; onClickTarget?: object }
+    notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; onClick?: () => unknown; onClickTarget?: object;
+    /** Stable key for our read memory; absent when Steam gave the row no id. */
+    readKey?: string }
 export interface SaleInfo { name: string; price?: string }
 
 type AnyRecord = Record<string, unknown> | undefined | null;
 const record = (value: unknown): AnyRecord => (value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null);
+const safe = <T,>(read: () => T): T | undefined => { try { return read(); } catch { return undefined; } };
 const parse = (text: unknown): AnyRecord => { try { return typeof text === 'string' ? record(JSON.parse(text)) : null; } catch { return null; } };
 
 function notificationContent(value:unknown,depth=0):ReactNode|undefined {
@@ -45,15 +48,19 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
         const rawId = item?.notification_id;
         const notificationId = typeof rawId === 'string' && rawId ? rawId : typeof rawId === 'number' && Number.isFinite(rawId) ? rawId : undefined;
         // Account notifications are read through the account store; bNewIndicator only says Steam has not shown them yet.
-        const unread = notificationId === undefined ? first.bNewIndicator === true || (Array.isArray(data?.rgunread) && data!.rgunread.length > 0)
-            : Array.isArray(data?.rgunread) ? data!.rgunread.length > 0 : item?.read === false;
+        // Missing or unreadable read fields count as unread: our memory can still mark the row read, nothing is hidden by accident.
+        const rgunread = safe(() => data?.rgunread), isNew = safe(() => first.bNewIndicator);
+        const unread = notificationId === undefined ? isNew !== false || (Array.isArray(rgunread) && rgunread.length > 0)
+            : Array.isArray(rgunread) ? rgunread.length > 0 : safe(() => item?.read) !== true;
         // A wishlist sale carries the game and how many wishlist games are on sale (the shape Steam's
         // own tab renders as "Wishlist Sale"); classify by that shape, not by an enum number.
         const body = parse(item?.body_data);
         const appId = Number(body?.appid), count = Number(body?.count);
         const wishlist = Number.isInteger(appId) && appId > 0 && Number.isInteger(count) && count > 0 && Array.isArray(body?.appids);
-        const id=String(first.notificationID??first.nNotificationID??rows.length);
-        const base={id,appId:null,count:1,time:Number.isFinite(time)?time:0,unread};
+        const rawIdent=first.notificationID??first.nNotificationID;
+        const id=String(rawIdent??rows.length);
+        const readKey=rawIdent==null?{}:{readKey:`${type}:${notificationId??first.rtCreated??''}:${rawIdent}`};
+        const base={id,appId:null,count:1,time:Number.isFinite(time)?time:0,unread,...readKey};
         const account=notificationId===undefined?{}:{notificationId};
         const downloadId=type===1?appIdOf(nativeField(data,'appid')):null;
         if(wishlist)rows.push({...base,kind:'wishlist',appId,count,...account});
@@ -130,8 +137,8 @@ export function rowAction(row: TrayRow, link: AccountLink): { label?: string; ru
 }
 
 export const isLocalRow = (row: TrayRow) => row.notificationId === undefined;
-/** Local rows: unread while Steam marks them new and we have not remembered them read. */
-export const rowUnread = (row: TrayRow, remembered: ReadonlySet<string>) => row.unread && !(isLocalRow(row) && remembered.has(row.id));
+/** Unread while Steam says so and we have not remembered the row read (account rows too, in case Steam's tray lags). */
+export const rowUnread = (row: TrayRow, remembered: ReadonlySet<string>) => row.unread && !(row.readKey !== undefined && remembered.has(row.readKey));
 /** The page-entry snapshot: rows already read when the page opens stay out for this visit. */
 export const entryHidden = (rows: TrayRow[], remembered: ReadonlySet<string>): ReadonlySet<string> => new Set(rows.filter(row => !rowUnread(row, remembered)).map(row => row.id));
 export const visibleRows = (rows: TrayRow[], hiddenAtEntry: ReadonlySet<string>) => rows.filter(row => !hiddenAtEntry.has(row.id));

@@ -5,10 +5,10 @@ import { createNotificationReads } from '../../src/menu/notificationReads';
 import { createNotificationVisit } from '../../src/menu/notificationVisit';
 
 const base = { appId: null, count: 1, time: 0 };
-const download: TrayRow = { ...base, id: '1', kind: 'download', appId: 42, unread: true };
-const sale: TrayRow = { ...base, id: '2', kind: 'wishlist', appId: 5, unread: true, notificationId: '900002' };
-const oldSale: TrayRow = { ...base, id: '3', kind: 'wishlist', appId: 6, unread: false, notificationId: '900003' };
-const quiet: TrayRow = { ...base, id: 'plugin:4', kind: 'plugin', unread: true };
+const download: TrayRow = { ...base, id: '1', kind: 'download', appId: 42, unread: true, readKey: 'k1' };
+const sale: TrayRow = { ...base, id: '2', kind: 'wishlist', appId: 5, unread: true, notificationId: '900002', readKey: 'k2' };
+const oldSale: TrayRow = { ...base, id: '3', kind: 'wishlist', appId: 6, unread: false, notificationId: '900003', readKey: 'k3' };
+const quiet: TrayRow = { ...base, id: 'plugin:4', kind: 'plugin', unread: true, readKey: 'k4' };
 async function harness(remembered: string[] = []) {
     const kv = memoryKv(); await kv.set('menu:notifications-read', remembered);
     const reads = createNotificationReads(kv); await reads.load();
@@ -20,7 +20,7 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('a visit to the Notifications page', () => {
     it('leaves out what was read on entry, including remembered local rows, and keeps rows read during the visit', async () => {
-        const h = await harness(['1']);
+        const h = await harness(['k1']);
         expect(h.visit.visible([download, sale, oldSale]).map(r => r.id)).toEqual(['2']);
         h.visit.open(sale);
         expect(h.visit.visible([download, { ...sale, unread: false }, oldSale]).map(r => r.id)).toEqual(['2']);
@@ -31,12 +31,12 @@ describe('a visit to the Notifications page', () => {
         h.visit.open(sale); expect(h.actions.markRead).toHaveBeenCalledWith('900002');
         expect(h.deps.handoff).toHaveBeenLastCalledWith({ kind: 'store', target: 'app', appId: 5 });
         h.visit.open(download); await flush();
-        expect(h.reads.get().has('1')).toBe(true); expect(await h.kv.get('menu:notifications-read')).toEqual(['1']);
+        expect(h.reads.get().has('k1')).toBe(true); expect(await h.kv.get('menu:notifications-read')).toEqual(['k2', 'k1']);
         expect(h.deps.handoff).toHaveBeenLastCalledWith({ kind: 'app', appId: 42 });
     });
     it('only marks a plugin row without its own action', async () => {
         const h = await harness();
-        h.visit.open(quiet); expect(h.deps.handoff).not.toHaveBeenCalled(); expect(h.visit.unread(quiet)).toBe(false); expect(h.reads.get().has('plugin:4')).toBe(true);
+        h.visit.open(quiet); expect(h.deps.handoff).not.toHaveBeenCalled(); expect(h.visit.unread(quiet)).toBe(false); expect(h.reads.get().has('k4')).toBe(true);
     });
     it('closes the menu before calling a plugin’s own onClick, and falls back to Steam’s page when it throws', async () => {
         const h = await harness(), order: string[] = [];
@@ -67,7 +67,7 @@ describe('a visit to the Notifications page', () => {
         expect(h.visit.visible(rows)).toHaveLength(3); expect(h.visit.anyUnread(rows)).toBe(true);
         h.visit.markAll(rows); await flush();
         expect(h.actions.markAllRead).toHaveBeenCalledTimes(1);
-        expect([...h.reads.get()].sort()).toEqual(['1', 'plugin:4']);
+        expect([...h.reads.get()].sort()).toEqual(['k1', 'k2', 'k4']);
         expect(rows.some(row => h.visit.unread(row))).toBe(false); expect(h.visit.anyUnread(rows)).toBe(false);
         expect(listener).toHaveBeenCalled();
         expect(h.visit.visible(rows).map(r => r.id)).toEqual(['1', '2', 'plugin:4']);
@@ -78,8 +78,16 @@ describe('a visit to the Notifications page', () => {
         const reads = createNotificationReads({ get: () => new Promise(r => { resolve = r; }), set: async () => {} });
         const load = reads.load();
         const visit = createNotificationVisit(() => ({ reads, handoff: vi.fn(), close: vi.fn(), openChat: () => true }));
-        expect(visit.visible([download]).map(r => r.id)).toEqual(['1']);
-        resolve(['1']); await load;
-        expect(visit.visible([download])).toEqual([]);
+        expect(visit.visible([download, sale])).toEqual([]);
+        resolve(['k1']); await load;
+        expect(visit.visible([download, sale]).map(r => r.id)).toEqual(['2']);
+    });
+    it('never puts rows marked during the visit into the entry snapshot', async () => {
+        let resolve!: (v: unknown) => void;
+        const reads = createNotificationReads({ get: () => new Promise(r => { resolve = r; }), set: async () => {} });
+        const load = reads.load();
+        const visit = createNotificationVisit(() => ({ reads, handoff: vi.fn(), close: vi.fn(), openChat: () => true }));
+        visit.open(quiet); resolve([]); await load;
+        expect(visit.visible([quiet]).map(r => r.id)).toEqual(['plugin:4']);
     });
 });

@@ -44,6 +44,9 @@ export function NotificationsContents({ rows, sales, unread, action, open, markA
 }
 
 const NO_SUBSCRIBE = () => () => {};
+type FriendsSnapshot = { friends: { steamId: string; name: string }[] } | null;
+export const friendNameFrom = (snapshot: FriendsSnapshot) => (steamId: string) => snapshot?.friends.find(friend => friend.steamId === steamId)?.name;
+const NO_FRIENDS = () => null;
 const NOTHING: ReadonlySet<string> = new Set();
 const nothing = () => NOTHING;
 interface PanelProps extends Omit<VisitDeps, 'reads' | 'actions'> {
@@ -51,12 +54,14 @@ interface PanelProps extends Omit<VisitDeps, 'reads' | 'actions'> {
     reads?: NotificationReads;
     actions?: NotificationActions;
     handoff(request: NativeRequest): Promise<void> | void;
-    friendName?(steamId: string): string | undefined;
+    /** Our Social model: friend names follow it while the page is open. */
+    social?: { subscribe(listener: () => void): () => void; get(): NonNullable<FriendsSnapshot> };
 }
 /** One mount is one visit: rows read on entry stay out until the page is opened again. */
-export function NotificationsPanel({ list, reads, actions, handoff, close, openChat, failed, friendName }: PanelProps) {
+export function NotificationsPanel({ list, reads, actions, handoff, close, openChat, failed, social }: PanelProps) {
     const all = useSyncExternalStore(list.subscribe, list.get);
     useSyncExternalStore(reads?.subscribe ?? NO_SUBSCRIBE, reads?.get ?? nothing);
+    const friends = useSyncExternalStore(social?.subscribe ?? NO_SUBSCRIBE, social?.get ?? NO_FRIENDS);
     const deps = useRef<VisitDeps>({ reads, actions, handoff, close, openChat, failed });
     deps.current = { reads, actions, handoff, close, openChat, failed };
     const [visit] = useState(() => createNotificationVisit(() => deps.current));
@@ -77,5 +82,5 @@ export function NotificationsPanel({ list, reads, actions, handoff, close, openC
         }
         return () => { alive = false; };
     }, [all]);
-    return <NotificationsContents rows={rows} sales={sales} unread={visit.unread} action={visit.action} open={visit.open} markAll={() => visit.markAll(all)} seeAll={visit.seeAll} friendName={friendName} rootRef={root} />;
+    return <NotificationsContents rows={rows} sales={sales} unread={visit.unread} action={visit.action} open={visit.open} markAll={() => visit.markAll(all)} seeAll={visit.seeAll} friendName={friendNameFrom(friends)} rootRef={root} />;
 }

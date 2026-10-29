@@ -21,3 +21,10 @@ it('is ready with nothing remembered when storage fails, and a failed save keeps
     const reads = createNotificationReads(kv as never); await reads.load();
     expect(reads.ready()).toBe(true); await expect(reads.remember(['1'])).resolves.toBeUndefined(); expect(reads.get().has('1')).toBe(true);
 });
+
+it('moves an id remembered again to the newest end, so the cap keeps rows still in the tray', async () => {
+    const kv = memoryKv(), reads = createNotificationReads(kv); await reads.load();
+    await reads.remember(['old', ...Array.from({ length: 198 }, (_, i) => String(i))]);
+    await reads.remember(['old']); await reads.remember(['a', 'b']);
+    expect(reads.get().has('old')).toBe(true); expect(reads.get().has('0')).toBe(false);
+});

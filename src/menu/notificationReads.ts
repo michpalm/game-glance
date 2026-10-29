@@ -25,8 +25,9 @@ export function createNotificationReads(kv: Pick<KvBackend, 'get' | 'set'>) {
         },
         /** Never rejects: ids that could not be saved stay read for this session. */
         async remember(next: readonly string[]): Promise<void> {
-            if (next.every(id => set.has(id))) return;
-            update(rememberIds(ids, next));
+            const moved = rememberIds(ids, next);
+            if (moved.length === ids.length && moved.every((id, i) => id === ids[i])) return;
+            update(moved);
             // Saving before the stored ids arrive would overwrite them; load merges what was remembered meanwhile.
             if (loading && !loaded) await loading;
             try { await kv.set(KEY, ids); } catch { /* not saved */ }
