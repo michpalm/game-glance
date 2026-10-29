@@ -121,6 +121,11 @@ describe('reading layouts',()=>{
         const flipped=readLayouts(source({all:()=>[qwerty(),spanish()],selected:()=>({currentLayout:19,selectedLayouts:[19,0]})}));
         expect(flipped.layouts[0].letters[3][3].hint).toBe('ES · EN');
     });
+    it('lists the current layout first, then the others in selection order',()=>{
+        const r=readLayouts(source({all:()=>[qwerty(),spanish()],selected:()=>({currentLayout:19,selectedLayouts:[0,19]})}));
+        expect(r.layouts[0].letters[3][3].hint).toBe('ES · EN');
+        expect(r.layouts[1].symbols[3][3].hint).toBe('ES · EN');
+    });
 });
 
 describe('finding the Steam source',()=>{

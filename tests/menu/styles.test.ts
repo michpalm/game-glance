@@ -121,7 +121,7 @@ describe('the menu keyboard', () => {
     const key = '.gg-menu-native-host .gg-menu .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
     it('floats a 409 × 210 glass panel with the menu edge and corners', () => {
         const panel = css('.gg-menu .gg-keyboard');
-        for (const part of ['position:absolute', 'width:409px', 'height:210px', `background:${TOKENS.glass}`, 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
+        for (const part of ['position:absolute', 'width:409px', 'height:210px', 'background:rgba(12,16,22,.88)', 'border:1px solid var(--gg-edge)', 'border-radius:var(--gg-r-panel)']) expect(panel).toContain(part);
         // Rows are 385 px wide inside the 1 px edge.
         expect(panel).toMatch(/padding:\d+px 11px/);
     });

@@ -106,7 +106,8 @@ export function readLayouts(source:SteamLayoutSource|null):{layouts:KeyboardLayo
         if(!layouts.length)return fallback;
         const current=Math.max(0,layouts.findIndex(l=>l.id===id));
         const chosen=Array.isArray(sel?.selectedLayouts)?sel.selectedLayouts.map(i=>layouts.find(l=>l.id===i)).filter((l):l is KeyboardLayout=>!!l):[];
-        const label=(chosen.length?chosen:[layouts[current]]).map(l=>l.short).join(' · ');
+        const shown=chosen.length?chosen:[layouts[current]];
+        const label=[...shown.filter(l=>l===layouts[current]),...shown.filter(l=>l!==layouts[current])].map(l=>l.short).join(' · ');
         const relabel=(r:KeyDef[][])=>r.map(x=>x.map(k=>k.kind==='space'?{...k,hint:label}:k));
         return {layouts:layouts.map(l=>({...l,letters:relabel(l.letters),symbols:relabel(l.symbols)})),current};
     }catch{return fallback;}

@@ -1,4 +1,4 @@
-import { focusRing, labelText, selectedSlice, TOKENS } from '../styles/tokens';
+import { focusRing, labelText, selectedSlice } from '../styles/tokens';
 
 const KEY = '.gg-menu-native-host .gg-menu .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
 
@@ -40,7 +40,7 @@ export const socialStyles = `
 .gg-menu-native-host .gg-menu .gg-social button.gg-social-field.DialogButton{flex:1;width:100%;min-height:36px;padding:4px 0;justify-content:flex-start;border:0;background:transparent;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu .gg-social button.gg-social-field.DialogButton:is(.gpfocus,:focus-visible){outline:none;background:transparent}
 .gg-social-placeholder{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
-.gg-menu .gg-keyboard{position:absolute;z-index:2;box-sizing:border-box;width:409px;height:210px;padding:8px 11px 0;display:flex;flex-direction:column;background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel);transition:box-shadow var(--gg-fast),border-color var(--gg-fast)}
+.gg-menu .gg-keyboard{position:absolute;z-index:2;box-sizing:border-box;width:409px;height:210px;padding:8px 11px 0;display:flex;flex-direction:column;background:rgba(12,16,22,.88);backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel);transition:box-shadow var(--gg-fast),border-color var(--gg-fast)}
 .gg-menu .gg-keyboard.gg-keyboard-dragging{box-shadow:0 18px 40px -12px rgba(0,0,0,.75);border-color:var(--gg-edge-active)}
 .gg-keyboard-keys{display:flex;flex-direction:column;gap:5px;flex:none}
 .gg-keyboard-row{display:flex;gap:5px;width:100%}
