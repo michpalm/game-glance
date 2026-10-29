@@ -18,3 +18,7 @@ No Ally access, installation, reload, restart, message send or profile navigatio
 Still to verify on Ally: Steam's actual focus-scroll timing and fade/outline rendering; controller entry/back and View profile; compose consistency and existing send behavior. Local checks do not establish these device behaviors.
 
 Built `dist/index.js` SHA-256: `9c70dba03528bcae80eb707082138b51da2d79b660a89eee5cbb2f8ef8699bb1`.
+
+## Approved Ally installation
+
+After the user replied “ready” to the installation approval request, frontend commit `5fa7055` was installed with the side menu confirmed closed. Previous frontend backed up to `/home/deck/gg-backup-social-polish-20261029-g6ircvh8`. The staged and installed SHA-256 matched `9c70dba03528bcae80eb707082138b51da2d79b660a89eee5cbb2f8ef8699bb1`; an independent post-reload checksum matched too. Plugin reload requested successfully; subsequent read confirmed Game Glance present in DeckyPluginLoader.plugins. No backend change or system reboot. Real controller/scroll rendering, profile navigation, and send acceptance remain for user/device validation; no agent-sent messages.
