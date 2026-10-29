@@ -1,6 +1,6 @@
 # Notification actions design
 
-Written 2026-10-29 from Michael's Ally feedback on the in-game menu's Notifications page. Status: approved by Michael ("Yes, build it"). Mockup (private): https://claude.ai/artifact/S742sAFR8iVJts1SMZNV7e (version 2: single Mark all read, just-marked state, all caught up).
+Written 2026-10-29 from Michael's Ally feedback on the in-game menu's Notifications page. Status: built and Ally-checked 2026-10-29 (a252d4f..cd7870c; Michael: bell clears, caught-up state centred, "It looks good"). Friend rows and account-link rows not yet seen on the device (none in the tray). Mockup (private): https://claude.ai/artifact/S742sAFR8iVJts1SMZNV7e (version 2: single Mark all read, just-marked state, all caught up).
 
 ## Why
 
