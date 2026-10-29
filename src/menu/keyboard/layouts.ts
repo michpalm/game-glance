@@ -2,7 +2,6 @@ export type KeyKind='char'|'shift'|'backspace'|'page'|'space'|'send';
 export type KeyDef={char:string;shifted?:string;dead?:{next:string;combined:string};hint?:string;kind:KeyKind};
 export type KeyboardLayout={id:number;name:string;short:string;letters:KeyDef[][];symbols:KeyDef[][];ime:boolean};
 export interface SteamLayoutSource {
-    current():unknown;
     all():unknown[]|null;
     selected():{currentLayout:number;selectedLayouts:number[]}|null;
 }
@@ -59,11 +58,12 @@ function compactRows(rows:unknown):{letters:KeyDef[][];symbols:KeyDef[][]}|null 
     return {letters,symbols};
 }
 
+const IME=/^(schinese|tchinese|japanese|korean)/;
 export function compactLayout(entry:Entry):KeyboardLayout|null {
     try{
         const rows=compactRows(entry.rgLayout({}));
         if(!rows)return null;
-        const short=shortOf(entry.name),ime=/^(schinese|tchinese|japanese|korean)/.test(entry.name);
+        const short=shortOf(entry.name),ime=IME.test(entry.name);
         const label=(r:KeyDef[][])=>r.map(row=>row.map(k=>k.kind==='space'?{...k,hint:short}:k));
         return {id:entry.layout,name:entry.name,short,letters:label(rows.letters),symbols:label(rows.symbols),ime};
     }catch{return null;}
@@ -93,12 +93,17 @@ export function readLayouts(source:SteamLayoutSource|null):{layouts:KeyboardLayo
     try{
         const all=source.all();
         if(!Array.isArray(all))return fallback;
-        const layouts=all.map(e=>compactLayout(e as Entry)).filter((l):l is KeyboardLayout=>!!l);
+        const sel=source.selected(),id=sel?.currentLayout;
+        // The current entry decides input method by its name, even when its rows are rejected: the field keeps Steam's
+        // keyboard. Its stand-in carries QWERTY rows that are never drawn.
+        const imeStandIn=(e:unknown):KeyboardLayout|null=>{
+            try{
+                const o=e as Partial<Entry>|null;
+                return o&&typeof o==='object'&&typeof o.layout==='number'&&o.layout===id&&typeof o.name==='string'&&IME.test(o.name)?{...BUILTIN_QWERTY,id:o.layout,name:o.name,short:shortOf(o.name),ime:true}:null;
+            }catch{return null;}
+        };
+        const layouts=all.map(e=>compactLayout(e as Entry)??imeStandIn(e)).filter((l):l is KeyboardLayout=>!!l);
         if(!layouts.length)return fallback;
-        const sel=source.selected();
-        let cur:unknown;
-        try{cur=(source.current() as {layout?:unknown}|null)?.layout;}catch{/* fall back to the stored selection */}
-        const id=typeof cur==='number'?cur:sel?.currentLayout;
         const current=Math.max(0,layouts.findIndex(l=>l.id===id));
         const chosen=Array.isArray(sel?.selectedLayouts)?sel.selectedLayouts.map(i=>layouts.find(l=>l.id===i)).filter((l):l is KeyboardLayout=>!!l):[];
         const label=(chosen.length?chosen:[layouts[current]]).map(l=>l.short).join(' · ');
@@ -108,28 +113,29 @@ export function readLayouts(source:SteamLayoutSource|null):{layouts:KeyboardLayo
 }
 
 const textOf=(f:unknown)=>{try{return String(f);}catch{return '';}};
+// A list getter only reads: no arguments, and no write in its text (Steam's setter writes currentLayout/selectedLayouts).
+const WRITES=/(?:Set|Save|Update)(?![a-z])|\.(?:currentLayout|selectedLayouts)\s*=[^=]/;
 export function findSteamLayoutSource(modules:Iterable<Record<string,unknown>>):SteamLayoutSource|null {
-    let all:(()=>unknown)|null=null,current:(()=>unknown)|null=null,store:Record<string,unknown>|null=null;
+    let all:(()=>unknown)|null=null,store:Record<string,unknown>|null=null;
     for(const m of modules){
         let values:unknown[]=[];
         try{values=[m,...Object.values(m)];}catch{continue;}
         for(const v of values){
             if(typeof v==='function'){
-                const t=textOf(v);
-                // The setter changes Steam's own setting: never selected, whatever else its text says.
-                if(!t.includes('GetKeyboardLayoutSettings')||t.includes('SetKeyboardLayout'))continue;
-                if(t.includes('selectedLayouts')&&t.includes('.filter(')){all??=v as ()=>unknown;}
-                // The list getter's text also has currentLayout, so selectedLayouts must rule it out here.
-                else if(t.includes('currentLayout')&&!t.includes('selectedLayouts')){current??=v as ()=>unknown;}
+                if(all)continue;
+                let arity=-1;
+                try{arity=v.length;}catch{/* opaque */}
+                const t=arity===0?textOf(v):'';
+                if(t.includes('GetKeyboardLayoutSettings')&&t.includes('selectedLayouts')&&t.includes('.filter(')&&!WRITES.test(t))all=v as ()=>unknown;
             }else if(v&&typeof v==='object'&&!store){
                 try{if('m_userLayoutSettings' in v)store=v as Record<string,unknown>;}catch{/* opaque proxy */}
             }
         }
     }
-    if(!all&&!current)return null;
+    if(!all)return null;
+    const list=all;
     return {
-        current:()=>current?current():null,
-        all:()=>{const r=all?all():null;return Array.isArray(r)?r:null;},
+        all:()=>{const r=list();return Array.isArray(r)?r:null;},
         selected:()=>{
             const s=store?.m_userLayoutSettings as {currentLayout?:unknown;selectedLayouts?:unknown}|undefined;
             return s&&typeof s.currentLayout==='number'&&Array.isArray(s.selectedLayouts)&&s.selectedLayouts.every(n=>typeof n==='number')?{currentLayout:s.currentLayout,selectedLayouts:[...s.selectedLayouts as number[]]}:null;
