@@ -16,7 +16,8 @@ export type SpotlightRow =
     | 'recommended'
     | 'wishlistDeals'
     | 'statusBar'
-    | 'statusAvatar';
+    | 'statusAvatar'
+    | 'expandedControls';
 
 /** A collection Games row has a sort order; the recent games do not. */
 export function spotlightRows(s: Pick<Settings, 'spotlightHome' | 'homeStatusBar' | 'feedTabs'>, collectionRow: boolean): SpotlightRow[] {
@@ -27,6 +28,6 @@ export function spotlightRows(s: Pick<Settings, 'spotlightHome' | 'homeStatusBar
     rows.push('rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended');
     if (s.feedTabs.recommended) rows.push('wishlistDeals');
     rows.push('statusBar');
-    if (s.homeStatusBar) rows.push('statusAvatar');
+    if (s.homeStatusBar) rows.push('statusAvatar', 'expandedControls');
     return rows;
 }

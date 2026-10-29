@@ -23,7 +23,7 @@ const HERO_FIT_COPY: Record<HeroFit, string> = {
 };
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -127,6 +127,10 @@ export function SettingsPanel() {
                 checked={homeStatusBar}
                 onChange={(value) => settings.setHomeStatusBar(value)}
             />
+        ),
+        expandedControls: (
+            <ToggleField label="Expanded Home controls" description="Matching controller prompts and individually selectable status items."
+                checked={homeExpandedControls} onChange={value => settings.setHomeExpandedControls(value)} />
         ),
         statusAvatar: (
             <ToggleField
