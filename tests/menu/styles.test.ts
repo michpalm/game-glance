@@ -103,3 +103,14 @@ it('the status bar in the menu takes Home\'s glass over the in-game frost, not t
     // The frost shader blurs the game under it (frost area "status"); a CSS blur in the popup would see nothing.
     expect(pill).toContain('backdrop-filter:none!important');
 });
+
+it('the reset for Steam fields in a setting row leaves our segmented track alone (Steam\'s Focusable is a .Panel too)', () => {
+    expect(menuStyles).toContain('.gg-menu .gg-menu-setting .Panel:not(.gg-menu-segmented)');
+    expect(menuStyles).not.toMatch(/\.gg-menu \.gg-menu-setting \.Panel[,{]/);
+});
+
+it('the end options of a track take its corners, so their focus ring and selection are not cut off', () => {
+    const track = ':is(.gg-menu-segmented,.gg-menu-perf-tabs)';
+    expect(menuStyles).toContain(`${track} button.gg-menu-action.DialogButton:first-child{border-radius:calc(var(--gg-r-card) - 1px) 0 0 calc(var(--gg-r-card) - 1px)}`);
+    expect(menuStyles).toContain(`${track} button.gg-menu-action.DialogButton:last-child{border-radius:0 calc(var(--gg-r-card) - 1px) calc(var(--gg-r-card) - 1px) 0}`);
+});

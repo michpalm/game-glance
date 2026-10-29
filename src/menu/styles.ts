@@ -60,7 +60,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-setting{padding:8px;min-height:48px;border-radius:var(--gg-r-card);font-size:var(--gg-type-body);background:transparent;transition:background var(--gg-base),box-shadow var(--gg-base),transform var(--gg-base)}
 :where(html:not([data-gg-mouse])) .gg-menu .gg-menu-setting:not(.gg-menu-setting-segments):has(.gpfocus){${focusRing('menu')};background:var(--gg-glass-strong)}
 .gg-menu .gg-menu-setting-disabled{${ghost()}}
-.gg-menu .gg-menu-setting .Panel,.gg-menu .gg-social-input .Panel{padding:0;margin:0;border:0;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
+.gg-menu .gg-menu-setting .Panel:not(.gg-menu-segmented),.gg-menu .gg-social-input .Panel{padding:0;margin:0;border:0;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
 .gg-menu .gg-menu-setting [id$="_Label"]{font:inherit;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
 .gg-menu .gg-menu-setting [id$="_Description_Description"]{font-size:var(--gg-type-label);font-weight:var(--gg-weight-body);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);line-height:1.4;margin-top:4px}
 .gg-menu .gg-menu-setting-label{display:inline-flex;align-items:center;gap:8px;min-width:0}
@@ -90,6 +90,8 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-perf-tabs{display:flex;gap:0;padding:0;margin-bottom:16px;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-edge)}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);padding:8px 4px}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]{${selectedSlice()}}
+.gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:first-child{border-radius:calc(var(--gg-r-card) - 1px) 0 0 calc(var(--gg-r-card) - 1px)}
+.gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:last-child{border-radius:0 calc(var(--gg-r-card) - 1px) calc(var(--gg-r-card) - 1px) 0}
 .gg-menu .gg-menu-perf-content{padding-top:8px}.gg-menu .gg-menu-performance-profile{padding:0}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:${TOKENS.glass}}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton[aria-pressed=true]{${selectedSlice()}}

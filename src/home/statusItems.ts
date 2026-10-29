@@ -344,11 +344,12 @@ export function avatarView(self: SelfPersona | null, enabled: boolean): { url: s
     return { url: `https://avatars.steamstatic.com/${hash}_medium.jpg`, ring: PERSONA_DOT_COLOURS[dot] };
 }
 
-/** The dot for a persona, null when unknown (the dot is then left out). In a game counts as online, as on the Friends tab. */
+/** The dot for a persona, null when unknown (the dot is then left out). Invisible or offline wins over playing; otherwise
+ * in a game counts as online, as on the Friends tab. */
 export function personaDot(self: SelfPersona | null): PersonaDot | null {
     if (!self) return null;
-    if (self.inGame) return 'online';
     if (!isOnlineState(self.state)) return 'off';
+    if (self.inGame) return 'online';
     return isAwayState(self.state) ? 'away' : 'online';
 }
 

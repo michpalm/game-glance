@@ -169,6 +169,9 @@ describe('your online status dot', () => {
         expect(dot(3, true)).toBe('online');
         expect(dot(7)).toBe('off');
         expect(dot(0)).toBe('off');
+        // Invisible or offline wins over playing: the status you chose, not green (Ally, 2026-10-29: Invisible in Ori).
+        expect(dot(7, true)).toBe('off');
+        expect(dot(0, true)).toBe('off');
         expect(personaDot(null)).toBeNull();
     });
 });
