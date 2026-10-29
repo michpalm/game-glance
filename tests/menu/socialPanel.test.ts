@@ -1,7 +1,7 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { MenuKeyboard } from '../../src/menu/components/MenuKeyboard';
-import { SocialContents } from '../../src/menu/components/SocialPanel';
+import { closeUnusableKeyboard, SocialContents } from '../../src/menu/components/SocialPanel';
 import { BUILTIN_QWERTY } from '../../src/menu/keyboard/layouts';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 import { defaultMenuState, reduceMenu } from '../../src/menu/model';
@@ -104,6 +104,16 @@ describe('Social chat with the menu keyboard', () => {
         expect(c.action('social:compose')).toBeUndefined();
         expect(c.nodes.find(n => n.props['aria-label'] === 'Message')?.props.onChange).toBeTypeOf('function');
         expect(c.board).toBeUndefined();
+    });
+    // Opening re-reads the layouts: if the current one turned out to need an input method, the keyboard is not drawn,
+    // and an open but invisible session would swallow the next B.
+    it('closes an open session whose layouts leave it no keyboard to show', () => {
+        const ime = { layouts: [{ ...BUILTIN_QWERTY, name: 'japanese', ime: true }], current: 0 };
+        const keyboard = createKeyboardSession();
+        keyboard.open(); closeUnusableKeyboard(keyboard, qwerty); expect(keyboard.get().open).toBe(true);
+        closeUnusableKeyboard(keyboard, ime); expect(keyboard.get().open).toBe(false);
+        keyboard.open(); closeUnusableKeyboard(keyboard, null); expect(keyboard.get().open).toBe(false);
+        expect(() => closeUnusableKeyboard(undefined, ime)).not.toThrow();
     });
     it('mounts the keyboard only in an entered chat, wired to the draft and Send', () => {
         expect(chat({}, qwerty, false).board).toBeUndefined();

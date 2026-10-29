@@ -44,13 +44,21 @@ const RANK: Record<string, number> = { ingame: 0, online: 1 };
 const ordered = (friends: SocialFriend[]) => friends.map((f, i) => ({ f, i })).sort((a, b) => (RANK[a.f.state] ?? 2) - (RANK[b.f.state] ?? 2) || a.i - b.i).map(x => x.f);
 const previewMessage = (message: ChatMessage) => <div key={message.id} className={`gg-social-message ${message.own ? 'gg-social-own' : ''}`}><div className="gg-social-bubble"><span>{message.rich ? 'Message with an attachment' : message.text}</span></div></div>;
 
+/** The session our keyboard can serve: none when the current layout needs an input method (Steam's keyboard). */
+const ownKeyboardFor = (keyboard: KeyboardSession | undefined, layouts: Layouts | null | undefined) => keyboard && layouts && !layouts.layouts[layouts.current]?.ime ? keyboard : null;
+/** An open session with no keyboard to show (read on opening, the layout needs an input method) is closed: invisible,
+ * it would swallow the next B. */
+export function closeUnusableKeyboard(keyboard: KeyboardSession | undefined, layouts: Layouts | null | undefined): void {
+    if (keyboard?.get().open && !ownKeyboardFor(keyboard, layouts)) keyboard.close();
+}
+
 /** Stateless presentation; native operations are confined to explicit actions on the session. */
 export function SocialContents({ snapshot, social, entered, enter, leave, handoff, loadMore, latest, atBottom = true, timelineRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null }: SocialContentsProps) {
     const friend = snapshot.friends.find(f => f.steamId === (entered ? snapshot.enteredId : snapshot.selectedId));
     const native = () => handoff(entered && snapshot.enteredId ? { kind: 'friend-chat', steamId: snapshot.enteredId } : { kind: 'qam', tab: 'friends' });
     const pending = snapshot.messages.some(m => m.own && m.state === 'pending');
     const sendDisabled = snapshot.sending || snapshot.loading || pending || !snapshot.canChat || !snapshot.draft.trim();
-    const ownKeyboard = keyboard && layouts && !layouts.layouts[layouts.current]?.ime ? keyboard : null;
+    const ownKeyboard = ownKeyboardFor(keyboard, layouts);
     const inGame = snapshot.friends.filter(f => f.state === 'ingame').length, online = snapshot.friends.filter(f => f.state !== 'offline' && f.state !== 'ingame').length;
     const counts = [inGame && `${inGame} in game`, online && `${online} online`].filter(Boolean).join(' · ') || 'Nobody online';
     // Steam's own chat and Join game sit beside the reply, one small pill each.
@@ -124,6 +132,7 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
     if (keyboardOpen && !wasOpen.current) openings.current++;
     wasOpen.current = keyboardOpen;
     const layouts = useMemo(() => entered && keyboard ? readSteamLayouts() : null, [entered, keyboard, openings.current]);
+    useEffect(() => { closeUnusableKeyboard(keyboard, layouts); }, [keyboard, keyboardOpen, layouts]);
     const timeline = useRef<HTMLDivElement>(null);
     const field = () => timeline.current?.parentElement?.querySelector<HTMLElement>('.gg-social-input') ?? null;
     const bottom = useRef(true);
