@@ -1,6 +1,6 @@
 # Game page footer design
 
-Written 2026-10-30. Status: approved by Michael ("Yes, build it").
+Written 2026-10-30. Status: built (10f5c83, ae361fc, 447eb0d) and Ally-checked 2026-10-30: Michael confirmed open and back are seamless.
 
 ## Why
 
