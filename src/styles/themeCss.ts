@@ -120,10 +120,11 @@ export function pageScrims(mode: PageShading): string {
 /**
  * The eyebrow ("LAST PLAYED · …") on Home, the page and the open-transition twin, in every Page shading mode: white, the
  * game accent only as a glow, so it reads on any art (Michael, 2026-10-30). Its box keeps the ellipsis but must not cut
- * the glow off at its edges (overflow: hidden read as a band behind the line on the Ally).
+ * the glow off at its edges (overflow: hidden read as a band behind the line on the Ally). Every layer is centred, the
+ * dark outline too: it paints over the glow, and offset down it hid the glow's lower half (Michael: stronger above).
  */
 export const EYEBROW = (u: (n: number) => string) =>
-    `color: #fff; text-shadow: 0 ${u(1)} ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent); overflow: clip; overflow-clip-margin: ${u(24)}`;
+    `color: #fff; text-shadow: 0 0 ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent); overflow: clip; overflow-clip-margin: ${u(24)}`;
 
 export const SHADE_NONE = {
     glass: 'rgba(12,16,22,.6)',

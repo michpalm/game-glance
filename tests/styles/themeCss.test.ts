@@ -1348,7 +1348,7 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
       for (const css of [none, bottom]) {
         const body = exact(css, '.gg-eyebrow');
         expect(body).toContain('color: #fff');
-        expect(body).toContain(`0 ${D(1)} ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
+        expect(body).toContain(`0 0 ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
         expect(body).toContain('overflow: clip');
         expect(body).toContain(`overflow-clip-margin: ${D(24)}`);
       }

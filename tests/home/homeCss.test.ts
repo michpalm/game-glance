@@ -140,7 +140,7 @@ describe('frost and labels (VDL Section 7)', () => {
         for (const sel of ['.gh-chip-label', '.gh-feed-row-title', '.gh-card-sub']) {
             for (const decl of labelText().split(';')) expect(ruleFor(css, sel), sel).toContain(decl);
         }
-        expect(ruleFor(css, '.gh-eyebrow')).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
+        expect(ruleFor(css, '.gh-eyebrow')).toContain('text-shadow: 0 0 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
     });
     it('the open transition copies the page: twin labels and the shell match', () => {
         const page = normalCardsCss('gg', (n) => `calc(${n} * var(--gg-d))`);   // the page's cards, as restyleRules writes them
@@ -1250,7 +1250,7 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         expect(none('.gh-eyebrow')).toBe('');
         const body = ruleFor(css, '.gh-eyebrow');
         expect(body).toMatch(/color:\s*#fff/);
-        expect(body).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
+        expect(body).toContain('text-shadow: 0 0 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
         // The box keeps its ellipsis but must not cut the glow off at its edges (it read as a band behind the line on the Ally).
         expect(body).toMatch(/overflow:\s*clip/);
         expect(body).toMatch(/overflow-clip-margin:\s*24px/);
@@ -1301,6 +1301,8 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
         expect(eyebrowTwin).toContain('color: #fff');
         expect(eyebrowTwin).toContain('0 0 calc(4px * var(--gho-x-d)) var(--glance-accent)');
+        // Every layer is centred, the dark one too, so the glow is even all round (Michael: it read stronger above).
+        expect(eyebrowTwin).toContain('0 0 calc(2px * var(--gho-x-d)) #000');
         expect(none('.gh-twin[data-role="label"]')).toContain('text-shadow: 0 calc(1px * var(--gho-x-d)) calc(3px * var(--gho-x-d)) #000b');
         expect(none('.gh-twin[data-role="playLabel"]')).toContain('#0009');
         const layers = rules(css).filter(([list]) => list.some((s) => s.startsWith('.gh-shade-none[data-gh-opening="morph"]') && /::(before|after)$/.test(s))).map(([, b]) => b);
