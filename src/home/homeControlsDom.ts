@@ -27,7 +27,7 @@ export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean
     };
     const update=()=>{
         if(stopped)return;
-        const next:Markers=new Map(),footer=doc.getElementById('Footer'),controls=suspended?null:discover(root,measure||footer!==bound);measure=!controls;bound=footer;
+        const next:Markers=new Map(),footer=doc.getElementById('Footer'),controls=suspended?null:discover(root,measure||footer!==bound);if(footer!==bound){if(bound)sizeObserver?.unobserve(bound);if(footer)sizeObserver?.observe(footer);}measure=!controls;bound=footer;
         const mark=(node:HTMLElement,name:string,value:string)=>{if(!next.has(node))next.set(node,new Map());next.get(node)!.set(name,value);};
         if(controls){mark(controls.footer,'data-gh-footer','true');mark(controls.wrapper,'data-gh-footer-wrapper','true');const before=controls.groups.filter(e=>[...controls.wrapper.children].indexOf(e)<[...controls.wrapper.children].indexOf(controls.spacer)),after=controls.groups.filter(e=>!before.includes(e));for(const [side,groups] of [['start',before],['end',after]] as const)groups.forEach((group,index)=>{mark(group,'data-gh-footer-side',side);mark(group,'data-gh-footer-edge',groups.length===1?'single':index===0?'first':index===groups.length-1?'last':'middle');});}
         apply(next);const value=!!controls;if(value!==ready){ready=value;onAvailability(value);}
@@ -39,6 +39,7 @@ export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean
         return [...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&((node as Element).id==='Footer'||owned.has(node as HTMLElement)||!!(node as Element).querySelector('#Footer')||!!bound&&node.contains(bound)));
     }))schedule();}):undefined;
     observer?.observe(doc.body,{childList:true,subtree:true,characterData:true});
+    const sizeObserver=view?.ResizeObserver?new view.ResizeObserver(()=>{measure=true;schedule();}):undefined;sizeObserver?.observe(root);
     const resize=()=>{measure=true;schedule();};view?.addEventListener('resize',resize);update();
-    return {suspend(value){if(stopped||suspended===value)return;suspended=value;measure=true;update();},dispose(){if(stopped)return;stopped=true;observer?.disconnect();view?.removeEventListener('resize',resize);apply(new Map());}};
+    return {suspend(value){if(stopped||suspended===value)return;suspended=value;measure=true;update();},dispose(){if(stopped)return;stopped=true;observer?.disconnect();sizeObserver?.disconnect();view?.removeEventListener('resize',resize);apply(new Map());}};
 }

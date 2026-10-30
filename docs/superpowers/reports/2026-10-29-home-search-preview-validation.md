@@ -47,3 +47,13 @@ Deferred minor: unknown-header fallback has no deduplicated diagnostic reason ye
 - Existing unconditional polling was assessed incrementally, not expanded into a new optimization task; cost is continuing a small amount of inactive header/account reading on the shared runtime.
 
 Local implementation and review-fix gates are complete. Device installation and real-controller acceptance are still pending approval; preserve the execution workspace until that gate is resolved.
+
+## Approved installation and startup recovery follow-up (2026-10-30)
+
+User explicitly approved installation. Initial check found the menu open; no device file was changed until a later read confirmed it closed. Previous frontend `dcbefe016e852b28b1a1834c654c84768ac5f243fe04e6208bbe95535397e6c6` was backed up and verified at `/home/deck/gg-backup-home-search-20261029-og9sn52e/index.js`. Staged, installed and independent post-reload SHA all matched `49d72bab7427c4f48c101725dc6f8dc565d139e4c8aeac8e8c1efe6a79ac3178`; guarded reload succeeded and plugin loaded. No reboot or message send.
+
+Post-reload acceptance did not pass: Home remained in `unavailable` mode, with no owned header/footer/status cells. Read-only inspection confirmed all four parent/expansion settings true, Home content mounted/visible/foreground, menu closed, no opening/hidden-ancestor gate. Running the exact production read-only discovery helpers against the current native DOM returned both footer/header contracts true. This establishes stale availability, not a permanently unsupported native layout.
+
+Local debugging reproduced a recovery gap: the footer lease observes child/text changes and window resize, but not the native footer's own size changes. If its startup geometry is temporarily unavailable and the same node later becomes visible, its false readiness can persist. A new regression reproduces false readiness after the synthetic footer becomes measurable, without DOM replacement; it failed before correction. The lease now uses ResizeObserver for Home and the current footer, rebinding on replacement and disconnecting on teardown. It adds no timer. The regression and whole216-file/2,461-test suite pass, along with typecheck/build/diff. Correction SHA: `e2960a582bc3f2a10aceb11d64a7e8028711bb80f4bf63971c108078d2647f55`.
+
+The correction is local and not installed yet; it still requires device-install approval and verification that activation recovers on the Ally. Current installed build remains49d72b... and safely falls back to native controls. Original frontend backup remains available. Actual controller acceptance remains open.
