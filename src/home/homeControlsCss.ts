@@ -1,10 +1,6 @@
 import {SOURCE_PILL,sourcePillLook} from '../styles/sourcePill';
 import {homeHeaderCss} from './homeHeaderDom';
 import {focusRing} from '../styles/tokens';
-import {DEFAULT_ACCENT} from './accent';
-import {ACCENT_MS} from './motion';
-/** Steam's footer sits outside the Home root, so it gets the game accent from its own rule. Hex only: it is written into a style sheet. */
-export const footerAccentCss=(accent:string)=>`[data-gh-footer=true]{--glance-accent:${/^#[0-9a-f]{3,8}$/i.test(accent)?accent:DEFAULT_ACCENT}}`;
 /** Only owned native footer groups and explicitly interactive Home cells. */
 export const homeControlsCss=`
 ${homeHeaderCss}
@@ -21,7 +17,7 @@ html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],
 [data-gh-footer=true]{background:transparent!important;box-shadow:none!important;border-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
 [data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
-[data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:var(--glance-accent);box-shadow:0 0 12px -3px var(--glance-accent);transition:background ${ACCENT_MS}ms,box-shadow ${ACCENT_MS}ms}
+[data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 [data-gh-footer-side]>:first-child img,[data-gh-footer-side]>:first-child svg{max-height:14px;max-width:16px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
 [data-gh-footer-side]>:last-child{font:inherit;letter-spacing:normal;text-transform:none}
 [data-gh-footer-side=end][data-gh-footer-edge=first]{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0;padding-right:10px}
