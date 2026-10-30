@@ -43,6 +43,14 @@ describe('game page footer',()=>{
   await act(()=>root.render(createElement(Page,{enabled:true})));expect(marked()).toBe(true);
   await act(()=>root.render(createElement(Page,{enabled:false})));expect(marked()).toBe(false);
  });
+ it('gives the footer back while the page is not rendered (display:none under another screen) and takes it again when shown',async()=>{
+  const seen:(()=>void)[]=[],notify=()=>seen.forEach(fn=>fn());const previous=win.ResizeObserver;win.ResizeObserver=class{constructor(fn:()=>void){seen.push(fn);}observe(){}unobserve(){}disconnect(){}};
+  await act(()=>root.render(createElement(Page,{enabled:true})));expect(marked()).toBe(true);
+  const node=doc.querySelector('.gg-hero') as any;let rendered=false;node.getClientRects=()=>rendered?[rect(0,0,1,1)]:[];
+  await act(async()=>{notify();await Promise.resolve();});expect(marked()).toBe(false);expect(shown).toBe(false);
+  rendered=true;await act(async()=>{notify();await Promise.resolve();});expect(marked()).toBe(true);expect(shown).toBe(true);
+  win.ResizeObserver=previous;
+ });
  it('opening: the page takes the footer while Home holds it, so Home letting go keeps every marker',async()=>{
   const home=doc.createElement('main');home.getBoundingClientRect=()=>rect(0,0,view.width,view.height);doc.body.append(home);
   const lease=acquireHomeFooter(home as HTMLElement,()=>{});expect(marked()).toBe(true);
@@ -74,8 +82,22 @@ describe('Home through the open transition',()=>{
   await act(async()=>{main.removeAttribute('data-gh-opening');await new Promise(r=>setTimeout(r,0));});
   expect(expanded.footerActive).toBe(true);
  });
- it('takes the footer from its first layout, before its content is up, so coming back from the page has no gap',async()=>{
+ it('cold start before its content is up: no Game Glance footer',async()=>{
   await act(()=>root.render(createElement(Home,{mounted:false})));
-  expect(marked()).toBe(true);expect(expanded.footerShown).toBe(true);expect(expanded.footerActive).toBe(false);
+  expect(marked()).toBe(false);expect(expanded.footerShown).toBe(false);expect(expanded.footerActive).toBe(false);
+ });
+ it('header not found (unavailable): keeps Steam’s footer look, also through an open',async()=>{
+  await act(()=>root.render(createElement(Home)));
+  expect(expanded.footerActive).toBe(false);expect(expanded.footerShown).toBe(false);
+  await act(async()=>{doc.querySelector('main')!.setAttribute('data-gh-opening','morph');await new Promise(r=>setTimeout(r,0));});
+  expect(expanded.footerShown).toBe(false);expect(marked()).toBe(false);
+ });
+ it('back from the page: takes the footer early (footer-only) only while the page holds it, so the page letting go leaves no gap',async()=>{
+  const page=doc.createElement('section');doc.body.append(page);
+  const held=acquireHomeFooter(doc.documentElement,()=>{});
+  await act(()=>root.render(createElement(Home,{mounted:false})));
+  expect(expanded.footerShown).toBe(true);expect(expanded.footerActive).toBe(false);
+  held.dispose();expect(marked()).toBe(true);
+  await act(()=>root.render(createElement('div')));expect(marked()).toBe(false);
  });
 });

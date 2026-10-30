@@ -7,7 +7,7 @@ import {getSteamUiState,subscribeSteamUiState} from './steamUiState';
  * The game page's share of Home's footer lease (homeControlsDom): the same owner-counted markers, measured against the
  * viewport (the page has no full-screen root of ours), so Home and the page can hold the footer at once through the open
  * transition and back. Footer only: no header, Search, status or focus. Suspended as Home's footer is (not foreground, a
- * side menu, Steam's launch screen, disconnected or hidden); there is no opening here. Before paint (layout effect), so
+ * side menu, Steam's launch screen, disconnected or hidden, here also not rendered); there is no opening here. Before paint (layout effect), so
  * it is held in the same commit the page mounts in; `key` re-binds when the anchor may have come or gone (the game). Returns whether the footer is ours (render homeFooterCss then).
  */
 export function usePageFooter(anchor:RefObject<HTMLElement|null>,enabled:boolean,launching:boolean,key:unknown=null):boolean {
@@ -22,7 +22,7 @@ export function usePageFooter(anchor:RefObject<HTMLElement|null>,enabled:boolean
         const sync=()=>{
             if(disposed)return;
             const {enabled:wanted,launching:launch}=live.current,ui=getSteamUiState(doc);
-            const suspended=homeFooterSuspended({foreground:doc.hasFocus(),menu:ui.menu,opening:false,launching:launch,connected:node.isConnected,hidden:doc.visibilityState==='hidden'||!!node.closest('[hidden],[inert],[aria-hidden="true"]')});
+            const suspended=homeFooterSuspended({foreground:doc.hasFocus(),menu:ui.menu,opening:false,launching:launch,connected:node.isConnected,hidden:doc.visibilityState==='hidden'||!!node.closest('[hidden],[inert],[aria-hidden="true"]')||typeof node.getClientRects==='function'&&node.getClientRects().length===0});
             if(!wanted){lease?.dispose();lease=null;ready=false;}
             if(wanted&&!suspended&&!lease)lease=acquireHomeFooter(doc.documentElement,value=>{ready=value;queue();});
             lease?.suspend(suspended);
@@ -32,9 +32,11 @@ export function usePageFooter(anchor:RefObject<HTMLElement|null>,enabled:boolean
         const stopUi=subscribeSteamUiState(doc,sync);
         runtime.current={sync};sync();
         doc.addEventListener('visibilitychange',sync);win?.addEventListener('focus',sync);win?.addEventListener('blur',sync);
+        // Not rendered (display:none under another screen) counts as hidden: its box coming or going re-syncs.
+        const sized=win?.ResizeObserver?new win.ResizeObserver(queue):null;sized?.observe(node);
         const observer=win?.MutationObserver?new win.MutationObserver(queue):null;
         for(let at:HTMLElement|null=node;at;at=at.parentElement)observer?.observe(at,{attributes:true,attributeFilter:['hidden','inert','aria-hidden']});
-        return ()=>{disposed=true;runtime.current=null;stopUi();observer?.disconnect();doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);lease?.dispose();lease=null;};
+        return ()=>{disposed=true;runtime.current=null;stopUi();sized?.disconnect();observer?.disconnect();doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);lease?.dispose();lease=null;};
     },[anchor,key]);
     useLayoutEffect(()=>runtime.current?.sync());
     return shown;

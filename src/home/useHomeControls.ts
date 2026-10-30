@@ -1,7 +1,7 @@
 import {GamepadButton as B, type GamepadEvent} from '@decky/ui';
 import {type RefObject,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {homeControlsMode,nextHomeControl,orderHomeControls,repairHomeControl,type HomeControlId,type HomeControlsMode,type HomeStatusControls} from './homeControls';
-import {acquireHomeFooter} from './homeControlsDom';
+import {acquireHomeFooter,footerHeld} from './homeControlsDom';
 import {focusElement} from './homeNav';
 import {menuOpen,steamMenuStore} from './steamMenu';
 import {acquireHomeHeader} from './homeHeaderDom';
@@ -79,7 +79,7 @@ interface HomeControlsOptions {
     search?:HomeSearchFocus;root:RefObject<HTMLElement|null>;enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean;mounted:boolean;statusHidden:boolean;
     launching():boolean;stopRepeats():void;returnHome():void;
 }
-/** The footer's opt-in, shared with the game page: it does not wait for Home's content, so Home holds it from its first layout (back from the page without a gap). */
+/** The footer's opt-in, shared with the game page (Home's own opt-in also waits for its content). */
 export const footerOptedIn=(o:{enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean})=>o.enabled&&o.spotlightHome&&o.homeStatusBar&&o.homeExpandedControls;
 const optedIn=(o:HomeControlsOptions)=>footerOptedIn(o)&&o.mounted;
 function runtimeInputs(o:HomeControlsOptions):Parameters<typeof homeRuntimeSuspended>[0] {
@@ -106,20 +106,25 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
         const root=live.current.root.current;if(!root)return undefined;
         const doc=root.ownerDocument,win=doc.defaultView;
         let header:ReturnType<typeof acquireHomeHeader>|null=null,headerReady=false,footerReady=false;
-        let disposed=false,queued=false,lease:ReturnType<typeof acquireHomeFooter>|null=null;
+        let disposed=false,queued=false,lease:ReturnType<typeof acquireHomeFooter>|null=null,carry=false,handover=false;
         const queue=()=>{if(disposed||queued)return;queued=true;void Promise.resolve().then(()=>{queued=false;if(!disposed)sync();});};
         const sync=()=>{
             if(disposed)return;
-            const o=live.current,wanted=optedIn(o),inputs=runtimeInputs(o),suspended=homeRuntimeSuspended(inputs),footerWanted=footerOptedIn(o),footerSuspended=homeFooterSuspended(inputs);
-            if(!footerWanted){lease?.dispose();lease=null;footerReady=false;}
+            const o=live.current,wanted=optedIn(o),inputs=runtimeInputs(o),suspended=homeRuntimeSuspended(inputs),opted=footerOptedIn(o),footerSuspended=homeFooterSuspended(inputs);
+            // Footer-only, two cases: the open transition, carried over from active controls (the page takes it over), and
+            // back from the page before Home's content is up, taken only while the page still holds it (no gap as it goes).
+            if(!opted||o.mounted)handover=false;else if(!lease&&!footerSuspended&&footerHeld(doc))handover=true;
+            const carrying=carry&&inputs.opening&&wanted,footerOnly=opted&&!footerSuspended&&(carrying||handover),leaseSuspended=footerOnly?false:suspended;
+            if(!wanted&&!footerOnly){lease?.dispose();lease=null;footerReady=false;}
             if(!wanted){header?.dispose();header=null;headerReady=false;}
-            if(footerWanted&&!footerSuspended&&!lease)lease=acquireHomeFooter(root,value=>{footerReady=value;queue();});
-            lease?.suspend(footerSuspended);
-            const footer=footerWanted&&!footerSuspended&&footerReady;setFooterShown(previous=>previous===footer?previous:footer);
+            if((wanted||footerOnly)&&!leaseSuspended&&!lease)lease=acquireHomeFooter(root,value=>{footerReady=value;queue();});
+            lease?.suspend(leaseSuspended);
+            const footer=footerOnly&&footerReady;setFooterShown(previous=>previous===footer?previous:footer);
             if(wanted&&!suspended&&footerReady&&!header)header=acquireHomeHeader(root,value=>{headerReady=value;queue();});
             header?.suspend(suspended||!footerReady);ready.current=footerReady&&headerReady;
             setUi(getSteamUiState(doc));
             const next=homeControlsMode({...o,homeMounted:o.mounted,nativeReady:ready.current,suspended});
+            carry=next==='active'||carrying&&footerReady;
             focus.setActive(next==='active'&&!o.statusHidden,!suspended);
             setMode(previous=>previous===next?previous:next);
         };
