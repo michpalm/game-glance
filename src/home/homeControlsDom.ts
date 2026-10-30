@@ -1,5 +1,7 @@
 export interface NativeFooterControls {footer:HTMLElement;wrapper:HTMLElement;groups:readonly HTMLElement[];spacer:HTMLElement}
 const grow=(element:HTMLElement)=>{try{return Number(element.ownerDocument.defaultView?.getComputedStyle?.(element).flexGrow??element.style.flexGrow)||0;}catch{return 0;}};
+/** The box the footer must span: the root's, or the viewport's for the document element (the game page has no full-screen root of ours). */
+const area=(root:HTMLElement)=>{if(root!==root.ownerDocument.documentElement)return root.getBoundingClientRect();const width=root.clientWidth,height=root.clientHeight;return {width,height,bottom:height};};
 function discover(root:HTMLElement,measure:boolean):NativeFooterControls|null {
     const footer=root.ownerDocument.getElementById('Footer');
     if(!footer||footer.children.length!==1)return null;
@@ -8,7 +10,7 @@ function discover(root:HTMLElement,measure:boolean):NativeFooterControls|null {
     if(spacers.length!==1)return null;
     const groups=children.filter(e=>e!==spacers[0]);
     if(!groups.length||groups.some(e=>e.children.length!==2||!e.children[0].querySelector('img,svg')||!e.children[1].textContent?.trim()))return null;
-    if(measure){const f=footer.getBoundingClientRect(),r=root.getBoundingClientRect();if(r.width<=0||r.height<=0||f.width<r.width*.9||f.height<=0||f.height>r.height*.3||Math.abs(f.bottom-r.bottom)>2)return null;}
+    if(measure){const f=footer.getBoundingClientRect(),r=area(root);if(r.width<=0||r.height<=0||f.width<r.width*.9||f.height<=0||f.height>r.height*.3||Math.abs(f.bottom-r.bottom)>2)return null;}
     return {footer,wrapper,groups,spacer:spacers[0]};
 }
 export const discoverNativeFooter=(root:HTMLElement):NativeFooterControls|null=>discover(root,true);

@@ -13,6 +13,9 @@ import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } fro
 import { accentFor } from '../home/accent';
 import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
+import { homeFooterCss } from '../home/homeControlsCss';
+import { usePageFooter } from '../home/usePageFooter';
+import { footerOptedIn } from '../home/useHomeControls';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
@@ -190,7 +193,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = useSettings();
+    const settings = useSettings();
+    const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -231,6 +235,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
+    // Home's footer look on Steam's footer here too, with the same opt-in, held with Home's through the open and back (home/usePageFooter).
+    const footer = usePageFooter(heroRef, footerOptedIn(settings), launching, game.appId);
 
     useEffect(() => {
         setCurrentGame(game, hltb);
@@ -266,6 +272,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
+                {footer && <style>{homeFooterCss}</style>}
                 {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
                 {source && (
                     <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle}>
