@@ -56,7 +56,7 @@ import { FaTrash } from 'react-icons/fa';
 import { homeReturnTarget, useHomeControls } from './useHomeControls';
 import {HomeSearch} from './HomeSearchControl';
 import {createHomeSearch} from './homeSearch';
-import { homeControlsCss } from './homeControlsCss';
+import { homeControlsStyle } from './homeControlsCss';
 import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
 
@@ -552,7 +552,7 @@ export function SpotlightHome() {
 
     return (
         <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
-            <style>{css}{expanded.footerActive?homeControlsCss:null}</style>
+            <style>{css}{homeControlsStyle(expanded.footerActive,expanded.footerShown)}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
             <HeroBackground appId={resolved ? shownGame?.appId ?? null : null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
