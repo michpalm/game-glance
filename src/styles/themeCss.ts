@@ -3,6 +3,7 @@ import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
+import type { PageShading } from '../home/pageShading';
 import { defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -95,21 +96,21 @@ const HOVER = `html[${MOUSE_ATTR}]`;
 /** Accent changes animate over 500 ms on every accent-coloured property, as on Home (handoff "Interactions & motion"). */
 const ACCENT_MS = 500;
 
-// The 1.1.1 scrims over the art (bottom, for the cards; left, for the logo).
+// The page's bottom scrims: the 1.1.1 one (for the cards) and the handoff's (scrim base rgb(5,7,10)) over it.
 const SCRIM_BOTTOM = 'linear-gradient(0deg, rgba(8, 11, 15, 0.94) 0%, rgba(8, 11, 15, 0.6) 34%, transparent 60%)';
-const SCRIM_LEFT = 'linear-gradient(90deg, rgba(8, 11, 15, 0.45) 0%, transparent 45%)';
-// The handoff's details scrims (scrim base rgb(5,7,10)), laid over the 1.1.1 ones when restyled.
-const HANDOFF_SCRIM_LEFT = 'linear-gradient(90deg, rgba(5, 7, 10, 0.6) 0%, rgba(5, 7, 10, 0.1) 55%, rgba(5, 7, 10, 0) 75%)';
 const HANDOFF_SCRIM_BOTTOM = 'linear-gradient(180deg, rgba(5, 7, 10, 0) 55%, rgba(5, 7, 10, 0.6) 100%)';
-/** The restyled header's scrim layers, top to bottom (the handoff's over the 1.1.1 ones); also Home's page scrim in the open transition. */
-export const PAGE_SCRIM_LAYERS = [HANDOFF_SCRIM_LEFT, HANDOFF_SCRIM_BOTTOM, SCRIM_BOTTOM, SCRIM_LEFT] as const;
 /**
- * Steam's own shadow along the top of the game page (its header module's TopGradient: 75 px, black .5 to clear;
- * probed on the Ally). Steam draws it on the page itself; Spotlight Home draws it too (homeCss .gh-scrim-page).
+ * The shading layers over the art for a Page shading mode (settings pageShading), top to bottom: one source for the game
+ * page header's ::after and Home's .gh-scrim-page, so the open transition never changes the art's look.
  */
-export const STEAM_TOP_GRADIENT = 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0) 75px)';
-/** The same layers as one CSS background value. */
-export const PAGE_SCRIMS = PAGE_SCRIM_LAYERS.join(', ');
+export function pageScrimLayers(mode: PageShading): readonly string[] {
+    return mode === 'none' ? [] : [HANDOFF_SCRIM_BOTTOM, SCRIM_BOTTOM];
+}
+/** The mode's layers as one CSS background value (`none` without any). */
+export function pageScrims(mode: PageShading): string {
+    const layers = pageScrimLayers(mode);
+    return layers.length ? layers.join(', ') : 'none';
+}
 
 /**
  * The restyled page's layout in the handoff's px (`d`, --gg-d), one source for the theme below and for the open
@@ -243,6 +244,8 @@ export interface ThemeOptions {
     restyle?: boolean;
     /** The hero art's framing in the restyle (settings heroFit): Fit shows Steam's header image whole, over the art fill. */
     heroFit?: HeroFit;
+    /** The shading over the art (settings pageShading, also Home's): the header's ::after draws pageScrimLayers(mode). */
+    pageShading?: PageShading;
 }
 
 /**
@@ -366,6 +369,8 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
         // Steam's launch overlay (controller layout and "Starting launch..." text) sits straight on our art and cards.
         // Dimming what is behind it makes its text readable; it fades in with the overlay.
         rule(launchOverlay, ` background: rgba(0, 0, 0, 0.75) !important; `),
+        // Steam's own 75 px shadow along the top of the page: Page shading leaves the top clear in every mode.
+        rule(cls(header, 'TopGradient'), ` display: none !important; `),
     ];
 
     if (layout) {
@@ -375,8 +380,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
             `:root { --gg-play-top: calc(100vh - ${u(261)}); }`,
             rule(topCapsule, ` height: 100vh !important; min-height: 0 !important; `),
             rule(`${topCapsule}::after`, ` content: ''; position: absolute; inset: 0; pointer-events: none;
-                background: ${SCRIM_BOTTOM},
-                            ${SCRIM_LEFT}; `),
+                background: ${pageScrims(options.pageShading ?? 'bottom')}; `),
             rule(logoBox, ` top: 6% !important; height: 30% !important; `),
             rule(inner, ` position: relative !important; `),
             rule(overviewPanel, ` margin-top: calc(var(--gg-play-top) - 100vh) !important; position: relative; `),
@@ -909,9 +913,6 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
             // There the row and cards are set from the bottom: the cards (three description lines, TV_CARDS_H) end the TV's
             // side inset (24) above the legend. The handheld and the Deck keep H - 386.
             `${TV_QUERY} { :root { --gg-play-top: calc(100vh - ${STEAM_LEGEND_PX}px - ${d(PAGE_LAYOUT.rowH + TV_CARDS_H + TV_CARDS_GAP)}); } }`,
-            // The handoff's stronger scrims over the 1.1.1 ones.
-            rule(`${topCapsule}::after`, ` background: ${HANDOFF_SCRIM_LEFT}, ${HANDOFF_SCRIM_BOTTOM},
-                ${SCRIM_BOTTOM}, ${SCRIM_LEFT}; `),
         );
     }
     return rules;

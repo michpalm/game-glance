@@ -1,6 +1,7 @@
 import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
 import { HERO_FITS, HeroFit } from '../home/heroFit';
+import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -23,7 +24,7 @@ const HERO_FIT_COPY: Record<HeroFit, string> = {
 };
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -205,6 +206,16 @@ export function SettingsPanel() {
                         rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
                         selectedOption={heroFit}
                         onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Page shading"
+                        description={PAGE_SHADING_COPY[pageShading].description}
+                        menuLabel="Page shading"
+                        rgOptions={PAGE_SHADINGS.map((mode) => ({ data: mode, label: PAGE_SHADING_COPY[mode].label }))}
+                        selectedOption={pageShading}
+                        onChange={(option) => settings.setPageShading(option.data as PageShading)}
                     />
                 </PanelSectionRow>
             </PanelSection>

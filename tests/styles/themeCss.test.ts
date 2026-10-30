@@ -5,7 +5,7 @@ import { defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
-import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, PAGE_SCRIM_LAYERS, PAGE_SCRIMS, pageDUnit, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
+import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, pageDUnit, pageScrimLayers, pageScrims, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
     header: { TopCapsule: 'hd_Top', BoxSizer: 'hd_Box' },
@@ -428,8 +428,7 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           :root { --gg-play-top: calc(100vh - calc(261 * var(--gg-u))); }
           .hd_Top { height: 100vh !important; min-height: 0 !important; }
           .hd_Top::after { content: ''; position: absolute; inset: 0; pointer-events: none;
-                          background: linear-gradient(0deg, rgba(8, 11, 15, 0.94) 0%, rgba(8, 11, 15, 0.6) 34%, transparent 60%),
-                                      linear-gradient(90deg, rgba(8, 11, 15, 0.45) 0%, transparent 45%); }
+                          background: linear-gradient(180deg, rgba(5, 7, 10, 0) 55%, rgba(5, 7, 10, 0.6) 100%), linear-gradient(0deg, rgba(8, 11, 15, 0.94) 0%, rgba(8, 11, 15, 0.6) 34%, transparent 60%); }
           .hd_Box { top: 6% !important; height: 30% !important; }
           .ad_Inner { position: relative !important; }
           .ad_Overview { margin-top: calc(var(--gg-play-top) - 100vh) !important; position: relative; }
@@ -856,9 +855,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // (only while our title is rendered, so a failed render never leaves the page without a title)
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_TitleImg')).toContain('visibility: hidden');
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_Svg')).toContain('visibility: hidden');
-        // stronger scrims over the art
+        // the bottom scrims over the art (Page shading's default; no left scrim since 2026-10-30)
         const scrim = rulesFor(restyled, '.hd_Top::after');
-        expect(scrim).toContain('linear-gradient(90deg, rgba(5, 7, 10, 0.6) 0%, rgba(5, 7, 10, 0.1) 55%, rgba(5, 7, 10, 0) 75%)');
+        expect(scrim).not.toContain('90deg');
         expect(scrim).toContain('linear-gradient(180deg, rgba(5, 7, 10, 0) 55%, rgba(5, 7, 10, 0.6) 100%)');
         // cards: grid 1.1fr / 1fr, gap 18, padding 20x24, radius 16, side insets 56
         expect(rulesFor(restyled, '.gg-cards')).toContain('grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr)');
@@ -1086,9 +1085,44 @@ describe('the page layout constants', () => {
     it('the restyled theme is built from them', () => {
         const css = buildThemeCss(full, { restyle: true });
         expect(css).toContain(`--gg-play-top: calc(100vh - calc(${PAGE_LAYOUT.playTop.spotlight} * var(--gg-d)))`);
-        for (const layer of PAGE_SCRIM_LAYERS) expect(css).toContain(layer);
-        expect(PAGE_SCRIMS).toBe(PAGE_SCRIM_LAYERS.join(', '));
+        for (const layer of pageScrimLayers('bottom')) expect(css).toContain(layer);
     });
+});
+
+describe('page shading (spec 2026-10-30-page-shading)', () => {
+    const BOTTOM_1_1_1 = 'linear-gradient(0deg, rgba(8, 11, 15, 0.94) 0%, rgba(8, 11, 15, 0.6) 34%, transparent 60%)';
+    const BOTTOM_HANDOFF = 'linear-gradient(180deg, rgba(5, 7, 10, 0) 55%, rgba(5, 7, 10, 0.6) 100%)';
+    const withTop: ThemeClasses = { ...full, header: { ...full.header, TopGradient: 'hd_TopGrad' } };
+    /** Every `.hd_Top::after` rule body, in order (the last one wins). */
+    const afters = (css: string) => [...css.matchAll(/\.hd_Top::after \{([^}]*)\}/g)].map((m) => m[1]);
+    it('pageScrimLayers: Bottom half is the two bottom scrims, None is nothing', () => {
+        expect(pageScrimLayers('bottom')).toEqual([BOTTOM_HANDOFF, BOTTOM_1_1_1]);
+        expect(pageScrimLayers('none')).toEqual([]);
+        expect(pageScrims('bottom')).toBe(`${BOTTOM_HANDOFF}, ${BOTTOM_1_1_1}`);
+        expect(pageScrims('none')).toBe('none');
+    });
+    for (const restyle of [false, true]) {
+        it(`the header's ::after draws the mode's layers, nothing at the top or left (${restyle ? 'restyled' : '1.1.1'} layout)`, () => {
+            const bottom = afters(buildThemeCss(withTop, { restyle, pageShading: 'bottom' }));
+            const none = afters(buildThemeCss(withTop, { restyle, pageShading: 'none' }));
+            const fallback = afters(buildThemeCss(withTop, { restyle }));
+            expect(bottom.length).toBeGreaterThan(0);
+            expect(bottom.at(-1)).toContain(`background: ${pageScrims('bottom')};`);
+            expect(fallback.at(-1)).toContain(`background: ${pageScrims('bottom')};`);
+            expect(none.at(-1)).toContain('background: none;');
+            for (const body of [...bottom, ...none]) {
+                expect(body).not.toContain('90deg');
+                expect(body).not.toContain('rgba(0, 0, 0, 0.5) 0px');
+            }
+            for (const body of none) expect(body).not.toContain('linear-gradient');
+        });
+        it(`hides Steam's own top shadow (header TopGradient) in both modes (${restyle ? 'restyled' : '1.1.1'})`, () => {
+            for (const pageShading of ['bottom', 'none'] as const) {
+                expect(buildThemeCss(withTop, { restyle, pageShading })).toContain('.hd_TopGrad { display: none !important; }');
+            }
+            expect(buildThemeCss(full, { restyle })).not.toContain('undefined');
+        });
+    }
 });
 
 describe('the page arriving after the open transition', () => {

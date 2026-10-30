@@ -12,7 +12,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, PAGE_SCRIMS, cleanInfoCss, cardBaseCss, normalCardsCss, pageType, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../styles/themeCss';
+import { PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -301,11 +301,13 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             background-repeat: no-repeat; opacity: .92;
             -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%)`),
 
-        // Scrims: the game page's own shading (themeCss PAGE_SCRIMS; Michael: Cronos's page shading, on Home by default),
-        // so the art looks the same on both and opening a game never changes it; a flat dim only under the feed sheet.
+        // Scrims: the game page's own shading for the Page shading setting (themeCss pageScrims; Bottom half, or None on
+        // .gh-shade-none on the root), so the art looks the same on both and opening a game never changes it; a flat dim
+        // only under the feed sheet.
         rule('.gh-scrim', 'position: absolute; inset: 0; pointer-events: none'),
         rule('.gh-scrim-dim', `background: rgba(${SCRIM},var(--gh-dim)); transition: background ${SHEET_MS}ms`),
-        rule('.gh-scrim-page', `background: ${STEAM_TOP_GRADIENT}, ${PAGE_SCRIMS}`),
+        rule('.gh-scrim-page', `background: ${pageScrims('bottom')}`),
+        rule('.gh-shade-none .gh-scrim-page', `background: ${pageScrims('none')}`),
 
         // Scaled canvas; width, height and transform are set inline from homeCanvas().
         rule('.gh-canvas', 'position: absolute; left: 0; top: 0; transform-origin: 0 0'),

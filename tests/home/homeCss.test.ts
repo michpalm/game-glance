@@ -10,7 +10,7 @@ import { sourcePillLook } from '../../src/styles/sourcePill';
 import { NOT_MOUSE } from '../../src/home/mouseMode';
 import { labelText } from '../../src/styles/tokens';
 import { normalCardsCss } from '../../src/styles/themeCss';
-import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
+import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
 
@@ -765,12 +765,14 @@ describe('homeCss open transition', () => {
         // The cloud's icon is the page's size too (PAGE_LAYOUT.cloudIcon, on both).
         expect(css).toMatch(new RegExp(`\\.gh-btn-cloud svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.cloudIcon}px`));
     });
-    it("Home shades its art as the game page does, at rest (Michael: Cronos's page shading, by default), so opening never changes it", () => {
+    it('Home shades its art as the game page does, per Page shading (Bottom half by default, None on .gh-shade-none), so opening never changes it', () => {
         const all = rules(css);
         const page = all.find(([sel]) => sel === '.gh-scrim-page');
-        // Steam's own top shadow on the page (its header's TopGradient, 75 px, probed on the Ally), then the restyle's layers.
-        expect(page?.[1]).toContain(`background: ${STEAM_TOP_GRADIENT}, ${PAGE_SCRIMS}`);
-        expect(STEAM_TOP_GRADIENT).toBe('linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0) 75px)');
+        // The page's layers for the mode (themeCss pageScrims); no top shadow (Steam's TopGradient is hidden on the page too).
+        expect(page?.[1]).toContain(`background: ${pageScrims('bottom')}`);
+        expect(all.find(([sel]) => sel === '.gh-shade-none .gh-scrim-page')?.[1]).toContain('background: none');
+        expect(css).not.toContain('rgba(0, 0, 0, 0.5) 0px');
+        expect(page?.[1]).not.toContain('90deg');
         expect(page?.[1]).not.toMatch(/opacity:\s*0/);
         // Home's own gradients are gone, and nothing about the shading changes while opening.
         expect(all.some(([sel]) => sel.includes('.gh-scrim-v') || sel.includes('.gh-scrim-l'))).toBe(false);

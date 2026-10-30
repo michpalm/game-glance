@@ -190,7 +190,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const { homeStatusBar: statusBar, gameLogo, heroFit } = useSettings();
+    const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = useSettings();
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -259,7 +259,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>
-                <style>{themeCss({ restyle, heroFit })}</style>
+                <style>{themeCss({ restyle, heroFit, pageShading })}</style>
                 <style>{unifideckCss({ restyle })}</style>
                 {ringStyle && <style>{ringStyle}</style>}
                 {cleanStyle && <style>{cleanStyle}</style>}
