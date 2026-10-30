@@ -634,7 +634,7 @@ function shadeNoneRules(): string[] {
     const play = '.gh-actions > .gh-btn[data-action="play"]';
     const M = `${N}[data-gh-opening="morph"]`;
     return [
-        rule(`${N} .gh-eyebrow`, `color: #fff; text-shadow: ${S.eyebrowShadow(px)}`),
+        rule(`${N} .gh-eyebrow`, `color: #fff; text-shadow: ${S.eyebrowShadow(px)}; ${S.eyebrowClip(px)}`),
         rule([`${N} .gh-chip`, `${N} .gh-btn-circle:not(.gh-focus)`, `${N} .gh-source:not(.gh-source-selectable)`, `${N} .gh-family`, `${N} .gh-store-choice`].join(', '), glass),
         rule(`${N} .gh-chip-label, ${N} .gh-chip-value`, `text-shadow: ${S.labelShadow(px)}`),
         rule(`${N} .gh-btn-play, ${N} .gh-btn-library`, pill),
@@ -644,7 +644,7 @@ function shadeNoneRules(): string[] {
         rule(`${N} .gh-open-ring`, `border-color: rgba(255,255,255,calc(${S.edge} * var(--gho-ring-boost, 1)))`),
         rule(`${N} .gh-normal-card, ${N} .gh-clean-info`, pageGlass),
         rule([`${N} .gh-normal-label`, `${N} .gh-normal-value`, `${N} .gh-clean-label`, `${N} .gh-clean-value`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
-        soft(`${N} .gh-twin[data-role="eyebrow"]`, `color: #fff; text-shadow: ${S.eyebrowShadow(dd)}`),
+        soft(`${N} .gh-twin[data-role="eyebrow"]`, `color: #fff; text-shadow: ${S.eyebrowShadow(dd)}; ${S.eyebrowClip(dd)}`),
         soft([`${N} .gh-twin[data-role="label"]`, `${N} .gh-twin[data-role="value"]`, `${N} .gh-twin[data-role="cleanValue"]`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
         soft(`${N} .gh-twin[data-role="playLabel"]`, `text-shadow: ${S.pillTextShadow(dd)}`),
         // The Play pill's accent layers while it morphs (openingRules): the moving one, and the page's pill fading in.

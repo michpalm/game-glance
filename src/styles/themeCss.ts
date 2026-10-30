@@ -124,6 +124,8 @@ export const SHADE_NONE = {
     pillEdge: 'rgba(0,0,0,.35)',
     eyebrowShadow: (u: (n: number) => string) =>
         `0 ${u(1)} ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`,
+    /** The eyebrow keeps its ellipsis, but its box must not cut the glow off at its edges (it read as a band on the Ally). */
+    eyebrowClip: (u: (n: number) => string) => `overflow: clip; overflow-clip-margin: ${u(24)}`,
     labelShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(3)} #000b`,
     pillShadow: (u: (n: number) => string) => `0 0 0 ${u(1)} rgba(0,0,0,.25), 0 ${u(6)} ${u(18)} ${u(-8)} rgba(0,0,0,.8)`,
     pillTextShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(2)} #0009`,
@@ -946,7 +948,7 @@ function shadeNoneRules({ root, play }: ThemeClasses): string[] {
     const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
     const pill = playButton && `${playButton} > div:has(> [role="button"])`;
     return [
-        `.gg-eyebrow { color: #fff !important; text-shadow: ${S.eyebrowShadow(d)} !important; }`,
+        `.gg-eyebrow { color: #fff !important; text-shadow: ${S.eyebrowShadow(d)} !important; overflow: clip !important; overflow-clip-margin: ${d(24)} !important; }`,
         rule(menuButton, glass),
         ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
         `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,

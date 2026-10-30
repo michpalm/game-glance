@@ -1249,6 +1249,9 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         const body = none('.gh-eyebrow');
         expect(body).toMatch(/color:\s*#fff !important/);
         expect(body).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent) !important');
+        // The box keeps its ellipsis but must not cut the glow off at its edges (it read as a band behind the line on the Ally).
+        expect(body).toMatch(/overflow:\s*clip !important/);
+        expect(body).toMatch(/overflow-clip-margin:\s*24px !important/);
     });
     it('the glass on the art (chips, circles, store and family pills, store choice) is darker, with a brighter edge and white text', () => {
         for (const sel of ['.gh-chip', '.gh-btn-circle', '.gh-source:not(.gh-source-selectable)', '.gh-family', '.gh-store-choice']) {

@@ -1348,6 +1348,8 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
         const body = exact(none, '.gg-eyebrow');
         expect(body).toContain('color: #fff !important');
         expect(body).toContain(`0 ${D(1)} ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
+        expect(body).toContain('overflow: clip !important');
+        expect(body).toContain(`overflow-clip-margin: ${D(24)} !important`);
     });
     it('the round buttons, source and family pills, store choice, description/HLTB cards and Clean panel take the darker glass', () => {
         for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
