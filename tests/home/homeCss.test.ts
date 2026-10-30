@@ -1226,3 +1226,13 @@ describe('the cards\' crisp ring in the open transition', () => {
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
     });
 });
+
+describe('text on the accent', () => {
+    it('the Library pill reads white on the accent, like Play (the visual language: text on the accent is white)', () => {
+        const all = rules(homeCss());
+        const library = all.find(([sel]) => sel.length === 1 && sel[0] === '.gh-btn-library');
+        expect(library?.[1]).toContain('background: var(--glance-accent)');
+        expect(library?.[1]).toMatch(/color: #fff/);
+        expect(library?.[1]).not.toContain('--gh-on-accent');
+    });
+});
