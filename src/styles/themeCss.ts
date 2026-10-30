@@ -113,6 +113,23 @@ export function pageScrims(mode: PageShading): string {
 }
 
 /**
+ * Page shading None's contrast (spec "Contrast in None mode"): with no shade under them, text and glass on the art get
+ * their own. One source for Home (canvas px) and the restyled page (d units), so the open transition hands over unchanged;
+ * `u` writes the surface's unit.
+ */
+export const SHADE_NONE = {
+    glass: 'rgba(12,16,22,.6)',
+    edge: '.16',
+    pill: 'color-mix(in srgb, var(--glance-accent) 88%, #000)',
+    pillEdge: 'rgba(0,0,0,.35)',
+    eyebrowShadow: (u: (n: number) => string) =>
+        `0 ${u(1)} ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`,
+    labelShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(3)} #000b`,
+    pillShadow: (u: (n: number) => string) => `0 0 0 ${u(1)} rgba(0,0,0,.25), 0 ${u(6)} ${u(18)} ${u(-8)} rgba(0,0,0,.8)`,
+    pillTextShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(2)} #0009`,
+} as const;
+
+/**
  * The restyled page's layout in the handoff's px (`d`, --gg-d), one source for the theme below and for the open
  * transition's targets (home/openTargets). Values in px are CSS px; everything else is in d units.
  */
@@ -393,7 +410,7 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
                 margin: 0 !important; `),
         );
     }
-    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout), options.heroFit ?? 'fill'));
+    if (options.restyle) rules.push(...restyleRules(classes, Boolean(layout), options.heroFit ?? 'fill'), ...(options.pageShading === 'none' ? shadeNoneRules(classes) : []));
     return rules.filter((r) => r.length > 0).join('\n');
 }
 
@@ -916,6 +933,29 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         );
     }
     return rules;
+}
+
+/**
+ * The restyled page's look in Page shading None (SHADE_NONE, Home's .gh-shade-none twins): after restyleRules, each
+ * !important on the selector the restyle styles the element by, so the focus and hover rules (more specific) still win.
+ */
+function shadeNoneRules({ root, play }: ThemeClasses): string[] {
+    const S = SHADE_NONE;
+    const playButton = cls(root, 'ActionButtonAndStatusPanel');
+    const menuButton = cls(play, 'MenuButton');
+    const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
+    const pill = playButton && `${playButton} > div:has(> [role="button"])`;
+    return [
+        `.gg-eyebrow { color: #fff !important; text-shadow: ${S.eyebrowShadow(d)} !important; }`,
+        rule(menuButton, glass),
+        ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
+        `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,
+        `.gg-value { text-shadow: ${S.labelShadow(d)} !important; }`,
+        // A colour only: the download fill is the pill's background image (buildDownloadCss). The page pill has no border,
+        // so Home's dark edge is an inset ring here.
+        rule(pill, ` background-color: ${S.pill} !important; box-shadow: inset 0 0 0 ${d(1)} ${S.pillEdge}, ${S.pillShadow(d)} !important; text-shadow: ${S.pillTextShadow(d)} !important; `),
+        rule(playButton && `${playButton} [role="button"] > div`, ` text-shadow: ${S.pillTextShadow(d)} !important; `),
+    ];
 }
 
 /** The page's new parts' fade-in after the open transition (motion.OPEN_TIMINGS.reveal, rise feedRise). */

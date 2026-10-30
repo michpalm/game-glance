@@ -1238,3 +1238,75 @@ describe('text on the accent', () => {
         expect(library?.[1]).not.toContain('--gh-on-accent');
     });
 });
+
+describe('Page shading None: contrast on the art (spec "Contrast in None mode")', () => {
+    const css = homeCss();
+    const GLASS = 'rgba(12,16,22,.6)';
+    const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
+    /** Bodies of the rules with a selector starting `.gh-shade-none <sel>`. */
+    const none = (sel: string) => rules(css).filter(([list]) => list.some((s) => s.startsWith(`.gh-shade-none ${sel}`))).map(([, b]) => b).join(' ');
+    it('the eyebrow is white with the accent only as a glow', () => {
+        const body = none('.gh-eyebrow');
+        expect(body).toMatch(/color:\s*#fff !important/);
+        expect(body).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent) !important');
+    });
+    it('the glass on the art (chips, circles, store and family pills, store choice) is darker, with a brighter edge and white text', () => {
+        for (const sel of ['.gh-chip', '.gh-btn-circle', '.gh-source:not(.gh-source-selectable)', '.gh-family', '.gh-store-choice']) {
+            const body = none(sel);
+            expect(body, sel).toContain(`background: ${GLASS} !important`);
+            expect(body, sel).toContain('border-color: rgba(255,255,255,.16) !important');
+            expect(body, sel).toMatch(/color:\s*#fff !important/);
+        }
+        // The feed cards and the Library card keep their look.
+        expect(none('.gh-card')).toBe('');
+        expect(none('.gh-lib-body')).toBe('');
+    });
+    it('chip labels and values get a dark shadow', () => {
+        for (const sel of ['.gh-chip-label', '.gh-chip-value']) expect(none(sel), sel).toContain('text-shadow: 0 1px 3px #000b !important');
+    });
+    it('Play and Library: a darker accent, a dark edge and drop shadow, a shadowed label', () => {
+        for (const sel of ['.gh-btn-play', '.gh-btn-library']) {
+            const body = none(sel);
+            expect(body, sel).toContain(`background: ${MIX} !important`);
+            expect(body, sel).toContain('border-color: rgba(0,0,0,.35) !important');
+            expect(body, sel).toContain('box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.8) !important');
+            expect(body, sel).toContain('text-shadow: 0 1px 2px #0009 !important');
+            expect(body, sel).not.toContain('outline');
+        }
+        // The download fill is its own layer over the pill, untouched.
+        expect(ruleFor(css, '.gh-btn-fill')).toContain('position: absolute');
+    });
+    it('focus and hover still win: a focused circle steps up to glass-strong, a focused Play keeps the ring', () => {
+        // The None glass skips a focused circle (gh-focus or DOM focus), so the focus rule's background applies.
+        const circle = rules(css).flatMap(([list]) => list).filter((s) => s.startsWith('.gh-shade-none .gh-btn-circle'));
+        expect(circle.length).toBeGreaterThan(0);
+        for (const s of circle) expect(s).toMatch(/:not\(\.gh-focus\)/);
+        expect(rulesMatching(css, /\.gh-btn-circle\.gh-focus$/).join(' ')).toContain('background: rgba(12,16,22,.55) !important');
+        expect(rulesMatching(css, /^:where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn\.gh-focus$/).join(' ')).toMatch(/outline:\s*2px solid #fff !important/);
+        // Hover is more specific (html[data-gg-mouse] .gh-btn:hover) than .gh-shade-none .gh-btn-play.
+        expect(rulesMatching(css, /^html\[data-gg-mouse\] \.gh-btn:hover/).join(' ')).toContain('box-shadow');
+    });
+    it('the open transition draws the page twins in the None look (shells, normal cards, Clean panel, pills, text twins, the Play layers)', () => {
+        for (const sel of ['.gh-open-shell', '.gh-open-circle', '.gh-normal-card', '.gh-clean-info', '.gh-x-pill:not(.gh-x-selectable)', '.gh-x-family', '.gh-x-store-choice']) {
+            expect(none(sel), sel).toContain(`background: ${GLASS} !important`);
+        }
+        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(255,255,255,.16) !important');
+        expect(none('.gh-open-ring')).toContain('border-color: rgba(255,255,255,calc(.16 * var(--gho-ring-boost, 1))) !important');
+        for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
+        const eyebrowTwin = none('.gh-twin[data-role="eyebrow"]');
+        expect(eyebrowTwin).toContain('color: #fff');
+        expect(eyebrowTwin).toContain('0 0 calc(4px * var(--gho-x-d)) var(--glance-accent)');
+        expect(none('.gh-twin[data-role="label"]')).toContain('text-shadow: 0 calc(1px * var(--gho-x-d)) calc(3px * var(--gho-x-d)) #000b');
+        expect(none('.gh-twin[data-role="playLabel"]')).toContain('#0009');
+        const layers = rules(css).filter(([list]) => list.some((s) => s.startsWith('.gh-shade-none[data-gh-opening="morph"]') && /::(before|after)$/.test(s))).map(([, b]) => b);
+        expect(layers.length).toBe(2);
+        for (const b of layers) expect(b).toContain(`background: ${MIX} !important`);
+    });
+    it('Bottom half is unchanged: every new declaration sits under .gh-shade-none', () => {
+        for (const [list, body] of rules(css)) {
+            if ([GLASS, MIX, '#000b', '0 0 4px var(--glance-accent)'].some((v) => body.includes(v))) {
+                for (const s of list) expect(s, body).toContain('.gh-shade-none');
+            }
+        }
+    });
+});

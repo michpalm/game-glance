@@ -12,7 +12,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, STEAM_PLAY_LINE } from '../styles/themeCss';
+import { PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -611,7 +611,46 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // No-games state, centred in the area between Steam's bars: the message and the Open Library pill.
         rule('.gh-empty', 'position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 0 56px; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: .02em; color: rgba(255,255,255,.72)'),
         rule('.gh-empty .gh-actions', 'margin: 0'),
+        ...shadeNoneRules(),
     ].join('\n');
+}
+
+/**
+ * Page shading None (.gh-shade-none on the root): the text and glass on the art get their own contrast (themeCss
+ * SHADE_NONE, which the page draws too). Scoped one class deep, so the focus, hover and open-transition rules (more
+ * specific) still win; a focused circle is left to its focus look. The open transition's copies of the page's parts
+ * (shells, normal cards, Clean panel, pills, text twins, the Play layers) take the page's None look, so the hand-over
+ * changes nothing.
+ */
+function shadeNoneRules(): string[] {
+    const S = SHADE_NONE;
+    const N = '.gh-shade-none';
+    const px = (n: number) => `${n}px`;
+    const dd = (n: number) => `calc(${n}px * var(--gho-x-d))`;
+    const glass = `background: ${S.glass}; border-color: rgba(255,255,255,${S.edge}); color: #fff`;
+    // The page's cards and Clean panel: their ring brightened as the page's is (--gg-ring, themeCss ring()).
+    const pageGlass = `background: ${S.glass}; border-color: rgba(255,255,255,calc(${S.edge} * var(--gg-ring, 1))); color: #fff`;
+    const pill = `background: ${S.pill}; border-color: ${S.pillEdge}; box-shadow: ${S.pillShadow(px)}; text-shadow: ${S.pillTextShadow(px)}`;
+    const play = '.gh-actions > .gh-btn[data-action="play"]';
+    const M = `${N}[data-gh-opening="morph"]`;
+    return [
+        rule(`${N} .gh-eyebrow`, `color: #fff; text-shadow: ${S.eyebrowShadow(px)}`),
+        rule([`${N} .gh-chip`, `${N} .gh-btn-circle:not(.gh-focus)`, `${N} .gh-source:not(.gh-source-selectable)`, `${N} .gh-family`, `${N} .gh-store-choice`].join(', '), glass),
+        rule(`${N} .gh-chip-label, ${N} .gh-chip-value`, `text-shadow: ${S.labelShadow(px)}`),
+        rule(`${N} .gh-btn-play, ${N} .gh-btn-library`, pill),
+        // The open transition's copies of the page's parts.
+        rule([`${N} .gh-open-shell`, `${N} .gh-open-circle`, `${N} .gh-x-pill:not(.gh-x-selectable)`, `${N} .gh-x-family`, `${N} .gh-x-store-choice`].join(', '), glass),
+        rule(`${N} .gh-open-shell::before`, `border-color: rgba(255,255,255,${S.edge})`),
+        rule(`${N} .gh-open-ring`, `border-color: rgba(255,255,255,calc(${S.edge} * var(--gho-ring-boost, 1)))`),
+        rule(`${N} .gh-normal-card, ${N} .gh-clean-info`, pageGlass),
+        rule([`${N} .gh-normal-label`, `${N} .gh-normal-value`, `${N} .gh-clean-label`, `${N} .gh-clean-value`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
+        soft(`${N} .gh-twin[data-role="eyebrow"]`, `color: #fff; text-shadow: ${S.eyebrowShadow(dd)}`),
+        soft([`${N} .gh-twin[data-role="label"]`, `${N} .gh-twin[data-role="value"]`, `${N} .gh-twin[data-role="cleanValue"]`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
+        soft(`${N} .gh-twin[data-role="playLabel"]`, `text-shadow: ${S.pillTextShadow(dd)}`),
+        // The Play pill's accent layers while it morphs (openingRules): the moving one, and the page's pill fading in.
+        rule(`${M} ${play}::before`, `background: ${S.pill}`),
+        rule(`${M} ${play}::after`, `background: ${S.pill}; box-shadow: inset 0 0 0 1px ${S.pillEdge}, ${S.pillShadow(px)}`),
+    ];
 }
 
 /**

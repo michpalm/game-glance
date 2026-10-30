@@ -1335,3 +1335,45 @@ describe('the page takes the default growth (#55)', () => {
     });
 });
 
+
+describe('Page shading None: contrast on the page (spec "Contrast in None mode")', () => {
+    const none = buildThemeCss(full, { restyle: true, pageShading: 'none' });
+    const bottom = buildThemeCss(full, { restyle: true, pageShading: 'bottom' });
+    const GLASS = 'rgba(12,16,22,.6)';
+    const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
+    const D = (n: number) => `calc(${n} * var(--gg-d))`;
+    /** The bodies of the rules whose selector list is exactly `sel`. */
+    const exact = (css: string, sel: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => m[1].trim() === sel).map((m) => m[2]).join(' ');
+    it('the eyebrow is white with the accent glow, in d units', () => {
+        const body = exact(none, '.gg-eyebrow');
+        expect(body).toContain('color: #fff !important');
+        expect(body).toContain(`0 ${D(1)} ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
+    });
+    it('the round buttons, source and family pills, store choice, description/HLTB cards and Clean panel take the darker glass', () => {
+        for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
+            const body = exact(none, sel);
+            expect(body, sel).toContain(`background: ${GLASS} !important`);
+            expect(body, sel).toContain('border-color: rgba(255, 255, 255, calc(0.16 * var(--gg-ring, 1))) !important');
+            expect(body, sel).toContain('color: #fff !important');
+        }
+        for (const sel of ['.gg-label', '.gg-value']) expect(exact(none, sel), sel).toContain(`text-shadow: 0 ${D(1)} ${D(3)} #000b !important`);
+    });
+    it('the Play pill: darker accent as a colour only (the download fill is a background image), dark edge and shadow, shadowed label', () => {
+        const all = [...none.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => m[1].trim() === '.rt_PlayBtn > div:has(> [role="button"])').map((m) => m[2]);
+        const body = all.find((b) => b.includes('color-mix')) ?? '';
+        expect(body).toContain(`background-color: ${MIX} !important`);
+        expect(body).not.toMatch(/background:/);
+        expect(body).toContain(`box-shadow: inset 0 0 0 ${D(1)} rgba(0,0,0,.35), 0 0 0 ${D(1)} rgba(0,0,0,.25), 0 ${D(6)} ${D(18)} ${D(-8)} rgba(0,0,0,.8) !important`);
+        expect(body).toContain(`text-shadow: 0 ${D(1)} ${D(2)} #0009 !important`);
+        expect(body).not.toContain('outline');
+    });
+    it('focus still wins: the focused round button and store choice rules are more specific and set their own background', () => {
+        expect(none).toMatch(/:where\(html:not\(\[data-gg-mouse\]\)\) \.ps_Menu\.gpfocus \{ background: rgba\(12,16,22,\.55\) !important/);
+        expect(none.lastIndexOf('.ps_Menu {')).toBeGreaterThan(-1);
+    });
+    it('Bottom half and the 1.1.1 page are unchanged', () => {
+        for (const css of [bottom, buildThemeCss(full, { pageShading: 'none' }), buildThemeCss(full, { restyle: true })]) {
+            for (const v of [GLASS, MIX, '#000b', 'var(--glance-accent), 0 0']) expect(css).not.toContain(v);
+        }
+    });
+});
