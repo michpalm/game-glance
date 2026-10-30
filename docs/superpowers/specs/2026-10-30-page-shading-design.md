@@ -23,3 +23,13 @@ Home and the game page share five gradient layers over the art (themeCss `STEAM_
 
 - One source of truth: a function in themeCss returning the layers for a mode (`pageScrimLayers(mode)`), used by Home and the game page.
 - No Steam functions; the top shadow is hidden by its class from the existing header class map.
+
+## Contrast in None mode (added 2026-10-30)
+
+Michael's Ally check of None mode (30 frames, Pico Park, Snufkin, Overcooked 2, Observer, CULTIC): text and buttons clash with the art. Picked after live previews on Snufkin and CULTIC. Applies only while Page shading is None (Home root `.gh-shade-none`; the game page CSS built with `pageShading: 'none'`); Bottom half keeps today's look.
+
+- **Eyebrow** ("LAST PLAYED · …", Home and game page): white text; the game accent only as a glow: `text-shadow: 0 1px 2px #000, 0 0 4px <accent>, 0 0 10px <accent>, 0 0 20px color-mix(in srgb, <accent> 75%, transparent)`. No chip behind it; no accent anywhere else in this pass.
+- **Glass on the art** (Home stat chips, round buttons, source/Steam pill, family pill; game page round buttons, source pill, description and HowLongToBeat cards, the "Online" player-count pill): background `rgba(12,16,22,.6)`, edge `rgba(255,255,255,.16)`, white text.
+- **Chip labels and values**: `text-shadow: 0 1px 3px #000b`.
+- **Play and Library pills**: background `color-mix(in srgb, <accent> 88%, #000)`, border `rgba(0,0,0,.35)`, `box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.8)`, label `text-shadow: 0 1px 2px #0009`.
+- No extra shade layer: Home and the game page keep drawing identical (empty) scrims so the open transition is unchanged.
