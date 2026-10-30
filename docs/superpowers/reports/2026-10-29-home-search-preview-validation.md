@@ -79,3 +79,9 @@ The owned-footer CSS now sets `border-image:none!important`, retaining border ge
 User explicitly approved “install.” Menu closed confirmed before backup and again before replacement. Previous e2960a... frontend backed up/verified at `/home/deck/gg-backup-footer-line-20261030-j85j1vyu/index.js`. Staged, installed and independent post-reload SHA matched `bdc4ab5be8f3404929f1aa0fb9778ed89316ce12c405996931c23ce008cc210e` (source419f71a). Guarded plugin reload succeeded and plugin loaded; no reboot/navigation/query/send.
 
 Post-reload Home remains in native fallback at the sampled times: no owned footer/header markers and no interactive status cells. Therefore live border-image removal has not yet been verified in active expanded mode, despite the installed build/checksum being correct. The controller-focus/user visual check is pending. Do not describe the residual line as confirmed gone on-device until active ownership and/or the user confirms it. No additional install or UI mutation was attempted.
+
+## User confirmation and local branch handoff (2026-10-30)
+
+After the installed border-image correction, the user confirmed: “Correct. It seems to work pretty decently.” This closes the pending user visual check for the residual line and general operation of the installed preview. It is not a claim that every controller/menu/route edge case in the original acceptance matrix was separately exercised. Search queries/results remain deferred; the nonblocking fallback-diagnostic cleanup remains deferred.
+
+The user requested committing all changes to the local branch. All product changes were already committed on `codex/social-chat`; this final record adds their device confirmation. No push, PR, merge or release was requested or performed. Installed frontend remains `bdc4ab5be8f3404929f1aa0fb9778ed89316ce12c405996931c23ce008cc210e`; backups and private test evidence remain available.
