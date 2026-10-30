@@ -14,7 +14,7 @@ html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],
 .gh-keyboard-surface .gg-keyboard{pointer-events:auto}
 .gh-keyboard-surface .gg-keyboard-row button.DialogButton{display:flex;align-items:center;justify-content:center}
 
-[data-gh-footer=true]{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
+[data-gh-footer=true]{background:transparent!important;box-shadow:none!important;border-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
 [data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
 [data-gh-footer-side]>:first-child{display:flex;align-items:center;height:20px}
