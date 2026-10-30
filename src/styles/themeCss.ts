@@ -117,15 +117,19 @@ export function pageScrims(mode: PageShading): string {
  * their own. One source for Home (canvas px) and the restyled page (d units), so the open transition hands over unchanged;
  * `u` writes the surface's unit.
  */
+/**
+ * The eyebrow ("LAST PLAYED · …") on Home, the page and the open-transition twin, in every Page shading mode: white, the
+ * game accent only as a glow, so it reads on any art (Michael, 2026-10-30). Its box keeps the ellipsis but must not cut
+ * the glow off at its edges (overflow: hidden read as a band behind the line on the Ally).
+ */
+export const EYEBROW = (u: (n: number) => string) =>
+    `color: #fff; text-shadow: 0 ${u(1)} ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent); overflow: clip; overflow-clip-margin: ${u(24)}`;
+
 export const SHADE_NONE = {
     glass: 'rgba(12,16,22,.6)',
     edge: '.16',
     pill: 'color-mix(in srgb, var(--glance-accent) 88%, #000)',
     pillEdge: 'rgba(0,0,0,.35)',
-    eyebrowShadow: (u: (n: number) => string) =>
-        `0 ${u(1)} ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`,
-    /** The eyebrow keeps its ellipsis, but its box must not cut the glow off at its edges (it read as a band on the Ally). */
-    eyebrowClip: (u: (n: number) => string) => `overflow: clip; overflow-clip-margin: ${u(24)}`,
     labelShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(3)} #000b`,
     pillShadow: (u: (n: number) => string) => `0 0 0 ${u(1)} rgba(0,0,0,.25), 0 ${u(6)} ${u(18)} ${u(-8)} rgba(0,0,0,.8)`,
     pillTextShadow: (u: (n: number) => string) => `0 ${u(1)} ${u(2)} #0009`,
@@ -830,7 +834,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Eyebrow ("Last played · Today", accent) and the 64px/800 title, at most two lines. Hidden unless the
         // full-screen layout applies (below): all-or-nothing, like the rest of the layout.
         `.gg-titleblock { display: none; flex-direction: column; gap: ${d(PAGE_LAYOUT.titleBlock.gap)}; max-width: ${d(640)}; margin: 1vh var(--gg-side); color: #fff; font-family: inherit; }`,
-        `.gg-eyebrow { ${pageType('eyebrow', d)} color: var(--glance-accent-text); text-shadow: 0 ${d(1)} ${d(2)} #0009; }`,
+        `.gg-eyebrow { ${pageType('eyebrow', d)} ${EYEBROW(d)}; }`,
         `.gg-metadata { display: flex; flex-wrap: wrap; align-items: center; column-gap: ${d(16)}; row-gap: ${d(6)}; }`,
         `.gg-availability { display: inline-flex; align-items: center; gap: ${d(6)}; font-size: ${d(PAGE_LAYOUT.titleBlock.eyebrow)}; line-height: 1.2; font-weight: 700; text-transform: uppercase; color: #fff; }`,
         `.gg-availability img { display: block; width: ${d(14)}; height: ${d(14)}; object-fit: contain; }`,
@@ -948,7 +952,6 @@ function shadeNoneRules({ root, play }: ThemeClasses): string[] {
     const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
     const pill = playButton && `${playButton} > div:has(> [role="button"])`;
     return [
-        `.gg-eyebrow { color: #fff !important; text-shadow: ${S.eyebrowShadow(d)} !important; overflow: clip !important; overflow-clip-margin: ${d(24)} !important; }`,
         rule(menuButton, glass),
         ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
         `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,

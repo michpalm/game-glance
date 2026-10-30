@@ -12,7 +12,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
+import { EYEBROW, PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
@@ -329,7 +329,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-title-slot', `height: ${t.titleLines * t.titleSize}px; display: flex; flex-direction: column; justify-content: flex-end; margin: 0; padding: 0; overflow: visible`),
         // Eyebrow, between the title and the chips: always one line (ellipsis), so it never pushes the chips.
         rule('.gh-eyebrow', `margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; line-height: 1.2; height: ${t.eyebrow}px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--glance-accent-text); text-shadow: 0 1px 2px #0009`),
+            white-space: nowrap; text-overflow: ellipsis; ${EYEBROW(px)}`),
         // At most two lines with an ellipsis (TITLE_BLOCK). The clip gets a bleed on every side for descenders and the
         // shadow; equal negative margins keep the layout box at exactly two 58px lines.
         rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: ${t.titleSize}px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
@@ -634,7 +634,6 @@ function shadeNoneRules(): string[] {
     const play = '.gh-actions > .gh-btn[data-action="play"]';
     const M = `${N}[data-gh-opening="morph"]`;
     return [
-        rule(`${N} .gh-eyebrow`, `color: #fff; text-shadow: ${S.eyebrowShadow(px)}; ${S.eyebrowClip(px)}`),
         rule([`${N} .gh-chip`, `${N} .gh-btn-circle:not(.gh-focus)`, `${N} .gh-source:not(.gh-source-selectable)`, `${N} .gh-family`, `${N} .gh-store-choice`].join(', '), glass),
         rule(`${N} .gh-chip-label, ${N} .gh-chip-value`, `text-shadow: ${S.labelShadow(px)}`),
         rule(`${N} .gh-btn-play, ${N} .gh-btn-library`, pill),
@@ -644,7 +643,6 @@ function shadeNoneRules(): string[] {
         rule(`${N} .gh-open-ring`, `border-color: rgba(255,255,255,calc(${S.edge} * var(--gho-ring-boost, 1)))`),
         rule(`${N} .gh-normal-card, ${N} .gh-clean-info`, pageGlass),
         rule([`${N} .gh-normal-label`, `${N} .gh-normal-value`, `${N} .gh-clean-label`, `${N} .gh-clean-value`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
-        soft(`${N} .gh-twin[data-role="eyebrow"]`, `color: #fff; text-shadow: ${S.eyebrowShadow(dd)}; ${S.eyebrowClip(dd)}`),
         soft([`${N} .gh-twin[data-role="label"]`, `${N} .gh-twin[data-role="value"]`, `${N} .gh-twin[data-role="cleanValue"]`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
         soft(`${N} .gh-twin[data-role="playLabel"]`, `text-shadow: ${S.pillTextShadow(dd)}`),
         // The Play pill's accent layers while it morphs (openingRules): the moving one, and the page's pill fading in.
@@ -843,7 +841,7 @@ export function openingRules(): string[] {
         soft('.gh-twin[data-origin="pill"]', 'transform-origin: 0 0; --t-shift: 0%; width: var(--t-w); height: var(--t-h); display: flex; align-items: center; padding: 0 0 0 var(--t-inset); box-sizing: border-box'),
         soft(`${MT} .gh-twin`, `transform: var(--t-to); transition: ${move}; animation: gh-twin-in ${T.morph}ms linear both`),
         soft('.gh-twin[data-role="title"]', `${pageType('title', dd)} max-width: ${dd(640)}; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 ${dd(4)} ${dd(30)} rgba(0,0,0,.4)`),
-        soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} color: var(--glance-accent-text); text-shadow: 0 ${dd(1)} ${dd(2)} #0009`),
+        soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} ${EYEBROW(dd)}`),
         // The page's labels inherit a 1.5 line height from Steam (PAGE_TYPE leaves it out): stated here.
         soft('.gh-twin[data-role="label"]', `${pageType('label', dd)} line-height: ${PAGE_LINES.label}; ${labelText(dd)}`),
         soft('.gh-twin[data-role="value"]', pageType('value', dd)),

@@ -140,7 +140,7 @@ describe('frost and labels (VDL Section 7)', () => {
         for (const sel of ['.gh-chip-label', '.gh-feed-row-title', '.gh-card-sub']) {
             for (const decl of labelText().split(';')) expect(ruleFor(css, sel), sel).toContain(decl);
         }
-        expect(ruleFor(css, '.gh-eyebrow')).toMatch(/text-shadow:\s*0 1px 2px #0009/);
+        expect(ruleFor(css, '.gh-eyebrow')).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
     });
     it('the open transition copies the page: twin labels and the shell match', () => {
         const page = normalCardsCss('gg', (n) => `calc(${n} * var(--gg-d))`);   // the page's cards, as restyleRules writes them
@@ -225,7 +225,8 @@ describe('homeCss', () => {
         expect(css).not.toMatch(/transition:[^;}]*--glance-accent/);
         expect(css).toMatch(/\.gh-root\s*\{[^}]*--glance-accent-text:\s*#5fd1ae/);
         // Small accent text uses the legible variant; bars, fills and rings keep the true accent.
-        expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*color:\s*var\(--glance-accent-text\)/);
+        // The eyebrow is white; the accent is its glow (Michael, 2026-10-30: always, in both Page shading modes).
+        expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*color:\s*#fff/);
         expect(css).not.toMatch(/(?<![-\w])color:\s*var\(--glance-accent\)/);
         expect(css).toMatch(/\.gh-root\s*\{[^}]*transition:\s*none\s*!important/);
         // The accent-coloured elements fade their own colour instead.
@@ -1245,13 +1246,14 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
     const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
     /** Bodies of the rules with a selector starting `.gh-shade-none <sel>`. */
     const none = (sel: string) => rules(css).filter(([list]) => list.some((s) => s.startsWith(`.gh-shade-none ${sel}`))).map(([, b]) => b).join(' ');
-    it('the eyebrow is white with the accent only as a glow', () => {
-        const body = none('.gh-eyebrow');
-        expect(body).toMatch(/color:\s*#fff !important/);
-        expect(body).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent) !important');
+    it('the eyebrow is white with the accent only as a glow, in every mode (its base rule, nothing None-only)', () => {
+        expect(none('.gh-eyebrow')).toBe('');
+        const body = ruleFor(css, '.gh-eyebrow');
+        expect(body).toMatch(/color:\s*#fff/);
+        expect(body).toContain('text-shadow: 0 1px 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
         // The box keeps its ellipsis but must not cut the glow off at its edges (it read as a band behind the line on the Ally).
-        expect(body).toMatch(/overflow:\s*clip !important/);
-        expect(body).toMatch(/overflow-clip-margin:\s*24px !important/);
+        expect(body).toMatch(/overflow:\s*clip/);
+        expect(body).toMatch(/overflow-clip-margin:\s*24px/);
     });
     it('the glass on the art (chips, circles, store and family pills, store choice) is darker, with a brighter edge and white text', () => {
         for (const sel of ['.gh-chip', '.gh-btn-circle', '.gh-source:not(.gh-source-selectable)', '.gh-family', '.gh-store-choice']) {
@@ -1296,7 +1298,7 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         expect(none('.gh-open-shell::before')).toContain('border-color: rgba(255,255,255,.16) !important');
         expect(none('.gh-open-ring')).toContain('border-color: rgba(255,255,255,calc(.16 * var(--gho-ring-boost, 1))) !important');
         for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
-        const eyebrowTwin = none('.gh-twin[data-role="eyebrow"]');
+        const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
         expect(eyebrowTwin).toContain('color: #fff');
         expect(eyebrowTwin).toContain('0 0 calc(4px * var(--gho-x-d)) var(--glance-accent)');
         expect(none('.gh-twin[data-role="label"]')).toContain('text-shadow: 0 calc(1px * var(--gho-x-d)) calc(3px * var(--gho-x-d)) #000b');
@@ -1305,9 +1307,9 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         expect(layers.length).toBe(2);
         for (const b of layers) expect(b).toContain(`background: ${MIX} !important`);
     });
-    it('Bottom half is unchanged: every new declaration sits under .gh-shade-none', () => {
+    it('Bottom half is unchanged apart from the eyebrow: every other new declaration sits under .gh-shade-none', () => {
         for (const [list, body] of rules(css)) {
-            if ([GLASS, MIX, '#000b', '0 0 4px var(--glance-accent)'].some((v) => body.includes(v))) {
+            if ([GLASS, MIX, '#000b'].some((v) => body.includes(v))) {
                 for (const s of list) expect(s, body).toContain('.gh-shade-none');
             }
         }

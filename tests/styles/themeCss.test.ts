@@ -513,10 +513,10 @@ describe('game page grammar (VDL Section 7)', () => {
         expect(frosts.length).toBeGreaterThan(5);
         for (const f of frosts) expect(f).toMatch(/^blur\([^)]*\)+ url\(#gg-calm\)$/);
     });
-    it('labels are 90% white with the shadow; the eyebrow keeps its accent and gains the shadow', () => {
+    it('labels are 90% white with the shadow; the eyebrow is white with the accent glow', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
         expect(css).not.toMatch(/rgba\(255,\s*255,\s*255,\s*0?\.62\)/);
-        expect(css).toMatch(/\.gg-eyebrow \{[^}]*var\(--glance-accent-text\);[^}]*text-shadow/);
+        expect(css).toMatch(/\.gg-eyebrow \{[^}]*color: #fff;[^}]*text-shadow:[^}]*var\(--glance-accent\)/);
     });
     it('soft Play and tiles, menu focus everywhere, info cards lift', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildUnifideckCss(full, { restyle: true });
@@ -842,7 +842,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
         expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
         // eyebrow and 64px/800 title
-        expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: var(--glance-accent-text)');
+        expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: #fff');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('text-transform: uppercase');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('letter-spacing: 0.2em');
         const title = rulesFor(restyled, '.gg-title');
@@ -1344,12 +1344,14 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
     const D = (n: number) => `calc(${n} * var(--gg-d))`;
     /** The bodies of the rules whose selector list is exactly `sel`. */
     const exact = (css: string, sel: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => m[1].trim() === sel).map((m) => m[2]).join(' ');
-    it('the eyebrow is white with the accent glow, in d units', () => {
-        const body = exact(none, '.gg-eyebrow');
-        expect(body).toContain('color: #fff !important');
+    it('the eyebrow is white with the accent glow, in d units, in both modes', () => {
+      for (const css of [none, bottom]) {
+        const body = exact(css, '.gg-eyebrow');
+        expect(body).toContain('color: #fff');
         expect(body).toContain(`0 ${D(1)} ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
-        expect(body).toContain('overflow: clip !important');
-        expect(body).toContain(`overflow-clip-margin: ${D(24)} !important`);
+        expect(body).toContain('overflow: clip');
+        expect(body).toContain(`overflow-clip-margin: ${D(24)}`);
+      }
     });
     it('the round buttons, source and family pills, store choice, description/HLTB cards and Clean panel take the darker glass', () => {
         for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
@@ -1373,9 +1375,9 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
         expect(none).toMatch(/:where\(html:not\(\[data-gg-mouse\]\)\) \.ps_Menu\.gpfocus \{ background: rgba\(12,16,22,\.55\) !important/);
         expect(none.lastIndexOf('.ps_Menu {')).toBeGreaterThan(-1);
     });
-    it('Bottom half and the 1.1.1 page are unchanged', () => {
+    it('Bottom half and the 1.1.1 page are unchanged apart from the eyebrow (its glow is in every mode)', () => {
         for (const css of [bottom, buildThemeCss(full, { pageShading: 'none' }), buildThemeCss(full, { restyle: true })]) {
-            for (const v of [GLASS, MIX, '#000b', 'var(--glance-accent), 0 0']) expect(css).not.toContain(v);
+            for (const v of [GLASS, MIX, '#000b']) expect(css).not.toContain(v);
         }
     });
 });
