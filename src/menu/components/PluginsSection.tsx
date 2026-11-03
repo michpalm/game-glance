@@ -13,7 +13,7 @@ import { RECENT_ROW, steamHomeCollections } from '../../home/collections';
 import { tr } from '../../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../../screensaver/steamScreensaver';
 import type { MenuEvent, MenuState } from '../model';
-import { menuPreferences } from '../startMenu';
+import { menuPreferences } from '../preferences';
 import { activateDeckyPlugin, listDeckyPlugins } from '../steam/deckyPlugins';
 import type { NativeRequest } from '../steam/runtime';
 import { GAME_GLANCE_VIEW, HOME_ROW_VIEW } from '../views';
