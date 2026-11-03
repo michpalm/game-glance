@@ -1,9 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {homeControlsMode,nextHomeControl,repairHomeControl,orderHomeControls,type HomeControlsPolicy} from '../../src/home/homeControls';
-const on:HomeControlsPolicy={enabled:true,spotlightHome:true,homeStatusBar:true,homeExpandedControls:true,homeMounted:true,nativeReady:true,suspended:false};
+import {nextHomeControl,repairHomeControl,orderHomeControls} from '../../src/home/homeControls';
 describe('expanded Home status policy',()=>{
- it('requires the explicit opt-in and all parent conditions',()=>{expect(homeControlsMode(on)).toBe('active');for(const key of ['enabled','spotlightHome','homeStatusBar','homeExpandedControls','homeMounted'] as const)expect(homeControlsMode({...on,[key]:false})).toBe('off');});
- it('suspends before treating temporarily missing native nodes as incompatible',()=>{expect(homeControlsMode({...on,nativeReady:false})).toBe('unavailable');expect(homeControlsMode({...on,nativeReady:false,suspended:true})).toBe('suspended');});
  it('orders dynamic cells by presentation and removes duplicate IDs',()=>{expect(orderHomeControls(['clock','controller:1','battery','download','connection','controller:0','controllers-more','profile','clock'])).toEqual(['download','connection','controller:0','controller:1','controllers-more','battery','clock','profile']);});
  it('clamps navigation and repairs removal to the closest surviving slot',()=>{const ids=['connection','battery','clock'] as const;expect(nextHomeControl('connection','left',ids)).toBe('connection');expect(nextHomeControl('battery','right',ids)).toBe('clock');expect(nextHomeControl('clock','right',ids)).toBe('clock');expect(nextHomeControl('clock','left',[])).toBeNull();expect(repairHomeControl('battery',ids,['connection','clock'])).toBe('clock');expect(repairHomeControl('clock',ids,['download','clock'])).toBe('clock');expect(repairHomeControl('clock',ids,[])).toBeNull();});
 });

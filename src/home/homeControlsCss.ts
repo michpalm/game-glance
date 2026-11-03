@@ -34,5 +34,3 @@ ${homeFooterCss}.gh-status .gh-status-control{pointer-events:auto;cursor:default
 :where(html:not([data-gg-mouse])) .gh-status .gh-status-dot-control:is(.gpfocus,:focus-visible){outline-offset:8px}
 html[data-gg-mouse] .gh-status .gh-status-control:hover{background:rgba(255,255,255,.12)}
 `;
-/** What Home renders: everything while its controls are active, the footer alone while it only holds the footer (the open transition). */
-export const homeControlsStyle=(active:boolean,footer:boolean):string|null=>active?homeControlsCss:footer?homeFooterCss:null;

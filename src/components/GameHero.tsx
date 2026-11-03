@@ -13,7 +13,7 @@ import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } fro
 import { accentFor } from '../home/accent';
 import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
-import { useChromeClaim } from '../chrome/useChromeClaim';
+import { useChromeClaim, usePageShown } from '../chrome/useChromeClaim';
 import { useChromeOwnsBar } from '../chrome/useChrome';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
@@ -234,8 +234,10 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
-    // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while shown; Steam's launch screen steps it aside.
-    useChromeClaim(game.appId === 0 ? null : { page: 'game', statusHidden: false, launching });
+    // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while rendered (not
+    // display:none under another screen); Steam's launch screen steps it aside. `key` re-binds when the hero comes or goes.
+    const shown = usePageShown(heroRef, game.appId);
+    useChromeClaim(shown ? { page: 'game', statusHidden: false, launching } : null);
     const hostBar = useChromeOwnsBar();
 
     useEffect(() => {

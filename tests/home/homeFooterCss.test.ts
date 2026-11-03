@@ -17,11 +17,6 @@ describe('Home controls stylesheet',()=>{
   const group=rules(controls.homeFooterCss).find(rule=>rule.startsWith('[data-gh-footer-side]{'));
   expect(group).toContain('transition:none!important');
  });
- it('styles Home fully when active, the footer alone while only the footer is held, else nothing',()=>{
-  expect(controls.homeControlsStyle(true,true)).toBe(controls.homeControlsCss);
-  expect(controls.homeControlsStyle(false,true)).toBe(controls.homeFooterCss);
-  expect(controls.homeControlsStyle(false,false)).toBeNull();
- });
 });
 describe('footer suspension',()=>{
  const live={foreground:true,menu:false,opening:false,launching:false,connected:true,hidden:false};

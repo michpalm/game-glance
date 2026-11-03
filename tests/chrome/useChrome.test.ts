@@ -153,6 +153,12 @@ describe('useChrome',()=>{
   await everyPage(true);await show();await everyPage(false);stop();
   expect(seen).toEqual([true,false]);
  });
+ it('owns the bar only while it draws it: active with the header lease ready',async()=>{
+  header.remove();await everyPage(true);await show();
+  expect(chrome.mode).toBe('active');expect(chrome.bar).toBe(false);expect(chromeOwnsBar()).toBe(false);
+  doc.body.prepend(header);await act(async()=>{watchers.forEach(fn=>fn([{type:'childList',target:doc.body,addedNodes:[header],removedNodes:[]} as any],{} as any));await new Promise(r=>setTimeout(r,0));});
+  expect(chrome.bar).toBe(true);expect(chromeOwnsBar()).toBe(true);
+ });
  it('installs nothing document-wide for anyone who has not opted in',async()=>{
   await act(()=>settings.setHomeExpandedControls(false));await everyPage(true);await show();
   await act(()=>{header.querySelector('input')!.dispatchEvent(Object.assign(new win.Event('focusin',{bubbles:true}),{relatedTarget:doc.getElementById('card')}));});

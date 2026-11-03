@@ -19,7 +19,7 @@ let ownsBar=false;const ownsBarListeners=new Set<()=>void>();
 const setOwnsBar=(value:boolean)=>{if(ownsBar===value)return;ownsBar=value;for(const fn of [...ownsBarListeners])fn();};
 /** Home's Up-from-actions entry into the host's bar (filled while a host is mounted). */
 export const chromeFocus:{actionUp(event:GamepadEvent):boolean}={actionUp:()=>false};
-/** Whether the host has the bar and footer right now (Home, the game page and the menu holds read it). */
+/** Whether the host draws its bar right now: active with the header lease ready, as `bar` (Home, the game page and the menu holds read it). */
 export const chromeOwnsBar=():boolean=>ownsBar;
 export function subscribeChromeOwnsBar(listener:()=>void):()=>void {ownsBarListeners.add(listener);return()=>{ownsBarListeners.delete(listener);};}
 export const useChromeOwnsBar=():boolean=>useSyncExternalStore(subscribeChromeOwnsBar,chromeOwnsBar);
@@ -87,7 +87,7 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
             // The header only once the footer is ours: a page whose footer is not Steam's usual one keeps Steam's bar too.
             if(next!=='off'&&!suspended&&footerReady&&!header)header=acquireHomeHeader(root,value=>{headerReady=value;queue();});
             header?.suspend(suspended||!footerReady);
-            ready.current=footerReady&&headerReady;setOwnsBar(next==='active');
+            ready.current=footerReady&&headerReady;setOwnsBar(next==='active'&&ready.current);
             focus.setActive(next==='active'&&ready.current&&!chromeStatusHidden(o.claims),!suspended);
             setMode(previous=>previous===next?previous:next);
             setFooter(previous=>previous===footerReady?previous:footerReady);

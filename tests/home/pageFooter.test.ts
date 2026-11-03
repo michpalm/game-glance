@@ -7,7 +7,7 @@ import {discoverNativeFooter} from '../../src/home/homeControlsDom';
 import {chromeClaims,type ChromeClaim} from '../../src/chrome/claims';
 import {chromeReturn} from '../../src/chrome/policy';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
-import {useChromeClaim} from '../../src/chrome/useChromeClaim';
+import {useChromeClaim,usePageShown} from '../../src/chrome/useChromeClaim';
 import {useHomeClaim} from '../../src/home/useHomeClaim';
 vi.unmock('react-dom');
 const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>()}));
@@ -87,6 +87,19 @@ describe('Home and the game page claim the chrome host',()=>{
   expect(claims()).toHaveLength(1);
   await act(()=>root.render(createElement('div')));
   expect(claims()).toHaveLength(0);
+ });
+ it('the game page lets go while it is not rendered and claims again when shown',async()=>{
+  const seen:(()=>void)[]=[],notify=()=>seen.forEach(fn=>fn());const previous=win.ResizeObserver;win.ResizeObserver=class{constructor(fn:()=>void){seen.push(fn);}observe(){}unobserve(){}disconnect(){}};
+  // GameHero's wiring: the claim only while the page's hero is rendered.
+  function GamePage(){const ref=useRef<HTMLDivElement|null>(null),shown=usePageShown(ref,1);useChromeClaim(shown?{page:'game',statusHidden:false,launching:false}:null);return createElement('div',{ref,className:'gg-hero'});}
+  await act(()=>root.render(createElement(GamePage)));expect(claims()).toHaveLength(1);
+  const node=doc.querySelector('.gg-hero') as any;let rendered=false;node.getClientRects=()=>rendered?[rect(0,0,1,1)]:[];
+  await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(0);
+  rendered=true;await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(1);
+  node.setAttribute('aria-hidden','true');await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(0);
+  node.removeAttribute('aria-hidden');await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(1);
+  await act(()=>root.render(createElement('div')));expect(claims()).toHaveLength(0);
+  win.ResizeObserver=previous;
  });
  it('the host takes the footer in the same commit Home mounts in, and Home leaves the bar to it',async()=>{
   await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Home))));
