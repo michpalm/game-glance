@@ -8,6 +8,8 @@ import {chromeClaims,type ChromeClaim} from '../../src/chrome/claims';
 import {chromeReturn} from '../../src/chrome/policy';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 import {useChromeClaim,usePageShown} from '../../src/chrome/useChromeClaim';
+import {useChromeHeld} from '../../src/chrome/useChrome';
+import {GameStatusBar} from '../../src/components/GameStatusBar';
 import {useHomeClaim} from '../../src/home/useHomeClaim';
 import {clearLaunch,LAUNCH_INTENT_MS,launchPending,markLaunch} from '../../src/data/launchIntent';
 vi.unmock('react-dom');
@@ -145,5 +147,26 @@ describe('Home and the game page claim the chrome host',()=>{
   expect(marked()).toBe(false);expect(ownBar).toBe(true);
   await act(()=>settings.setHomeExpandedControls(true));
   expect(marked()).toBe(true);expect(ownBar).toBe(false);
+ });
+});
+describe('one status bar under the menu',()=>{
+ /** Home's gate (SpotlightHome: ownBar) and the game page's (GameHero: !hostBar) beside the real host. */
+ function Pages(){
+  const rootRef=useRef<HTMLElement|null>(null),a=useRef<HTMLElement|null>(null),b=useRef<HTMLElement|null>(null);
+  const {ownBar}=useHomeClaim({root:rootRef,lastAction:a,recents:b,statusHidden:false,launching:()=>false}),hostBar=useChromeHeld();
+  return createElement('main',{ref:rootRef},ownBar&&createElement(GameStatusBar),!hostBar&&createElement(GameStatusBar));
+ }
+ const bars=()=>doc.querySelectorAll('[data-test-bar]').length;
+ const menu=(value:boolean)=>act(()=>{steam.ui={...steam.ui,menu:value};steam.listeners.forEach(fn=>fn());});
+ it('is the host\'s alone while active and when the side menu opens, and the page\'s only when the host never owned it',async()=>{
+  await act(()=>settings.setChromeEveryPage(true));
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Pages))));
+  expect(bars()).toBe(1);
+  await menu(true);expect(bars()).toBe(1);
+  await menu(false);expect(bars()).toBe(1);
+  await act(()=>settings.setChromeEveryPage(false));await act(()=>root.render(createElement('div')));
+  steam.ui={...steam.ui,menu:true};await act(()=>settings.setChromeEveryPage(true));
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Pages))));
+  expect(bars()).toBe(2);
  });
 });

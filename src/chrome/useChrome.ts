@@ -28,7 +28,8 @@ let held=false;const heldListeners=new Set<()=>void>();
 const setHeld=(value:boolean)=>{if(held===value)return;held=value;for(const fn of [...heldListeners])fn();};
 export const chromeHeld=():boolean=>held;
 export function subscribeChromeHeld(listener:()=>void):()=>void {heldListeners.add(listener);return()=>{heldListeners.delete(listener);};}
-export const useChromeOwnsBar=():boolean=>useSyncExternalStore(subscribeChromeOwnsBar,chromeOwnsBar);
+/** Pages that draw their own bar when the host does not read this: it stays true through a suspension, so the two never stack. */
+export const useChromeHeld=():boolean=>useSyncExternalStore(subscribeChromeHeld,chromeHeld);
 
 interface Inputs {optedIn:boolean;everyPage:boolean;claims:readonly ChromeClaim[];screensaver:boolean}
 /** Home's step-aside rules for the whole window: no opening (that is Home's own), plus Steam's screensaver. */

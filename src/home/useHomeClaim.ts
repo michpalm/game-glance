@@ -1,6 +1,6 @@
 import {type RefObject,useEffect,useState,useSyncExternalStore} from 'react';
 import {useChromeClaim,usePageShown} from '../chrome/useChromeClaim';
-import {useChromeOwnsBar} from '../chrome/useChrome';
+import {useChromeHeld} from '../chrome/useChrome';
 import {LAUNCH_INTENT_MS,launchVersion,subscribeLaunch} from '../data/launchIntent';
 import {focusElement} from './homeNav';
 import {homeReturnTarget} from './useHomeControls';
@@ -19,5 +19,5 @@ export function useHomeClaim(o:{root:RefObject<HTMLElement|null>;lastAction:RefO
     // Claimed from mount, before Home's content is up: a cold start has our footer at once. Only while Home is rendered.
     const shown=usePageShown(o.root);
     useChromeClaim(!shown?null:{page:'home',statusHidden:o.statusHidden,launching,returnHome:()=>{const root=o.root.current;if(root)focusElement(homeReturnTarget(root,o.lastAction.current,o.recents.current),'the Home action');}});
-    return {ownBar:!useChromeOwnsBar()};
+    return {ownBar:!useChromeHeld()};
 }

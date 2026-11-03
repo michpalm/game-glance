@@ -14,7 +14,7 @@ import { accentFor } from '../home/accent';
 import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
 import { useChromeClaim, usePageShown } from '../chrome/useChromeClaim';
-import { useChromeOwnsBar } from '../chrome/useChrome';
+import { useChromeHeld } from '../chrome/useChrome';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
@@ -238,7 +238,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // display:none under another screen); Steam's launch screen steps it aside. `key` re-binds when the hero comes or goes.
     const shown = usePageShown(heroRef, game.appId);
     useChromeClaim(shown ? { page: 'game', statusHidden: false, launching } : null);
-    const hostBar = useChromeOwnsBar();
+    const hostBar = useChromeHeld();
 
     useEffect(() => {
         setCurrentGame(game, hltb);
