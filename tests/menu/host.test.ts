@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, holdPageStatus, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, holdPageStatus, pageFooterHoldEnabled, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
 const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', Visible: 'nativeVisible', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
@@ -190,4 +190,12 @@ it('keeps the page status bar on Home, through the menu opening, instead of swap
     expect(rule).toContain('opacity:1!important');
     expect(rule).not.toContain('visibility:hidden');
     stop();expect(document.querySelector('[data-gg-menu-page-status]')).toBeNull();
+});
+
+it('restyles the page footer only when opted in, over Steam UI and restorable',()=>{
+    const on={enabled:true,spotlightHome:true,homeStatusBar:true,homeExpandedControls:true};
+    expect(pageFooterHoldEnabled(on,true,true)).toBe(true);
+    expect(pageFooterHoldEnabled(on,false,true)).toBe(false);
+    expect(pageFooterHoldEnabled(on,true,false)).toBe(false);
+    for(const k of Object.keys(on))expect(pageFooterHoldEnabled({...on,[k]:false},true,true)).toBe(false);
 });

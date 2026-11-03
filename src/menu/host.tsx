@@ -14,6 +14,11 @@ import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
 
+/** The menu restyles the page's footer only when opted in, over Steam's own UI (never a game) and with a footer to give back to. */
+export function pageFooterHoldEnabled(s: { enabled: boolean; spotlightHome: boolean; homeStatusBar: boolean; homeExpandedControls: boolean }, overSteamUi: boolean, canRestore: boolean): boolean {
+    return s.enabled && s.spotlightHome && s.homeStatusBar && s.homeExpandedControls && overSteamUi && canRestore;
+}
+
 /** One status bar on screen while the custom menu is open. Over a game the popup owns it, so the page copy hides.
  * On Home the page copy already sits on Home's frost: it stays, held through Steam's "menu open" (which would step
  * it aside), and the popup copy is hidden instead (`.gg-menu-status-home`), so nothing swaps and nothing flickers. */
@@ -238,11 +243,7 @@ export function registerDiscoveredMenuHost(): Stop | null {
         let stopChrome: Stop | undefined;
         let stopPageStatus: Stop | undefined;
         let pageFooter: MenuPageFooter | null = null;
-        const pageFooterEnabled = () => {
-            const s = settings.get();
-            return s.enabled && s.spotlightHome && s.homeStatusBar && s.homeExpandedControls &&
-                menuOverHome(document!.defaultView ?? undefined) && pageFooterCanRestore(document!);
-        };
+        const pageFooterEnabled = () => pageFooterHoldEnabled(settings.get(), menuOverHome(document!.defaultView ?? undefined), pageFooterCanRestore(document!));
         const frostSessions=createFrostSessions(createFrostBridge());
         let contextId=0,contextFingerprint='';
         let lastEnvironment:NativeFrostEnvironment|null=null;

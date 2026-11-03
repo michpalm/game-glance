@@ -4,7 +4,8 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {settings} from '../../src/data/settings';
 import {chromeClaims} from '../../src/chrome/claims';
-import {chromeOwnsBar,subscribeChromeOwnsBar,useChrome} from '../../src/chrome/useChrome';
+import {chromeHeld,chromeOwnsBar,subscribeChromeOwnsBar,useChrome} from '../../src/chrome/useChrome';
+import {pageFooterCanRestore} from '../../src/menu/pageFooter';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 vi.unmock('react-dom');
 const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>(),screensaver:false}));
@@ -163,5 +164,26 @@ describe('useChrome',()=>{
   await act(()=>settings.setHomeExpandedControls(false));await everyPage(true);await show();
   await act(()=>{header.querySelector('input')!.dispatchEvent(Object.assign(new win.Event('focusin',{bubbles:true}),{relatedTarget:doc.getElementById('card')}));});
   expect(watchers.length).toBe(0);expect(chrome.search.get().phase).toBe('hidden');expect(chrome.mode).toBe('off');
+ });
+
+ describe('held across the menu opening',()=>{
+  const bar=()=>!!doc.querySelector('[data-test-bar]');
+  const menu=(value:boolean)=>act(()=>{steam.ui={...steam.ui,menu:value};steam.listeners.forEach(fn=>fn());});
+  it('keeps drawing its bar and holds the footer look once the side menu opens over a page with no Home root',async()=>{
+   await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
+   expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
+   await menu(true);
+   expect(chromeOwnsBar()).toBe(false);expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
+   expect(doc.querySelector('.gh-root,.gg-hero')).toBeNull();expect(pageFooterCanRestore(doc)).toBe(true);
+   await menu(false);expect(chromeOwnsBar()).toBe(true);expect(bar()).toBe(true);
+  });
+  it('does not latch when it starts suspended',async()=>{
+   steam.ui={...steam.ui,menu:true};await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
+  expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);expect(pageFooterCanRestore(doc)).toBe(false);
+  });
+  it('lets go when it goes off',async()=>{
+   await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));await menu(true);expect(chromeHeld()).toBe(true);
+   await everyPage(false);expect(chromeHeld()).toBe(false);expect(bar()).toBe(false);
+  });
  });
 });
