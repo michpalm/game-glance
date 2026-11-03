@@ -9,6 +9,7 @@ import {chromeReturn} from '../../src/chrome/policy';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 import {useChromeClaim,usePageShown} from '../../src/chrome/useChromeClaim';
 import {useHomeClaim} from '../../src/home/useHomeClaim';
+import {clearLaunch,LAUNCH_INTENT_MS,launchPending,markLaunch} from '../../src/data/launchIntent';
 vi.unmock('react-dom');
 const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>()}));
 vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Focusable:()=>null,DialogButton:'button',findModule:()=>{},findModuleExport:()=>null}));
@@ -49,10 +50,11 @@ describe('the game page footer',()=>{
 describe('Home and the game page claim the chrome host',()=>{
  let ownBar=false;
  /** Home's wiring (SpotlightHome): its action row (Play, Info), the recents row, the feed sheet state and the launch check. */
- function Home({sheetUp=false,launching=false}:{sheetUp?:boolean;launching?:boolean}){
+ /** `launching` unset: Home's real check (SpotlightHome), Steam's launch intent for the focused game (7). `content`: Home's content is up. */
+ function Home({sheetUp=false,launching,content=true}:{sheetUp?:boolean;launching?:boolean;content?:boolean}){
   const rootRef=useRef<HTMLElement|null>(null),lastAction=useRef<HTMLElement|null>(null),recents=useRef<HTMLElement|null>(null);
-  ownBar=useHomeClaim({root:rootRef,lastAction,recents,statusHidden:sheetUp,launching:()=>launching}).ownBar;
-  return createElement('main',{ref:rootRef},createElement('div',{className:'gh-actions'},createElement('button',{id:'play',className:'gh-btn'}),createElement('button',{id:'info',className:'gh-btn'})),createElement('div',{id:'recents',ref:recents,tabIndex:0}));
+  ownBar=useHomeClaim({root:rootRef,lastAction,recents,statusHidden:sheetUp,launching:()=>launching??launchPending(7)}).ownBar;
+  return createElement('main',{ref:rootRef},content&&createElement('div',{className:'gh-actions'},createElement('button',{id:'play',className:'gh-btn'}),createElement('button',{id:'info',className:'gh-btn'})),content&&createElement('div',{id:'recents',ref:recents,tabIndex:0}));
  }
  function Page({claim}:{claim:ChromeClaim|null}){useChromeClaim(claim);return null;}
  it('Home claims while mounted, with its feed sheet state and return target',async()=>{
@@ -69,6 +71,36 @@ describe('Home and the game page claim the chrome host',()=>{
   doc.querySelector('.gh-actions')!.remove();chromeReturn(claims())!();expect(toRecents).toHaveBeenCalledTimes(1);
   await act(()=>root.render(createElement('div')));
   expect(claims()).toHaveLength(0);
+ });
+ it('Home sees a launch marked without a re-render of its own (Play runs the game straight away)',async()=>{
+  clearLaunch();await act(()=>root.render(createElement(Home)));expect(claims()[0].launching).toBe(false);
+  await act(()=>{markLaunch(7);});
+  expect(claims()[0].launching).toBe(true);
+  await act(()=>{clearLaunch();});expect(claims()[0].launching).toBe(false);
+ });
+ it('a second Play inside the launch window re-arms the expiry, so the claim lets go once the last mark runs out',async()=>{
+  vi.useFakeTimers();
+  try{
+   clearLaunch();await act(()=>root.render(createElement(Home)));
+   await act(()=>{markLaunch(7);});expect(claims()[0].launching).toBe(true);
+   await act(()=>{vi.advanceTimersByTime(LAUNCH_INTENT_MS/2);markLaunch(7);});
+   await act(()=>{vi.advanceTimersByTime(LAUNCH_INTENT_MS/2+1);});expect(claims()[0].launching).toBe(true);
+   await act(()=>{vi.advanceTimersByTime(LAUNCH_INTENT_MS/2);});expect(claims()[0].launching).toBe(false);
+  }finally{clearLaunch();vi.useRealTimers();}
+ });
+ it('Home lets go while it is not rendered and claims again when shown',async()=>{
+  const seen:(()=>void)[]=[],notify=()=>seen.forEach(fn=>fn());const previous=win.ResizeObserver;win.ResizeObserver=class{constructor(fn:()=>void){seen.push(fn);}observe(){}unobserve(){}disconnect(){}};
+  try{
+   await act(()=>root.render(createElement(Home)));expect(claims()).toHaveLength(1);
+   const main=doc.querySelector('main')!;
+   main.setAttribute('aria-hidden','true');await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(0);
+   main.removeAttribute('aria-hidden');await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(1);
+   (main as any).getClientRects=()=>[];await act(async()=>{notify();await Promise.resolve();});expect(claims()).toHaveLength(0);
+  }finally{win.ResizeObserver=previous;}
+ });
+ it('cold start: our footer at once, before Home’s content is up',async()=>{
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Home,{content:false}))));
+  expect(claims()).toEqual([expect.objectContaining({page:'home'})]);expect(marked()).toBe(true);
  });
  it('Home re-renders with an unchanged claim without publishing again',async()=>{
   await act(()=>root.render(createElement(Home)));
