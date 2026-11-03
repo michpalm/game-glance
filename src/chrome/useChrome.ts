@@ -7,8 +7,8 @@ import {acquireHomeHeader} from '../home/homeHeaderDom';
 import {focusElement} from '../home/homeNav';
 import {createHomeSearch,type HomeSearchSession} from '../home/homeSearch';
 import {getSteamUiState,subscribeSteamUiState} from '../home/steamUiState';
-import {createTopBarFinder} from '../home/topBar';
-import {createHomeStatusFocus,footerOptedIn,homeRuntimeSuspended} from '../home/useHomeControls';
+import {createTopBarFinder,findTopBar} from '../home/topBar';
+import {createHomeStatusFocus,footerOptedIn,homeRuntimeSuspended,visibleHomeControl} from '../home/useHomeControls';
 import {useScreensaverActive} from '../screensaver/steamScreensaver';
 import {chromeClaims,type ChromeClaim} from './claims';
 import {installHeaderRedirect} from './headerRedirect';
@@ -29,13 +29,19 @@ function suspendedIn(doc:Document,o:Inputs):boolean {
 const modeIn=(doc:Document,o:Inputs):ChromeMode=>chromeMode({...o,suspended:suspendedIn(doc,o)});
 /** Entering from Steam's header is the status focus's own Up entry: Search first. */
 const up=()=>({detail:{button:B.DIR_UP,is_repeat:false},preventDefault(){},stopPropagation(){}}) as unknown as GamepadEvent;
+/** The page's first visible item (findMenuFocus's selectors): never Steam's hidden header (the redirect would pull focus back), our bar, Search or the footer. */
+const FOCUSABLE='button,input,select,textarea,a[href],.Focusable,[tabindex]';
+function firstPageItem(doc:Document):HTMLElement|null {
+    const bar=findTopBar(doc,doc.defaultView?.innerWidth??0);
+    return [...doc.querySelectorAll<HTMLElement>(FOCUSABLE)].find(node=>!bar?.contains(node)&&!node.closest('.gg-status-host,.gh-keyboard-surface,#Footer')&&visibleHomeControl(node))??null;
+}
 const ourBar=(target:Element|null)=>!!target?.closest?.('.gg-status-host:not(.gg-menu-status-host),[data-home-search],.gh-keyboard-surface');
 
 /**
  * The window's one owner of the Game Glance bar, Search and footer: the header and footer leases (on the document, measured
  * against the viewport), status-cell focus and the redirect from Steam's hidden header. Pages only add claims (chrome/claims).
  */
-export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;ownsInput():boolean;search:HomeSearchSession;footer:boolean;statusHidden:boolean} {
+export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatusControls|undefined;bar:boolean;actionUp(event:GamepadEvent):boolean;ownsInput():boolean;search:HomeSearchSession;footer:boolean;statusHidden:boolean} {
     const s=useSettings(),claims=useSyncExternalStore(chromeClaims.subscribe,chromeClaims.get),screensaver=useScreensaverActive();
     const live=useRef<Inputs>({optedIn:false,everyPage:false,claims,screensaver});
     live.current={optedIn:footerOptedIn(s),everyPage:s.chromeEveryPage,claims,screensaver};
@@ -50,8 +56,8 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
         const focus=createHomeStatusFocus({
             search:{reveal:()=>search.dispatch({type:'enter'}),hide:()=>search.dispatch({type:'content'}),activate:()=>search.dispatch({type:'edit'}),editing:()=>search.get().phase==='editing',contains:target=>!!target?.closest('[data-home-search],.gh-keyboard-surface')},
             canUse:usable,focus:node=>focusElement(node,'the status item'),stopRepeats:()=>{},
-            // Down/B: back where focus was before Up; on Home, Home's own target when that is gone.
-            returnHome:()=>redirect.current?.leave(chromeReturn(live.current.claims)),
+            // Down/B: back where focus was before Up; when that is gone, Home's own target on Home, else the page's first item.
+            returnHome:()=>redirect.current?.leave(chromeReturn(live.current.claims)??(()=>{const d=docRef.current;if(d)focusElement(firstPageItem(d),'the page');})),
             schedule:callback=>{const view=docRef.current?.defaultView;if(view?.requestAnimationFrame){const frame=view.requestAnimationFrame(callback);return ()=>view.cancelAnimationFrame(frame);}const timer=setTimeout(callback,0);return ()=>clearTimeout(timer);},
         });
         return {focus,usable};
@@ -93,5 +99,5 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
     },[doc,focus,search,usable]);
     useLayoutEffect(()=>runtime.current?.sync());
     const statusHidden=chromeStatusHidden(claims);
-    return {mode,controls:mode==='active'&&native&&!statusHidden?focus:undefined,actionUp:focus.actionUp,ownsInput:usable,search,footer,statusHidden};
+    return {mode,controls:mode==='active'&&native&&!statusHidden?focus:undefined,bar:native,actionUp:focus.actionUp,ownsInput:usable,search,footer,statusHidden};
 }

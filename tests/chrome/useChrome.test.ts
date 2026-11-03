@@ -15,7 +15,7 @@ vi.mock('../../src/home/steamUiState',()=>({
  useSteamUiState:()=>steam.ui,
 }));
 vi.mock('../../src/screensaver/steamScreensaver',()=>({useScreensaverActive:()=>steam.screensaver}));
-vi.mock('../../src/components/GameStatusBar',()=>({GameStatusBar:()=>null}));
+vi.mock('../../src/components/GameStatusBar',async()=>{const {createElement:h}=await import('react');return {GameStatusBar:()=>h('div',{'data-test-bar':''})};});
 vi.mock('../../src/home/HomeSearchControl',()=>({HomeSearch:()=>null}));
 const FOOTER='<div><div><span><svg></svg></span><span>Menu</span></div><div style="flex-grow:1"></div><div><span><svg></svg></span><span>Select</span></div><div><span><svg></svg></span><span>Back</span></div></div>';
 let root:Root,win:any,doc:Document,footer:HTMLElement,header:HTMLElement,view={width:828,height:466},watchers:MutationCallback[]=[];
@@ -111,5 +111,24 @@ describe('useChrome',()=>{
   const back=()=>chrome.controls!.button('clock',{detail:{button:B.CANCEL,is_repeat:false},preventDefault(){},stopPropagation(){}} as any);
   const focus=vi.spyOn(card,'focus');back();expect(focus).toHaveBeenCalledTimes(1);expect(returnHome).not.toHaveBeenCalled();expect(chrome.search.get().phase).toBe('hidden');
   await enter();card.remove();back();expect(returnHome).toHaveBeenCalledTimes(1);
+ });
+ it('Down/B with nothing remembered goes to the page’s first visible item, not Steam’s header',async()=>{
+  const {GamepadButton:B}=await import('@decky/ui/dist/components/FooterLegend.js');
+  await everyPage(true);await show();
+  const card=doc.getElementById('card') as HTMLElement,input=header.querySelector('input')! as HTMLElement;
+  const other=doc.createElement('button');card.after(other);
+  const status=doc.createElement('div');status.className='gg-status-host';const cell=doc.createElement('button');status.append(cell);doc.body.prepend(status);
+  await act(()=>{input.dispatchEvent(Object.assign(new win.Event('focusin',{bubbles:true}),{relatedTarget:card}));});
+  chrome.controls!.register('clock',cell);card.remove();
+  const page=vi.spyOn(other,'focus'),steamBar=vi.spyOn(input,'focus'),ours=vi.spyOn(cell,'focus');
+  chrome.controls!.button('clock',{detail:{button:B.DIR_DOWN,is_repeat:false},preventDefault(){},stopPropagation(){}} as any);
+  expect(page).toHaveBeenCalledTimes(1);expect(steamBar).not.toHaveBeenCalled();expect(ours).not.toHaveBeenCalled();
+ });
+ it('shows no bar of ours on a page without Steam’s top bar',async()=>{
+  const bar=()=>!!doc.querySelector('[data-test-bar]');
+  header.remove();await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
+  expect(footer.getAttribute('data-gh-footer')).toBe('true');expect(bar()).toBe(false);
+  doc.body.prepend(header);await act(async()=>{watchers.forEach(fn=>fn([{type:'childList',target:doc.body,addedNodes:[header],removedNodes:[]} as any],{} as any));await new Promise(r=>setTimeout(r,0));});
+  expect(header.getAttribute('data-gh-header')).toBe('true');expect(bar()).toBe(true);
  });
 });
