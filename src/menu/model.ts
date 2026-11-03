@@ -1,3 +1,4 @@
+import { returnFocusKey } from './views';
 export type Stop = () => void;
 export type SectionId = 'navigate' | 'quick-settings' | 'performance' | 'social' | 'plugins' | 'help' | 'soundtrack' | 'in-game' | 'more';
 export type PinnedSectionId = Exclude<SectionId, 'in-game' | 'more'>;
@@ -86,7 +87,10 @@ export function reduceMenu(state: MenuState, event: MenuEvent): MenuState {
         // Tabs and Notifications belong to the global shell, never a panel's restoration history.
         case 'focus': return event.key.startsWith('section:') || event.key === 'notifications' ? state : { ...state, focus: { ...state.focus, [event.section]: event.key } };
         case 'back':
-            if (state.stack.length) return { ...state, stack: state.stack.slice(0, -1) };
+            if (state.stack.length) {
+                const key = returnFocusKey(state.stack[state.stack.length - 1]);
+                return { ...state, stack: state.stack.slice(0, -1), ...(key ? { focus: { ...state.focus, [state.section]: key } } : {}) };
+            }
             if (!visibleSections(state).includes(state.section)) return { ...state, section: 'more' };
             return { ...state, phase: 'closed' };
     }
