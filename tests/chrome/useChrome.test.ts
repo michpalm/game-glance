@@ -4,7 +4,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {settings} from '../../src/data/settings';
 import {chromeClaims} from '../../src/chrome/claims';
-import {useChrome} from '../../src/chrome/useChrome';
+import {chromeOwnsBar,subscribeChromeOwnsBar,useChrome} from '../../src/chrome/useChrome';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 vi.unmock('react-dom');
 const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>(),screensaver:false}));
@@ -130,5 +130,32 @@ describe('useChrome',()=>{
   expect(footer.getAttribute('data-gh-footer')).toBe('true');expect(bar()).toBe(false);
   doc.body.prepend(header);await act(async()=>{watchers.forEach(fn=>fn([{type:'childList',target:doc.body,addedNodes:[header],removedNodes:[]} as any],{} as any));await new Promise(r=>setTimeout(r,0));});
   expect(header.getAttribute('data-gh-header')).toBe('true');expect(bar()).toBe(true);
+ });
+ it('lets go of focus in our bar without stranding it: toggle off (also after a suspension) and unmount',async()=>{
+  let active:Element|null=null;Object.defineProperty(doc,'activeElement',{configurable:true,get:()=>active});
+  // The cell is React's, as in GameStatusBar's portal: unmounting removes it (React only restores focus to a node still in the page).
+  function WithCell(){chrome=useChrome(doc);return createElement('div',{className:'gg-status-host'},createElement('button',{id:'cell'}));}
+  await everyPage(true);await act(()=>root.render(createElement(WithCell)));
+  const card=doc.getElementById('card') as HTMLElement,cell=doc.getElementById('cell') as HTMLElement;
+  for(const el of [card,cell])el.focus=()=>{active=el;};
+  const onCell=()=>{cell.focus();chrome.controls!.register('clock',cell);chrome.controls!.focused('clock');};
+  onCell();
+  await everyPage(false);expect(active).toBe(card);
+  await everyPage(true);onCell();
+  await act(()=>{steam.ui={...steam.ui,menu:true};steam.listeners.forEach(fn=>fn());});expect(active).toBe(cell);
+  await everyPage(false);expect(active).toBe(card);
+  await act(()=>{steam.ui={...steam.ui,menu:false};steam.listeners.forEach(fn=>fn());});
+  await everyPage(true);onCell();
+  await act(()=>root.render(createElement('div')));expect(active).toBe(card);
+ });
+ it('tells subscribers when it takes and gives back the bar',async()=>{
+  const seen:boolean[]=[],stop=subscribeChromeOwnsBar(()=>seen.push(chromeOwnsBar()));
+  await everyPage(true);await show();await everyPage(false);stop();
+  expect(seen).toEqual([true,false]);
+ });
+ it('installs nothing document-wide for anyone who has not opted in',async()=>{
+  await act(()=>settings.setHomeExpandedControls(false));await everyPage(true);await show();
+  await act(()=>{header.querySelector('input')!.dispatchEvent(Object.assign(new win.Event('focusin',{bubbles:true}),{relatedTarget:doc.getElementById('card')}));});
+  expect(watchers.length).toBe(0);expect(chrome.search.get().phase).toBe('hidden');expect(chrome.mode).toBe('off');
  });
 });

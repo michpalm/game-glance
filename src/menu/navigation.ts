@@ -41,8 +41,10 @@ export function handleMenuButton(detail: { button: number; is_repeat?: boolean }
 }
 /** A fresh opening (menu or quick-access button) starts on its active tab; a tab switch keeps bar focus only if it was there. */
 export const focusPrefersBar = (wasOpen: boolean, focusInBar: boolean) => !wasOpen || focusInBar;
+/** What can take focus in a menu or a page (findMenuFocus; the chrome host's page fallback). */
+export const FOCUSABLE_SELECTOR = 'button,input,select,textarea,a[href],.Focusable,[tabindex]';
 export function findMenuFocus(root: ParentNode, key?: string, preferBar = false): HTMLElement | null {
-    const selector = 'button,input,select,textarea,a[href],.Focusable,[tabindex]';
+    const selector = FOCUSABLE_SELECTOR;
     const elements = Array.from(root.querySelectorAll<HTMLElement>('[data-gg-focus]')).map(wrapper => ({
         key: wrapper.dataset.ggFocus,
         element: wrapper.matches(selector) ? wrapper : wrapper.querySelector<HTMLElement>(selector),
