@@ -82,6 +82,8 @@ interface HomeControlsOptions {
 /** The footer's opt-in, shared with the game page (Home's own opt-in also waits for its content). */
 export const footerOptedIn=(o:{enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean})=>o.enabled&&o.spotlightHome&&o.homeStatusBar&&o.homeExpandedControls;
 const optedIn=(o:HomeControlsOptions)=>footerOptedIn(o)&&o.mounted;
+/** The Steam windows whose Home has had its controls up: a return there takes the footer before Home's content (the focus restore waits ~0.5-0.8 s for the recents row). */
+const footerShownIn=new WeakSet<Document>();
 function runtimeInputs(o:HomeControlsOptions):Parameters<typeof homeRuntimeSuspended>[0] {
     const root=o.root.current,doc=root?.ownerDocument;
     return {foreground:!!doc?.hasFocus(),menu:menuOpen(steamMenuStore(),!!doc?.hasFocus()),opening:!!root?.hasAttribute('data-gh-opening'),launching:o.launching(),connected:!!root?.isConnected,hidden:doc?.visibilityState==='hidden'||!!root?.closest('[hidden],[inert],[aria-hidden="true"]')};
@@ -112,8 +114,9 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
             if(disposed)return;
             const o=live.current,wanted=optedIn(o),inputs=runtimeInputs(o),suspended=homeRuntimeSuspended(inputs),opted=footerOptedIn(o),footerSuspended=homeFooterSuspended(inputs);
             // Footer-only, two cases: the open transition, carried over from active controls (the page takes it over), and
-            // back from the page before Home's content is up, taken only while the page still holds it (no gap as it goes).
-            if(!opted||o.mounted)handover=false;else if(!lease&&!footerSuspended&&footerHeld(doc))handover=true;
+            // back before Home's content is up: from the game page while it still holds the footer (no gap as it goes), or
+            // from any page once Home has had its controls up in this window. A cold start keeps Steam's footer until then.
+            if(!opted||o.mounted)handover=false;else if(!lease&&!footerSuspended&&(footerHeld(doc)||footerShownIn.has(doc)))handover=true;
             const carrying=carry&&inputs.opening&&wanted,footerOnly=opted&&!footerSuspended&&(carrying||handover),leaseSuspended=footerOnly?false:suspended;
             if(!wanted&&!footerOnly){lease?.dispose();lease=null;footerReady=false;}
             if(!wanted){header?.dispose();header=null;headerReady=false;}
@@ -125,6 +128,7 @@ export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatu
             setUi(getSteamUiState(doc));
             const next=homeControlsMode({...o,homeMounted:o.mounted,nativeReady:ready.current,suspended});
             carry=next==='active'||carrying&&footerReady;
+            if(next==='active')footerShownIn.add(doc);
             focus.setActive(next==='active'&&!o.statusHidden,!suspended);
             setMode(previous=>previous===next?previous:next);
         };

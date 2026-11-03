@@ -251,3 +251,29 @@ describe('screenshot notifications', () => {
         expect(rowAction(bare, () => null).label).toBe('Open in Steam');
     });
 });
+
+
+describe('achievement notifications', () => {
+    // Ally eType 5 protobuf getters: unlocked and intermediate-progress notifications share the same type.
+    const achievement = (fields: Record<string, unknown> = {}) => ({ notifications: [{ notificationID: 70, eType: 5, rtCreated: 123, bNewIndicator: true, data: {
+        appid: () => 42, achievement_id: () => 'SYNTHETIC_ACHIEVEMENT', name: () => 'First steps', description: () => 'Complete training',
+        achieved: () => true, rtime_unlocked: () => 123, min_progress: () => 0, current_progress: () => 0, max_progress: () => 0, ...fields,
+    } }] });
+    it('presents unlocked achievement names, descriptions and game context instead of a generic notice', async () => {
+        const { rowAction } = await import('../../src/menu/notificationsList');
+        const [row] = readTray([achievement()], () => 'Synthetic game');
+        expect(row).toMatchObject({ kind: 'achievement', appId: 42, unread: true, readKey: '5:123:70' });
+        expect(rowText({ ...row, time: 0 }, null)).toEqual({ label: 'Achievement unlocked', title: 'First steps', body: 'Synthetic game · Complete training' });
+        expect(rowAction(row, () => null)).toEqual({ label: 'View game', run: { kind: 'native', request: { kind: 'app', appId: 42 } } });
+    });
+    it('shows intermediate achievement progress without calling it unlocked', () => {
+        const [row] = readTray([achievement({ achieved: () => false, rtime_unlocked: () => 0, current_progress: () => 581, max_progress: () => 2500 })], () => 'Synthetic game');
+        expect(rowText({ ...row, time: 0 }, null)).toEqual({ label: 'Achievement progress', title: 'First steps', body: 'Synthetic game · Complete training · 581 / 2500' });
+    });
+    it('keeps a malformed achievement useful without leaking protobuf objects or invalid progress', async () => {
+        const { rowAction } = await import('../../src/menu/notificationsList');
+        const [row] = readTray([achievement({ appid: () => 0, name: () => ({ private: 'ignored' }), description: () => { throw Error('gone'); }, achieved: () => false, current_progress: () => NaN, max_progress: () => 2500 })], () => { throw Error('gone'); });
+        expect(rowText({ ...row, time: 0 }, null)).toEqual({ label: 'Achievement progress', title: 'Achievement progress', body: undefined });
+        expect(rowAction(row, () => null).label).toBe('Open in Steam');
+    });
+});

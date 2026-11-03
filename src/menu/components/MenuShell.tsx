@@ -143,7 +143,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     }}>
         <style>{menuStyles}</style>
         <GameStatusBar menuOverlay />
-        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}>{badgeCount > 0 && <span>{badgeCount}</span>}<LuBell aria-label="Notifications" /></MenuAction></div></header>
+        <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" ariaLabel={badgeCount > 0 ? `${badgeCount} unread notifications` : 'Notifications'} selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}><span className="gg-menu-notification-count" aria-hidden="true">{badgeCount > 99 ? '99+' : badgeCount > 0 ? badgeCount : ''}</span><LuBell aria-hidden="true" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
         <Focusable className="gg-menu-panel" data-gg-frost-region="panel" flow-children="column" aria-label={SECTION_LABELS[state.section]}>{content}{error && <p className="gg-menu-error" role="alert">{error}</p>}</Focusable>
     </Focusable>;

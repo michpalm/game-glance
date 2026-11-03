@@ -385,7 +385,7 @@ describe('the Unifideck size column', () => {
 
 describe('open timings', () => {
     it('match the spec', () => {
-        expect(OPEN_TIMINGS).toEqual({ leave: 220, infoFade: 180, morph: 450, twinFade: 180, settleGlide: 150, settle: 180, extras: 250, feedHero: 300, feedUi: 220, bridgeFade: 300, bridgeIn: 150, readyCap: 500, revealDelay: 0, reveal: 200, leaveDrop: 70, feedRise: 14 });
+        expect(OPEN_TIMINGS).toEqual({ leave: 220, infoFade: 180, morph: 450, twinFade: 180, settleGlide: 150, settle: 180, extras: 250, feedHero: 300, feedUi: 220, bridgeFade: 300, bridgeIn: 150, readyCap: 2000, revealDelay: 0, reveal: 200, leaveDrop: 70, feedRise: 14 });
         expect(MORPH_EASE).toBe('cubic-bezier(.3,.55,.15,1)');
     });
 });

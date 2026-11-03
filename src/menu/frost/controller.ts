@@ -112,9 +112,12 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             s.presented=true;settle(s);
             activate(s);
         },
-        async end(generation:number){
-            const s=session;if(!s||s.generation!==generation)return;
+        /** True when it took Home frost off the page. */
+        async end(generation:number):Promise<boolean>{
+            const s=session;if(!s||s.generation!==generation)return false;
+            const home=!!s.homeActive;
             session=undefined;settle(s);await clear(s);
+            return home;
         },
         /** Resolves when this opening's frost has an outcome; the presentation caps the wait. */
         settled(generation:number):Promise<void>{

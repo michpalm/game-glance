@@ -92,6 +92,14 @@ describe('Home through the open transition',()=>{
   await act(async()=>{doc.querySelector('main')!.setAttribute('data-gh-opening','morph');await new Promise(r=>setTimeout(r,0));});
   expect(expanded.footerShown).toBe(false);expect(marked()).toBe(false);
  });
+ it('back from any other page after it was active once: ours at once, before its content is up',async()=>{
+  const header=doc.createElement('header');header.innerHTML='<span class="avatarHolder"></span><input type="search">';header.getBoundingClientRect=()=>rect(0,0,view.width,40);doc.body.prepend(header);
+  await act(()=>root.render(createElement(Home)));expect(expanded.footerActive).toBe(true);
+  await act(()=>root.render(createElement('div')));expect(marked()).toBe(false);
+  await act(()=>root.render(createElement(Home,{mounted:false})));
+  expect(expanded.footerShown).toBe(true);expect(marked()).toBe(true);expect(expanded.footerActive).toBe(false);
+  await act(()=>root.render(createElement(Home)));expect(expanded.footerActive).toBe(true);
+ });
  it('back from the page: takes the footer early (footer-only) only while the page holds it, so the page letting go leaves no gap',async()=>{
   const page=doc.createElement('section');doc.body.append(page);
   const held=acquireHomeFooter(doc.documentElement,()=>{});

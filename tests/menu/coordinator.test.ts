@@ -36,6 +36,53 @@ describe('floating menu coordinator',()=>{
         await h.c.handoff({kind:'qam',tab:'decky'});expect(h.order.slice(-2)).toEqual(['suspend','native']);expect(h.state().phase).toBe('native-handoff');
         await h.c.open('home');expect(h.state().phase).toBe('custom-open');await h.c.open('home');expect(h.state().phase).toBe('closed');stop();
     });
+    it('closes the host, not suspends it, for a page Steam opens with its menu closed', async () => {
+        const h = harness(); h.c.start(); await h.c.open('home');
+        await h.c.handoff({ kind: 'navigate', destination: 'library' });
+        expect(h.host.close).toHaveBeenCalledOnce(); expect(h.host.suspend).not.toHaveBeenCalled();
+        expect(h.order.at(-1)).toBe('native'); expect(h.state().phase).toBe('native-handoff');
+    });
+    it('hides the popup and lets it paint before Steam opens a page', async () => {
+        const h = harness(); let painted!: () => void;
+        h.bindings.attachHost = () => ({ ...h.host, conceal: () => { h.order.push('conceal'); return new Promise<void>(resolve => { painted = resolve; }); } });
+        h.c.start(); await h.c.open('home');
+        const opening = h.c.handoff({ kind: 'navigate', destination: 'library' });
+        await Promise.resolve(); await Promise.resolve();
+        expect(h.order.at(-1)).toBe('conceal'); expect(h.bindings.openNative).not.toHaveBeenCalled();
+        painted(); await opening;
+        expect(h.order.at(-1)).toBe('native'); expect(h.host.close).toHaveBeenCalledOnce();
+    });
+    it('opens the page anyway when the popup never paints', async () => {
+        vi.useFakeTimers();
+        try {
+            const h = harness();
+            h.bindings.attachHost = () => ({ ...h.host, conceal: () => new Promise<void>(() => undefined) });
+            h.c.start(); await h.c.open('home');
+            const opening = h.c.handoff({ kind: 'navigate', destination: 'library' });
+            await vi.advanceTimersByTimeAsync(300); await opening;
+            expect(h.bindings.openNative).toHaveBeenCalledOnce();
+        } finally { vi.useRealTimers(); }
+    });
+    it('does not hide the popup for Steam\'s own menus', async () => {
+        const h = harness(), conceal = vi.fn(async () => undefined);
+        h.bindings.attachHost = () => ({ ...h.host, conceal });
+        h.c.start(); await h.c.open('home');
+        await h.c.handoff({ kind: 'qam', tab: 'decky' });
+        expect(conceal).not.toHaveBeenCalled();
+    });
+    it('stays closed when the page\'s own deactivate reports a suspend', async () => {
+        const h = harness(); h.c.start(); await h.c.open('home');
+        h.bindings.openNative = vi.fn(async () => { h.handlers().suspended(true); });
+        await h.c.handoff({ kind: 'navigate', destination: 'library' });
+        expect(h.host.suspend).not.toHaveBeenCalled(); expect(h.host.close).toHaveBeenCalledOnce();
+        h.handlers().suspended(true); expect(h.host.suspend).toHaveBeenCalledOnce();
+    });
+    it('falls back to Steam\'s own menu when that page cannot open', async () => {
+        const h = harness(); h.c.start(); await h.c.open('home');
+        h.bindings.openNative = vi.fn(async () => { throw new Error('no'); });
+        await expect(h.c.handoff({ kind: 'navigate', destination: 'library' })).rejects.toThrow('no');
+        expect(h.host.suspend).toHaveBeenCalledOnce();
+    });
     it.each(['home', 'quick-access'] as const)('closes an open custom menu on the %s hardware button regardless of its opening entry', async entry => {
         for (const initial of ['home', 'quick-access'] as const) {
             const h = harness(), stop = h.c.start();

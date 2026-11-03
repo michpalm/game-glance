@@ -333,7 +333,10 @@ describe('buildCleanCss (the Clean look)', () => {
         expect(css).toContain('.gg-cards { display: none !important; }');
         expect(css).toMatch(/\.gg-clean-info \{[^}]*position: absolute; right: 0;[^}]*border-radius:/);
         expect(css).toMatch(/\.gg-pill \{ top: auto; bottom: calc\(100% \+ /);
-        expect(css).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - [^}]*transform: translateY\(-100%\)/);
+        const block = rulesFor(css, '.ad_Inner > .gg-titleblock');
+        expect(block).toContain('top: auto !important');
+        expect(block).toContain('bottom: calc(100% - var(--gg-play-top) + calc(28 * var(--gg-d))) !important');
+        expect(block).toContain('transform: none !important');
     });
     it('nothing without the full-screen layout, so the page keeps its cards', () => {
         expect(buildCleanCss({ ...full, details: undefined })).toBe('');
@@ -517,6 +520,8 @@ describe('game page grammar (VDL Section 7)', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildCleanCss(full);
         expect(css).not.toMatch(/rgba\(255,\s*255,\s*255,\s*0?\.62\)/);
         expect(css).toMatch(/\.gg-eyebrow \{[^}]*color: #fff;[^}]*text-shadow:[^}]*var\(--glance-accent\)/);
+        // Steam CEF accepts a literal length here, but computes calc() to the initial 0px.
+        expect(ruleFor(css, '.gg-eyebrow {')).toContain('overflow-clip-margin: 2em');
     });
     it('soft Play and tiles, menu focus everywhere, info cards lift', () => {
         const css = buildThemeCss(full, { restyle: true }) + buildUnifideckCss(full, { restyle: true });
@@ -851,7 +856,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(title).toContain('-webkit-line-clamp: 3');
         // placed where the logo was (top 120 of 810), the logo and Steam's text title hidden in place
         expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('position: absolute');
-        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('top: calc(var(--gg-play-top) - calc(36 * var(--gg-d)))');
+        expect(rulesFor(restyled, '.ad_Inner > .gg-titleblock')).toContain('bottom: calc(100% - var(--gg-play-top) + calc(36 * var(--gg-d)))');
         // (only while our title is rendered, so a failed render never leaves the page without a title)
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_TitleImg')).toContain('visibility: hidden');
         expect(rulesFor(restyled, '.ad_Inner:has(> .gg-titleblock) .hd_Top .hd_Svg')).toContain('visibility: hidden');
@@ -938,7 +943,11 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled.indexOf('--gg-play-top: calc(100vh - 41px')).toBeGreaterThan(restyled.indexOf('--gg-play-top: calc(100vh - calc(386'));
     });
     it('the title block sits on the Play row on every screen: its bottom 36 above the row (the row-to-cards gap), so it grows upward', () => {
-        expect(restyled).toMatch(/\.ad_Inner > \.gg-titleblock \{[^}]*top: calc\(var\(--gg-play-top\) - calc\(36 \* var\(--gg-d\)\)\) !important;\s+transform: translateY\(-100%\) !important/);
+        const block = rulesFor(restyled, '.ad_Inner > .gg-titleblock');
+        expect(block).toContain('top: auto !important');
+        expect(block).toContain('bottom: calc(100% - var(--gg-play-top) + calc(36 * var(--gg-d))) !important');
+        expect(block).toContain('transform: none !important');
+        expect(block).toContain('z-index: 0');
         expect(restyled).not.toContain('top: calc(120 * var(--gg-d))');
         expect(restyled).not.toMatch(/@media[^{]*\{ \.\w+ > \.gg-titleblock/);
     });
@@ -1002,8 +1011,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         }
         // (100vh only in the Play row's anchor variable, which the 1.1.1 layout rules read: the default and the TV's, and in
         // the d unit's height limit, the shared scale rule with Home: home/scale.ts)
-        // (z-index only on our own hero, lifted over Steam's page panel so the tappable cards get touches, #24)
-        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: [^;]*;/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '')).not.toMatch(/z-index|100vh/);
+        // z-index is confined to our hero (touchable cards) and title block (the stacking context formerly made by its transform).
+        expect(extra(steam).replace(/--gg-play-top: [^;]*;/g, '').replace(/--gg-d: [^;]*;/g, '').replace('.gg-hero { z-index: 2; pointer-events: none; }', '').replace(/(\.ad_Inner > \.gg-titleblock \{[^}]*?)z-index: 0;/, '$1')).not.toMatch(/z-index|100vh/);
     });
 });
 
@@ -1339,7 +1348,7 @@ describe('the page takes the default growth (#55)', () => {
 describe('Page shading None: contrast on the page (spec "Contrast in None mode")', () => {
     const none = buildThemeCss(full, { restyle: true, pageShading: 'none' });
     const bottom = buildThemeCss(full, { restyle: true, pageShading: 'bottom' });
-    const GLASS = 'rgba(12,16,22,.6)';
+    const GLASS = 'rgba(12,16,22,.40)';
     const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
     const D = (n: number) => `calc(${n} * var(--gg-d))`;
     /** The bodies of the rules whose selector list is exactly `sel`. */
@@ -1350,10 +1359,10 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
         expect(body).toContain('color: #fff');
         expect(body).toContain(`0 0 ${D(2)} #000, 0 0 ${D(4)} var(--glance-accent), 0 0 ${D(10)} var(--glance-accent), 0 0 ${D(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent)`);
         expect(body).toContain('overflow: clip');
-        expect(body).toContain(`overflow-clip-margin: ${D(24)}`);
+        expect(body).toContain('overflow-clip-margin: 2em');
       }
     });
-    it('the round buttons, source and family pills, store choice, description/HLTB cards and Clean panel take the darker glass', () => {
+    it('the round buttons, source and family pills, store choice, description/HLTB cards and Clean panel take the standard VDL glass', () => {
         for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
             const body = exact(none, sel);
             expect(body, sel).toContain(`background: ${GLASS} !important`);
@@ -1377,7 +1386,21 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
     });
     it('Bottom half and the 1.1.1 page are unchanged apart from the eyebrow (its glow is in every mode)', () => {
         for (const css of [bottom, buildThemeCss(full, { pageShading: 'none' }), buildThemeCss(full, { restyle: true })]) {
-            for (const v of [GLASS, MIX, '#000b']) expect(css).not.toContain(v);
+            for (const v of [MIX, '#000b']) expect(css).not.toContain(v);
         }
     });
+});
+
+
+it('None shading keeps the cloud glass identical to the moving Home cloud', () => {
+    const css = buildThemeCss(full, {restyle:true, pageShading:'none'});
+    expect(css).toMatch(/\.ps_Cloud \{[^}]*background: rgba\(12,16,22,\.40\) !important/);
+});
+
+
+it('an arriving page inherits the final accent without replaying the eyebrow and Play colour transition', () => {
+    for (const revealed of [false, true]) {
+        const css = buildArrivingCss(full, 'spotlight', 'parts', revealed);
+        expect(css).toContain('.ad_Inner { transition: none !important; }');
+    }
 });

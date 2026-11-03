@@ -14,3 +14,42 @@ describe('Home footer ownership',()=>{
  it('releases removed groups and keeps markers until the last lease releases',async()=>{const f=nativeFooterFixture(),a=acquireHomeFooter(f.root,()=>{}),b=acquireHomeFooter(f.root,()=>{});a.dispose();expect(f.footer.getAttribute('data-gh-footer')).toBe('true');const removed=f.groups[2];removed.remove();await settle();expect(removed.hasAttribute('data-gh-footer-side')).toBe(false);b.dispose();expect(f.footer.hasAttribute('data-gh-footer')).toBe(false);});
 });
 it('recovers from temporarily unavailable startup geometry without a DOM remount',async()=>{const f=nativeFooterFixture(),ready=vi.fn();const rect=f.footer.getBoundingClientRect;let shown=false,notify=()=>{};const previous=(f.window as any).ResizeObserver;(f.window as any).ResizeObserver=class{constructor(fn:()=>void){notify=fn;}observe(){}unobserve(){}disconnect(){}};f.footer.getBoundingClientRect=()=>shown?rect():({width:1000,height:0,bottom:600} as DOMRect);const lease=acquireHomeFooter(f.root,ready);expect(ready).toHaveBeenLastCalledWith(false);shown=true;notify();await settle();expect(ready).toHaveBeenLastCalledWith(true);expect(f.footer.getAttribute('data-gh-footer')).toBe('true');lease.dispose();(f.window as any).ResizeObserver=previous;});
+
+it('rechecks transient startup placement on the next layout frame without a resize',async()=>{
+ const f=nativeFooterFixture(),ready=vi.fn();let bottom=590,frame:(()=>void)|undefined;
+ const previous=(f.window as any).requestAnimationFrame,previousCancel=(f.window as any).cancelAnimationFrame;
+ (f.window as any).requestAnimationFrame=(fn:()=>void)=>{frame=fn;return 1;};(f.window as any).cancelAnimationFrame=()=>{frame=undefined;};
+ const rect=f.root.getBoundingClientRect;f.root.getBoundingClientRect=()=>({...rect(),bottom});
+ const lease=acquireHomeFooter(f.root,ready);expect(ready).toHaveBeenLastCalledWith(false);
+ bottom=600;expect(discoverNativeFooter(f.root)).not.toBeNull();
+ frame?.();await settle();expect(ready).toHaveBeenLastCalledWith(true);expect(f.footer.getAttribute('data-gh-footer')).toBe('true');
+ lease.dispose();(f.window as any).requestAnimationFrame=previous;(f.window as any).cancelAnimationFrame=previousCancel;
+});
+it.each(['transitionend','animationend','transitioncancel','animationcancel'])('recovers when native startup placement settles via %s without changing size',async type=>{
+ const f=nativeFooterFixture(),ready=vi.fn();let bottom=590;const rect=f.root.getBoundingClientRect;
+ f.root.getBoundingClientRect=()=>({...rect(),bottom});const lease=acquireHomeFooter(f.root,ready);
+ expect(ready).toHaveBeenLastCalledWith(false);bottom=600;
+ f.document.body.dispatchEvent(new f.window.Event(type,{bubbles:true}));await settle();
+ expect(ready).toHaveBeenLastCalledWith(true);expect(f.footer.getAttribute('data-gh-footer')).toBe('true');lease.dispose();
+});
+it('does not reacquire after disposal when a late native transition completes',async()=>{
+ const f=nativeFooterFixture(),ready=vi.fn();const lease=acquireHomeFooter(f.root,ready);lease.dispose();const calls=ready.mock.calls.length;
+ f.document.body.dispatchEvent(new f.window.Event('transitionend',{bubbles:true}));await settle();
+ expect(ready).toHaveBeenCalledTimes(calls);expect(f.footer.hasAttribute('data-gh-footer')).toBe(false);
+});
+
+it('ignores settling while suspended, retries on resume, and cancels a pending startup frame on disposal',async()=>{
+ const f=nativeFooterFixture(),ready=vi.fn();let bottom=590,frame:(()=>void)|undefined;
+ const oldFrame=(f.window as any).requestAnimationFrame,oldCancel=(f.window as any).cancelAnimationFrame;
+ (f.window as any).requestAnimationFrame=(fn:()=>void)=>{frame=fn;return 1;};(f.window as any).cancelAnimationFrame=()=>{frame=undefined;};
+ try{
+  const rect=f.root.getBoundingClientRect;f.root.getBoundingClientRect=()=>({...rect(),bottom});
+  const lease=acquireHomeFooter(f.root,ready);const late=frame;lease.suspend(true);bottom=600;
+  f.document.body.dispatchEvent(new f.window.Event('transitionend',{bubbles:true}));await settle();
+  expect(f.footer.hasAttribute('data-gh-footer')).toBe(false);expect(ready).toHaveBeenLastCalledWith(false);
+  bottom=590;lease.suspend(false);bottom=600;frame?.();await settle();expect(ready).toHaveBeenLastCalledWith(true);
+  lease.dispose();const other=acquireHomeFooter(f.root,ready);other.dispose();late?.();await settle();expect(f.footer.hasAttribute('data-gh-footer')).toBe(false);
+  bottom=590;const pending=acquireHomeFooter(f.root,ready),queued=frame;pending.dispose();const count=ready.mock.calls.length;bottom=600;queued?.();await settle();
+  expect(ready).toHaveBeenCalledTimes(count);expect(f.footer.hasAttribute('data-gh-footer')).toBe(false);
+ }finally{(f.window as any).requestAnimationFrame=oldFrame;(f.window as any).cancelAnimationFrame=oldCancel;}
+});

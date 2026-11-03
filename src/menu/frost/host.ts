@@ -13,6 +13,12 @@ export function frostRegionElements(source:Document):(HTMLElement|null)[] {
     return REGION_IDS.map(id=>id==='keyboard-left'||id==='keyboard-right'?source.querySelector<HTMLElement>(`.gg-radial-keyboard-host [data-gg-frost-region="${id}"]`):id==='status'?source.querySelector<HTMLElement>('.gg-menu-status-host .gh-status-pill'):root?.querySelector<HTMLElement>(`[data-gg-frost-region="${id}"]`)??null);
 }
 
+/** Resolves once the window has painted: the second animation frame comes after the first one's paint. */
+export function afterPaint(view:Window|null):Promise<void> {
+    if(typeof view?.requestAnimationFrame!=='function')return Promise.resolve();
+    return new Promise(resolve=>{view.requestAnimationFrame(()=>{view.requestAnimationFrame(()=>resolve());});});
+}
+
 /** Owned by the native viewport lease. No process-wide DOM polling or state. */
 export function createMenuFrostHost(owner:Document,source:Document,placeholder:HTMLElement,context:(environment?:NativeFrostEnvironment|null)=>FrostContext|null,options:FrostHostOptions={}) {
     const bridge=createFrostBridge(),controller=createFrostController({bridge,home:createHomeFrost(owner,placeholder),takeWarmup:options.takeWarmup});
@@ -74,7 +80,11 @@ export function createMenuFrostHost(owner:Document,source:Document,placeholder:H
         async clear(generation:number){
             if(session?.generation!==generation)return;
             const stop=stopMeasurement;stopMeasurement=undefined;session=null;
-            try{stop?.();}finally{await controller.end(generation);}
+            let home=false;
+            try{stop?.();}finally{home=await controller.end(generation);}
+            // Every Steam window shares one thread: a page opened next (Library's first render, ~400 ms) would
+            // otherwise run before this window paints, and Home's frost would outlast the menu by that long.
+            if(home)await afterPaint(owner.defaultView);
         },
         dispose(){
             if(stopped)return;stopped=true;clearInterval(timer);

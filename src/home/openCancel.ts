@@ -1,10 +1,12 @@
 import { RETURN_TIMINGS } from './motion';
 
-/** B cancels a pending Home open before a zone handler or Steam's router can also act on it. */
-export function listenOpenCancel(doc: EventTarget, cancel: () => void): () => void {
+/** B cancels a pending Home open. After navigation, consume=false only removes the bridge and leaves Back to Steam. */
+export function listenOpenCancel(doc: EventTarget, cancel: () => void, consume = true): () => void {
     const onCancel = (event: Event) => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        if (consume) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
         cancel();
     };
     doc.addEventListener('vgp_oncancel', onCancel, { capture: true });

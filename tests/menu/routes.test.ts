@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRoutes } from '../../src/menu/steam/routes';
+import { closesSteamMenu, createRoutes } from '../../src/menu/steam/routes';
 function harness() {
     const order: string[] = [];
     const b = { deactivate: vi.fn(() => { order.push('deactivate'); }), openMain: vi.fn(), openQam: vi.fn(),
@@ -120,5 +120,24 @@ describe('notification actions', () => {
             nativeRouteBindings(owner, vi.fn(), async () => {}).openUrl('steam://joinlobby/1/2/3');
             expect(open).toHaveBeenCalledWith('steam://joinlobby/1/2/3', 0, false);
         } finally { delete (globalThis as any).SteamClient; }
+    });
+});
+
+describe('requests that close Steam\'s menu', () => {
+    it('are the ones that end in finishNavigation', () => {
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'library' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'settings' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'friend-profile', steamId: '76561197960287930' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'app', appId: 10 })).toBe(true);
+        expect(closesSteamMenu({ kind: 'media-item', item: 'screenshot', id: 'a' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'game-action', appId: 10, gameId: '10', actionId: 'achievements' })).toBe(true);
+    });
+    it('leave out native menus, Power, game exit and links', () => {
+        expect(closesSteamMenu({ kind: 'main-menu' })).toBe(false);
+        expect(closesSteamMenu({ kind: 'qam', tab: 'decky' })).toBe(false);
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'power' })).toBe(false);
+        expect(closesSteamMenu({ kind: 'game-action', appId: 10, gameId: '10', actionId: 'exit' })).toBe(false);
+        expect(closesSteamMenu({ kind: 'url', url: 'https://store.steampowered.com/' })).toBe(false);
+        expect(closesSteamMenu({ kind: 'friend-chat', steamId: '76561197960287930' })).toBe(false);
     });
 });

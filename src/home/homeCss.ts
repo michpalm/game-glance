@@ -232,11 +232,11 @@ export function statusRules(): string[] {
         rule('.gh-status.gh-status-away', 'opacity: 0'),
         rule('.gh-status-pill', `display: inline-flex; align-items: center; gap: 14px; margin: 0; border: 1px solid; color: rgba(255,255,255,.9);
             line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; ${sourcePillLook(px)}`),
-        rule('.gh-status-item', 'display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0'),
+        rule('.gh-status-item', 'display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 24px; min-height: 24px; border-radius: 6px; margin: 0; padding: 0'),
         rule('.gh-status-item svg', 'flex: 0 0 auto; height: 18px; width: auto; display: block'),
         // Your avatar in the pill (#9): a square ringed in your status colour (set inline), the pill grows to fit it. Its corner
         // follows the bar's (VDL: a nested shape takes the outer radius minus the gap), 12 - (32 - 22) / 2 = 7.
-        rule('.gh-status-avatar', `flex: 0 0 auto; width: ${STATUS_AVATAR}px; height: ${STATUS_AVATAR}px; box-sizing: border-box; border: 2px solid var(--gh-avatar-ring, #fff);
+        rule('.gh-status-avatar', `flex: 0 0 auto; width: ${STATUS_AVATAR}px; height: ${STATUS_AVATAR}px; min-width: 24px; min-height: 24px; box-sizing: border-box; border: 2px solid var(--gh-avatar-ring, #fff);
             border-radius: ${actionRadius(SOURCE_PILL.height, 'action') - (SOURCE_PILL.height - STATUS_AVATAR) / 2}px; background-size: cover; background-position: center`),
         rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
         rule('.gh-status-offline svg', 'opacity: .6'),
@@ -489,9 +489,10 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // as one layer: a parent fading (opacity under 1) cuts the glass inside it off from the art, which showed unblurred
         // until the fade ended (Michael on the Ally). The glass fades itself, and around it the largest parts that hold no
         // glass, each once; from transparent to its own opacity (what rests hidden stays hidden). Not in the open's copy.
-        // A cancelled open (B during the opening animation) uses the same fade.
+        // A cancelled open (B during the opening animation) uses the same fade. Reopening ends this ownership
+        // immediately, even while the return marker is retained, so its important animation cannot override the morph.
         `@keyframes gh-return-in { from { opacity: 0; } }`,
-        rule(`.gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
+        rule(`.gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
             `animation: gh-return-in ${RETURN_TIMINGS.fade}ms ease backwards`),
         rule('.gh-recents-snap .gh-cap', `transition: left ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, width ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, opacity ${CAP_STATE_MS}ms, filter ${CAP_STATE_MS}ms`),
         // "View more in your Library" card.
@@ -842,6 +843,9 @@ export function openingRules(): string[] {
         soft(`${MT} .gh-twin`, `transform: var(--t-to); transition: ${move}; animation: gh-twin-in ${T.morph}ms linear both`),
         soft('.gh-twin[data-role="title"]', `${pageType('title', dd)} max-width: ${dd(640)}; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 ${dd(4)} ${dd(30)} rgba(0,0,0,.4)`),
         soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} ${EYEBROW(dd)}`),
+        // Match the page's layout anchor. A percentage translate is applied after glyph rasterization and
+        // placed the bridge eyebrow one device pixel above the page on the Ally, despite matching text bounds.
+        soft('.gh-twin[data-role="eyebrow"][data-origin="base"]', 'top: auto; bottom: calc(100% - var(--t-y)); translate: var(--t-dx, 0px) var(--t-dy, 0px)'),
         // The page's labels inherit a 1.5 line height from Steam (PAGE_TYPE leaves it out): stated here.
         soft('.gh-twin[data-role="label"]', `${pageType('label', dd)} line-height: ${PAGE_LINES.label}; ${labelText(dd)}`),
         soft('.gh-twin[data-role="value"]', pageType('value', dd)),
@@ -856,7 +860,8 @@ export function openingRules(): string[] {
         rule('.gh-normal-card', 'box-sizing:content-box'),
         `${M}[data-gh-normal] .gh-normal-cards { display:grid; }`,
         // Keep native text layout outside the glass's nonuniform scale (as the Play pill's foreground).
-        rule(`${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`, 'position:relative; z-index:0; background:transparent; border-color:transparent; backdrop-filter:none'),
+        // Chromium flattens the nested ::before frost without this, showing sharp art until the bridge takes over.
+        rule(`${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`, 'position:relative; z-index:0; transform-style:preserve-3d; background:transparent; border-color:transparent; backdrop-filter:none'),
         `${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { content:""; position:absolute; inset:calc(-1 * var(--normal-border)); box-sizing:border-box; border:var(--normal-border) solid var(--normal-ring); border-radius:inherit; background:var(--normal-bg); backdrop-filter:var(--normal-blur); pointer-events:none; z-index:-1; transform-origin:0 0; transform:var(--normal-from); }`,
         `${MT}[data-gh-normal]:not(.gh-bridge) .gh-normal-card::before { transform:none; transition:${move}; }`,
         `${M}[data-gh-normal] [data-normal-move] { transform-origin:0 0; transform:var(--normal-from); opacity:0; }`,
@@ -879,7 +884,11 @@ export function openingRules(): string[] {
         '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info { transform:translateY(-50%); transition:none; }',
         '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] .gh-clean-info [data-clean-move] { transform:none; opacity:1; animation:none; transition:none; }',
         '.gh-root.gh-bridge[data-gh-clean][data-gh-opening][data-gh-phase] :is(.gh-chip-label,.gh-chip-value,.gh-chip-bar) { opacity:0; animation:none; }',
-        ...twinOut.map(([name, sel]) => soft(`${MT}[data-gh-twins~="${name}"] ${sel}`, `animation: gh-twin-out ${T.morph}ms linear both`)),
+        ...twinOut.filter(([name]) => name !== 'eyebrow').map(([name, sel]) => soft(`${MT}[data-gh-twins~="${name}"] ${sel}`, `animation: gh-twin-out ${T.morph}ms linear both`)),
+        // The eyebrow has a glow: two source-over text layers change its brightness even when their colours match.
+        // Its page-sized twin owns the whole movement, from the source position, without crossfading two halos.
+        soft(`${M}[data-gh-twins~="eyebrow"] .gh-eyebrow`, 'opacity: 0; animation: none'),
+        soft(`${M}[data-gh-twins~="eyebrow"] .gh-twin[data-role="eyebrow"]`, 'opacity: 1; animation: none'),
         // The bridge (nothing animates in it): the twins at their end, Home's twinned text hidden, stated above the live rules.
         soft(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-twin`, `opacity: 1; transform: var(--t-to); animation: none; transition: translate ${T.settleGlide}ms ease-out !important`),
         // The extras layer's text glides onto the page's the same way (OpenExtras data-settle, openHome.settleTwins).

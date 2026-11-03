@@ -21,16 +21,27 @@ export function noteLoad(store: Record<string, unknown> = globalThis as unknown 
 export const REMOUNT_DELAY_MS = 1500;
 /** Library in between, as long as it takes Steam to leave Home. */
 const AWAY_MS = 120;
+/** Check again after an opening; do not navigate out from under its morph or bridge. */
+const OPENING_RETRY_MS = 100;
 
 export interface RemountDeps {
     path(): string | undefined;
+    opening(): boolean;
     navigate(path: string): void;
     setTimeout(fn: () => void, ms: number): unknown;
     clearTimeout(handle: unknown): void;
 }
 
+type HomeOwner = {
+    m_history?: { location?: { pathname?: string } };
+    BrowserWindow?: { document?: Document };
+};
+const mainWindow = () => Router?.WindowStore?.GamepadUIMainWindowInstance as HomeOwner | undefined;
+
 const defaultDeps: RemountDeps = {
-    path: () => (Router?.WindowStore?.GamepadUIMainWindowInstance as { m_history?: { location?: { pathname?: string } } } | undefined)?.m_history?.location?.pathname,
+    path: () => mainWindow()?.m_history?.location?.pathname,
+    // A reload can leave the old copy's opening alive. Read Steam's DOM, not this copy's controller state.
+    opening: () => Boolean(mainWindow()?.BrowserWindow?.document?.querySelector('.gh-root[data-gh-opening], .gh-bridge')),
     navigate: (path) => Navigation.Navigate(path),
     setTimeout: (fn, ms) => setTimeout(fn, ms),
     clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -39,13 +50,20 @@ const defaultDeps: RemountDeps = {
 /** After a reload, opens Home again if it is on screen. Returns a cancel for unload. Never throws. */
 export function remountHomeAfterReload(reloaded: boolean, deps: RemountDeps = defaultDeps): () => void {
     if (!reloaded) return () => undefined;
+    let stopped = false;
+    let pending: unknown = null;
     let away: unknown = null;
-    const first = deps.setTimeout(() => {
+    const refresh = () => {
         try {
-            if (deps.path() !== HOME_ROUTE) return;
+            if (stopped || deps.path() !== HOME_ROUTE) return;
+            if (deps.opening()) {
+                pending = deps.setTimeout(refresh, OPENING_RETRY_MS);
+                return;
+            }
             deps.navigate('/library');
             away = deps.setTimeout(() => {
                 try {
+                    if (stopped || deps.path() !== '/library') return;
                     deps.navigate(HOME_ROUTE);
                 } catch (error) {
                     console.warn(`${LOG_PREFIX} Home: reopening after the update failed`, error);
@@ -54,9 +72,11 @@ export function remountHomeAfterReload(reloaded: boolean, deps: RemountDeps = de
         } catch (error) {
             console.warn(`${LOG_PREFIX} Home: reopening after the update failed`, error);
         }
-    }, REMOUNT_DELAY_MS);
+    };
+    pending = deps.setTimeout(refresh, REMOUNT_DELAY_MS);
     return () => {
-        deps.clearTimeout(first);
+        stopped = true;
+        if (pending !== null) deps.clearTimeout(pending);
         if (away !== null) deps.clearTimeout(away);
     };
 }

@@ -8,6 +8,8 @@ import { createFrostBridge } from './frost/backend';
 import { createFrostSessions } from './frost/sessions';
 import { menuOverHome, readFrostContext } from './frost/context';
 import type { NativeFrostEnvironment } from './frost/types';
+import { holdPageFooter, pageFooterCanRestore, type MenuPageFooter } from './pageFooter';
+import { settings } from '../data/settings';
 import { installTokenCss } from '../styles/tokens';
 import { ownMethod } from './steam/patchOwnership';
 import { registerMenuHost, type HostAttachment, type MenuHostFactory, type NativeOwner } from './steam/runtime';
@@ -27,7 +29,7 @@ export function holdPageStatus(document: Document, home: boolean): Stop {
 }
 
 /** Borrow native visibility holds; never overwrite another view's hide counters. */
-export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'FooterStore'>): Stop {
+export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'FooterStore'>, preserveFooter = false): Stop {
     const header = owner.HeaderStore;
     let heldHeader = false;
     let footer: { unhide(): void } | undefined;
@@ -35,7 +37,7 @@ export function hideNativeMenuChrome(owner: Pick<NativeOwner, 'HeaderStore' | 'F
         if (typeof header?.IncrementHideHeader === 'function' && typeof header.DecrementHideHeader === 'function') {
             header.IncrementHideHeader(); heldHeader = true;
         }
-        if (typeof owner.FooterStore?.HideFooter === 'function') footer = owner.FooterStore.HideFooter();
+        if (!preserveFooter && typeof owner.FooterStore?.HideFooter === 'function') footer = owner.FooterStore.HideFooter();
     } catch (error) {
         if (heldHeader) header!.DecrementHideHeader();
         throw error;
@@ -235,6 +237,12 @@ export function registerDiscoveredMenuHost(): Stop | null {
         let stopClosingBackdrop: Stop | undefined;
         let stopChrome: Stop | undefined;
         let stopPageStatus: Stop | undefined;
+        let pageFooter: MenuPageFooter | null = null;
+        const pageFooterEnabled = () => {
+            const s = settings.get();
+            return s.enabled && s.spotlightHome && s.homeStatusBar && s.homeExpandedControls &&
+                menuOverHome(document!.defaultView ?? undefined) && pageFooterCanRestore(document!);
+        };
         const frostSessions=createFrostSessions(createFrostBridge());
         let contextId=0,contextFingerprint='';
         let lastEnvironment:NativeFrostEnvironment|null=null;
@@ -247,10 +255,15 @@ export function registerDiscoveredMenuHost(): Stop | null {
             if(fingerprint!==contextFingerprint){contextFingerprint=fingerprint;contextId++;}
             return {...current,viewportId:`context-${contextId}`};
         };
-        const releaseEffects = () => {
+        const releaseEffects = (closing = false) => {
             const chrome = stopChrome, pageStatus = stopPageStatus;
             stopChrome = stopPageStatus = undefined;
-            try { chrome?.(); } finally { pageStatus?.(); }
+            try { chrome?.(); } finally {
+                try { pageStatus?.(); } finally {
+                    if (closing) pageFooter?.handoff();
+                    else { pageFooter?.dispose(); pageFooter = null; }
+                }
+            }
         };
         const releaseViewport = (closing = false) => {
             if (!stopViewport) return;
@@ -291,13 +304,18 @@ export function registerDiscoveredMenuHost(): Stop | null {
                 const releaseChromeSubscription = subscribe(() => {
                     try {
                         if (get().active) {
-                            stopChrome ??= hideNativeMenuChrome(owner);
+                            if (!stopChrome) {
+                                pageFooter?.dispose();
+                                pageFooter = menuOverHome(document!.defaultView ?? undefined)
+                                    ? holdPageFooter(document!, { restyle: pageFooterEnabled(), canRestore: pageFooterEnabled }) : null;
+                                stopChrome = hideNativeMenuChrome(owner, !!pageFooter);
+                            }
                             stopPageStatus ??= holdPageStatus(document!, menuOverHome(document!.defaultView ?? undefined));
                         } else {
                             // A native handoff may arrive after close consumed the viewport lease.
                             // Clear its pending guard even though there is no viewport left to release.
                             if (!get().closing) { stopClosingBackdrop?.(); stopClosingBackdrop = undefined; }
-                            releaseEffects();
+                            releaseEffects(!!get().closing);
                         }
                     } catch (error) { fault(error as Error); }
                 });

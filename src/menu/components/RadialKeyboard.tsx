@@ -1,3 +1,4 @@
+import {hideKeyboardNavigation} from '../keyboard/navigationVisibility';
 import {findModuleExport} from '@decky/ui';
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
@@ -65,6 +66,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   const stop=installRadialSurface(field,()=>[element],close,resize);
   return ()=>{stop();element.remove();props.session.setMode(null);typing.current=clearHeld(typing.current);if(props.context){if(ctx.ownsInput())ctx.restoreFocus(field);}else if(field.isConnected&&doc.querySelector('[data-gg-focus="social:compose"]')?.contains(field.querySelector('button')??field)){const button=field.querySelector<HTMLElement>('button');button?.focus({preventScroll:true});if(button)takeSteamFocus(button);}};
  },[feeds,close,props.session]);
+ useLayoutEffect(()=>host&&bounds?hideKeyboardNavigation(host.ownerDocument):undefined,[host,!!bounds]);
  useEffect(()=>{
   if(!host||!bounds)return;
   const doc=host.ownerDocument,view=doc.defaultView!;

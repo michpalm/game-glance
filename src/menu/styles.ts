@@ -1,6 +1,9 @@
 import { radialStyles } from './radialStyles';
 import { TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
 
+// Active navigation tabs stay legible after focus moves into the panel; other option slices retain their quieter role.
+const selectedTab = `${selectedSlice()};--gg-selected:rgba(255,255,255,.24);--gg-selected-edge:inset 0 -3px 0 color-mix(in srgb,var(--gg-accent-text,var(--gg-accent)) 65%,#fff)`;
+
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
 export const menuStyles = radialStyles + `
@@ -20,7 +23,8 @@ html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):h
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:stretch;justify-content:stretch;gap:0;padding:0;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex:1 0 auto;min-height:0;padding:0 12px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);white-space:nowrap;box-shadow:none}
-.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]{${selectedSlice()}}
+.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]{${selectedTab}}
+html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton[aria-pressed=true]:hover{box-shadow:var(--gg-selected-edge);color:var(--gg-text)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:is(.gpfocus,:focus-visible){${focusRing('slice')};color:var(--gg-text)}
 html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:hover{box-shadow:none;color:var(--gg-text)}
 .gg-menu .gg-menu-shoulder{display:flex;align-items:center;justify-content:center;flex:none;min-width:40px;padding:8px;font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
@@ -95,11 +99,15 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-profile-context{flex:0 1 44%;min-width:0}.gg-menu .gg-menu-profile-context .gg-menu-setting{padding-right:0}
 .gg-menu-perf-tabs{display:flex;gap:0;padding:0;margin-bottom:16px;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-edge)}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);padding:8px 4px}
-.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]{${selectedSlice()}}
+.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]{${selectedTab}}
+html[data-gg-mouse] .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]:hover{box-shadow:var(--gg-selected-edge);color:var(--gg-text)}
 .gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:first-child{border-radius:calc(var(--gg-r-card) - 1px) 0 0 calc(var(--gg-r-card) - 1px)}
 .gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:last-child{border-radius:0 calc(var(--gg-r-card) - 1px) calc(var(--gg-r-card) - 1px) 0}
 .gg-menu .gg-menu-perf-content{padding-top:8px}.gg-menu .gg-menu-performance-profile{padding:0}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{min-width:40px;min-height:40px;padding:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:${TOKENS.glass}}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{width:80px;min-width:80px;height:40px;min-height:40px;flex:none;padding:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:${TOKENS.glass}}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton svg{transition:transform var(--gg-fast) ease}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton .gg-menu-notification-count:empty+svg{transform:translateX(-20px)}
+.gg-menu-notification-count{display:block;width:32px;min-width:32px;height:20px;line-height:20px;flex:none;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton[aria-pressed=true]{${selectedSlice()}}
 .gg-menu .gg-menu-native-icon{display:inline-flex;align-items:center;flex:none}.gg-menu svg[stroke="currentColor"]{stroke-width:2.4}
 .gg-menu .gg-menu-pending::after{content:"";display:inline-block;width:.8em;height:.8em;margin-left:.5em;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;vertical-align:-.1em;animation:gg-menu-spin .8s linear infinite}
@@ -108,8 +116,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu footer{display:flex;justify-content:center;gap:24px;padding:16px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
 .gg-menu-status-host{transition:opacity var(--gg-fast) linear}
 .gg-menu-status-host.gg-menu-status-home{visibility:hidden!important}
-.gg-menu-status-host .gh-status-pill{border-color:var(--gg-edge);border-radius:var(--gg-r-card);backdrop-filter:none!important;font-weight:var(--gg-weight-body)}
-.gg-menu-status-host .gh-status-pill *{font-weight:var(--gg-weight-body)}
+.gg-menu-status-host .gh-status-pill{backdrop-filter:none!important}
 .gg-menu .gg-menu-panel::-webkit-scrollbar,.gg-menu-tabs::-webkit-scrollbar{display:none}
 @media(prefers-reduced-motion:reduce){.gg-menu,.gg-menu *,.gg-menu *::after{transition:none!important;animation:none!important}}
 `;

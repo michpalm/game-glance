@@ -4,10 +4,10 @@ import { steamToken } from '../i18n/steamText';
 
 /** Steam's tray rows with plain metadata and optional supplied plugin presentation. `notificationId` marks an account
  * notification (read state kept by Steam); rows without one are local and their read state is ours. */
-export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'screenshot' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
+export interface TrayRow { id: string; kind: 'wishlist' | 'download' | 'plugin' | 'friend' | 'account' | 'screenshot' | 'achievement' | 'other'; appId: number | null; count: number; time: number; unread: boolean; title?: ReactNode; body?: ReactNode;
     notificationId?: string | number; accountType?: number; accountBody?: Record<string, unknown>; steamId?: string; inviteUrl?: string; mediaId?: string; onClick?: () => unknown; onClickTarget?: object;
     /** Stable key for our read memory; absent when Steam gave the row no id. */
-    readKey?: string }
+    readKey?: string; achievementUnlocked?: boolean }
 export interface SaleInfo { name: string; price?: string }
 
 type AnyRecord = Record<string, unknown> | undefined | null;
@@ -22,7 +22,7 @@ function notificationContent(value:unknown,depth=0):ReactNode|undefined {
     if(Array.isArray(value)&&value.length>0&&value.length<=256&&depth<8&&value.every(item=>item==null||typeof item==='boolean'||notificationContent(item,depth+1)!==undefined))return value as ReactNode[];
     return undefined;
 }
-function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'|'steamid'|'response_steamurl'|'screenshot_handle'|'description'):unknown {
+function nativeField(data:AnyRecord,key:'appid'|'dlc_appid'|'remote_client_name'|'steamid'|'response_steamurl'|'screenshot_handle'|'description'|'name'|'achieved'|'current_progress'|'max_progress'):unknown {
     try {const value=data?.[key];return typeof value==='function'?value.call(data):value;}catch{return undefined;}
 }
 const appIdOf=(value:unknown):number|null=>{const id=Number(value);return Number.isInteger(id)&&id>0&&id<=4294967295?id:null;};
@@ -72,6 +72,14 @@ export function readTray(tray: unknown, appName:(id:number)=>string=appNameFromS
             const name=safeName(dlc,appName)||safeName(gameId,appName);
             const remote=nativeField(data,'remote_client_name');
             rows.push({...base,kind:'download',appId:gameId,title:name||'Game download complete',body:typeof remote==='string'&&remote.trim()?`Ready to play on ${remote.trim()}`:'Ready to play'});
+        }else if(type===5){
+            // Ally's achievement protobuf carries both unlocks and intermediate progress (achieved() === false).
+            const gameId=appIdOf(nativeField(data,'appid')), unlocked=nativeField(data,'achieved')===true;
+            const name=nativeField(data,'name'), description=nativeField(data,'description');
+            const current=nativeField(data,'current_progress'), maximum=nativeField(data,'max_progress');
+            const progress=!unlocked&&typeof current==='number'&&Number.isFinite(current)&&current>=0&&typeof maximum==='number'&&Number.isFinite(maximum)&&maximum>0?`${current} / ${maximum}`:'';
+            const body=[safeName(gameId,appName),typeof description==='string'?description.trim():'',progress].filter(Boolean).join(' · ');
+            rows.push({...base,kind:'achievement',appId:gameId,achievementUnlocked:unlocked,title:typeof name==='string'&&name.trim()?name.trim():(unlocked?'Achievement unlocked':'Achievement progress'),body:body||undefined});
         }else if(type===31){
             // Keep supplied React translation elements intact; no component is invoked while reading the tray.
             const onClick=typeof data?.onClick==='function'?{onClick:data.onClick as ()=>unknown,onClickTarget:data as object}:{};
@@ -109,6 +117,7 @@ export function rowText(row: TrayRow, sale: SaleInfo | null | undefined, now = n
     if(row.kind==='download'||row.kind==='plugin'){
         return {label:labelled(row.kind==='download'?'Download complete':'Plugin'),title:row.title||(row.kind==='download'?'Game download complete':'Plugin notification'),body:row.body};
     }
+    if (row.kind === 'achievement') return { label: labelled(row.achievementUnlocked ? 'Achievement unlocked' : 'Achievement progress'), title: row.title || 'Achievement', body: row.body };
     if (row.kind === 'screenshot') return { label: labelled('Screenshot'), title: row.title || 'Screenshot taken' };
     if (row.kind === 'friend') {
         let name: string | undefined;
@@ -129,6 +138,7 @@ export type AccountLink = (type: number, body: Record<string, unknown>) => strin
 export function rowAction(row: TrayRow, link: AccountLink): { label?: string; run: RowRun } {
     const steam = { label: 'Open in Steam', run: { kind: 'native', request: STEAM_NOTIFICATIONS } as RowRun };
     switch (row.kind) {
+        case 'achievement':
         case 'download': return row.appId ? { label: 'View game', run: { kind: 'native', request: { kind: 'app', appId: row.appId } } } : steam;
         case 'plugin': return row.onClick ? { label: 'Open', run: { kind: 'plugin', onClick: row.onClick, target: row.onClickTarget } } : { run: { kind: 'mark' } };
         case 'wishlist': return !row.appId ? steam : row.count > 1 ? { label: 'View in store', run: { kind: 'native', request: { kind: 'store', target: 'wishlist' } } }

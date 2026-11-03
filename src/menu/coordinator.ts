@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Entry, MenuEvent, MenuState, Stop } from './model';
 import type { HostAttachment, NativeBindings, NativeRequest } from './steam/runtime';
+import { closesSteamMenu } from './steam/routes';
 
 export function createMenuCoordinator(options: { bindings: NativeBindings; getState(): MenuState; dispatch(event: MenuEvent): void; render(): ReactNode }) {
     const { bindings, getState, dispatch, render } = options;
@@ -8,6 +9,8 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
     let alive = false;
     let generation = 0;
     let frostGeneration = 0, closing = false;
+    /** A page that closes Steam's menu is opening: Steam's own deactivate must not turn the closed host back into a suspend. */
+    let leaving = false;
     const releases: Stop[] = [];
     function clearFrost(attached=host):Promise<void>|undefined {
         if(!attached?.clearFrost)return;
@@ -102,7 +105,7 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
                         void openWithFallback(entry, replayNative).catch(error => console.warn('[Game Glance] native menu fallback failed', error));
                     },
                     closed() { if (alive) { void clearFrost();generation++;closing=false; dispatch({ type: 'close' }); host?.close(); } },
-                    suspended(value) { if (alive && value) { void clearFrost();generation++;closing=false; dispatch({ type: 'handoff' }); host?.suspend(); } },
+                    suspended(value) { if (alive && value) { void clearFrost();generation++;closing=false; dispatch({ type: 'handoff' }); if (!leaving) host?.suspend(); } },
                 }));
                 return () => cleanup();
             } catch (error) { cleanup(true); throw error; }
@@ -114,10 +117,20 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
             if (!alive) return;
             const ticket=++generation;closing=false;
             dispatch({ type: 'handoff' });
-            const cleared=clearFrost();if(cleared)await cleared;
+            const leavesSteam=closesSteamMenu(request);
+            const cleared=clearFrost();
+            // Steam's windows share one thread and the page's first render can hold it for ~400 ms: the popup
+            // must have painted the menu away first, or its last frame stays over the page. Capped, like close's frost.
+            const hidden=leavesSteam&&host?.conceal?Promise.race([host.conceal().catch(()=>undefined),new Promise(resolve=>setTimeout(resolve,300))]):undefined;
+            if(cleared||hidden)await Promise.all([cleared,hidden]);
             if(!alive||generation!==ticket)return;
-            host?.suspend();
-            await bindings.openNative(request);
+            // Suspending hands the slot back to Steam's menu, whose 70% black scrim then fades out
+            // over the new page; closing keeps it hidden until Steam's menu has closed.
+            if(!leavesSteam){host?.suspend();await bindings.openNative(request);return;}
+            host?.close();leaving=true;
+            try{await bindings.openNative(request);}
+            catch(error){if(alive)host?.suspend();throw error;}
+            finally{leaving=false;}
         },
         close,
     };

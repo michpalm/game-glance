@@ -199,3 +199,11 @@ describe('frost shader allocation',()=>{
         expect(JSON.parse(closed)[REGION_IDS.indexOf('keyboard')+1]).toEqual([Math.ceil((409*2.32+2*pad)/8),Math.ceil((210*2.32+2*pad)/8)]);
     });
 });
+describe('ending an opening',()=>{
+    it('reports whether it took Home frost off the page',async()=>{
+        const home=fixture();home.controller.begin(1);home.controller.frame(frame(1,'steam'));
+        await expect(home.controller.end(1)).resolves.toBe(true);
+        const game=fixture();game.controller.begin(1);game.controller.frame(frame(1,'game'));
+        await expect(game.controller.end(1)).resolves.toBe(false);
+    });
+});

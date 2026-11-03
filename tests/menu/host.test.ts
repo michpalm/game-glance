@@ -136,6 +136,12 @@ describe('borrowed native menu chrome', () => {
         expect([header, footer]).toEqual([3, 4]); stop(); stop();
         expect([header, footer]).toEqual([2, 3]);
     });
+    it('does not hide an already-visible footer held by the custom menu',()=>{
+        const hide=vi.fn(),owner={HeaderStore:{IncrementHideHeader:vi.fn(),DecrementHideHeader:vi.fn()},FooterStore:{HideFooter:hide}};
+        const stop=hideNativeMenuChrome(owner,true);expect(hide).not.toHaveBeenCalled();
+        expect(owner.HeaderStore.IncrementHideHeader).toHaveBeenCalledOnce();stop();stop();
+        expect(owner.HeaderStore.DecrementHideHeader).toHaveBeenCalledOnce();
+    });
     it('releases an acquired header hold if footer acquisition fails', () => {
         let header = 0;
         const owner = { HeaderStore: { IncrementHideHeader: () => { header++; }, DecrementHideHeader: () => { header--; } }, FooterStore: { HideFooter: () => { throw Error('unavailable'); } } };

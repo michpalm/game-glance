@@ -1,3 +1,4 @@
+import { hideKeyboardNavigation } from '../keyboard/navigationVisibility';
 import { Focusable, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
 import { Component, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
@@ -277,6 +278,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
 
     // The first key takes focus once the panel is placed.
     const placed = open && !!position && !!host;
+    useLayoutEffect(() => placed && host ? hideKeyboardNavigation(host.ownerDocument) : undefined, [placed, host]);
     useEffect(() => {
         if (!placed || !session.get().open || !contextRef.current.ownsInput() || !host?.isConnected || host!==openedHost.current) return;
         const first = panel.current?.querySelector<HTMLElement>('button');

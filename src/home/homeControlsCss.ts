@@ -1,10 +1,12 @@
 import {SOURCE_PILL,sourcePillLook} from '../styles/sourcePill';
 import {homeHeaderCss} from './homeHeaderDom';
 import {focusRing} from '../styles/tokens';
+// Steam recreates Select as the page takes focus. Its native background transition would animate
+// from transparent when our marker is applied, flashing bright before the glass settles.
 /** The footer part alone (owned native footer groups): Home and the game page render the same rules, so the footer never changes style between them. */
 export const homeFooterCss=`[data-gh-footer=true]{background:transparent!important;box-shadow:none!important;border-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
-[data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
+[data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap;transition:none!important}
 [data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 [data-gh-footer-side]>:first-child img,[data-gh-footer-side]>:first-child svg{max-height:14px;max-width:16px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
 [data-gh-footer-side]>:last-child{font:inherit;letter-spacing:normal;text-transform:none}

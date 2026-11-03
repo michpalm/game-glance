@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Home controls stylesheet > is unchanged by the footer split (snapshot taken at 6c9ea51, before it) 1`] = `
+exports[`Home controls stylesheet > matches the shared Home controls styling 1`] = `
 "
 [data-gh-header=true],[data-gh-header=true] *{visibility:hidden!important;pointer-events:none!important}
 html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true] *{visibility:hidden!important}
@@ -17,7 +17,7 @@ html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],
 [data-gh-footer=true]{background:transparent!important;box-shadow:none!important;border-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
 [data-gh-footer-side]{box-sizing: border-box; height: 32px; border-radius: 12px; padding: 0 14px; font-size: 15px; font-weight: 700; line-height: 1; background:rgba(12,16,22,.40);backdrop-filter:blur(16px) url(#gg-calm);
-            border-color: rgba(255,255,255,.12);display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap}
+            border-color: rgba(255,255,255,.12);display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap;transition:none!important}
 [data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 [data-gh-footer-side]>:first-child img,[data-gh-footer-side]>:first-child svg{max-height:14px;max-width:16px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
 [data-gh-footer-side]>:last-child{font:inherit;letter-spacing:normal;text-transform:none}

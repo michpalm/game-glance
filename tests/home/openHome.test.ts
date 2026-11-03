@@ -289,7 +289,7 @@ describe('mountOpenBridge', () => {
             return node;
         };
         const clone = { ...make(), classList: { add: vi.fn(), remove: vi.fn() } };
-        const doc = { body: { appendChild: (c: never) => appended.push(c) }, createElement: () => make() };
+        const doc = { body: { appendChild: (c: never) => appended.push(c) }, createElement: () => ({ ...make(), firstElementChild: make() }) };
         const root = {
             ownerDocument: doc,
             getBoundingClientRect: () => ({ left: 0, top: 0, width: 1500, height: 844 }),
@@ -300,7 +300,8 @@ describe('mountOpenBridge', () => {
     it("puts a frozen copy of Home over Home's box, then fades and removes it", () => {
         const f = fakeDom();
         const bridge = mountOpenBridge(f.root);
-        expect(f.appended).toHaveLength(1);
+        // The bridge layer and its independently held shared frost filter.
+        expect(f.appended).toHaveLength(2);
         const box = f.appended[0];
         expect(box.style).toMatchObject({ position: 'fixed', left: '0px', top: '0px', width: '1500px', height: '844px', pointerEvents: 'none' });
         expect(box.children).toEqual([f.clone]);

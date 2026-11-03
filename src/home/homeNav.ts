@@ -1,3 +1,4 @@
+import { waitForHomeMotion } from './openMotionReady';
 import { prepareNormalOpen } from './normalOpen';
 import { preparePillOpen } from './pillOpen';
 import { prepareCleanOpen } from './cleanOpen';
@@ -230,6 +231,10 @@ function controller(): OpenTransition {
     transition ??= createOpenTransition({
         navigate: (path) => Navigation.Navigate(path),
         listenForCancel: (cancel) => active?.root ? listenOpenCancel(active.root.ownerDocument, cancel) : () => undefined,
+        listenForPageBack: (back) => active?.root ? listenOpenCancel(active.root.ownerDocument, () => {
+            clearOpen();
+            back();
+        }, false) : () => undefined,
         onCancelled: () => {
             playNavSound('OutOfGameDetail');
             if (active?.root) showCancelReturn(active.root);
@@ -239,6 +244,7 @@ function controller(): OpenTransition {
             next = null;
             return active ? startHome(active) : null;
         },
+        waitForHome: (done) => active?.root ? waitForHomeMotion(active.root, done) : (done(), () => undefined),
         mountBridge: () => {
             const c = active;
             if (!c?.root) return null;

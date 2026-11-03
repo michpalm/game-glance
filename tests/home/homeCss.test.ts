@@ -943,11 +943,11 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
     });
     it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
-        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\) \.gh-safe :is\(/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\) \.gh-safe :is\(/);
         expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
     it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
@@ -1158,7 +1158,7 @@ describe('homeCss open transition: text twins', () => {
         expect(css).toMatch(/@keyframes gh-twin-out \{ 0% \{ opacity: 1;[^}]*\} 40%, 100% \{ opacity: 0; \} \}/);
         const out = `animation: gh-twin-out ${OPEN_TIMINGS.morph}ms linear both`;
         expect(body(`${MT}[data-gh-twins~="title"] .gh-title-slot`)).toContain(out);
-        expect(body(`${MT}[data-gh-twins~="eyebrow"] .gh-eyebrow`)).toContain(out);
+        // The glowing eyebrow uses one visible twin throughout, tested below.
         expect(body(`${MT}[data-gh-twins~="play"] .gh-btn[data-action="play"] .gh-btn-label`)).toContain(out);
         for (const k of ['size', 'played', 'achievements', 'hltb']) {
             expect(body(`${MT}[data-gh-twins~="label-${k}"] .gh-chip[data-chip="${k}"] .gh-chip-label`), k).toContain(out);
@@ -1242,7 +1242,7 @@ describe('text on the accent', () => {
 
 describe('Page shading None: contrast on the art (spec "Contrast in None mode")', () => {
     const css = homeCss();
-    const GLASS = 'rgba(12,16,22,.6)';
+    const GLASS = 'rgba(12,16,22,.40)';
     const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
     /** Bodies of the rules with a selector starting `.gh-shade-none <sel>`. */
     const none = (sel: string) => rules(css).filter(([list]) => list.some((s) => s.startsWith(`.gh-shade-none ${sel}`))).map(([, b]) => b).join(' ');
@@ -1253,9 +1253,9 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         expect(body).toContain('text-shadow: 0 0 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
         // The box keeps its ellipsis but must not cut the glow off at its edges (it read as a band behind the line on the Ally).
         expect(body).toMatch(/overflow:\s*clip/);
-        expect(body).toMatch(/overflow-clip-margin:\s*24px/);
+        expect(body).toMatch(/overflow-clip-margin:\s*2em/);
     });
-    it('the glass on the art (chips, circles, store and family pills, store choice) is darker, with a brighter edge and white text', () => {
+    it('the glass on the art (chips, circles, store and family pills, store choice) uses VDL glass, with a brighter edge and white text', () => {
         for (const sel of ['.gh-chip', '.gh-btn-circle', '.gh-source:not(.gh-source-selectable)', '.gh-family', '.gh-store-choice']) {
             const body = none(sel);
             expect(body, sel).toContain(`background: ${GLASS} !important`);
@@ -1300,6 +1300,7 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
         const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
         expect(eyebrowTwin).toContain('color: #fff');
+        expect(eyebrowTwin).toContain('overflow-clip-margin: 2em');
         expect(eyebrowTwin).toContain('0 0 calc(4px * var(--gho-x-d)) var(--glance-accent)');
         // Every layer is centred, the dark one too, so the glow is even all round (Michael: it read stronger above).
         expect(eyebrowTwin).toContain('0 0 calc(2px * var(--gho-x-d)) #000');
@@ -1311,9 +1312,43 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
     });
     it('Bottom half is unchanged apart from the eyebrow: every other new declaration sits under .gh-shade-none', () => {
         for (const [list, body] of rules(css)) {
-            if ([GLASS, MIX, '#000b'].some((v) => body.includes(v))) {
+            if ([MIX, '#000b'].some((v) => body.includes(v))) {
                 for (const s of list) expect(s, body).toContain('.gh-shade-none');
             }
         }
+    });
+});
+
+
+describe('opening paint continuity', () => {
+    const css = homeCss();
+    const M = '.gh-root[data-gh-opening="morph"]';
+    it('keeps the moving nested normal-card frost in the backdrop scene', () => {
+        expect(ruleFor(css, `${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`)).toContain('transform-style:preserve-3d');
+    });
+    it('gives the eyebrow twin sole ownership from the first opening frame', () => {
+        const original = ruleFor(css, `${M}[data-gh-twins~="eyebrow"] .gh-eyebrow`);
+        const twin = ruleFor(css, `${M}[data-gh-twins~="eyebrow"] .gh-twin[data-role="eyebrow"]`);
+        expect(original).toContain('opacity: 0');
+        expect(original).toContain('animation: none');
+        expect(twin).toContain('opacity: 1');
+        expect(twin).toContain('animation: none');
+        // Movement still uses the existing transform transition, rather than a text crossfade.
+        expect(ruleFor(css, `${M}[data-gh-phase="to"] .gh-twin`)).toContain('transform: var(--t-to)');
+    });
+    it('does not let the return animation override a rapid reopening', () => {
+        const returning = rules(css).filter(([, body]) => body.includes('animation: gh-return-in'));
+        expect(returning.length).toBeGreaterThan(0);
+        for (const [selectors] of returning) for (const sel of selectors) expect(sel).toContain(':not([data-gh-opening])');
+    });
+});
+
+
+describe('shared status cell geometry',()=>{
+    it('keeps read-only connection, battery, clock and controller cells the Home size',()=>{
+        const item=ruleFor(statusCss(),'.gh-status-item');
+        for(const value of ['min-width: 24px','min-height: 24px','justify-content: center','border-radius: 6px']) expect(item).toContain(value);
+        const avatar=ruleFor(statusCss(),'.gh-status-avatar');
+        expect(avatar).toContain('min-width: 24px');expect(avatar).toContain('min-height: 24px');
     });
 });

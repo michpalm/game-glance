@@ -12,6 +12,21 @@ describe('menu glass and reveal motion',()=>{
         expect(bell).toContain(`background:${TOKENS.glass}`);
         expect(bell).toContain('border-color:var(--gg-edge)');
     });
+    it('keeps bell and count-slot geometry fixed as notifications are read',()=>{
+        const bell=rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton');
+        expect(bell).toContain('width:80px');
+        expect(bell).toContain('height:40px');
+        expect(bell).toContain('flex:none');
+        const count=rule('.gg-menu-notification-count');
+        expect(count).toContain('width:32px');
+        expect(count).toContain('line-height:20px');
+        expect(count).toContain('flex:none');
+        expect(count).toContain('text-align:center');
+    });
+    it('centers an empty bell by moving only its icon inside the fixed frost region',()=>{
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton svg')).toContain('transition:transform var(--gg-fast) ease');
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton .gg-menu-notification-count:empty+svg')).toContain('transform:translateX(-20px)');
+    });
     it('lifts unselected tabs and Performance categories to the idle-tab white, leaving other dim text alone', ()=>{
         expect(TOKENS.idle).toBe('rgba(255,255,255,.80)');
         expect(tokenCss('.x')).toContain(`--gg-text-idle:${TOKENS.idle}`);
@@ -52,7 +67,7 @@ describe('menu glass and reveal motion',()=>{
         const pills = all.filter(line => line.includes('--gg-r-pill'));
         for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-social-avatar|gh-status-pill/);
     });
-    it('marks every selected item with the shade and faint edge, never an accent fill', () => {
+    it('marks every selected item with a shade and edge, never an accent fill', () => {
         const selected = all.flatMap(line => line.match(/[^{}]*\[aria-pressed=true\][^{}]*\{[^}]*\}/g) ?? [])
             .filter(css => !css.includes(':not([aria-pressed=true])'));
         expect(selected.length).toBeGreaterThanOrEqual(5);
@@ -60,6 +75,20 @@ describe('menu glass and reveal motion',()=>{
             expect(css, css.slice(0, 90)).not.toContain('background:var(--gg-accent)');
             if (!css.includes('::after')) expect(css, css.slice(0, 90)).toContain('var(--gg-selected-edge)');
         }
+    });
+    it('gives menu and Performance tabs the approved stronger selection independently of focus',()=>{
+        for(const selector of [
+            '.gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton',
+            '.gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton',
+        ]) {
+            const selected=rule(`${selector}[aria-pressed=true]`);
+            expect(selected).toContain('--gg-selected:rgba(255,255,255,.24)');
+            expect(selected).toContain('--gg-selected-edge:inset 0 -3px 0 color-mix(in srgb,var(--gg-accent-text,var(--gg-accent)) 65%,#fff)');
+            expect(rule(`html[data-gg-mouse] ${selector}[aria-pressed=true]:hover`)).toContain('box-shadow:var(--gg-selected-edge)');
+        }
+        // Regular option slices and the bell retain their existing selected role.
+        expect(rule('.gg-menu-native-host .gg-menu .gg-menu-segmented button.gg-menu-action.DialogButton[aria-pressed=true]')).not.toContain('--gg-selected:');
+        expect(rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton[aria-pressed=true]')).not.toContain('--gg-selected:');
     });
     it('focuses with the white ring only: no growth, no glow', () => {
         expect(menuStyles + socialStyles).not.toContain('--gg-focus-shadow');
@@ -94,7 +123,9 @@ describe('menu glass and reveal motion',()=>{
 });
 
 it('the status bar in the menu takes the soft corner of the status bar outside it (VDL Section 7, option B)', () => {
-    expect(menuStyles).toMatch(/\.gg-menu-status-host \.gh-status-pill\{[^}]*border-radius:var\(--gg-r-card\)/);
+    expect(rule('.gg-menu-status-host .gh-status-pill')).not.toContain('border-radius:');
+    expect(rule('.gg-menu-status-host .gh-status-pill')).not.toContain('font-weight:');
+    expect(rule('.gg-menu-status-host .gh-status-pill *')).not.toContain('font-weight:');
     // On Home the page's own bar stays up; the popup copy keeps its layout (for its frost area) but is never seen.
     expect(menuStyles).toMatch(/\.gg-menu-status-host\.gg-menu-status-home\{visibility:hidden!important\}/);
 });

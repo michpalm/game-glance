@@ -22,6 +22,16 @@ const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|j
 const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
 export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
+/** The requests that end in finishNavigation: Steam's menu closes behind them, so the host leaves as if closing
+ * (its native scrim stays hidden) instead of handing the slot back to Steam's own menu. */
+export function closesSteamMenu(request:NativeRequest):boolean {
+    switch(request.kind){
+        case 'navigate':return request.destination!=='power';
+        case 'friend-profile':case 'media-item':case 'app':return true;
+        case 'game-action':return request.actionId!=='exit';
+        default:return false;
+    }
+}
 export function createRoutes(bindings:RouteBindings) {
     return { async open(request:NativeRequest):Promise<void> {
         bindings.deactivate();

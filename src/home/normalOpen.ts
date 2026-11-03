@@ -18,6 +18,8 @@ export function prepareNormalOpen(root: HTMLElement, home: HomeRects, page: Page
         save(grid);const origin=root.getBoundingClientRect(),side=target.x-origin.left;
         Object.assign(grid.style,{display:'grid',visibility:'hidden',left:`${side}px`,top:`${target.y-origin.top}px`,width:`${origin.width-2*side}px`});
         grid.style.setProperty('--gho-x-d',String(page.d));
+        // Capture the surface with the target display's ring, before applyOpening sets its variables on Home.
+        grid.style.setProperty('--gho-ring-boost',String(page.ring ?? 1));
         for(const panel of grid.querySelectorAll<HTMLElement>('.gh-normal-card')){
             save(panel);const p=box(panel);
             // Only the glass stretches. Its native border still reserves the same layout space.

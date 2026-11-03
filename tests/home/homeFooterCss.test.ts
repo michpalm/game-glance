@@ -3,7 +3,7 @@ import * as controls from '../../src/home/homeControlsCss';
 import {homeFooterSuspended,homeRuntimeSuspended} from '../../src/home/useHomeControls';
 const rules=(css:string)=>css.split('}').map(line=>line.trim()).filter(Boolean);
 describe('Home controls stylesheet',()=>{
- it('is unchanged by the footer split (snapshot taken at 6c9ea51, before it)',()=>{expect(controls.homeControlsCss).toMatchSnapshot();});
+ it('matches the shared Home controls styling',()=>{expect(controls.homeControlsCss).toMatchSnapshot();});
  it('shares the footer rules as homeFooterCss, which Home composes in unchanged',()=>{
   expect(controls.homeControlsCss).toContain(controls.homeFooterCss);
   const footer=rules(controls.homeFooterCss);
@@ -12,6 +12,10 @@ describe('Home controls stylesheet',()=>{
   // Every footer-owned rule lives in the shared part, except Home's own Search hide (Home-only: the page has no Search).
   for(const rule of rules(controls.homeControlsCss).filter(rule=>rule.startsWith('[data-gh-footer')))expect(footer).toContain(rule);
   expect(controls.homeFooterCss).not.toMatch(/gh-search|gh-status|gh-keyboard|html:has/);
+ });
+ it('applies footer glass immediately when Steam recreates Select during navigation',()=>{
+  const group=rules(controls.homeFooterCss).find(rule=>rule.startsWith('[data-gh-footer-side]{'));
+  expect(group).toContain('transition:none!important');
  });
  it('styles Home fully when active, the footer alone while only the footer is held, else nothing',()=>{
   expect(controls.homeControlsStyle(true,true)).toBe(controls.homeControlsCss);

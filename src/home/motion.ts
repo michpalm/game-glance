@@ -69,7 +69,8 @@ export const OPEN_TIMINGS = {
      * soft (an animated layer's raster), the copy crisp, and replacing one by the other in a frame read as a pop.
      */
     bridgeIn: 150,
-    readyCap: 500,
+    /** Emergency escape only: cold native hero visibility exceeded 500 ms on the Ally. Ready pages hand off early. */
+    readyCap: 2000,
     revealDelay: 0,
     reveal: 200,
     leaveDrop: 70,

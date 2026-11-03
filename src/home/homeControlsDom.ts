@@ -20,7 +20,7 @@ type Markers=Map<HTMLElement,Map<string,string>>;
 /** Whether some lease (the game page's, on the way back to Home) holds the footer right now. */
 export const footerHeld=(doc:Document):boolean=>{const footer=doc.getElementById('Footer');return !!footer&&!!claims.get(footer)?.get('data-gh-footer')?.owners.size;};
 /** Share only our marker writes; native content, layout rules and handlers are never replaced. */
-export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean)=>void):{suspend(value:boolean):void;dispose():void} {
+export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean)=>void):{suspend(value:boolean):void;dispose():void;shared():boolean} {
     const token=Symbol('home-footer'),doc=root.ownerDocument,view=doc.defaultView;
     let owned:Markers=new Map(),bound:HTMLElement|null=null,stopped=false,suspended=false,queued=false,ready:boolean|undefined,measure=true;
     const release=(element:HTMLElement,name:string)=>{const map=claims.get(element),claim=map?.get(name);if(!claim)return;claim.owners.delete(token);if(claim.owners.size)return;if(element.getAttribute(name)===claim.value){if(claim.before===null)element.removeAttribute(name);else element.setAttribute(name,claim.before);}map!.delete(name);if(!map!.size)claims.delete(element);};
@@ -43,7 +43,14 @@ export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean
         return [...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&((node as Element).id==='Footer'||owned.has(node as HTMLElement)||!!(node as Element).querySelector('#Footer')||!!bound&&node.contains(bound)));
     }))schedule();}):undefined;
     observer?.observe(doc.body,{childList:true,subtree:true,characterData:true});
+    // Position-only native enter transitions do not notify ResizeObserver. A failed first read must not stay cached.
+    const settlingEvents=['transitionend','animationend','transitioncancel','animationcancel'] as const;
+    const recover=()=>{if(stopped||suspended||ready)return;measure=true;schedule();};
+    let paintFrame:number|undefined;
+    const cancelPaint=()=>{if(paintFrame!==undefined){view?.cancelAnimationFrame(paintFrame);paintFrame=undefined;}};
+    const nextFrame=()=>{if(stopped||suspended||ready||paintFrame!==undefined||!view?.requestAnimationFrame)return;paintFrame=view.requestAnimationFrame(()=>{paintFrame=undefined;recover();});};
+    for(const type of settlingEvents)doc.addEventListener(type,recover,true);
     const sizeObserver=view?.ResizeObserver?new view.ResizeObserver(()=>{measure=true;schedule();}):undefined;sizeObserver?.observe(root);
-    const resize=()=>{measure=true;schedule();};view?.addEventListener('resize',resize);update();
-    return {suspend(value){if(stopped||suspended===value)return;suspended=value;measure=true;update();},dispose(){if(stopped)return;stopped=true;observer?.disconnect();sizeObserver?.disconnect();view?.removeEventListener('resize',resize);apply(new Map());}};
+    const resize=()=>{measure=true;schedule();};view?.addEventListener('resize',resize);update();nextFrame();
+    return {shared(){return !!bound&&[...(claims.get(bound)?.get('data-gh-footer')?.owners??[])].some(owner=>owner!==token);},suspend(value){if(stopped||suspended===value)return;suspended=value;cancelPaint();measure=true;update();nextFrame();},dispose(){if(stopped)return;stopped=true;cancelPaint();for(const type of settlingEvents)doc.removeEventListener(type,recover,true);observer?.disconnect();sizeObserver?.disconnect();view?.removeEventListener('resize',resize);apply(new Map());}};
 }

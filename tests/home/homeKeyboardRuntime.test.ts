@@ -6,10 +6,12 @@ import {HomeSearch} from '../../src/home/HomeSearchControl';
 import {createHomeSearch} from '../../src/home/homeSearch';
 import {createMenuPreferences} from '../../src/menu/preferences';
 import {MenuKeyboard} from '../../src/menu/components/MenuKeyboard';
+import {RadialKeyboard} from '../../src/menu/components/RadialKeyboard';
 import {BUILTIN_QWERTY} from '../../src/menu/keyboard/layouts';
 import {createKeyboardSession} from '../../src/menu/keyboard/session';
 const kv=vi.hoisted(()=>({resolve:null as null|((value:unknown)=>void),set:vi.fn()}));
 vi.unmock('react-dom');
+vi.mock('../../src/menu/keyboard/controllerFeed',()=>({ControllerFeed:()=>null,ControllerFeedGuard:({children}:any)=>children,activeControllerIndex:()=>0,discoverControllerFeeds:()=>({})}));
 vi.mock('../../src/data/kv',()=>({backendKv:{get:()=>new Promise(resolve=>{kv.resolve=resolve;}),set:kv.set}}));
 vi.mock('@decky/ui',()=>({Focusable:forwardRef(({children,onButtonDown,onButtonUp,noFocusRing,...props}:any,ref:any)=>createElement('div',{...props,ref},children)),DialogButton:forwardRef(({children,onGamepadFocus,...props}:any,ref:any)=>createElement('button',{...props,ref},children)),findModule:()=>{},findModuleExport:()=>null}));
 let root:Root,win:any,field:HTMLElement,host:HTMLElement,owned:boolean,active:HTMLElement;
@@ -24,4 +26,28 @@ it('keeps actual Compact key gestures inside the Home Search portal',async()=>{
  await act(()=>root.render(createElement('main',{onPointerDown:pointer,onPointerUp:pointer,onWheel:wheel},createElement(HomeSearch,{search,active:true,account:'one',ownsInput:()=>owned,preferences,statusBounds:()=>({left:900,top:4,width:350,height:32})}))));
  await act(()=>search.dispatch({type:'enter'}));const fieldButton=document.querySelector('[data-home-search]')!;await act(()=>fieldButton.dispatchEvent(new win.Event('click',{bubbles:true})));await act(async()=>{kv.resolve?.({spot:'right'});await Promise.resolve();});
  const key=document.querySelector('.gg-keyboard-key')!;expect(key).toBeTruthy();await act(()=>{for(const type of ['pointerdown','pointerup','wheel'])key.dispatchEvent(new win.Event(type,{bubbles:true}));});expect(pointer).not.toHaveBeenCalled();expect(wheel).not.toHaveBeenCalled();expect(search.get().phase).toBe('editing');
+});
+
+it('hides page navigation while Compact is visible and restores it when the session closes',async()=>{
+ const session=await mount();
+ await act(async()=>{kv.resolve?.({spot:'right'});await Promise.resolve();});
+ expect(document.querySelector('[data-gg-keyboard-navigation]')).not.toBeNull();
+ await act(()=>session.close());
+ expect(document.querySelector('[data-gg-keyboard-navigation]')).toBeNull();
+});
+
+
+it('hides navigation in the owner page while Radial is in a popup, then restores both documents',async()=>{
+ const page=parseHTML('<html><head></head><body><div id="Footer"><button>Back</button></div></body></html>').document as unknown as Document;
+ vi.stubGlobal('SteamUIStore',{WindowStore:{GamepadUIMainWindowInstance:{BrowserWindow:{document:page}}}});
+ Object.defineProperty(win,'getComputedStyle',{configurable:true,value:()=>({length:0,visibility:'visible'})});
+ const session=createKeyboardSession();session.open();
+ await act(()=>root.render(createElement(RadialKeyboard,{context:{host:()=>host,ownsInput:()=>owned,restoreFocus:()=>{},completionLabel:'Done'},session,layouts:{layouts:[BUILTIN_QWERTY],current:0},draft:'',setDraft:()=>{},canSend:true,send:()=>{},field:()=>field,unavailable:()=>session.close(),ownsInput:()=>owned})));
+ expect(document.querySelectorAll('.gg-radial-wheel')).toHaveLength(2);
+ expect(document.querySelector('[data-gg-keyboard-navigation]')).not.toBeNull();
+ expect(page.querySelector('[data-gg-keyboard-navigation]')).not.toBeNull();
+ expect(document.querySelector('.gg-radial-actions')?.textContent).toContain('X Close');
+ await act(()=>session.close());
+ expect(document.querySelector('[data-gg-keyboard-navigation]')).toBeNull();
+ expect(page.querySelector('[data-gg-keyboard-navigation]')).toBeNull();
 });

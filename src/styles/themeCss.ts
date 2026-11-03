@@ -123,11 +123,13 @@ export function pageScrims(mode: PageShading): string {
  * the glow off at its edges (overflow: hidden read as a band behind the line on the Ally). Every layer is centred, the
  * dark outline too: it paints over the glow, and offset down it hid the glow's lower half (Michael: stronger above).
  */
+// Steam CEF computes calc() in overflow-clip-margin to 0px. Two em is the same 24 canvas px
+// at the 12px eyebrow size, and follows the page/twin font scale without calc().
 export const EYEBROW = (u: (n: number) => string) =>
-    `color: #fff; text-shadow: 0 0 ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent); overflow: clip; overflow-clip-margin: ${u(24)}`;
+    `color: #fff; text-shadow: 0 0 ${u(2)} #000, 0 0 ${u(4)} var(--glance-accent), 0 0 ${u(10)} var(--glance-accent), 0 0 ${u(20)} color-mix(in srgb, var(--glance-accent) 75%, transparent); overflow: clip; overflow-clip-margin: 2em`;
 
 export const SHADE_NONE = {
-    glass: 'rgba(12,16,22,.6)',
+    glass: TOKENS.glass,
     edge: '.16',
     pill: 'color-mix(in srgb, var(--glance-accent) 88%, #000)',
     pillEdge: 'rgba(0,0,0,.35)',
@@ -595,7 +597,7 @@ export function buildCleanCss({ header, details, root }: ThemeClasses): string {
         // The store pill above the row, at its right edge.
         `.gg-pill { top: auto; bottom: calc(100% + ${d(PAGE_LAYOUT.clean.storeGap)}); }`,
         // The eyebrow and title just above the row, at the left (their bottom CLEAN_GAP above the Play pill).
-        rule(`${inner} > .gg-titleblock`, ` top: calc(var(--gg-play-top) - ${d(CLEAN_GAP)}) !important; transform: translateY(-100%); `),
+        rule(`${inner} > .gg-titleblock`, ` top: auto !important; bottom: calc(100% - var(--gg-play-top) + ${d(CLEAN_GAP)}) !important; transform: none !important; `),
     ].filter((r) => r.length > 0).join('\n');
 }
 
@@ -921,8 +923,10 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
             // The title (or logo) and the eyebrow under it, at the left inset, their bottom the row-to-cards gap (36) above the
             // Play row on every screen (the row sits lower on a TV, --gg-play-top's media query): title, eyebrow, row and
             // cards stay one stack, the eyebrow always the same distance above the row, and a longer title grows upward.
-            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: calc(var(--gg-play-top) - ${d(PAGE_LAYOUT.titleGap)}) !important;
-                transform: translateY(-100%) !important; left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
+            // Anchor the bottom through layout, not a percentage transform: on Steam CEF that transform resamples the
+            // small eyebrow and its glow, visibly dimming it when the crisp Home bridge hands over. Keep its stacking context.
+            rule(`${inner} > .gg-titleblock`, ` display: flex !important; position: absolute !important; top: auto !important; bottom: calc(100% - var(--gg-play-top) + ${d(PAGE_LAYOUT.titleGap)}) !important;
+                transform: none !important; z-index: 0; left: var(--gg-side) !important; right: var(--gg-side) !important; margin: 0 !important; `),
             // Steam's logo, and its text title for games without one, give way to our title (hidden in place), only
             // while our title is on the page: Steam's header is the first child of the page container.
             rule(titleImage && `${inner}:has(> .gg-titleblock) ${topCapsule} ${titleImage}`, ` visibility: hidden !important; `),
@@ -948,12 +952,14 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
  */
 function shadeNoneRules({ root, play }: ThemeClasses): string[] {
     const S = SHADE_NONE;
+    const cloud = cls(play, 'CloudStatusRow');
     const playButton = cls(root, 'ActionButtonAndStatusPanel');
     const menuButton = cls(play, 'MenuButton');
     const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
     const pill = playButton && `${playButton} > div:has(> [role="button"])`;
     return [
         rule(menuButton, glass),
+        rule(cloud, glass),
         ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
         `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,
         `.gg-value { text-shadow: ${S.labelShadow(d)} !important; }`,
@@ -1020,7 +1026,10 @@ export function buildArrivingCss(
     const playButton = cls(root, 'ActionButtonAndStatusPanel');
     const focusAtOnce = rule(playButton && [`${playButton} [role="button"]`, `${playButton} > div:has(> [role="button"])`], ' transition: none !important; ');
     // (The glass, Clean panel and Spotlight cards, keeps its own blur: Home's copy draws it blurred too.)
-    return [steamFade, rule(list, body), focusAtOnce].filter((r) => r.length > 0).join('\n');
+    // The native inner container already exists when the per-game accent stylesheet mounts. Do not transition
+    // from its previous/default accent under the bridge: the new eyebrow glow makes that warm-up conspicuous.
+    const accentAtOnce = rule(cls(details, 'InnerContainer'), ' transition: none !important; ');
+    return [steamFade, rule(list, body), focusAtOnce, accentAtOnce].filter((r) => r.length > 0).join('\n');
 }
 
 /** Clean's bars that arrive: all of them, or (`brought`: the stats whose bar Home's morph moved into place) the others. */

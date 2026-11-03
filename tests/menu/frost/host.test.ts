@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 const rpc=vi.fn<(name:string,...args:unknown[])=>Promise<unknown>>(async()=>null);
 vi.mock('@decky/api',()=>({callable:(name:string)=>(...args:unknown[])=>rpc(name,...args)}));
-import { createMenuFrostHost, frostRegionElements } from '../../../src/menu/frost/host';
+import { afterPaint, createMenuFrostHost, frostRegionElements } from '../../../src/menu/frost/host';
 function fixture(){
     const owner=parseHTML('<html><body><section><div id="viewport"></div></section></body></html>');
     const source=parseHTML('<html><body><div class="gg-menu"><i data-gg-frost-region="bar"></i><i data-gg-frost-region="panel"></i><i data-gg-frost-region="notifications"></i></div></body></html>');
@@ -91,3 +91,17 @@ describe('menu frost host and the keyboard',()=>{
 
 });
 
+
+describe('waiting for the owner window to paint',()=>{
+    it('resolves after the second animation frame, the first one that has painted',async()=>{
+        const frames:FrameRequestCallback[]=[];
+        const view={requestAnimationFrame:(cb:FrameRequestCallback)=>frames.push(cb)} as unknown as Window;
+        let done=false;void afterPaint(view).then(()=>{done=true;});
+        frames.shift()!(0);await flush();expect(done).toBe(false);
+        frames.shift()!(16);await flush();expect(done).toBe(true);
+    });
+    it('resolves at once without a window or animation frames',async()=>{
+        await expect(afterPaint(null)).resolves.toBeUndefined();
+        await expect(afterPaint({} as Window)).resolves.toBeUndefined();
+    });
+});
