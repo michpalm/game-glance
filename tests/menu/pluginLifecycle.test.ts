@@ -12,6 +12,7 @@ vi.mock('../../src/home/downloadStore', () => ({ stopDownloads: h.downloadStop }
 vi.mock('../../src/home/statusStore', () => ({ stopStatus: vi.fn() }));
 vi.mock('../../src/home/reloadRemount', () => ({ noteLoad: vi.fn(), remountHomeAfterReload: () => vi.fn() }));
 vi.mock('../../src/screensaver/ScreensaverView', () => ({ ScreensaverHost: () => null }));
+vi.mock('../../src/chrome/ChromeHost', () => ({ ChromeHost: () => null }));
 vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn() } }));
 vi.mock('@decky/ui', () => ({ staticClasses: {} }));
 import plugin from '../../src/index';

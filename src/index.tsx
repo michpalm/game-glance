@@ -13,9 +13,11 @@ import { startUpdateChecks } from './data/update';
 import { patchGamePage } from './patches/gamePage';
 import { patchHomePage } from './patches/homePage';
 import { ScreensaverHost } from './screensaver/ScreensaverView';
+import { ChromeHost } from './chrome/ChromeHost';
 import { noteLoad, remountHomeAfterReload } from './home/reloadRemount';
 
 const SCREENSAVER_COMPONENT = 'GameGlanceScreensaver';
+const CHROME_COMPONENT = 'GameGlanceChrome';
 
 export default definePlugin(() => {
     const masterReady = settings.load();
@@ -26,6 +28,7 @@ export default definePlugin(() => {
     const unpatchHome = patchHomePage(); // never throws; applied after and independent of the game page patch
     const cancelRemount = remountHomeAfterReload(noteLoad()); // an update: Home on screen is redrawn by this copy
     routerHook.addGlobalComponent(SCREENSAVER_COMPONENT, ScreensaverHost); // draws only while Steam's screensaver is on
+    routerHook.addGlobalComponent(CHROME_COMPONENT, ChromeHost); // the status bar, Search and footer, for every page
     const stopAutoPreload = startAutoPreload();
     const stopUpdateChecks = startUpdateChecks(); // quiet: once now (a day-old answer is reused), then daily
     console.log(`${LOG_PREFIX} loaded`);
@@ -42,6 +45,7 @@ export default definePlugin(() => {
                 ['Home unpatch', unpatchHome],
                 ['Home reopen cancel', cancelRemount],
                 ['screensaver remove', () => routerHook.removeGlobalComponent(SCREENSAVER_COMPONENT)],
+                ['chrome remove', () => routerHook.removeGlobalComponent(CHROME_COMPONENT)],
                 ['auto preload stop', stopAutoPreload],
                 ['update checks stop', stopUpdateChecks],
                 ['downloads stop', stopDownloads],
