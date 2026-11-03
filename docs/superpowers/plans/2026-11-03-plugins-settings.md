@@ -223,7 +223,7 @@ Commit message: `menu: view ids for the Plugins section; B returns focus to the 
   - `categorySummary(id, s, context): string`
   - `matchLine(overrideId: number | null, hltb: HltbResult | undefined): string`
 
-First check that `src/data/hltb.ts` exports `HltbResult` with `status: 'found'` carrying `gameId: number`, and `status: 'notFound'`: run `grep -n "export type HltbResult\|export interface HltbResult" -A6 src/data/hltb.ts`. If it does not, stop and report.
+`HltbResult` lives in `src/data/hltb/index.ts` (the import `'./hltb'` resolves to that folder's index): `{ status: 'found'; gameId: number; times } | { status: 'notFound'; overrideId?: number } | { status: 'unavailable' }`. Confirm with `sed -n 9,12p src/data/hltb/index.ts`; if it differs, stop and report.
 
 - [ ] **Step 1: Write the failing test** `tests/data/settingsCategories.test.ts`:
 
