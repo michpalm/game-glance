@@ -1,6 +1,6 @@
 # Game Glance settings in the menu's Plugins section
 
-Written 2026-11-03. Status: design approved by Michael (mockups, 2026-11-03); spec awaiting review. Device check on the ROG Xbox Ally (Michael's choice).
+Written 2026-11-03. Status: built on feature/plugins-settings (Tasks 1–8 by a Haiku session, de169dc..9e1b79a; fixes 3bb167f, 9006f3b) and checked on the ROG Xbox Ally 2026-11-04: Michael, "looks right".
 
 Mockups: canvas https://claude.ai/artifact/Fqep53QY5eNze2SB3EKvZg (drawn over a real Steam Deck Home frame; boards "Plugins list", "A · Drill-in", and the row "Every category, drill-in layout").
 
@@ -124,3 +124,12 @@ Rows reuse the menu's existing controls: `ToggleField` in a `gg-menu-setting` ro
 ## Ships in
 
 4.0.0, on `feature/plugins-settings` from `release/4.0`. Nothing pushed until Michael says.
+
+## Device check (ROG Xbox Ally, 2026-11-04)
+
+- Full plugin installed (backend included) and the Ally restarted; previous build backed up at `~/gg-backup-ally-20261103-2352`.
+- Michael: overall good. Found that the top and bottom of long pages were cut, and the heading hid at the top.
+  - Cause (measured): Steam's controller scroll stops when the focused row touches the panel edge, so the panel's 24px padding and the heading above the first row stayed out of view (General's last button 1px from the edge, scrollTop 287 of 311).
+  - Fix 9006f3b: `scroll-padding-block:24px` on the panel and `scroll-margin-top:64px` on each view's first row (Social's friend list does the same); category cards 112px tall so the six fit without scrolling. Tested live with an injected rule first, then installed (index.js b9759a29).
+- Michael after the fix: "looks right".
+
