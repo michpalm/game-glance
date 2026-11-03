@@ -8,6 +8,11 @@ export interface HeaderRedirectOptions {
     inOurBar(target: Element | null): boolean;
     /** Something else owns the controller (the Search keyboard): leave Steam's bar alone. */
     busy(): boolean;
+    /** Entry is refused only because our bar is hidden (Home's feed sheet): send focus back out with `back`. */
+    hidden?(): boolean;
+    back?(): void;
+    /** How leave() focuses the remembered element (the host hands over Steam's gamepad focus too). */
+    focus?(el: HTMLElement): void;
 }
 
 /**
@@ -27,11 +32,18 @@ export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): 
         return !(bar && bar.contains(el as Node)) && !o.inOurBar(el as Element);
     };
     const arrive = (from: unknown) => {
-        if (inSteamBar || !o.enabled() || o.busy()) return;
+        if (inSteamBar || o.busy()) return;
+        if (!o.enabled()) {
+            // Steam's header is invisible: focus left there is stranded.
+            if (o.hidden?.()) o.back?.();
+            return;
+        }
         const source = outsideBoth(from) ? from : lastOutside;
         if (o.enter()) {
             inSteamBar = true;
+            // Coming back from our own bar keeps the memory; an arrival with no source forgets an older element.
             if (source) remembered = source;
+            else if (!(from && typeof (from as Element).closest === 'function' && o.inOurBar(from as Element))) remembered = null;
         }
     };
 
@@ -74,7 +86,7 @@ export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): 
             const target = remembered;
             remembered = null;
             inSteamBar = false;
-            if (target && visibleHomeControl(target)) target.focus();
+            if (target && visibleHomeControl(target)) (o.focus ?? ((el: HTMLElement) => el.focus()))(target);
             else fallback?.();
         },
         dispose() {

@@ -15,15 +15,12 @@ import {chromeClaims,type ChromeClaim} from './claims';
 import {installHeaderRedirect} from './headerRedirect';
 import {chromeLaunching,chromeMode,chromeReturn,chromeStatusHidden,type ChromeMode} from './policy';
 
-let ownsBar=false;const ownsBarListeners=new Set<()=>void>();
-const setOwnsBar=(value:boolean)=>{if(ownsBar===value)return;ownsBar=value;for(const fn of [...ownsBarListeners])fn();};
 /** Home's Up-from-actions entry into the host's bar (filled while a host is mounted). */
 export const chromeFocus:{actionUp(event:GamepadEvent):boolean}={actionUp:()=>false};
-/** Whether the host draws its bar right now: active with the header lease ready, as `bar` (Home, the game page and the menu holds read it). */
-export const chromeOwnsBar=():boolean=>ownsBar;
-export function subscribeChromeOwnsBar(listener:()=>void):()=>void {ownsBarListeners.add(listener);return()=>{ownsBarListeners.delete(listener);};}
-/** Latched across a suspension: the host drew its bar, then stepped aside for a side menu (our own menu included). The bar
- * keeps rendering and the menu's holds keep the page's look. False when it goes off, or suspended without ever owning. */
+/** True while the host draws its bar (active with the header lease ready), and latched across a suspension whose only cause
+ * is a side menu (our own menu included): the bar keeps rendering and the menu's holds keep the page's look. Any other
+ * cause (launching, the window in the background or hidden, the screensaver) clears it, as does going off or a suspension
+ * that never owned the bar. */
 let held=false;const heldListeners=new Set<()=>void>();
 const setHeld=(value:boolean)=>{if(held===value)return;held=value;for(const fn of [...heldListeners])fn();};
 export const chromeHeld=():boolean=>held;
@@ -36,6 +33,10 @@ interface Inputs {optedIn:boolean;everyPage:boolean;claims:readonly ChromeClaim[
 function suspendedIn(doc:Document,o:Inputs):boolean {
     const foreground=doc.hasFocus();
     return o.screensaver||homeRuntimeSuspended({foreground,menu:getSteamUiState(doc).menu,opening:false,launching:chromeLaunching(o.claims),connected:!!doc.defaultView,hidden:doc.visibilityState==='hidden'});
+}
+/** A side menu is open and nothing else would suspend the host: the one suspension the bar latch holds through. */
+function menuOnlyIn(doc:Document,o:Inputs):boolean {
+    return getSteamUiState(doc).menu&&!o.screensaver&&!homeRuntimeSuspended({foreground:doc.hasFocus(),menu:false,opening:false,launching:chromeLaunching(o.claims),connected:!!doc.defaultView,hidden:doc.visibilityState==='hidden'});
 }
 const modeIn=(doc:Document,o:Inputs):ChromeMode=>chromeMode({...o,suspended:suspendedIn(doc,o)});
 /** Entering from Steam's header is the status focus's own Up entry: Search first. */
@@ -52,19 +53,21 @@ const ourBar=(target:Element|null)=>!!target?.closest?.('.gg-status-host:not(.gg
  * against the viewport), status-cell focus and the redirect from Steam's hidden header. Pages only add claims (chrome/claims).
  */
 export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatusControls|undefined;bar:boolean;held:boolean;actionUp(event:GamepadEvent):boolean;ownsInput():boolean;search:HomeSearchSession;footer:boolean;statusHidden:boolean} {
-    const s=useSettings(),claims=useSyncExternalStore(chromeClaims.subscribe,chromeClaims.get),screensaver=useScreensaverActive();
+    const s=useSettings(),claims=useSyncExternalStore(chromeClaims.subscribe,chromeClaims.get),screensaver=useScreensaverActive(),optedIn=footerOptedIn(s);
     const live=useRef<Inputs>({optedIn:false,everyPage:false,claims,screensaver});
-    live.current={optedIn:footerOptedIn(s),everyPage:s.chromeEveryPage,claims,screensaver};
+    live.current={optedIn,everyPage:s.chromeEveryPage,claims,screensaver};
     const docRef=useRef(doc);docRef.current=doc;
     const ready=useRef(false),runtime=useRef<{sync():void}|null>(null),redirect=useRef<ReturnType<typeof installHeaderRedirect>|null>(null);
     const [mode,setMode]=useState<ChromeMode>('off');
     const [footer,setFooter]=useState(false);
     const [native,setNative]=useState(false);
     const search=useMemo(createHomeSearch,[]);
-    const {focus,usable,back}=useMemo(()=>{
+    const {focus,usable,hidden,back}=useMemo(()=>{
         // Down/B's last resort, and where focus goes when the host lets go while it is in our bar: Home's own target on Home, else the page's first item.
         const back=()=>{const d=docRef.current,home=chromeReturn(live.current.claims);if(home)home();else if(d)focusElement(firstPageItem(d),'the page');};
         const usable=()=>{const d=docRef.current;return !!d&&ready.current&&!chromeStatusHidden(live.current.claims)&&modeIn(d,live.current)==='active';};
+        // Entry refused only because Home's feed sheet hides our bar: focus must not stay in Steam's invisible header.
+        const hidden=()=>{const d=docRef.current;return !!d&&ready.current&&chromeStatusHidden(live.current.claims)&&modeIn(d,live.current)==='active';};
         const focus=createHomeStatusFocus({
             search:{reveal:()=>search.dispatch({type:'enter'}),hide:()=>search.dispatch({type:'content'}),activate:()=>search.dispatch({type:'edit'}),editing:()=>search.get().phase==='editing',contains:target=>!!target?.closest('[data-home-search],.gh-keyboard-surface')},
             canUse:usable,focus:node=>focusElement(node,'the status item'),stopRepeats:()=>{},
@@ -72,10 +75,11 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
             returnHome:()=>{if(redirect.current)redirect.current.leave(back);else back();},
             schedule:callback=>{const view=docRef.current?.defaultView;if(view?.requestAnimationFrame){const frame=view.requestAnimationFrame(callback);return ()=>view.cancelAnimationFrame(frame);}const timer=setTimeout(callback,0);return ()=>clearTimeout(timer);},
         });
-        return {focus,usable,back};
+        return {focus,usable,hidden,back};
     },[search]);
     useLayoutEffect(()=>{
-        if(!doc)return undefined;
+        // Nothing but settings for anyone who has not opted in: no Steam UI poll, no focus listeners, no redirect.
+        if(!doc||!optedIn)return undefined;
         const win=doc.defaultView,root=doc.documentElement,steamBar=createTopBarFinder(doc);
         let footerLease:ReturnType<typeof acquireHomeFooter>|null=null,header:ReturnType<typeof acquireHomeHeader>|null=null;
         let footerReady=false,headerReady=false,disposed=false,queued=false;
@@ -86,7 +90,7 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
             if(disposed)return;
             const o=live.current,suspended=suspendedIn(doc,o),next=chromeMode({...o,suspended});
             // No document-wide observer for anyone who has not opted in.
-            if(next!=='off'&&!redirect.current)redirect.current=installHeaderRedirect(doc,{enabled:usable,enter:()=>focus.actionUp(up()),inOurBar:ourBar,busy:()=>search.get().phase==='editing'});
+            if(next!=='off'&&!redirect.current)redirect.current=installHeaderRedirect(doc,{enabled:usable,enter:()=>focus.actionUp(up()),inOurBar:ourBar,busy:()=>search.get().phase==='editing',hidden,back,focus:node=>focusElement(node,'the remembered item')});
             if(next==='off'&&redirect.current){release();redirect.current.dispose();redirect.current=null;}
             if(next==='off'){footerLease?.dispose();footerLease=null;footerReady=false;header?.dispose();header=null;headerReady=false;}
             if(next!=='off'&&!suspended&&!footerLease)footerLease=acquireHomeFooter(root,value=>{footerReady=value;queue();});
@@ -94,7 +98,7 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
             // The header only once the footer is ours: a page whose footer is not Steam's usual one keeps Steam's bar too.
             if(next!=='off'&&!suspended&&footerReady&&!header)header=acquireHomeHeader(root,value=>{headerReady=value;queue();});
             header?.suspend(suspended||!footerReady);
-            ready.current=footerReady&&headerReady;setOwnsBar(next==='active'&&ready.current);setHeld(next==='off'?false:(next==='active'&&ready.current)||(next==='suspended'&&held));
+            ready.current=footerReady&&headerReady;setHeld((next==='active'&&ready.current)||(next==='suspended'&&held&&menuOnlyIn(doc,o)));
             focus.setActive(next==='active'&&ready.current&&!chromeStatusHidden(o.claims),!suspended);
             setMode(previous=>previous===next?previous:next);
             setFooter(previous=>previous===footerReady?previous:footerReady);
@@ -110,9 +114,10 @@ export function useChrome(doc:Document|null):{mode:ChromeMode;controls:HomeStatu
         return ()=>{
             disposed=true;runtime.current=null;stopUi();chromeFocus.actionUp=()=>false;
             doc.removeEventListener('focusin',onFocus);doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);
-            release();redirect.current?.dispose();redirect.current=null;footerLease?.dispose();header?.dispose();ready.current=false;setOwnsBar(false);setHeld(false);
+            release();redirect.current?.dispose();redirect.current=null;footerLease?.dispose();header?.dispose();ready.current=false;setHeld(false);
+            setMode('off');setFooter(false);setNative(false);
         };
-    },[doc,focus,search,usable,back]);
+    },[doc,optedIn,focus,search,usable,hidden,back]);
     useLayoutEffect(()=>()=>focus.dispose(),[focus]);
     useLayoutEffect(()=>runtime.current?.sync());
     const statusHidden=chromeStatusHidden(claims);

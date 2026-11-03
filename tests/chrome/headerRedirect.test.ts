@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
 import { installHeaderRedirect } from '../../src/chrome/headerRedirect';
 
-function setup(opts: Partial<{ enabled: boolean; busy: boolean }> = {}) {
+function setup(opts: Partial<{ enabled: boolean; busy: boolean; hidden: boolean }> = {}) {
     const { document, window } = parseHTML(`<html><body>
         <div id="steam"><div class="avatarHolder_x"><button id="avatar"></button></div><input id="field"></div>
         <div id="ours"><button id="ourBtn"></button></div>
@@ -12,12 +12,15 @@ function setup(opts: Partial<{ enabled: boolean; busy: boolean }> = {}) {
     const rect = (r: object) => () => ({ top: 0, left: 0, width: 0, height: 0, ...r });
     $('steam').getBoundingClientRect = rect({ top: 0, height: 40, width: 1500 }) as any;
     $('avatar').parentElement!.getBoundingClientRect = rect({ top: 4, height: 32, width: 32 }) as any;
-    const state = { enabled: opts.enabled ?? true, busy: opts.busy ?? false };
+    const state = { enabled: opts.enabled ?? true, busy: opts.busy ?? false, hidden: opts.hidden ?? false };
     const o = {
         enabled: () => state.enabled,
         busy: () => state.busy,
         enter: vi.fn(() => true),
         inOurBar: (t: Element | null) => !!t && $('ours').contains(t),
+        hidden: () => state.hidden,
+        back: vi.fn(),
+        focus: vi.fn((el: HTMLElement) => el.focus()),
     };
     const focus = (el: HTMLElement, from: HTMLElement | null = null) => {
         el.dispatchEvent(Object.assign(new window.Event('focusin', { bubbles: true }), { relatedTarget: from }));
@@ -117,5 +120,41 @@ describe('installHeaderRedirect', () => {
         t.$('avatar').classList.add('gpfocus');
         t.classChanged(t.$('avatar'));
         expect(t.o.enter).toHaveBeenCalledTimes(3);
+    });
+    it('leaves through the injected focus function (it hands over Steam\'s gamepad focus too)', () => {
+        const t = setup();
+        t.focus(t.$('avatar'), t.$('card'));
+        t.redirect.leave();
+        expect(t.o.focus).toHaveBeenCalledTimes(1);
+        expect(t.o.focus).toHaveBeenCalledWith(t.$('card'));
+    });
+    it('forgets an older element on an arrival with no source', () => {
+        const t = setup();
+        const card = vi.spyOn(t.$('card'), 'focus');
+        t.focus(t.$('avatar'), t.$('card')); // remembered: card (nothing focused outside before)
+        t.focus(t.$('ourBtn'), t.$('avatar'));
+        t.focus(t.$('avatar'), null); // no source this time
+        expect(t.o.enter).toHaveBeenCalledTimes(2);
+        const fallback = vi.fn();
+        t.redirect.leave(fallback);
+        expect(fallback).toHaveBeenCalledTimes(1);
+        expect(card).not.toHaveBeenCalled();
+    });
+    it('sends focus back out when entry is refused only because our bar is hidden', () => {
+        const t = setup({ enabled: false, hidden: true });
+        t.focus(t.$('avatar'), t.$('card'));
+        expect(t.o.enter).not.toHaveBeenCalled();
+        expect(t.o.back).toHaveBeenCalledTimes(1);
+        t.$('field').classList.add('gpfocus');
+        t.classChanged(t.$('field'));
+        expect(t.o.back).toHaveBeenCalledTimes(2);
+    });
+    it('leaves the header alone when refused for another reason', () => {
+        const busy = setup({ enabled: false, hidden: true, busy: true });
+        busy.focus(busy.$('avatar'), busy.$('card'));
+        expect(busy.o.back).not.toHaveBeenCalled();
+        const off = setup({ enabled: false });
+        off.focus(off.$('avatar'), off.$('card'));
+        expect(off.o.back).not.toHaveBeenCalled();
     });
 });

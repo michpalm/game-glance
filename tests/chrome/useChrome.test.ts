@@ -4,16 +4,16 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {settings} from '../../src/data/settings';
 import {chromeClaims} from '../../src/chrome/claims';
-import {chromeHeld,chromeOwnsBar,subscribeChromeOwnsBar,useChrome} from '../../src/chrome/useChrome';
+import {chromeHeld,subscribeChromeHeld,useChrome} from '../../src/chrome/useChrome';
 import {pageFooterCanRestore} from '../../src/menu/pageFooter';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 vi.unmock('react-dom');
-const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>(),screensaver:false}));
+const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>(),screensaver:false,subscribed:0}));
 vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Focusable:()=>null,DialogButton:'button',findModule:()=>{},findModuleExport:()=>null}));
 vi.mock('../../src/home/steamUiState',()=>({
  getSteamUiState:()=>steam.ui,
- subscribeSteamUiState:(_doc:Document,fn:()=>void)=>{steam.listeners.add(fn);return()=>{steam.listeners.delete(fn);};},
- useSteamUiState:()=>steam.ui,
+ subscribeSteamUiState:(_doc:Document,fn:()=>void)=>{steam.subscribed++;steam.listeners.add(fn);return()=>{steam.listeners.delete(fn);};},
+ useSteamUiState:()=>{steam.subscribed++;return steam.ui;},
 }));
 vi.mock('../../src/screensaver/steamScreensaver',()=>({useScreensaverActive:()=>steam.screensaver}));
 vi.mock('../../src/components/GameStatusBar',async()=>{const {createElement:h}=await import('react');return {GameStatusBar:()=>h('div',{'data-test-bar':''})};});
@@ -150,15 +150,31 @@ describe('useChrome',()=>{
   await act(()=>root.render(createElement('div')));expect(active).toBe(card);
  });
  it('tells subscribers when it takes and gives back the bar',async()=>{
-  const seen:boolean[]=[],stop=subscribeChromeOwnsBar(()=>seen.push(chromeOwnsBar()));
+  const seen:boolean[]=[],stop=subscribeChromeHeld(()=>seen.push(chromeHeld()));
   await everyPage(true);await show();await everyPage(false);stop();
   expect(seen).toEqual([true,false]);
  });
  it('owns the bar only while it draws it: active with the header lease ready',async()=>{
   header.remove();await everyPage(true);await show();
-  expect(chrome.mode).toBe('active');expect(chrome.bar).toBe(false);expect(chromeOwnsBar()).toBe(false);
+  expect(chrome.mode).toBe('active');expect(chrome.bar).toBe(false);expect(chromeHeld()).toBe(false);
   doc.body.prepend(header);await act(async()=>{watchers.forEach(fn=>fn([{type:'childList',target:doc.body,addedNodes:[header],removedNodes:[]} as any],{} as any));await new Promise(r=>setTimeout(r,0));});
-  expect(chrome.bar).toBe(true);expect(chromeOwnsBar()).toBe(true);
+  expect(chrome.bar).toBe(true);expect(chromeHeld()).toBe(true);
+ });
+ it('sends focus out of Steam’s invisible header while Home’s feed sheet hides our bar',async()=>{
+  const returnHome=vi.fn();claim({page:'home',statusHidden:true,returnHome});await show();
+  const input=header.querySelector('input')!;
+  await act(()=>{input.dispatchEvent(Object.assign(new win.Event('focusin',{bubbles:true}),{relatedTarget:doc.getElementById('card')}));});
+  expect(returnHome).toHaveBeenCalledTimes(1);expect(chrome.search.get().phase).toBe('hidden');
+ });
+ it('subscribes to nothing but settings in the host for anyone who has not opted in',async()=>{
+  await act(()=>settings.setHomeExpandedControls(false));await everyPage(true);steam.subscribed=0;
+  const viewAdd=vi.fn();Object.defineProperty(doc.defaultView,'addEventListener',{configurable:true,value:viewAdd});Object.defineProperty(doc.defaultView,'removeEventListener',{configurable:true,value:()=>{}});
+  const added=[vi.spyOn(doc,'addEventListener'),viewAdd];
+  await act(()=>root.render(createElement(ChromeHost)));
+  expect(steam.subscribed).toBe(0);for(const spy of added)expect(spy).not.toHaveBeenCalled();
+  expect(doc.querySelector('[data-test-bar]')).toBeNull();expect(watchers.length).toBe(0);
+  await act(()=>settings.setHomeExpandedControls(true));
+  expect(steam.subscribed).toBeGreaterThan(0);expect(doc.querySelector('[data-test-bar]')).not.toBeNull();
  });
  it('installs nothing document-wide for anyone who has not opted in',async()=>{
   await act(()=>settings.setHomeExpandedControls(false));await everyPage(true);await show();
@@ -173,13 +189,29 @@ describe('useChrome',()=>{
    await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
    expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
    await menu(true);
-   expect(chromeOwnsBar()).toBe(false);expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
+   expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
    expect(doc.querySelector('.gh-root,.gg-hero')).toBeNull();expect(pageFooterCanRestore(doc)).toBe(true);
-   await menu(false);expect(chromeOwnsBar()).toBe(true);expect(bar()).toBe(true);
+   await menu(false);expect(chromeHeld()).toBe(true);expect(bar()).toBe(true);
   });
   it('does not latch when it starts suspended',async()=>{
    steam.ui={...steam.ui,menu:true};await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);expect(pageFooterCanRestore(doc)).toBe(false);
+  });
+  it('does not hold the bar over Steam’s launch screen: a claim going to launching clears the latch',async()=>{
+   await everyPage(true);const home=claim({page:'home'});await act(()=>root.render(createElement(ChromeHost)));
+   expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
+   await act(()=>{home.update({page:'home',statusHidden:false,launching:true});});
+   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);
+  });
+  it('lets go when launching starts with the side menu already open',async()=>{
+   await everyPage(true);const home=claim({page:'home'});await act(()=>root.render(createElement(ChromeHost)));await menu(true);expect(chromeHeld()).toBe(true);
+   await act(()=>{home.update({page:'home',statusHidden:false,launching:true});});
+   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);
+  });
+  it('does not hold the bar while Steam’s screensaver is on',async()=>{
+   await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));expect(chromeHeld()).toBe(true);
+   steam.screensaver=true;await act(()=>root.render(createElement(ChromeHost)));
+   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);
   });
   it('lets go when it goes off',async()=>{
    await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));await menu(true);expect(chromeHeld()).toBe(true);

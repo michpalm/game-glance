@@ -2,7 +2,7 @@
 
 exports[`Home controls stylesheet > matches the shared Home controls styling 1`] = `
 "
-[data-gh-header=true]{opacity:0!important;pointer-events:none!important}
+[data-gh-header=true]{opacity:0!important;pointer-events:none!important}[data-gh-header=true] *{pointer-events:none!important}
 html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true] *{visibility:hidden!important}
 .gh-search-position{position:absolute;pointer-events:auto;height:32px}
 .gh-keyboard-surface button.gh-search-control.DialogButton{box-sizing: border-box; height: 32px; border-radius: 12px; padding: 0 14px; font-size: 15px; font-weight: 700; line-height: 1; background:rgba(12,16,22,.40);backdrop-filter:blur(16px) url(#gg-calm);

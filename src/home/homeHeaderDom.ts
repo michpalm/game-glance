@@ -36,4 +36,5 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
     observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style',MARK]});view?.addEventListener('resize',schedule);update();
     return {suspend(value){if(disposed||value===suspended)return;suspended=value;update();},dispose(){if(disposed)return;disposed=true;observer?.disconnect();view?.removeEventListener('resize',schedule);apply(new Map());}};
 }
-export const homeHeaderCss=`[${MARK}=true]{opacity:0!important;pointer-events:none!important}`;
+/** Descendants too: a Steam node with its own pointer-events:auto would still take touches over our bar (pointer-events never affects focus). */
+export const homeHeaderCss=`[${MARK}=true]{opacity:0!important;pointer-events:none!important}[${MARK}=true] *{pointer-events:none!important}`;
