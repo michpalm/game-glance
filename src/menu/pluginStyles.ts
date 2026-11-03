@@ -24,6 +24,7 @@ export const pluginStyles = `
 .gg-menu .gg-plugin-card-title{display:flex;flex-direction:column;gap:4px}
 .gg-menu .gg-plugin-buttons{display:flex;flex-wrap:wrap;gap:12px}
 .gg-menu .gg-plugin-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.gg-menu .gg-menu-switches.gg-menu-configure{margin-top:12px}
 .gg-menu .gg-menu-panel:has(.gg-plugin-rows,.gg-plugin-cards,.gg-plugin-list){scroll-padding-block:24px}
 .gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child,.gg-plugin-cards>:nth-child(-n+2)),.gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child) *{scroll-margin-top:64px}
 `;
