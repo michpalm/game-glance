@@ -1,4 +1,6 @@
 // The Plugins section: plugin rows, Game Glance's cards, crumbs, pickers and the match card, on the menu's tokens.
+// Steam scrolls a focused row only until it touches the panel's edge, so the last two rules keep the padding, and for
+// each view's first row the heading above it, in view.
 export const pluginStyles = `
 .gg-menu .gg-plugin-crumb-path{display:flex;align-items:center;gap:8px;min-width:0}
 .gg-menu .gg-plugin-crumb-path>span{color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
@@ -13,7 +15,7 @@ export const pluginStyles = `
 .gg-menu .gg-plugin-end{display:flex;align-items:center;gap:8px;flex:none;color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
 .gg-menu .gg-plugin-end svg{width:20px;height:20px}
 .gg-menu .gg-menu-grid.gg-plugin-cards{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
-.gg-menu-native-host .gg-menu .gg-menu-grid.gg-plugin-cards button.gg-menu-action.DialogButton{min-height:128px;height:auto;align-items:flex-start;justify-content:flex-start;text-align:left;padding:20px}
+.gg-menu-native-host .gg-menu .gg-menu-grid.gg-plugin-cards button.gg-menu-action.DialogButton{min-height:112px;height:auto;align-items:flex-start;justify-content:flex-start;text-align:left;padding:20px}
 .gg-menu .gg-plugin-card-name{display:flex;align-items:center;gap:12px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-plugin-picker.DialogButton{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:56px;padding:8px 12px;text-align:left}
 .gg-menu .gg-plugin-value{display:flex;align-items:center;gap:6px;color:var(--gg-text-dim)}
@@ -22,4 +24,6 @@ export const pluginStyles = `
 .gg-menu .gg-plugin-card-title{display:flex;flex-direction:column;gap:4px}
 .gg-menu .gg-plugin-buttons{display:flex;flex-wrap:wrap;gap:12px}
 .gg-menu .gg-plugin-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.gg-menu .gg-menu-panel:has(.gg-plugin-rows,.gg-plugin-cards,.gg-plugin-list){scroll-padding-block:24px}
+.gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child,.gg-plugin-cards>:nth-child(-n+2)),.gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child) *{scroll-margin-top:64px}
 `;
