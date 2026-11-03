@@ -33,8 +33,10 @@ const LEGACY = {sharpness:'SetFSRSharpness',vrr:'SetVRREnabled',scalingMode:'Set
 const IDS = [...Object.keys(PERFORMANCE_CLIENT_KEYS), ...Object.keys(LEGACY), 'perGame'];
 const UNKNOWN:SettingScope={kind:'unknown'};
 type NativeSnapshot=Omit<SettingSnapshot<PerformanceValue>,'pending'|'error'>;
+/** A real running game: Steam reports its own default profile, 769, as the current game while none runs. */
+const runningGame=(id:string)=>/^[1-9]\d*$/.test(id)&&id!=='769';
 function profileScope(s:PerformanceState):SettingScope {
-    if(/^[1-9]\d*$/.test(s.currentGameId)&&s.activeProfileId===s.currentGameId)return {kind:'game',gameId:s.currentGameId};
+    if(runningGame(s.currentGameId)&&s.activeProfileId===s.currentGameId)return {kind:'game',gameId:s.currentGameId};
     return s.activeProfileId==='769'||s.activeProfileId==='0'?{kind:'global'}:UNKNOWN;
 }
 const numbers=(value:unknown)=>Array.isArray(value)?value.filter((v):v is number=>typeof v==='number'&&Number.isFinite(v)):[];
@@ -72,7 +74,7 @@ function describe(id:string,s:PerformanceState):NativeSnapshot {
         case 'sharpness':value=s.legacy.perApp.fsr_sharpness;available=range(s.legacy.limits.fsr_sharpness_min,s.legacy.limits.fsr_sharpness_max,1);disabled ||= ![3,4].includes(s.legacy.perApp.split_scaling_filter as number);break;
         case 'overlayLevel':value=s.legacy.global.perf_overlay_level;result.options=PERFORMANCE_OVERLAY_LEVELS.map(level=>level.value);available=typeof s.legacy.global.perf_overlay_service_state==='number'&&s.legacy.global.perf_overlay_service_state!==0;break;
         case 'overlaySteam':value=s.legacy.global.is_show_perf_overlay_over_steam_enabled;available=typeof s.legacy.global.perf_overlay_service_state==='number'&&s.legacy.global.perf_overlay_service_state!==0;break;
-        case 'perGame':value=!!s.currentGameId&&s.currentGameId===s.activeProfileId;available=/^[1-9]\d*$/.test(s.currentGameId)&&!!s.activeProfileId;break;
+        case 'perGame':value=!!s.currentGameId&&s.currentGameId===s.activeProfileId;available=runningGame(s.currentGameId)&&!!s.activeProfileId;break;
     }
     const method=LEGACY[id as keyof typeof LEGACY]??(id==='perGame'?'SetGameSpecificProfileEnabled':undefined);
     if(method&&s.legacy.methods&&!s.legacy.methods.includes(method))available=false;
@@ -122,7 +124,7 @@ export function createPerformance(bindings:PerformanceBindings) {
     }
     let profile!:PerformanceProfile,fingerprint='';const listeners=new Set<Stop>();
     const refresh=()=>{
-        const s=bindings.read();const isGameSpecific=/^[1-9]\d*$/.test(s.currentGameId)&&s.currentGameId===s.activeProfileId;
+        const s=bindings.read();const isGameSpecific=runningGame(s.currentGameId)&&s.currentGameId===s.activeProfileId;
         const next:PerformanceProfile={currentGameId:s.currentGameId,activeProfileId:s.activeProfileId,isGameSpecific,
             label:!s.activeProfileId?'Profile unavailable':isGameSpecific?'Using per-game profile':s.activeProfileId==='769'||s.activeProfileId==='0'?'Using default profile':'Using native profile',power:s.power};
         const key=JSON.stringify(next);if(key===fingerprint)return;fingerprint=key;profile=Object.freeze(next);listeners.forEach(fn=>fn());

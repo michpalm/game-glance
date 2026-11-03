@@ -116,3 +116,12 @@ it('writes Hz choices to native refresh settings at the same700ms delay as Steam
     h.state.client.gamescope_display_refresh_rate=59.94;h.emit();await p;
     expect(h.state.client.gamescope_app_target_framerate).toBe(59.94);h.perf.dispose();
 });
+
+it('treats Steam’s own 769 profile as no game running: no per-game switch, default scope', () => {
+    // Ally, no game running: SystemPerfStore reports nCurrentGameID 769 and nActiveProfileGameID 769.
+    const h = fixture(); h.state.currentGameId = '769'; h.state.activeProfileId = '769'; h.emit();
+    expect(h.perf.controls.perGame.get().available).toBe(false);
+    expect(h.perf.getProfile()).toMatchObject({ isGameSpecific: false, label: 'Using default profile' });
+    expect(h.perf.controls.vrr.get().scope).toEqual({ kind: 'global' });
+    h.perf.dispose();
+});
