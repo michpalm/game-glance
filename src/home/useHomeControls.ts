@@ -1,11 +1,5 @@
 import {GamepadButton as B, type GamepadEvent} from '@decky/ui';
-import {type RefObject,useLayoutEffect,useMemo,useRef,useState} from 'react';
-import {homeControlsMode,nextHomeControl,orderHomeControls,repairHomeControl,type HomeControlId,type HomeControlsMode,type HomeStatusControls} from './homeControls';
-import {acquireHomeFooter,footerHeld} from './homeControlsDom';
-import {focusElement} from './homeNav';
-import {menuOpen,steamMenuStore} from './steamMenu';
-import {acquireHomeHeader} from './homeHeaderDom';
-import {getSteamUiState,subscribeSteamUiState,type SteamUiState} from './steamUiState';
+import {nextHomeControl,orderHomeControls,repairHomeControl,type HomeControlId,type HomeStatusControls} from './homeControls';
 
 export function visibleHomeControl(node:HTMLElement):boolean {
     if(!node.isConnected||node.closest('[hidden],[inert],[aria-hidden="true"]'))return false;
@@ -19,7 +13,7 @@ export function homeReturnTarget(root:HTMLElement,last:HTMLElement|null,recents:
 export function homeRuntimeSuspended(p:{foreground:boolean;menu:boolean;opening:boolean;launching:boolean;connected:boolean;hidden:boolean}):boolean {
     return !p.foreground||p.menu||p.opening||p.launching||!p.connected||p.hidden;
 }
-/** The footer alone is exempt from the open transition: Home keeps it while the game page takes it over (same footer, same CSS). */
+/** The footer's step-aside rules: the open transition does not count (the host keeps the footer through it). */
 export const homeFooterSuspended=(p:Parameters<typeof homeRuntimeSuspended>[0]):boolean=>homeRuntimeSuspended({...p,opening:false});
 export interface HomeSearchFocus {reveal():void;hide():void;activate():void;editing():boolean;contains(target:Element|null):boolean}
 interface FocusOptions {
@@ -75,71 +69,5 @@ export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls &
         dispose(){disposed=true;active=false;owned=false;cancel?.();cancel=null;nodes.clear();},
     };
 }
-interface HomeControlsOptions {
-    search?:HomeSearchFocus;root:RefObject<HTMLElement|null>;enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean;mounted:boolean;statusHidden:boolean;
-    launching():boolean;stopRepeats():void;returnHome():void;
-}
-/** The footer's opt-in, shared with the game page (Home's own opt-in also waits for its content). */
+/** The chrome host's opt-in (chrome/useChrome). */
 export const footerOptedIn=(o:{enabled:boolean;spotlightHome:boolean;homeStatusBar:boolean;homeExpandedControls:boolean})=>o.enabled&&o.spotlightHome&&o.homeStatusBar&&o.homeExpandedControls;
-const optedIn=(o:HomeControlsOptions)=>footerOptedIn(o)&&o.mounted;
-/** The Steam windows whose Home has had its controls up: a return there takes the footer before Home's content (the focus restore waits ~0.5-0.8 s for the recents row). */
-const footerShownIn=new WeakSet<Document>();
-function runtimeInputs(o:HomeControlsOptions):Parameters<typeof homeRuntimeSuspended>[0] {
-    const root=o.root.current,doc=root?.ownerDocument;
-    return {foreground:!!doc?.hasFocus(),menu:menuOpen(steamMenuStore(),!!doc?.hasFocus()),opening:!!root?.hasAttribute('data-gh-opening'),launching:o.launching(),connected:!!root?.isConnected,hidden:doc?.visibilityState==='hidden'||!!root?.closest('[hidden],[inert],[aria-hidden="true"]')};
-}
-const suspendedNow=(o:HomeControlsOptions)=>homeRuntimeSuspended(runtimeInputs(o));
-/** One Home-owned footer lease and focus bridge; it never probes or edits the native header/Search. */
-export function useHomeControls(options:HomeControlsOptions):{controls:HomeStatusControls|undefined;actionUp(event:GamepadEvent):boolean;footerActive:boolean;footerShown:boolean;ui:SteamUiState|null;ownsInput():boolean} {
-    const live=useRef(options);live.current=options;
-    const ready=useRef(false),runtime=useRef<{sync():void}|null>(null);
-    const [ui,setUi]=useState<SteamUiState|null>(null);
-    const [mode,setMode]=useState<HomeControlsMode>('off');
-    const [footerShown,setFooterShown]=useState(false);
-    const [headerHandoff,setHeaderHandoff]=useState(false);
-    const focus=useMemo(()=>createHomeStatusFocus({
-        search:options.search?{reveal:()=>live.current.search?.reveal(),hide:()=>live.current.search?.hide(),activate:()=>live.current.search?.activate(),editing:()=>live.current.search?.editing()??false,contains:target=>live.current.search?.contains(target)??false}:undefined,
-        canUse:()=>ready.current&&optedIn(live.current)&&!live.current.statusHidden&&!suspendedNow(live.current),
-        headerHandoff:setHeaderHandoff,
-        focus:node=>focusElement(node,'the Home status item'),returnHome:()=>live.current.returnHome(),stopRepeats:()=>live.current.stopRepeats(),
-        schedule:callback=>{const view=live.current.root.current?.ownerDocument.defaultView;if(view?.requestAnimationFrame){const frame=view.requestAnimationFrame(callback);return ()=>view.cancelAnimationFrame(frame);}const timer=setTimeout(callback,0);return ()=>clearTimeout(timer);},
-    }),[]);
-    useLayoutEffect(()=>{
-        const root=live.current.root.current;if(!root)return undefined;
-        const doc=root.ownerDocument,win=doc.defaultView;
-        let header:ReturnType<typeof acquireHomeHeader>|null=null,headerReady=false,footerReady=false;
-        let disposed=false,queued=false,lease:ReturnType<typeof acquireHomeFooter>|null=null,carry=false,handover=false;
-        const queue=()=>{if(disposed||queued)return;queued=true;void Promise.resolve().then(()=>{queued=false;if(!disposed)sync();});};
-        const sync=()=>{
-            if(disposed)return;
-            const o=live.current,wanted=optedIn(o),inputs=runtimeInputs(o),suspended=homeRuntimeSuspended(inputs),opted=footerOptedIn(o),footerSuspended=homeFooterSuspended(inputs);
-            // Footer-only, two cases: the open transition, carried over from active controls (the page takes it over), and
-            // back before Home's content is up: from the game page while it still holds the footer (no gap as it goes), or
-            // from any page once Home has had its controls up in this window. A cold start keeps Steam's footer until then.
-            if(!opted||o.mounted)handover=false;else if(!lease&&!footerSuspended&&(footerHeld(doc)||footerShownIn.has(doc)))handover=true;
-            const carrying=carry&&inputs.opening&&wanted,footerOnly=opted&&!footerSuspended&&(carrying||handover),leaseSuspended=footerOnly?false:suspended;
-            if(!wanted&&!footerOnly){lease?.dispose();lease=null;footerReady=false;}
-            if(!wanted){header?.dispose();header=null;headerReady=false;}
-            if((wanted||footerOnly)&&!leaseSuspended&&!lease)lease=acquireHomeFooter(root,value=>{footerReady=value;queue();});
-            lease?.suspend(leaseSuspended);
-            const footer=footerOnly&&footerReady;setFooterShown(previous=>previous===footer?previous:footer);
-            if(wanted&&!suspended&&footerReady&&!header)header=acquireHomeHeader(root,value=>{headerReady=value;queue();});
-            header?.suspend(suspended||!footerReady);ready.current=footerReady&&headerReady;
-            setUi(getSteamUiState(doc));
-            const next=homeControlsMode({...o,homeMounted:o.mounted,nativeReady:ready.current,suspended});
-            carry=next==='active'||carrying&&footerReady;
-            if(next==='active')footerShownIn.add(doc);
-            focus.setActive(next==='active'&&!o.statusHidden,!suspended);
-            setMode(previous=>previous===next?previous:next);
-        };
-        const onFocus=(event:FocusEvent)=>{focus.externalFocus(event.target as Element|null);sync();};
-        runtime.current={sync};sync();
-        doc.addEventListener('focusin',onFocus);doc.addEventListener('visibilitychange',sync);win?.addEventListener('focus',sync);win?.addEventListener('blur',sync);
-        const observer=win?.MutationObserver?new win.MutationObserver(queue):null;
-        for(let node:HTMLElement|null=root;node;node=node.parentElement)observer?.observe(node,{attributes:true,attributeFilter:['data-gh-opening','hidden','inert','aria-hidden']});
-        const stopRuntime=subscribeSteamUiState(doc,sync);
-        return ()=>{disposed=true;runtime.current=null;stopRuntime();observer?.disconnect();doc.removeEventListener('focusin',onFocus);doc.removeEventListener('visibilitychange',sync);win?.removeEventListener('focus',sync);win?.removeEventListener('blur',sync);focus.setActive(false,false);lease?.dispose();header?.dispose();ready.current=false;};
-    },[focus]);
-    useLayoutEffect(()=>runtime.current?.sync());
-    return {ownsInput:()=>ready.current&&optedIn(live.current)&&!live.current.statusHidden&&!suspendedNow(live.current),controls:mode==='active'&&!options.statusHidden&&!headerHandoff?focus:undefined,actionUp:focus.actionUp,ui,footerActive:mode==='active',footerShown};
-}

@@ -2,15 +2,29 @@ import {act,createElement,useRef} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
-import {acquireHomeFooter,discoverNativeFooter} from '../../src/home/homeControlsDom';
-import {usePageFooter} from '../../src/home/usePageFooter';
-import {useHomeControls} from '../../src/home/useHomeControls';
+import {settings} from '../../src/data/settings';
+import {discoverNativeFooter} from '../../src/home/homeControlsDom';
+import {chromeClaims,type ChromeClaim} from '../../src/chrome/claims';
+import {chromeReturn} from '../../src/chrome/policy';
+import {ChromeHost} from '../../src/chrome/ChromeHost';
+import {useChromeClaim} from '../../src/chrome/useChromeClaim';
+import {useHomeClaim} from '../../src/home/useHomeClaim';
 vi.unmock('react-dom');
+const steam=vi.hoisted(()=>({ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:null as string|null},listeners:new Set<()=>void>()}));
+vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Focusable:()=>null,DialogButton:'button',findModule:()=>{},findModuleExport:()=>null}));
+vi.mock('../../src/home/steamUiState',()=>({
+ getSteamUiState:()=>steam.ui,
+ subscribeSteamUiState:(_doc:Document,fn:()=>void)=>{steam.listeners.add(fn);return()=>{steam.listeners.delete(fn);};},
+ useSteamUiState:()=>steam.ui,
+}));
+vi.mock('../../src/screensaver/steamScreensaver',()=>({useScreensaverActive:()=>false}));
+vi.mock('../../src/components/GameStatusBar',async()=>{const {createElement:h}=await import('react');return {GameStatusBar:()=>h('div',{'data-test-bar':''})};});
+vi.mock('../../src/home/HomeSearchControl',()=>({HomeSearch:()=>null}));
 let root:Root,win:any,doc:Document,footer:HTMLElement,view={width:828,height:466};
 const rect=(left:number,top:number,width:number,height:number)=>({left,top,width,height,right:left+width,bottom:top+height,x:left,y:top}) as DOMRect;
-/** The game page's #Footer as read on the Ally: Menu group, one flex-grow spacer, Select and Back; full width at the viewport bottom. */
-beforeEach(()=>{
- const page=parseHTML('<html><body><div id="app"></div><div id="Footer"><div><div><span><svg></svg></span><span>Menu</span></div><div style="flex-grow:1"></div><div><span><svg></svg></span><span>Select</span></div><div><span><svg></svg></span><span>Back</span></div></div></div></body></html>');
+/** The game page's #Footer as read on the Ally (Menu group, one flex-grow spacer, Select and Back) and Steam's top bar. */
+beforeEach(async()=>{
+ const page=parseHTML('<html><body><header><span class="avatarHolder"></span><input type="search"></header><div id="app"></div><div id="Footer"><div><div><span><svg></svg></span><span>Menu</span></div><div style="flex-grow:1"></div><div><span><svg></svg></span><span>Select</span></div><div><span><svg></svg></span><span>Back</span></div></div></div></body></html>');
  win=page.window;doc=page.document as unknown as Document;vi.stubGlobal('window',win);vi.stubGlobal('document',doc);vi.stubGlobal('HTMLElement',win.HTMLElement);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
  view={width:828,height:466};
  Object.defineProperty(doc.documentElement,'clientWidth',{get:()=>view.width,configurable:true});Object.defineProperty(doc.documentElement,'clientHeight',{get:()=>view.height,configurable:true});
@@ -18,94 +32,73 @@ beforeEach(()=>{
  doc.hasFocus=()=>true;win.getComputedStyle=(e:any)=>({flexGrow:e.style?.flexGrow||'0',display:'block',visibility:'visible'});
  win.requestAnimationFrame=(fn:any)=>setTimeout(fn,0);win.cancelAnimationFrame=clearTimeout;
  footer=doc.getElementById('Footer')! as HTMLElement;footer.getBoundingClientRect=()=>rect(0,view.height-42,view.width,42);
+ (doc.querySelector('header') as HTMLElement).getBoundingClientRect=()=>rect(0,0,view.width,40);
+ await settings.setEnabled(true);await settings.setSpotlightHome(true);await settings.setHomeStatusBar(true);await settings.setHomeExpandedControls(true);await settings.setChromeEveryPage(false);
  root=createRoot(doc.getElementById('app')! as unknown as HTMLElement);
 });
 afterEach(async()=>{await act(()=>root.unmount());vi.unstubAllGlobals();});
+const claims=()=>chromeClaims.get();
 const marked=()=>footer.getAttribute('data-gh-footer')==='true';
-let shown=false;
-function Page({enabled,launching=false}:{enabled:boolean;launching?:boolean}){const ref=useRef<HTMLDivElement|null>(null);shown=usePageFooter(ref,enabled,launching);return createElement('div',{ref,className:'gg-hero'});}
-describe('game page footer',()=>{
+describe('the game page footer',()=>{
  it('measures the page against the viewport: Ally handheld 828×42 at 466 of 466, docked 1500×41.75, not when lifted',()=>{
   expect(discoverNativeFooter(doc.documentElement)).not.toBeNull();
   view={width:1500,height:844};footer.getBoundingClientRect=()=>rect(0,844-41.75,1500,41.75);expect(discoverNativeFooter(doc.documentElement)).not.toBeNull();
   footer.getBoundingClientRect=()=>rect(0,600,1500,41.75);expect(discoverNativeFooter(doc.documentElement)).toBeNull();
  });
- it('takes the footer while enabled and gives it back on unmount',async()=>{
-  await act(()=>root.render(createElement(Page,{enabled:true})));
-  expect(marked()).toBe(true);expect(shown).toBe(true);
-  expect(footer.querySelector('[data-gh-footer-side=end][data-gh-footer-edge=last]')?.textContent).toBe('Back');
-  await act(()=>root.render(createElement('div')));
-  expect(footer.hasAttribute('data-gh-footer')).toBe(false);expect(footer.querySelector('[data-gh-footer-side]')).toBeNull();
- });
- it('leaves Steam’s footer alone while not enabled, and while Steam’s launch screen is up',async()=>{
-  await act(()=>root.render(createElement(Page,{enabled:false})));expect(marked()).toBe(false);expect(shown).toBe(false);
-  await act(()=>root.render(createElement(Page,{enabled:true,launching:true})));expect(marked()).toBe(false);expect(shown).toBe(false);
-  await act(()=>root.render(createElement(Page,{enabled:true})));expect(marked()).toBe(true);
-  await act(()=>root.render(createElement(Page,{enabled:false})));expect(marked()).toBe(false);
- });
- it('gives the footer back while the page is not rendered (display:none under another screen) and takes it again when shown',async()=>{
-  const seen:(()=>void)[]=[],notify=()=>seen.forEach(fn=>fn());const previous=win.ResizeObserver;win.ResizeObserver=class{constructor(fn:()=>void){seen.push(fn);}observe(){}unobserve(){}disconnect(){}};
-  await act(()=>root.render(createElement(Page,{enabled:true})));expect(marked()).toBe(true);
-  const node=doc.querySelector('.gg-hero') as any;let rendered=false;node.getClientRects=()=>rendered?[rect(0,0,1,1)]:[];
-  await act(async()=>{notify();await Promise.resolve();});expect(marked()).toBe(false);expect(shown).toBe(false);
-  rendered=true;await act(async()=>{notify();await Promise.resolve();});expect(marked()).toBe(true);expect(shown).toBe(true);
-  win.ResizeObserver=previous;
- });
- it('opening: the page takes the footer while Home holds it, so Home letting go keeps every marker',async()=>{
-  const home=doc.createElement('main');home.getBoundingClientRect=()=>rect(0,0,view.width,view.height);doc.body.append(home);
-  const lease=acquireHomeFooter(home as HTMLElement,()=>{});expect(marked()).toBe(true);
-  await act(()=>root.render(createElement(Page,{enabled:true})));
-  lease.dispose();expect(marked()).toBe(true);expect(footer.querySelectorAll('[data-gh-footer-side]').length).toBe(3);
-  await act(()=>root.render(createElement('div')));expect(marked()).toBe(false);
- });
- it('back: Home takes it again while the leaving page still holds it; removed only when both have let go',async()=>{
-  await act(()=>root.render(createElement(Page,{enabled:true})));
-  const home=doc.createElement('main');home.getBoundingClientRect=()=>rect(0,0,view.width,view.height);doc.body.append(home);
-  const lease=acquireHomeFooter(home as HTMLElement,()=>{});
-  await act(()=>root.render(createElement('div')));expect(marked()).toBe(true);
-  lease.dispose();expect(marked()).toBe(false);
- });
 });
-describe('Home through the open transition',()=>{
- let expanded:any;
- function Home({mounted=true}:{mounted?:boolean}){const ref=useRef<HTMLElement|null>(null);
-  expanded=useHomeControls({root:ref,enabled:true,spotlightHome:true,homeStatusBar:true,homeExpandedControls:true,mounted,statusHidden:false,launching:()=>false,stopRepeats:()=>{},returnHome:()=>{}});
-  return createElement('main',{ref:(node:HTMLElement|null)=>{ref.current=node;if(node)node.getBoundingClientRect=()=>rect(0,0,view.width,view.height);}});}
- it('keeps the footer (markers and footer CSS) while data-gh-opening is set; the rest of Home still suspends',async()=>{
-  const header=doc.createElement('header');header.innerHTML='<span class="avatarHolder"></span><input type="search">';header.getBoundingClientRect=()=>rect(0,0,view.width,40);doc.body.prepend(header);
+describe('Home and the game page claim the chrome host',()=>{
+ let ownBar=false;
+ /** Home's wiring (SpotlightHome): its action row (Play, Info), the recents row, the feed sheet state and the launch check. */
+ function Home({sheetUp=false,launching=false}:{sheetUp?:boolean;launching?:boolean}){
+  const rootRef=useRef<HTMLElement|null>(null),lastAction=useRef<HTMLElement|null>(null),recents=useRef<HTMLElement|null>(null);
+  ownBar=useHomeClaim({root:rootRef,lastAction,recents,statusHidden:sheetUp,launching:()=>launching}).ownBar;
+  return createElement('main',{ref:rootRef},createElement('div',{className:'gh-actions'},createElement('button',{id:'play',className:'gh-btn'}),createElement('button',{id:'info',className:'gh-btn'})),createElement('div',{id:'recents',ref:recents,tabIndex:0}));
+ }
+ function Page({claim}:{claim:ChromeClaim|null}){useChromeClaim(claim);return null;}
+ it('Home claims while mounted, with its feed sheet state and return target',async()=>{
   await act(()=>root.render(createElement(Home)));
-  expect(marked()).toBe(true);expect(expanded.footerActive).toBe(true);
-  const main=doc.querySelector('main')!;
-  await act(async()=>{main.setAttribute('data-gh-opening','morph');await new Promise(r=>setTimeout(r,0));});
-  expect(marked()).toBe(true);expect(expanded.footerActive).toBe(false);expect(expanded.footerShown).toBe(true);
-  expect(header.hasAttribute('data-gh-header')).toBe(false);
-  await act(async()=>{main.removeAttribute('data-gh-opening');await new Promise(r=>setTimeout(r,0));});
-  expect(expanded.footerActive).toBe(true);
+  expect(claims()).toHaveLength(1);expect(claims()[0]).toMatchObject({page:'home',statusHidden:false,launching:false});
+  await act(()=>root.render(createElement(Home,{sheetUp:true})));
+  expect(claims()).toHaveLength(1);expect(claims()[0].statusHidden).toBe(true);
+  await act(()=>root.render(createElement(Home,{launching:true})));
+  expect(claims()[0]).toMatchObject({statusHidden:false,launching:true});
+  // Down/B's last resort in the host: Home's own target, Play first, then the recents row.
+  const play=doc.getElementById('play') as HTMLElement,recents=doc.getElementById('recents') as HTMLElement;
+  const toPlay=vi.spyOn(play,'focus'),toRecents=vi.spyOn(recents,'focus');
+  chromeReturn(claims())!();expect(toPlay).toHaveBeenCalledTimes(1);
+  doc.querySelector('.gh-actions')!.remove();chromeReturn(claims())!();expect(toRecents).toHaveBeenCalledTimes(1);
+  await act(()=>root.render(createElement('div')));
+  expect(claims()).toHaveLength(0);
  });
- it('cold start before its content is up: no Game Glance footer',async()=>{
-  await act(()=>root.render(createElement(Home,{mounted:false})));
-  expect(marked()).toBe(false);expect(expanded.footerShown).toBe(false);expect(expanded.footerActive).toBe(false);
- });
- it('header not found (unavailable): keeps Steam’s footer look, also through an open',async()=>{
+ it('Home re-renders with an unchanged claim without publishing again',async()=>{
   await act(()=>root.render(createElement(Home)));
-  expect(expanded.footerActive).toBe(false);expect(expanded.footerShown).toBe(false);
-  await act(async()=>{doc.querySelector('main')!.setAttribute('data-gh-opening','morph');await new Promise(r=>setTimeout(r,0));});
-  expect(expanded.footerShown).toBe(false);expect(marked()).toBe(false);
+  const seen=vi.fn(),stop=chromeClaims.subscribe(seen);
+  await act(()=>root.render(createElement(Home)));
+  expect(seen).not.toHaveBeenCalled();stop();
  });
- it('back from any other page after it was active once: ours at once, before its content is up',async()=>{
-  const header=doc.createElement('header');header.innerHTML='<span class="avatarHolder"></span><input type="search">';header.getBoundingClientRect=()=>rect(0,0,view.width,40);doc.body.prepend(header);
-  await act(()=>root.render(createElement(Home)));expect(expanded.footerActive).toBe(true);
-  await act(()=>root.render(createElement('div')));expect(marked()).toBe(false);
-  await act(()=>root.render(createElement(Home,{mounted:false})));
-  expect(expanded.footerShown).toBe(true);expect(marked()).toBe(true);expect(expanded.footerActive).toBe(false);
-  await act(()=>root.render(createElement(Home)));expect(expanded.footerActive).toBe(true);
+ it('the game page claims while mounted and releases on unmount',async()=>{
+  await act(()=>root.render(createElement(Page,{claim:{page:'game',statusHidden:false,launching:false}})));
+  expect(claims()).toEqual([expect.objectContaining({page:'game',statusHidden:false,launching:false})]);
+  await act(()=>root.render(createElement(Page,{claim:{page:'game',statusHidden:false,launching:true}})));
+  expect(claims()).toEqual([expect.objectContaining({page:'game',launching:true})]);
+  await act(()=>root.render(createElement(Page,{claim:null})));
+  expect(claims()).toHaveLength(0);
+  await act(()=>root.render(createElement(Page,{claim:{page:'game',statusHidden:false,launching:false}})));
+  expect(claims()).toHaveLength(1);
+  await act(()=>root.render(createElement('div')));
+  expect(claims()).toHaveLength(0);
  });
- it('back from the page: takes the footer early (footer-only) only while the page holds it, so the page letting go leaves no gap',async()=>{
-  const page=doc.createElement('section');doc.body.append(page);
-  const held=acquireHomeFooter(doc.documentElement,()=>{});
-  await act(()=>root.render(createElement(Home,{mounted:false})));
-  expect(expanded.footerShown).toBe(true);expect(expanded.footerActive).toBe(false);
-  held.dispose();expect(marked()).toBe(true);
-  await act(()=>root.render(createElement('div')));expect(marked()).toBe(false);
+ it('the host takes the footer in the same commit Home mounts in, and Home leaves the bar to it',async()=>{
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Home))));
+  expect(marked()).toBe(true);expect(ownBar).toBe(false);
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost))));
+  expect(claims()).toHaveLength(0);expect(marked()).toBe(false);
+ });
+ it('Home with the host off still shows its read-only status bar as before',async()=>{
+  await act(()=>settings.setHomeExpandedControls(false));
+  await act(()=>root.render(createElement('div',null,createElement(ChromeHost),createElement(Home))));
+  expect(marked()).toBe(false);expect(ownBar).toBe(true);
+  await act(()=>settings.setHomeExpandedControls(true));
+  expect(marked()).toBe(true);expect(ownBar).toBe(false);
  });
 });

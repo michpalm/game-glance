@@ -3,7 +3,6 @@ import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {createHomeSearch} from '../../src/home/homeSearch';
-import {useHomeControls} from '../../src/home/useHomeControls';
 import {HomeSearch} from '../../src/home/HomeSearchControl';
 import {createMenuPreferences} from '../../src/menu/preferences';
 import {memoryKv} from '../../src/data/kv';
@@ -24,20 +23,5 @@ it('uses saved Radial mode, survives neutral focus, closes on suspension and cle
 it('does not mix independent drafts and ignores late keyboard writes after suspension',async()=>{const f=await fixture(),other=createHomeSearch();other.dispatch({type:'enter'});other.dispatch({type:'edit'});other.dispatch({type:'draft',text:'Other draft'});await act(()=>f.search.dispatch({type:'enter'}));await click('Search');f.setActive(false);await act(f.render);await act(()=>f.search.dispatch({type:'draft',text:'late'}));expect(f.search.get().draft).toBe('');expect(other.get().draft).toBe('Other draft');});
 
 it('falls back from Radial only for this opening without changing the saved choice',async()=>{const f=await fixture('radial');await act(()=>f.search.dispatch({type:'enter'}));await click('Search');await click('Unavailable');expect(document.querySelector('[data-keyboard="compact"]')).toBeTruthy();expect(document.querySelector('.gh-search-error')?.textContent).toContain('Using Compact');await click('Done');await click('Search');expect(document.querySelector('[data-keyboard="radial"]')).toBeTruthy();});
-
-it('mounts the Home coordinator with header/footer ownership, upward entry and clean disable',async()=>{
- const {GamepadButton:B}=await import('@decky/ui/dist/components/FooterLegend.js');
- document.hasFocus=()=>true;win.getComputedStyle=(e:any)=>({flexGrow:e.style.flexGrow||'0',display:'block',visibility:'visible'});
- const rect=(top:number,height:number)=>({left:0,right:829,top,bottom:top+height,width:829,height,x:0,y:top});
- const header=document.createElement('header');header.innerHTML='<span class="avatarHolder"></span><input type="search" tabindex="2">';header.getBoundingClientRect=()=>rect(0,40) as any;document.body.append(header);
- const footer=document.createElement('div');footer.id='Footer';footer.innerHTML='<div><div><span><svg></svg></span><span>Menu</span></div><div style="flex-grow:1"></div><div><span><svg></svg></span><span>Back</span></div></div>';footer.getBoundingClientRect=()=>rect(425,42) as any;document.body.append(footer);
- const search=createHomeSearch(),preferences=createMenuPreferences(memoryKv());await preferences.load();let expanded:any,enabled=true;
- function Harness(){const ref=useRef<HTMLElement|null>(null),searchFocus=useMemo(()=>({reveal:()=>search.dispatch({type:'enter'}),hide:()=>search.dispatch({type:'content'}),activate:()=>search.dispatch({type:'edit'}),editing:()=>search.get().phase==='editing',contains:(target:Element|null)=>!!target?.closest('[data-home-search],.gh-keyboard-surface')}),[]);
- expanded=useHomeControls({root:ref,search:searchFocus,enabled,spotlightHome:true,homeStatusBar:true,homeExpandedControls:true,mounted:true,statusHidden:false,launching:()=>false,stopRepeats:()=>{},returnHome:()=>{}});
- return createElement('main',{ref:(node:HTMLElement|null)=>{ref.current=node;if(node)node.getBoundingClientRect=()=>rect(0,467) as any;}},createElement(HomeSearch,{search,active:expanded.footerActive,account:expanded.ui?.account??null,controls:expanded.controls,ownsInput:expanded.ownsInput,preferences,statusBounds:()=>({left:575,top:4,width:240,height:32})}));}
- await act(()=>root.render(createElement(Harness)));expect(header.getAttribute('data-gh-header')).toBe('true');expect(document.querySelector('[data-home-search]')).toBeNull();
- await act(()=>expanded.actionUp({detail:{button:B.DIR_UP},preventDefault(){},stopPropagation(){}}));await act(async()=>{await new Promise(r=>setTimeout(r,5));});expect(document.querySelector('[data-home-search]')).toBeTruthy();
- enabled=false;await act(()=>root.render(createElement(Harness)));expect(header.hasAttribute('data-gh-header')).toBe(false);expect(header.querySelector('input')?.getAttribute('tabindex')).toBe('2');expect(footer.hasAttribute('data-gh-footer')).toBe(false);expect(document.querySelector('[data-home-search]')).toBeNull();
-});
 
 it('isolates portalled keyboard pointer and wheel events from Home content gestures',async()=>{const f=await fixture();await act(()=>f.search.dispatch({type:'enter'}));await click('Search');const button=document.querySelector('[data-keyboard] button')!;await act(()=>{for(const type of ['pointerdown','pointerup','pointercancel','wheel'])button.dispatchEvent(new win.Event(type,{bubbles:true}));});expect(f.gestures.pointer).not.toHaveBeenCalled();expect(f.gestures.wheel).not.toHaveBeenCalled();expect(f.search.get().phase).toBe('editing');});

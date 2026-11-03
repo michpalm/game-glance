@@ -13,9 +13,8 @@ import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } fro
 import { accentFor } from '../home/accent';
 import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
-import { homeFooterCss } from '../home/homeControlsCss';
-import { usePageFooter } from '../home/usePageFooter';
-import { footerOptedIn } from '../home/useHomeControls';
+import { useChromeClaim } from '../chrome/useChromeClaim';
+import { useChromeOwnsBar } from '../chrome/useChrome';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
@@ -235,8 +234,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
-    // Home's footer look on Steam's footer here too, with the same opt-in, held with Home's through the open and back (home/usePageFooter).
-    const footer = usePageFooter(heroRef, footerOptedIn(settings), launching, game.appId);
+    // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while shown; Steam's launch screen steps it aside.
+    useChromeClaim(game.appId === 0 ? null : { page: 'game', statusHidden: false, launching });
+    const hostBar = useChromeOwnsBar();
 
     useEffect(() => {
         setCurrentGame(game, hltb);
@@ -251,7 +251,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     return (
         <>
             {/* Spotlight Home's status bar, over Steam's top strip, with the restyled page (not while Steam's launch screen is up). */}
-            {restyle && statusBar && !launching && <GameStatusBar />}
+            {restyle && statusBar && !launching && !hostBar && <GameStatusBar />}
             {/* A Unifideck game's circle buttons are reordered by CSS; the D-pad then steps by position. */}
             {game.isShortcut && <UnifideckRowNav />}
             {restyle && <PlayRowNav />}
@@ -272,7 +272,6 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {launching && <style>{launchCss()}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
-                {footer && <style>{homeFooterCss}</style>}
                 {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
                 {source && (
                     <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle}>

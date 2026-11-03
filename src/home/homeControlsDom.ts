@@ -17,8 +17,6 @@ export const discoverNativeFooter=(root:HTMLElement):NativeFooterControls|null=>
 interface Claim {before:string|null;value:string;owners:Set<symbol>}
 const claims=new WeakMap<HTMLElement,Map<string,Claim>>();
 type Markers=Map<HTMLElement,Map<string,string>>;
-/** Whether some lease (the game page's, on the way back to Home) holds the footer right now. */
-export const footerHeld=(doc:Document):boolean=>{const footer=doc.getElementById('Footer');return !!footer&&!!claims.get(footer)?.get('data-gh-footer')?.owners.size;};
 /** Share only our marker writes; native content, layout rules and handlers are never replaced. */
 export function acquireHomeFooter(root:HTMLElement,onAvailability:(ready:boolean)=>void):{suspend(value:boolean):void;dispose():void;shared():boolean} {
     const token=Symbol('home-footer'),doc=root.ownerDocument,view=doc.defaultView;
