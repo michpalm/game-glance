@@ -78,7 +78,7 @@ describe('Home through the open transition',()=>{
   const main=doc.querySelector('main')!;
   await act(async()=>{main.setAttribute('data-gh-opening','morph');await new Promise(r=>setTimeout(r,0));});
   expect(marked()).toBe(true);expect(expanded.footerActive).toBe(false);expect(expanded.footerShown).toBe(true);
-  expect(header.hasAttribute('inert')).toBe(false);
+  expect(header.hasAttribute('data-gh-header')).toBe(false);
   await act(async()=>{main.removeAttribute('data-gh-opening');await new Promise(r=>setTimeout(r,0));});
   expect(expanded.footerActive).toBe(true);
  });

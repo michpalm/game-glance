@@ -2,7 +2,7 @@ import {findTopBar} from './topBar';
 const MARK='data-gh-header';
 interface Claim {before:string|null;value:string;owners:Set<symbol>}
 const claims=new WeakMap<Element,Map<string,Claim>>();
-/** Native nodes stay mounted; each lease only owns reversible presentation/input attributes. */
+/** Native nodes stay mounted; each lease only owns a reversible marker attribute. */
 export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>void):{suspend(value:boolean):void;dispose():void} {
     const doc=root.ownerDocument,view=doc.defaultView,owner=Symbol('home-header');
     let bound:Element|null=null;
@@ -19,8 +19,7 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
         if(disposed)return;
         const bar=suspended?null:findTopBar(doc,view?.innerWidth??0),next=new Map<Element,Map<string,string>>();
         if(bar&&!bar.contains(root)){
-            next.set(bar,new Map([[MARK,'true'],['inert',''],['aria-hidden','true']]));
-            for(const node of bar.querySelectorAll('button,input,select,textarea,a[href],[tabindex]'))next.set(node,new Map([['tabindex','-1']]));
+            next.set(bar,new Map([[MARK,'true']]));
         }
         bound=bar;apply(next);const ready=next.size>0;if(last!==ready){last=ready;available(ready);}
     };
@@ -34,7 +33,7 @@ export function acquireHomeHeader(root:HTMLElement,available:(ready:boolean)=>vo
         return [...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&(bound?.contains(node)||(node as Element).contains(bound)||!!(node as Element).querySelector('[class*=avatarHolder]')));
     };
     const observer=view?.MutationObserver?new view.MutationObserver(records=>{if(records.some(relevant))schedule();}):null;
-    observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','tabindex','inert','aria-hidden',MARK]});view?.addEventListener('resize',schedule);update();
+    observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style',MARK]});view?.addEventListener('resize',schedule);update();
     return {suspend(value){if(disposed||value===suspended)return;suspended=value;update();},dispose(){if(disposed)return;disposed=true;observer?.disconnect();view?.removeEventListener('resize',schedule);apply(new Map());}};
 }
-export const homeHeaderCss=`[${MARK}=true],[${MARK}=true] *{visibility:hidden!important;pointer-events:none!important}`;
+export const homeHeaderCss=`[${MARK}=true]{opacity:0!important;pointer-events:none!important}`;
