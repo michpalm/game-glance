@@ -90,4 +90,32 @@ describe('installHeaderRedirect', () => {
         t.redirect.leave();
         expect(focus).toHaveBeenCalledTimes(1);
     });
+    it('does not re-enter or overwrite the remembered element while the header keeps its gamepad focus', () => {
+        const t = setup();
+        t.focus(t.$('card'));
+        t.$('avatar').classList.add('gpfocus');
+        t.classChanged(t.$('avatar'));
+        t.focus(t.$('ourBtn'), t.$('avatar')); // our own redirect moved DOM focus
+        t.focus(t.$('ourBtn'));
+        t.classChanged(t.$('avatar'));
+        expect(t.o.enter).toHaveBeenCalledTimes(1);
+        const card = vi.spyOn(t.$('card'), 'focus');
+        t.redirect.leave();
+        expect(card).toHaveBeenCalledTimes(1);
+    });
+    it('retries after a refused entry and after gamepad focus leaves the bar', () => {
+        const t = setup();
+        t.o.enter.mockReturnValueOnce(false);
+        t.focus(t.$('avatar'), t.$('card'));
+        t.focus(t.$('avatar'), t.$('card'));
+        expect(t.o.enter).toHaveBeenCalledTimes(2);
+        t.$('avatar').classList.add('gpfocus');
+        t.classChanged(t.$('avatar'));
+        expect(t.o.enter).toHaveBeenCalledTimes(2); // already in the bar
+        t.$('avatar').classList.remove('gpfocus');
+        t.classChanged(t.$('avatar'));
+        t.$('avatar').classList.add('gpfocus');
+        t.classChanged(t.$('avatar'));
+        expect(t.o.enter).toHaveBeenCalledTimes(3);
+    });
 });

@@ -27,12 +27,12 @@ export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): 
         return !(bar && bar.contains(el as Node)) && !o.inOurBar(el as Element);
     };
     const arrive = (from: unknown) => {
-        if (inSteamBar) return;
-        inSteamBar = true;
-        if (!o.enabled() || o.busy()) return;
+        if (inSteamBar || !o.enabled() || o.busy()) return;
         const source = outsideBoth(from) ? from : lastOutside;
-        if (source) remembered = source;
-        o.enter();
+        if (o.enter()) {
+            inSteamBar = true;
+            if (source) remembered = source;
+        }
     };
 
     const onFocusIn = (event: Event) => {
@@ -41,27 +41,30 @@ export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): 
         if (target && bar?.contains(target)) {
             arrive((event as FocusEvent).relatedTarget);
         } else {
-            inSteamBar = false;
+            // Focus moving into our own bar while Steam's gamepad focus still sits in its bar is the redirect itself.
+            if (!(inSteamBar && bar?.querySelector('.gpfocus') && o.inOurBar(target))) inSteamBar = false;
             if (outsideBoth(target)) lastOutside = target;
         }
     };
     doc.addEventListener('focusin', onFocusIn, true);
 
-    // `.gpfocus` moves are class changes. One observer on the document (it must also see where focus was before the
-    // bar, and Steam replacing the bar); the callback only looks at the records' own targets.
+    // `.gpfocus` moves are class changes. One observer on the document (it must also see where gamepad focus was before
+    // the bar, which is anywhere in the page); the callback skips every record whose target does not carry `.gpfocus`, and
+    // looks the bar up only for those, or while an entry is being held.
     const Observer = doc.defaultView?.MutationObserver;
     const observer = Observer
         ? new Observer((records) => {
             for (const r of records) {
                 const el = r.target as Element;
                 if (!el.classList?.contains('gpfocus')) continue;
-                const bar = findBar();
-                if (bar?.contains(el)) arrive(null);
+                if (findBar()?.contains(el)) arrive(null);
                 else if (outsideBoth(el)) { lastOutside = el as HTMLElement; inSteamBar = false; }
             }
             // gamepad focus left the bar without a focusin elsewhere
-            const bar = findBar();
-            if (inSteamBar && bar && !bar.querySelector('.gpfocus') && !bar.contains(doc.activeElement)) inSteamBar = false;
+            if (inSteamBar) {
+                const bar = findBar();
+                if (bar && !bar.querySelector('.gpfocus') && !bar.contains(doc.activeElement)) inSteamBar = false;
+            }
         })
         : null;
     observer?.observe(doc.documentElement, { attributes: true, attributeFilter: ['class'], subtree: true });
