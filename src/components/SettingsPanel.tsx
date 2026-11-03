@@ -1,6 +1,6 @@
 import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
-import { HERO_FITS, HeroFit } from '../home/heroFit';
+import { HERO_FIT_COPY, HERO_FITS, HeroFit } from '../home/heroFit';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
@@ -16,12 +16,6 @@ import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCol
 import { RowStyle } from '../home/recentsLayout';
 import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
-
-/** The hero art setting's description, for the selected option. */
-const HERO_FIT_COPY: Record<HeroFit, string> = {
-    fill: 'Fills the screen; the sides of wide art are cut off.',
-    fit: 'Shows the whole art at the top, with a blurred copy behind it.',
-};
 
 export function SettingsPanel() {
     const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
