@@ -9,7 +9,11 @@ describe('listDeckyPlugins', () => {
     it('orders loaded plugins by Decky’s order, once each, then the rest in load order', () => {
         const loader = { plugins: [plugin('Ambideck'), plugin('Game Glance'), plugin('Unifideck'), plugin('Animation Changer')],
             deckyState: { _pluginOrder: ['Unifideck', 'Animation Changer', 'Animation Changer', 'Deck Shelves', 'Game Glance'], _hiddenPlugins: [] } };
-        expect(listDeckyPlugins(loader)!.map(p => p.name)).toEqual(['Unifideck', 'Animation Changer', 'Game Glance', 'Ambideck']);
+        expect(listDeckyPlugins(loader)!.map(p => p.name)).toEqual(['Game Glance', 'Unifideck', 'Animation Changer', 'Ambideck']);
+    });
+    it('always lists Game Glance first, the rest in Decky’s order', () => {
+        const loader = { plugins: [plugin('Ambideck'), plugin('Unifideck'), plugin('Game Glance')], deckyState: { _pluginOrder: ['Unifideck', 'Ambideck', 'Game Glance'] } };
+        expect(listDeckyPlugins(loader)!.map(p => p.name)).toEqual(['Game Glance', 'Unifideck', 'Ambideck']);
     });
     it('leaves out hidden plugins', () => {
         const loader = { plugins: [plugin('A'), plugin('B')], deckyState: { _pluginOrder: ['A', 'B'], _hiddenPlugins: ['A'] } };
