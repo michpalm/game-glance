@@ -1,6 +1,6 @@
 # Status bar and footer on every page
 
-Written 2026-11-03. Status: design approved in conversation section by section; awaiting Michael's written review. Not committed.
+Written 2026-11-03. Status: built on feature/chrome-every-page (b7b888e..7d62949) and checked on the Steam Deck 2026-11-03: Michael is happy with the result. One known issue left for later (see Device check).
 
 ## Why
 
@@ -96,3 +96,13 @@ The host releases the header and footer, and our bar fades, while any of these i
 ## Ships in
 
 4.0.0 on `codex/social-chat`. Nothing pushed until Michael says.
+
+## Device check (Steam Deck, 2026-11-03)
+
+Run on the Steam Deck (Michael's choice), build f309984d (index.js md5), full plugin installed and the Deck restarted; previous build backed up at `~/gg-backup-deck-20261103-1950`.
+
+- Home → Library: recorded per frame, nothing changed: one bar of ours, Steam's top bar hidden, our footer. No swap on navigation.
+- Our menu open on Home and on Library: our bar stays visible (Michael). Recorded on Home: Steam's main window loses focus while our menu is open (`document.hasFocus()` false), so the host's latch lets go and Home's own copy draws the bar; same component and place.
+- Michael tested the other pages himself and is happy with the result.
+- **Known issue, for later:** on the Store page our bar is visible but sometimes disappears depending on moving around and triggering the Search bar.
+- Open follow-up: the latch's `hasFocus()` condition clears under our own menu (see above); pages without a Home copy rely on the menu's own bar copy.
