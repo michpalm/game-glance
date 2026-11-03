@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {createElement} from 'react';
-import { parseSale, readTray, rowText, rowTime } from '../../src/menu/notificationsList';
+import { parseSale, readTray, rowText, rowTime, unreadCount, type TrayRow } from '../../src/menu/notificationsList';
 
 // Shapes as read on the Ally on 2026-10-27 (NotificationStore.m_rgNotificationTray), ids synthetic.
 const sale = (id: number, appid: number, count: number, created: number, unread = false) => ({
@@ -276,4 +276,15 @@ describe('achievement notifications', () => {
         expect(rowText({ ...row, time: 0 }, null)).toEqual({ label: 'Achievement progress', title: 'Achievement progress', body: undefined });
         expect(rowAction(row, () => null).label).toBe('Open in Steam');
     });
+});
+
+describe('unreadCount (the bell)', () => {
+    const row = (id: string, unread: boolean, readKey?: string) => ({ id, kind: 'other', appId: null, count: 1, time: 0, unread, ...(readKey ? { readKey } : {}) }) as TrayRow;
+    it('counts the rows that are still unread, not what Steam has shown', () => {
+        expect(unreadCount([row('a', true), row('b', false), row('c', true)], new Set())).toBe(2);
+    });
+    it('leaves out rows remembered as read', () => {
+        expect(unreadCount([row('a', true, 'k1'), row('c', true, 'k2')], new Set(['k1']))).toBe(1);
+    });
+    it('is zero for an empty tray', () => expect(unreadCount([], new Set())).toBe(0));
 });

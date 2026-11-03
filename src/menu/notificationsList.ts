@@ -157,6 +157,8 @@ export function rowAction(row: TrayRow, link: AccountLink): { label?: string; ru
 export const isLocalRow = (row: TrayRow) => row.notificationId === undefined;
 /** Unread while Steam says so and we have not remembered the row read (account rows too, in case Steam's tray lags). */
 export const rowUnread = (row: TrayRow, remembered: ReadonlySet<string>) => row.unread && !(row.readKey !== undefined && remembered.has(row.readKey));
+/** The bell's count: rows still unread, as the list marks them. Steam's unviewed count drops once a notification is shown. */
+export const unreadCount = (rows: readonly TrayRow[], remembered: ReadonlySet<string>) => rows.filter(row => rowUnread(row, remembered)).length;
 /** The page-entry snapshot: rows already read when the page opens stay out for this visit. */
 export const entryHidden = (rows: TrayRow[], remembered: ReadonlySet<string>): ReadonlySet<string> => new Set(rows.filter(row => !rowUnread(row, remembered)).map(row => row.id));
 export const visibleRows = (rows: TrayRow[], hiddenAtEntry: ReadonlySet<string>) => rows.filter(row => !hiddenAtEntry.has(row.id));

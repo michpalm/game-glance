@@ -30,6 +30,7 @@ import { PluginsSection } from './PluginsSection';
 import { pluginStyles } from '../pluginStyles';
 import type { SocialService } from '../steam/social';
 import type { NotificationReads } from '../notificationReads';
+import { unreadCount as countUnread, type TrayRow } from '../notificationsList';
 import type { NotificationActions } from '../steam/notificationActions';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
@@ -50,12 +51,20 @@ export interface MenuShellProps {
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
 const NO_SUBSCRIBE = () => () => {};
+const EMPTY_ROWS: TrayRow[] = [];
+const NO_ROWS = () => EMPTY_ROWS;
+const EMPTY_READS: ReadonlySet<string> = new Set();
+const NO_READS = () => EMPTY_READS;
 export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
     const [cachedAccent, setCachedAccent] = useState<{ appId: number; color: string | undefined }>();
-    const badgeCount = useSyncExternalStore(notificationBadge?.subscribe ?? (() => () => {}), notificationBadge?.get ?? (() => unreadCount));
+    const unviewed = useSyncExternalStore(notificationBadge?.subscribe ?? (() => () => {}), notificationBadge?.get ?? (() => unreadCount));
+    const trayRows = useSyncExternalStore(notifications?.subscribe ?? NO_SUBSCRIBE, notifications?.get ?? NO_ROWS);
+    const remembered = useSyncExternalStore(notificationReads?.subscribe ?? NO_SUBSCRIBE, notificationReads?.get ?? NO_READS);
+    // The bell keeps a notification until it is read; Steam's unviewed count only when the tray cannot be read.
+    const badgeCount = notifications ? countUnread(trayRows, remembered) : unviewed;
     const active = state.phase === 'custom-open';
     const appId = state.game?.appId;
     const homeAccent = useSyncExternalStore(shownAccent.subscribe, shownAccent.get);
