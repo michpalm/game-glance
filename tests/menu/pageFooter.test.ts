@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+const owns={value:false};
+vi.mock('../../src/chrome/useChrome',()=>({chromeOwnsBar:()=>owns.value}));
 import { nativeFooterFixture } from '../home/fixtures/home-controls-native';
 import { acquireHomeFooter } from '../../src/home/homeControlsDom';
 import { homeFooterCss } from '../../src/home/homeControlsCss';
@@ -57,5 +59,11 @@ describe('custom menu footer appearance',()=>{
         const f=fixture();f.footer.style.visibility='hidden';expect(holdPageFooter(f.doc,{restyle:true,ui:f.ui})).toBeNull();
         f.footer.style.visibility='visible';f.footer.style.opacity='0';expect(holdPageFooter(f.doc,{restyle:true,ui:f.ui})).toBeNull();
         f.footer.remove();expect(holdPageFooter(f.doc,{restyle:true,ui:f.ui})).toBeNull();expect(f.sheet()).toBeNull();
+    });
+    it('can restore on any page while the chrome host owns the bar, with no Home page in sight',()=>{
+        const f=fixture();owns.value=false;expect(pageFooterCanRestore(f.doc)).toBe(false);
+        owns.value=true;try{expect(pageFooterCanRestore(f.doc)).toBe(true);
+            (f.doc as any).visibilityState='hidden';expect(pageFooterCanRestore(f.doc)).toBe(false);}
+        finally{owns.value=false;}
     });
 });
