@@ -6,7 +6,7 @@ import { useVersionCatalog } from '../data/useVersionCatalog';
 import { PLUGIN_NAME } from '../constants';
 
 /** The Updates section's line under the title: the installed version and what the check found. */
-function updateLine(state: UpdateState): string {
+export function updateLine(state: UpdateState): string {
     const version = state.current ? `Version ${state.current}` : 'Game Glance';
     switch (state.status) {
         case 'checking':

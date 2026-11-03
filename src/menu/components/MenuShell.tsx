@@ -26,6 +26,8 @@ import { MorePanel } from './MorePanel';
 import { SocialPanel } from './SocialPanel';
 import { InGamePanel } from './InGamePanel';
 import { NotificationsPanel } from './NotificationsPanel';
+import { PluginsSection } from './PluginsSection';
+import { pluginStyles } from '../pluginStyles';
 import type { SocialService } from '../steam/social';
 import type { NotificationReads } from '../notificationReads';
 import type { NotificationActions } from '../steam/notificationActions';
@@ -132,6 +134,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
+    if (content === undefined && state.section === 'plugins') content = <PluginsSection state={state} dispatch={dispatch} handoff={enterNative} close={close} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
@@ -141,7 +144,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>
-        <style>{menuStyles}</style>
+        <style>{menuStyles + pluginStyles}</style>
         <GameStatusBar menuOverlay />
         <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" ariaLabel={badgeCount > 0 ? `${badgeCount} unread notifications` : 'Notifications'} selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}><span className="gg-menu-notification-count" aria-hidden="true">{badgeCount > 99 ? '99+' : badgeCount > 0 ? badgeCount : ''}</span><LuBell aria-hidden="true" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />
