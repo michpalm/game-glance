@@ -212,3 +212,9 @@ describe('Notifications page states', () => {
         expect(rule('.gg-menu .gg-notifications-empty p')).toContain('color:var(--gg-text-dim)');
     });
 });
+
+it('draws Social’s friends/chat dividers in the active edge, clear over bright art', () => {
+    const line = (selector: string) => socialStyles.split('\n').find(l => l.startsWith(selector + '{')) ?? '';
+    expect(line('.gg-social-friends')).toContain('border-right:1px solid var(--gg-edge-active)');
+    expect(line('.gg-social-chat-heading')).toContain('border-bottom:1px solid var(--gg-edge-active)');
+});

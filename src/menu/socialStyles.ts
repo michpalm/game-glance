@@ -6,7 +6,7 @@ import {keyboardStyles} from './keyboard/styles';
 export const socialStyles = keyboardStyles + `
 .gg-social{display:flex;flex-direction:column;height:100%;min-height:0;gap:16px;font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.35}
 .gg-social-split{display:grid;grid-template-columns:minmax(190px,4fr) minmax(0,6fr);gap:16px;flex:1;min-height:0}
-.gg-social-friends{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0;border-right:1px solid var(--gg-edge);padding-right:12px}
+.gg-social-friends{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0;border-right:1px solid var(--gg-edge-active);padding-right:12px}
 .gg-social-list-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-social-list-heading>span:first-child{text-transform:uppercase;letter-spacing:.16em;font-weight:var(--gg-weight-heading)}
 .gg-social-friend-list{transition:filter var(--gg-fast) linear;overflow-y:auto;min-height:0;scrollbar-width:none;display:flex;flex-direction:column;gap:8px;padding:20px 8px;scroll-padding-block:20px}
@@ -23,7 +23,7 @@ export const socialStyles = keyboardStyles + `
 .gg-social-identity{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}.gg-social-identity strong{font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gg-social-identity small{font-size:var(--gg-type-label);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal}
 .gg-social-conversation{min-height:0;min-width:0;display:flex;flex-direction:column;gap:12px}
-.gg-social-chat-heading{display:flex;gap:12px;align-items:center;padding:0 0 12px;border-bottom:1px solid var(--gg-edge);flex:none}
+.gg-social-chat-heading{display:flex;gap:12px;align-items:center;padding:0 0 12px;border-bottom:1px solid var(--gg-edge-active);flex:none}
 .gg-menu-native-host .gg-menu .gg-social-chat-heading button.gg-menu-action.DialogButton{flex:none;min-height:36px;padding:8px 12px;font-size:var(--gg-type-tab);white-space:nowrap}
 .gg-social-timeline{transition:filter var(--gg-fast) linear;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:4px 8px 8px;overscroll-behavior:contain}
 :where(html:not([data-gg-mouse])) .gg-social-timeline:focus-visible{outline:2px solid rgba(255,255,255,.9);outline-offset:-2px;border-radius:var(--gg-r-card)}
