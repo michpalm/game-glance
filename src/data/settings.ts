@@ -16,6 +16,7 @@ export interface Settings {
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
     homeExpandedControls: boolean; // opt-in Home footer styling and focus-only status items
+    chromeEveryPage: boolean; // opt-in: the status bar and footer on every Steam page, not only Home
     statusAvatar: boolean; // your avatar, round and ringed in your status colour, in the status bar instead of the dot
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
@@ -29,7 +30,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -57,6 +58,7 @@ export function createSettingsStore(kv: KvBackend) {
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
                 homeExpandedControls: pick('homeExpandedControls'),
+                chromeEveryPage: pick('chromeEveryPage'),
                 statusAvatar: pick('statusAvatar'),
                 gameLogo: pick('gameLogo'),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
@@ -142,6 +144,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, homeExpandedControls };
             emit();
             await persist({ homeExpandedControls });
+        },
+        async setChromeEveryPage(chromeEveryPage: boolean): Promise<void> {
+            current = { ...current, chromeEveryPage };
+            emit();
+            await persist({ chromeEveryPage });
         },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };

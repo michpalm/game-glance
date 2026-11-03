@@ -24,7 +24,7 @@ const HERO_FIT_COPY: Record<HeroFit, string> = {
 };
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -130,8 +130,13 @@ export function SettingsPanel() {
             />
         ),
         expandedControls: (
-            <ToggleField label="Expanded Home controls" description="Matching controller prompts and individually selectable status items."
-                checked={homeExpandedControls} onChange={value => settings.setHomeExpandedControls(value)} />
+            <>
+                <ToggleField label="Expanded Home controls" description="Matching controller prompts and individually selectable status items."
+                    checked={homeExpandedControls} onChange={value => settings.setHomeExpandedControls(value)} />
+                <ToggleField label="On every page" description="Use the status bar and footer on every Steam page, not only Home."
+                    disabled={!(enabled && spotlightHome && homeStatusBar && homeExpandedControls)}
+                    checked={chromeEveryPage} onChange={value => settings.setChromeEveryPage(value)} />
+            </>
         ),
         statusAvatar: (
             <ToggleField
