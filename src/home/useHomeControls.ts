@@ -27,13 +27,15 @@ export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls &
     setActive(value:boolean,repair:boolean):void;actionUp(event:GamepadEvent):boolean;externalFocus(target:Element|null):void;dispose():void;
 } {
     const nodes=new Map<HomeControlId,HTMLElement>(),visible=options.visible??visibleHomeControl;
-    let pendingSearch=false;
+    // A on Search: armed on the press, opened on the release (a click). The radial keyboard reads the controller itself, and
+    // opened while A was still down it took that A as its "Done" (Ally 2026-11-04).
+    let pendingSearch=false,searchArmed=false;
     let active=false,owned=false,bypass=false,handoff=false,returning=false,disposed=false,last:HomeControlId|null=null,lastNode:HTMLElement|null=null,previous:HomeControlId[]=[],cancel:(()=>void)|null=null;
     const setHandoff=(value:boolean)=>{if(handoff===value)return;handoff=value;options.headerHandoff?.(value);};
     const order=()=>orderHomeControls([...nodes].filter(([,node])=>visible(node)).map(([id])=>id));
     const usable=()=>!disposed&&active&&options.canUse();
     const go=(id:HomeControlId|null)=>{const node=id?nodes.get(id):null;if(!node||!visible(node))return false;last=id;lastNode=node;owned=true;previous=order();options.focus(node);return true;};
-    const home=()=>{pendingSearch=false;options.search?.hide();owned=false;lastNode=null;options.returnHome();};
+    const home=()=>{pendingSearch=false;searchArmed=false;options.search?.hide();owned=false;lastNode=null;options.returnHome();};
     const scheduleRepair=()=>{
         if(cancel||!active||disposed)return;
         cancel=options.schedule(()=>{cancel=null;if(!usable())return;if(pendingSearch){if(go('search'))pendingSearch=false;return;}if(!owned||!last)return;const next=order(),id=repairHomeControl(last,previous,next),node=id?nodes.get(id):null;previous=next;if(!id){home();return;}if(id!==last||node!==lastNode)go(id);});
@@ -48,9 +50,13 @@ export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls &
             if(button===B.DIR_LEFT||button===B.DIR_RIGHT){consume(event);go(nextHomeControl(id,button===B.DIR_LEFT?'left':'right',order()));}
             else if(button===B.DIR_DOWN||button===B.CANCEL){consume(event);home();}
             else if(button===B.DIR_UP&&options.search){consume(event);}
-            else if(button===B.OK&&id==='search'&&options.search){consume(event);if(!event.detail.is_repeat)options.search.activate();}
+            else if(button===B.OK&&id==='search'&&options.search){consume(event);if(!event.detail.is_repeat)searchArmed=true;}
             else if(button===B.DIR_UP){consume(event);bypass=true;setHandoff(true);returning=true;try{home();}finally{returning=false;}}
             else if(button===B.OK||button===B.BUMPER_LEFT||button===B.BUMPER_RIGHT)consume(event);
+        },
+        buttonUp(id,event){
+            if(event.detail.button!==B.OK||id!=='search'||!searchArmed)return;
+            searchArmed=false;if(!usable()||!options.search)return;consume(event);options.search.activate();
         },
         actionUp(event){
             if(event.detail.button!==B.DIR_UP){bypass=false;setHandoff(false);return false;}
