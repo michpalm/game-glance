@@ -1,6 +1,6 @@
 # Soundtrack page in the menu
 
-Written 2026-11-04. Status: design approved by Michael from Ally frames (layout B, empty state); spec awaiting review. Device check on the ROG Xbox Ally.
+Written 2026-11-04. Status: design approved by Michael from Ally frames (layout B, empty state); spec approved 2026-11-04 ("build it"); built on feature/bell-soundtrack. Device check on the ROG Xbox Ally.
 
 Frames: `recordings/2026-11-04-menu-polish/soundtrack-options.png` (today, A, B), `steam-soundtrack-qam.png` (Steam's own tab).
 
@@ -31,19 +31,26 @@ Our menu's Soundtrack section is a heading and "Open in Steam". Steam's own Soun
 - Nothing playing: the empty state above. Browse soundtracks stays.
 - Playback data unavailable (no Music API, a Steam change): today's heading with "Open in Steam" to Steam's Soundtrack tab, as now.
 
-### Data (to be confirmed by the build's first step)
+### Data
 
 Read on the Ally 2026-11-04 (names only):
 - `SteamClient.Music` has `RegisterForMusicPlaybackChanges`, `RegisterForMusicPlaybackPosition`, `TogglePlayPause`, `PlayPrevious`, `PlayNext`, `SetPlayingShuffled`, `SetPlayingRepeatStatus`, `SetVolume`, `ToggleMuteVolume`, `IncreaseVolume`, `DecreaseVolume`, `SetPlaybackPosition`.
 - A soundtrack store (a module export holding `m_mapSoundtrackDetailsData`, a MobX map) with `GetSoundtrackDetails`, `FetchSoundtrackDetails`, `GetTrackDetails`: album and track names and the cover.
 - The cover Steam's tab draws is served from `https://steamloopback.host/assets/<appid>/<hash>.jpg`, readable from our menu window.
 
-The build starts with a device spike (with Michael's go-ahead, since it registers callbacks and calls Steam getters, which read-only probes do not): record what the playback and position callbacks deliver while a soundtrack plays, pauses, skips, shuffles and repeats; what `GetSoundtrackDetails` / `GetTrackDetails` return for the playing ids; and which route Steam's "Browse Soundtracks" opens. The design does not change with the answers; the binding code does.
+Confirmed by a device spike on the Ally 2026-11-04 (Michael's go-ahead):
+- `RegisterForMusicPlaybackChanges` fires at once with the current state, then on every change: `{ uSoundtrackAppId, ePlaybackStatus (1 playing, 2 paused), eRepeatStatus (0 off, 1 all, 2 one; Steam cycles 0→1→2), bShuffle, nVolume (0–100), nActiveTrack (0-based index into the album's tracks), nLengthInMsec }`.
+- `RegisterForMusicPlaybackPosition` delivers the position in ms about once a second.
+- Names: `SteamClient.Apps.GetSoundtrackDetails(appId)` → `{ tracks: [{ trackDisplayName, discNumber, trackNumber, durationSeconds }], metadata: { artist } }` (Steam's soundtrack store only caches this call). Album name: the app overview's `display_name`; cover: its `album_cover_hash` at `https://steamloopback.host/assets/<appid>/<hash>.jpg`.
+- Steam's position slider runs 0–length in ms and seeks on release; volume runs 0–100 live.
+- Steam's Browse Soundtracks selects a collection filter and calls `Navigator.LibraryTab("Soundtracks")`; ours calls `LibraryTab("Soundtracks")` (the filter call is an unknown module function).
+
+The original plan for that spike (with Michael's go-ahead, since it registers callbacks and calls Steam getters, which read-only probes do not): record what the playback and position callbacks deliver while a soundtrack plays, pauses, skips, shuffles and repeats; what `GetSoundtrackDetails` / `GetTrackDetails` return for the playing ids; and which route Steam's "Browse Soundtracks" opens. The design does not change with the answers; the binding code does.
 
 ### Writes
 
 - Each control calls its `SteamClient.Music` method; the page shows what Steam's callbacks report next, never the value it asked for (as Quick settings and Performance do).
-- Sliders send at most every 100ms while moving and once when released.
+- Volume sends at most every 100ms while moving, and the last value. A seek is sent once the position slider has been still for 300ms (Decky's slider has no release event). A moved slider keeps its value for 1.5s so Steam's once-a-second position does not pull it back.
 
 ### Structure
 

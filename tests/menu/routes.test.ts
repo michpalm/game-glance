@@ -141,3 +141,20 @@ describe('requests that close Steam\'s menu', () => {
         expect(closesSteamMenu({ kind: 'friend-chat', steamId: '76561197960287930' })).toBe(false);
     });
 });
+
+describe('Browse soundtracks', () => {
+    it('opens the Library on its Soundtracks tab, as Steam’s Soundtrack tab does, then closes the side menu', async () => {
+        const order: string[] = [];
+        const libraryTab = vi.fn((tab: string) => { order.push(`tab:${tab}`); });
+        const b = { deactivate: vi.fn(), openMain: vi.fn(), openQam: vi.fn(), tabs: { Notifications: 0, Friends: 1, Settings: 2, Perf: 3, Help: 4, Music: 5, Decky: 6 },
+            library: vi.fn(), libraryTab, navigate: vi.fn(), finishNavigation: vi.fn(() => { order.push('close'); }), power: vi.fn(), exitGame: vi.fn(), openStore: vi.fn(), joinGame: vi.fn(), openUrl: vi.fn(),
+            profile: { allowed: vi.fn(() => true), resolve: vi.fn(() => ''), open: vi.fn() } };
+        await createRoutes(b).open({ kind: 'navigate', destination: 'soundtracks' });
+        expect(order).toEqual(['tab:Soundtracks', 'close']);
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'soundtracks' })).toBe(true);
+    });
+    it('falls back to the Library root without a tab opener', async () => {
+        const h = harness(); await h.routes.open({ kind: 'navigate', destination: 'soundtracks' });
+        expect(h.b.library).toHaveBeenCalledTimes(1);
+    });
+});

@@ -28,6 +28,9 @@ import { InGamePanel } from './InGamePanel';
 import { NotificationsPanel } from './NotificationsPanel';
 import { PluginsSection } from './PluginsSection';
 import { pluginStyles } from '../pluginStyles';
+import { soundtrackStyles } from '../soundtrackStyles';
+import { SoundtrackSection } from './SoundtrackSection';
+import type { SoundtrackService } from '../steam/soundtrack';
 import type { SocialService } from '../steam/social';
 import type { NotificationReads } from '../notificationReads';
 import { unreadCount as countUnread, type TrayRow } from '../notificationsList';
@@ -48,14 +51,17 @@ export interface MenuShellProps {
     notificationActions?: NotificationActions;
     performance?: ReturnType<typeof createPerformance>;
     social?: SocialService;
+    soundtrack?: SoundtrackService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
 const NO_SUBSCRIBE = () => () => {};
+// Where focus starts in a section before the menu remembers one: the Soundtrack page opens on play/pause.
+const FIRST_FOCUS: Partial<Record<SectionId, string>> = { soundtrack: 'soundtrack:play' };
 const EMPTY_ROWS: TrayRow[] = [];
 const NO_ROWS = () => EMPTY_ROWS;
 const EMPTY_READS: ReadonlySet<string> = new Set();
 const NO_READS = () => EMPTY_READS;
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, panels = {} }: MenuShellProps) {
+export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
@@ -84,7 +90,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const element = root.current;
         if (!active) focusedSinceOpen.current = false;
         if (!element || !active || !inputActive()) return;
-        const key = state.focus[state.section];
+        const key = state.focus[state.section] ?? FIRST_FOCUS[state.section];
         const preferBar = focusPrefersBar(focusedSinceOpen.current, !!element.ownerDocument.activeElement?.closest('.gg-menu-bar'));
         focusedSinceOpen.current = true;
         const focus = () => {
@@ -144,6 +150,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
     if (content === undefined && state.section === 'plugins') content = <PluginsSection state={state} dispatch={dispatch} handoff={enterNative} close={close} />;
+    if (content === undefined && state.section === 'soundtrack' && soundtrack) content = <SoundtrackSection service={soundtrack} handoff={enterNative} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
@@ -153,7 +160,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>
-        <style>{menuStyles + pluginStyles}</style>
+        <style>{menuStyles + pluginStyles + soundtrackStyles}</style>
         <GameStatusBar menuOverlay />
         <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" ariaLabel={badgeCount > 0 ? `${badgeCount} unread notifications` : 'Notifications'} selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}><span className="gg-menu-notification-count" aria-hidden="true">{badgeCount > 99 ? '99+' : badgeCount > 0 ? badgeCount : ''}</span><LuBell aria-hidden="true" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />

@@ -4,6 +4,8 @@ export interface NativeTabs { Notifications:number; Friends:number; Settings:num
 export interface RouteBindings {
     deactivate(): void; tabs: NativeTabs; openMain(): void; openQam(tab:number): void;
     library(): void; navigate(path:string): void; finishNavigation(): void; power(): void;
+    /** A Library tab by Steam's own name ("Soundtracks"), as Steam's Soundtrack tab opens it. */
+    libraryTab?(tab:string): void;
     exitGame(gameId:string): void;
     openStore(url:string): void;
     joinGame(url:string): void;
@@ -45,6 +47,7 @@ export function createRoutes(bindings:RouteBindings) {
             switch(request.destination){
                 case 'home':bindings.navigate(HOME_ROUTE);break;
                 case 'library':bindings.library();break;
+                case 'soundtracks':if(bindings.libraryTab)bindings.libraryTab('Soundtracks');else bindings.library();break;
                 case 'store':bindings.navigate('/steamweb');break;
                 // Steam opens Media through its Media.Grid route (/media/grid); the bare /media root keeps a stale list.
                 case 'media':bindings.navigate('/media/grid');break;

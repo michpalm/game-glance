@@ -19,6 +19,7 @@ import { discoverQuickSettingsBindings, nativeNotificationBindings } from './ste
 import { MenuShell } from './components/MenuShell';
 import { createSocial, type SocialService } from './steam/social';
 import { discoverSocialBindings } from './steam/chatNative';
+import { createSoundtrack, nativeSoundtrackBindings, type SoundtrackService } from './steam/soundtrack';
 
 const notificationReads = createNotificationReads(backendKv);
 let currentService: object | undefined;
@@ -56,6 +57,7 @@ export function startMenu(options?: Partial<Options>): Stop {
     let notificationActions: NotificationActions | undefined;
     let performance: ReturnType<typeof createPerformance> | undefined;
     let social: SocialService | undefined;
+    let soundtrack: SoundtrackService | undefined;
     let state = defaultMenuState();
     const listeners = new Set<Stop>();
     const subscribe = (fn: Stop) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
@@ -64,9 +66,10 @@ export function startMenu(options?: Partial<Options>): Stop {
     recovery = recover;
     function release() {
         const friends = social; social = undefined;
+        const music = soundtrack; soundtrack = undefined;
         const perf = performance; performance = undefined;
         const quick = quickSettings, badge = notificationBadge, tray = notifications; quickSettings = undefined; notificationBadge = undefined; notifications = undefined; notificationActions = undefined;
-        const steps = [stopSession, () => friends?.dispose(), () => quick?.dispose(), () => badge?.dispose(), () => tray?.dispose(), () => perf?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
+        const steps = [stopSession, () => friends?.dispose(), () => quick?.dispose(), () => badge?.dispose(), () => tray?.dispose(), () => perf?.dispose(), () => music?.dispose(), releaseHost]; stopSession = undefined; releaseHost = undefined; controller = undefined;
         for (const stop of steps) { try { stop?.(); } catch (error) { console.warn('[Game Glance] menu release failed', error); } }
     }
     function reconcile() {
@@ -82,13 +85,14 @@ export function startMenu(options?: Partial<Options>): Stop {
                 try { quickSettings = createQuickSettings(discoverQuickSettingsBindings()); } catch (error) { console.warn('[Game Glance] custom Quick Settings unavailable', error); }
                 try { performance = createPerformance(discoverPerformanceBindings()); } catch (error) { console.warn('[Game Glance] custom Performance unavailable', error); }
                 try { notificationBadge = createNotificationBadge(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification badge unavailable', error); }
+                try { const music = nativeSoundtrackBindings(); if (music) soundtrack = createSoundtrack(music); } catch (error) { console.warn('[Game Glance] custom Soundtrack unavailable', error); }
                 try { notifications = createNotificationList(nativeNotificationBindings()); notificationActions = nativeNotificationActions(); void notificationReads.load(); } catch (error) { console.warn('[Game Glance] notification list unavailable', error); }
             }
             state = reduceMenu(defaultMenuState(), { type: 'enable', value: true });
             dispatch({ type: 'pins', value: [...preferences.get().pins] });
             function ConnectedShell() {
                 const snapshot = useSyncExternalStore(subscribe, () => state);
-                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social });
+                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack });
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();

@@ -29,10 +29,11 @@ function displaySettings():DisplaySettings|undefined {
 }
 export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(request:NativeRequest)=>Promise<void>):RouteBindings {
     const root=globals();
-    const window=owner as NativeOwner&{Navigate?(path:string):void;Navigator?:{LibraryTab?():void;ExternalWeb?(url:string):void}};
+    const window=owner as NativeOwner&{Navigate?(path:string):void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
     function navigate(path:string){if(!window.Navigate)throw Error('Steam navigation is unavailable');window.Navigate(path);}
     return {deactivate,tabs:QuickAccessTab,openMain(){owner.MenuStore.OpenMainMenu?owner.MenuStore.OpenMainMenu():owner.MenuStore.OpenSideMenu(1);},openQam:tab=>owner.MenuStore.OpenQuickAccessMenu(tab),
-        library(){navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
+        library(){navigate('/library');},
+        libraryTab(tab){if(typeof window.Navigator?.LibraryTab==='function')window.Navigator.LibraryTab(tab);else navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
         power(){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');Router.OpenPowerMenu();},
         joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
         // As Steam's own notification list opens invite urls and account links.
