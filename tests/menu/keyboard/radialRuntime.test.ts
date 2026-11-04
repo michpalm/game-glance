@@ -22,3 +22,13 @@ it('consumes both stick-click routing events while leaving Select, Start and sys
  }
  stop();
 });
+it('turns the D-pad into cursor moves only while it owns input, and still swallows those presses',()=>{
+ const doc=new EventTarget(),view={requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{}} as unknown as Window;
+ let owned=true;const moves:string[]=[];
+ const stop=startRadialRuntime({document:doc as Document,view,read:()=>null,layout:()=>buildRadialLayout(BUILTIN_QWERTY),ownsInput:()=>owned,direction:m=>moves.push(m),changed:()=>{},command:()=>{},failed:()=>{}});
+ const press=(button:number)=>{const event=new Event('vgp_onbuttondown',{cancelable:true});Object.defineProperty(event,'detail',{value:{button}});doc.dispatchEvent(event);return event;};
+ for(const button of [11,12,9,10]) expect(press(button).defaultPrevented).toBe(true);
+ expect(moves).toEqual(['left','right','start','end']);
+ owned=false;press(11);expect(moves).toEqual(['left','right','start','end']);
+ stop();
+});

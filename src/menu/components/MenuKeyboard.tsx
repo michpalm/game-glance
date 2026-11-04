@@ -9,7 +9,7 @@ import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } 
 import { dragPosition, followUnderKeyboard, loadPosition, movePanel, normaliseAxis, savePosition, stickStep, stickVelocity, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
 import { createStripPress, finishPadDrop, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
 import type { KeyboardSession } from '../keyboard/session';
-import { clearHeld, press, typeText, type TypingState } from '../keyboard/typing';
+import { clearHeld, cursorOf, moveCursor, press, typeText, type CursorMove, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
 import {keyboardContext,type KeyboardContext} from '../keyboard/context';
 import { MenuAction } from './MenuAction';
@@ -91,11 +91,13 @@ export function nextLayout(layouts: KeyboardLayout[], index: number): number {
     return index;
 }
 
+const CURSOR_KEYS: Record<string, CursorMove> = { ArrowLeft: 'left', ArrowRight: 'right', Home: 'start', End: 'end' };
 /** What a physical key does to the draft: null leaves the key to Steam. */
 export function physicalKey(state: TypingState, event: KeyboardEvent, canSend: boolean): { state?: TypingState; send?: true } | null {
     if (event.ctrlKey || event.metaKey || event.altKey) return null;
     if (event.key === 'Enter') return canSend ? { send: true } : {};
     if (event.key === 'Backspace') return { state: press(state, { char: '⌫', kind: 'backspace' }) };
+    if (CURSOR_KEYS[event.key]) return { state: moveCursor(state, CURSOR_KEYS[event.key]) };
     // Named keys (ArrowLeft, Tab, Shift) are longer than one character.
     if (Array.from(event.key).length === 1) return { state: typeText(clearHeld(state), event.key) };
     return null;
@@ -232,6 +234,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     const apply = (next: TypingState) => {
         live.current.typing = next; setTyping(next);
         if (next.text !== live.current.draft) live.current.setDraft(next.text);
+        session.setCursor(cursorOf(next));
     };
     // Sending (or another chat) changes the draft from outside: start again from it, dropping a held accent.
     useEffect(() => { if (draft !== live.current.typing.text) apply({ ...clearHeld(live.current.typing), text: draft }); }, [draft]);

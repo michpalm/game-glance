@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import type {KeyDef} from '../../../src/menu/keyboard/layouts';
-import {press,clearHeld,typeText,type TypingState} from '../../../src/menu/keyboard/typing';
+import {press,clearHeld,typeText,cursorOf,moveCursor,type TypingState} from '../../../src/menu/keyboard/typing';
 
 const key=(char:string,more:Partial<KeyDef>={}):KeyDef=>({char,kind:'char',...more});
 const A=key('a',{shifted:'A'}),B=key('b',{shifted:'B'}),K=key('k',{shifted:'K'});
@@ -78,5 +78,41 @@ describe('typing',()=>{
     });
     it('does not mutate its input',()=>{
         const s={...s0};press(s,A);expect(s).toEqual(s0);
+    });
+});
+
+describe('the text cursor (counted in letters as you see them)',()=>{
+    const at=(text:string,cursor?:number):TypingState=>({text,shift:'off',held:null,cursor});
+    it('without a cursor it is at the end, as before',()=>{
+        expect(cursorOf(at('Mini'))).toBe(4);
+        expect(press(at('Mini'),A).text).toBe('Minia');
+    });
+    it('types at the cursor and moves it on',()=>{
+        const s=press(at('Mini Motorways',5),key('X'));
+        expect(s.text).toBe('Mini XMotorways');expect(cursorOf(s)).toBe(6);
+        const t=typeText(at('ab',1),'👍🏽');
+        expect(t.text).toBe('a👍🏽b');expect(cursorOf(t)).toBe(2);
+    });
+    it('a held accent combines at the cursor',()=>{
+        const s=seq(at('ab',1),ACUTE,key('e'));
+        expect(s.text).toBe('aéb');expect(cursorOf(s)).toBe(2);
+    });
+    it('Delete removes the letter before the cursor, a whole emoji too',()=>{
+        expect(press(at('Mini Motorways',5),BACKSPACE).text).toBe('MiniMotorways');
+        const s=press(at('a👍🏽b',2),BACKSPACE);
+        expect(s.text).toBe('ab');expect(cursorOf(s)).toBe(1);
+        expect(press(at('ab',0),BACKSPACE).text).toBe('ab');
+    });
+    it('moves by one letter, and to the start or end, never past them',()=>{
+        expect(cursorOf(moveCursor(at('a👍🏽b'),'left'))).toBe(2);
+        expect(cursorOf(moveCursor(at('a👍🏽b',2),'left'))).toBe(1);
+        expect(cursorOf(moveCursor(at('ab',0),'left'))).toBe(0);
+        expect(cursorOf(moveCursor(at('ab',1),'right'))).toBe(2);
+        expect(cursorOf(moveCursor(at('ab'),'right'))).toBe(2);
+        expect(cursorOf(moveCursor(at('abc',2),'start'))).toBe(0);
+        expect(cursorOf(moveCursor(at('abc',0),'end'))).toBe(3);
+    });
+    it('moving drops a held accent, so it never lands somewhere else',()=>{
+        expect(moveCursor(press(at('ab',1),ACUTE),'left').held).toBeNull();
     });
 });

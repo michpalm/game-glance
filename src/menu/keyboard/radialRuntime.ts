@@ -1,13 +1,17 @@
 import {isRadialControl} from './radialControls';
 import {createRadialInput,type AxesSnapshot,type ButtonsSnapshot,type RadialCommand,type RadialViewState} from './radialInput';
 import type {RadialLayout} from './radialLayout';
-export function startRadialRuntime(deps:{view:Window;document:Document;read():{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null;layout():RadialLayout;ownsInput():boolean;canChangeLayout?():boolean;changed(view:RadialViewState):void;command(value:RadialCommand):void;failed():void}):()=>void {
+import type {CursorMove} from './typing';
+// Decky's GamepadButton: DIR_UP=9, DIR_DOWN=10, DIR_LEFT=11, DIR_RIGHT=12.
+const DPAD:Record<number,CursorMove>={9:'start',10:'end',11:'left',12:'right'};
+export function startRadialRuntime(deps:{view:Window;document:Document;read():{axes:AxesSnapshot;buttons:ButtonsSnapshot}|null;layout():RadialLayout;ownsInput():boolean;canChangeLayout?():boolean;direction?(move:CursorMove):void;changed(view:RadialViewState):void;command(value:RadialCommand):void;failed():void}):()=>void {
  const input=createRadialInput();let stopped=false,frame:number|undefined,last='',owned=false;
  const swallow=(event:Event)=>{
   if(stopped||!deps.ownsInput())return;
   if(event.type==='vgp_onbuttondown'||event.type==='vgp_onbuttonup'){
    const button=Number((event as CustomEvent<{button:number}>).detail?.button);
    if(!isRadialControl(button))return;
+   if(event.type==='vgp_onbuttondown'&&DPAD[button])deps.direction?.(DPAD[button]);
   }
   event.preventDefault();event.stopImmediatePropagation();
  };

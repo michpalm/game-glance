@@ -11,7 +11,7 @@ import {applyRadialCommand,syncRadialDraft,type AxesSnapshot,type ButtonsSnapsho
 import {startRadialRuntime} from '../keyboard/radialRuntime';
 import {installRadialSurface} from '../keyboard/radialSurface';
 import type {KeyboardSession} from '../keyboard/session';
-import {clearHeld,type TypingState} from '../keyboard/typing';
+import {clearHeld,cursorOf,moveCursor,type TypingState} from '../keyboard/typing';
 import {installPhysicalKeys,nextLayout,physicalKey,type Layouts} from './MenuKeyboard';
 const EMPTY:RadialViewState={selection:[null,null],extra:[false,false],uppercase:false};
 export interface RadialKeyboardProps {context?:KeyboardContext;session:KeyboardSession;layouts:Layouts;draft:string;setDraft(text:string):void;canSend:boolean;send():void;field():HTMLElement|null;unavailable():void;ownsInput():boolean}
@@ -54,7 +54,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
  const layout=useMemo(()=>buildRadialLayout(current),[current]);
  const layoutRef=useRef(layout);layoutRef.current=layout;
  const close=useCallback(()=>live.current.session.close(),[]);
- const commit=useCallback((next:TypingState)=>{typing.current=next;live.current.setDraft(next.text);},[]);
+ const commit=useCallback((next:TypingState)=>{typing.current=next;live.current.setDraft(next.text);live.current.session.setCursor(cursorOf(next));},[]);
  useLayoutEffect(()=>{
   const field=live.current.field(),root=field?ctx.host(field):null,doc=field?.ownerDocument;
   if(!field||!root||!doc||!feeds){live.current.unavailable();return;}
@@ -71,7 +71,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   if(!host||!bounds)return;
   const doc=host.ownerDocument,view=doc.defaultView!;
   const owns=()=>{const next=activeControllerIndex();if(next!==index){snapshot.current=null;setIndex(next);return false;}return live.current.session.get().open&&keyboardContext(live.current.context).ownsInput()&&live.current.ownsInput()&&host.isConnected&&view.getComputedStyle(host).visibility!=='hidden'&&doc.visibilityState!=='hidden';};
-  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,canChangeLayout:()=>nextLayout(live.current.layouts.layouts,layoutIndexRef.current)!==layoutIndexRef.current,changed:setState,failed:()=>live.current.unavailable(),command:command=>{
+  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,canChangeLayout:()=>nextLayout(live.current.layouts.layouts,layoutIndexRef.current)!==layoutIndexRef.current,direction:move=>{if(!owns())return;commit(moveCursor(typing.current,move));},changed:setState,failed:()=>live.current.unavailable(),command:command=>{
    if(command.type==='close'){close();return;}
    if(command.type==='send'){if(live.current.canSend)live.current.send();return;}
    if(command.type==='layout'){const next=nextLayout(live.current.layouts.layouts,layoutIndexRef.current);if(next!==layoutIndexRef.current){typing.current=clearHeld(typing.current);setLayoutIndex(next);}return;}

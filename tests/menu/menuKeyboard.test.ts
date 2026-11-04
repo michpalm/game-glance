@@ -209,9 +209,15 @@ describe('a physical keyboard', () => {
         expect(physicalKey({ ...idle, text: 'hola' }, key('Enter'), true)).toEqual({ send: true });
         expect(physicalKey({ ...idle, text: 'hola' }, key('Enter'), false)).toEqual({});
     });
+    it('moves the cursor with the arrows and Home or End', () => {
+        const ab = { ...idle, text: 'ab' };
+        expect(physicalKey(ab, key('ArrowLeft'), true)).toEqual({ state: { ...idle, text: 'ab', cursor: 1 } });
+        expect(physicalKey({ ...ab, cursor: 0 }, key('ArrowRight'), true)).toEqual({ state: { ...idle, text: 'ab', cursor: 1 } });
+        expect(physicalKey(ab, key('Home'), true)).toEqual({ state: { ...idle, text: 'ab', cursor: 0 } });
+        expect(physicalKey({ ...ab, cursor: 0 }, key('End'), true)).toEqual({ state: { ...idle, text: 'ab' } });
+    });
     it('leaves shortcuts and other keys alone', () => {
         expect(physicalKey(idle, key('c', { ctrlKey: true }), true)).toBeNull();
-        expect(physicalKey(idle, key('ArrowLeft'), true)).toBeNull();
         expect(physicalKey(idle, key('Tab'), true)).toBeNull();
     });
     it('listens on the window until removed, and stops handled keys there', () => {
