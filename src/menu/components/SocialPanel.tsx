@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import { LuArrowUpRight, LuGamepad2, LuSend, LuUser } from 'react-icons/lu';
 import type { SocialKeyboardMode } from '../preferences';
 import { RadialKeyboard } from './RadialKeyboard';
+import { DraftText } from './DraftText';
 import type { KeyboardSession } from '../keyboard/session';
 import { FRIEND_COLOURS, friendRing } from '../../home/friends';
 import { takeSteamFocus } from '../../home/steamFocus';
@@ -86,7 +87,7 @@ export function SocialContents({ snapshot, social, entered, enter, handoff, load
     const join = friend?.joinUrl && <MenuAction id="social:join" onAction={joinArmed ? () => handoff({ kind: 'join', url: friend.joinUrl! }) : armJoin}><LuGamepad2 aria-hidden="true" />{joinArmed ? 'Press again to join' : 'Join game'}</MenuAction>;
     const compose = friend && <div className="gg-social-compose">
         {entered ? ownKeyboard ? <div className="gg-social-input">
-            <MenuAction id="social:compose" className="gg-social-field" ariaLabel="Write a message" disabled={snapshot.loading || !snapshot.canChat} onAction={ownKeyboard.open}>{snapshot.draft || <span className="gg-social-placeholder">Write a message…</span>}</MenuAction>
+            <MenuAction id="social:compose" className="gg-social-field" ariaLabel="Write a message" disabled={snapshot.loading || !snapshot.canChat} onAction={ownKeyboard.open}>{snapshot.draft ? <DraftText text={snapshot.draft} session={ownKeyboard} /> : <span className="gg-social-placeholder">Write a message…</span>}</MenuAction>
         </div> : <div className="gg-social-input" data-gg-focus="social:compose"><TextField aria-label="Message" label="Message" value={snapshot.draft} disabled={snapshot.loading || !snapshot.canChat} onChange={event => social.setDraft(event.target.value)} /></div>
         : <div className="gg-social-input"><MenuAction id="social:open" className="gg-social-field gg-social-write" disabled={!snapshot.canChat || friend.blocked} onAction={() => enter(friend.steamId)}>Write a message…</MenuAction></div>}
         <MenuAction id="social:send" className="gg-social-send" disabled={!entered || sendDisabled} onAction={() => { void social.send(); }}><LuSend aria-hidden="true" />{snapshot.sending ? 'Sending…' : 'Send'}</MenuAction>

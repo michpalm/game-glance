@@ -6,7 +6,7 @@ export type CursorMove='left'|'right'|'start'|'end';
 
 // The project's TS lib predates Intl.Segmenter.
 type Segmenter=new(l?:string,o?:{granularity:'grapheme'})=>{segment(s:string):Iterable<{segment:string}>};
-const graphemes=(s:string)=>Array.from(new (Intl as unknown as {Segmenter:Segmenter}).Segmenter(undefined,{granularity:'grapheme'}).segment(s),g=>g.segment);
+export const graphemes=(s:string)=>Array.from(new (Intl as unknown as {Segmenter:Segmenter}).Segmenter(undefined,{granularity:'grapheme'}).segment(s),g=>g.segment);
 const typed=(k:KeyDef,shift:TypingState['shift'])=>shift==='off'?k.char:k.shifted??k.char.toUpperCase();
 
 /** The cursor's place in letters, kept inside the text. */

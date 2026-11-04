@@ -25,4 +25,9 @@ ${KEY}[aria-pressed=true]{background:rgba(255,255,255,.36);box-shadow:var(--gg-s
 .gg-keyboard-strip-label{display:none;align-items:center;gap:4px;font-size:11px;font-weight:600;line-height:14px;${labelText()}}
 .gg-keyboard-badge{box-sizing:border-box;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:50%;font-size:10px;font-weight:700;line-height:1}
 :where(html:not([data-gg-mouse])) :is(.gg-menu-native-host .gg-menu,.gh-keyboard-surface) .gg-keyboard-strip button.gg-keyboard-move.DialogButton:is(.gpfocus,:focus-visible) .gg-keyboard-strip-label{display:inline-flex}
+.gg-draft{display:block;overflow:hidden;white-space:pre;min-width:0}
+.gg-draft>span{white-space:pre;overflow:visible;text-overflow:clip}
+.gg-caret{display:inline-block;width:2px;height:1.15em;vertical-align:-0.2em;margin:0 1px;border-radius:1px;background:currentColor;animation:gg-caret-blink 1s steps(1) infinite}
+@keyframes gg-caret-blink{50%{opacity:0}}
+.gg-draft[data-scrolled]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
 `;

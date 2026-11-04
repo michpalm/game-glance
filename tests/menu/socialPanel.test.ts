@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { RadialKeyboard } from '../../src/menu/components/RadialKeyboard';
 import { MenuKeyboard } from '../../src/menu/components/MenuKeyboard';
+import { DraftText } from '../../src/menu/components/DraftText';
 import { closeUnusableKeyboard, focusComposeSoon, SocialContents } from '../../src/menu/components/SocialPanel';
 import { BUILTIN_QWERTY } from '../../src/menu/keyboard/layouts';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
@@ -118,7 +119,7 @@ describe('Social chat with the menu keyboard', () => {
         compose.props.onAction(); expect(c.keyboard.get().open).toBe(true);
     });
     it('shows the draft in the field', () => {
-        expect([chat({ draft: 'Hola' }).action('social:compose')!.props.children].flat()).toContain('Hola');
+        expect([chat({ draft: 'Hola' }).action('social:compose')!.props.children].flat()).toContainEqual(expect.objectContaining({ type: DraftText, props: expect.objectContaining({ text: 'Hola' }) }));
     });
     it('keeps Steam’s text field for a layout that needs an input method', () => {
         const c = chat({}, { layouts: [{ ...BUILTIN_QWERTY, name: 'japanese', ime: true }], current: 0 });
