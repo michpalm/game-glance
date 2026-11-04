@@ -524,7 +524,7 @@ function unifideckStopRules(): string[] {
         // The ring: on neither button itself, on one layer over both.
         rule(`${resume}:is(.gpfocus, :focus, :focus-within, :hover)`, ` outline: none !important; box-shadow: none !important; `),
         rule(`${resume}::before`, ` content: "" !important; display: block !important; position: absolute !important; top: 0 !important; bottom: 0 !important; left: 0 !important;
-            right: calc(-1 * var(--gg-play-w) * ${STOP_SHARE}) !important; border-radius: ${R_PLAY} !important; pointer-events: none !important; z-index: 3 !important; outline: none; `),
+            right: calc(-1 * var(--gg-play-w) * ${STOP_SHARE}) !important; border-radius: ${R_PLAY} !important; pointer-events: none !important; z-index: 3 !important; opacity: 1 !important; outline: none; `),
         rule([`${NOT_MOUSE} ${resume}:is(.gpfocus, :focus)::before`, `${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-resume-btn:has(+ .unifideck-stop-btn:is(.gpfocus, :focus))::before`], actionRing),
     ];
 }

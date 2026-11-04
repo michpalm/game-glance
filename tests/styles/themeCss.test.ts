@@ -315,6 +315,8 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
         // One ring around both, whichever has focus, drawn by Resume's ::before reaching over Stop.
         expect(css).toMatch(/\.unifideck-resume-btn:has\(\+ \.unifideck-stop-btn\)::before \{[^}]*content: "" !important;[^}]*right: calc\(-1 \* var\(--gg-play-w\) \* 0.165\) !important;/);
         expect(css).toContain('.unifideck-resume-btn:has(+ .unifideck-stop-btn:is(.gpfocus, :focus))::before');
+        // Steam's button styles hide a button's ::before (opacity 0, seen on the Ally): the ring layer shows anyway.
+        expect(css).toMatch(/\.unifideck-resume-btn:has\(\+ \.unifideck-stop-btn\)::before \{[^}]*opacity: 1 !important;/);
         // Not without our page's look (Unifideck's own then stays).
         expect(buildUnifideckCss(full)).not.toContain('.unifideck-stop-btn');
     });
