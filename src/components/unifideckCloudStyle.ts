@@ -2,10 +2,12 @@ import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL, type CloudTone } from '../ho
 import { UNIFIDECK_PAGE } from '../styles/themeCss';
 
 /**
- * Unifideck's cloud-save button on its game page row. Only that button wraps its icon in a span (read on the Ally
- * 2026-11-04); its label changes with the state and the language, so the shape finds it, not the words.
+ * Unifideck's cloud-save button on its game page row: the first of an installed game's four round buttons (cloud,
+ * controller, settings, Uninstall; read on the Ally 2026-11-04, as themeCss orders them). Its label changes with the state
+ * and the language, and its icon's markup with the state (a badge wraps it in a span, a plain icon does not), so its
+ * place finds it.
  */
-export const UNIFIDECK_CLOUD_BUTTON = '.unifideck-icon-btn:has(> span > svg)';
+export const UNIFIDECK_CLOUD_BUTTON = '.unifideck-icon-btn:first-child:has(~ .unifideck-icon-btn ~ .unifideck-icon-btn ~ .unifideck-icon-btn)';
 
 /**
  * Game Glance's cloud on Unifideck's button and on our own circle for a game that is not installed (.gg-uni-cloud): the
