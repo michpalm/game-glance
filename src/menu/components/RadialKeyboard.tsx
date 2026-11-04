@@ -2,7 +2,7 @@ import {hideKeyboardNavigation} from '../keyboard/navigationVisibility';
 import {findModuleExport} from '@decky/ui';
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
-import {keyboardContext,type KeyboardContext} from '../keyboard/context';
+import {keyboardContext,createKeyboardBoundsReporter,type KeyboardContext} from '../keyboard/context';
 import {takeSteamFocus} from '../../home/steamFocus';
 import {ControllerFeed,ControllerFeedGuard,activeControllerIndex,discoverControllerFeeds} from '../keyboard/controllerFeed';
 import {buildRadialLayout,type RadialLayout,type Side} from '../keyboard/radialLayout';
@@ -53,6 +53,9 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
  const current=props.layouts.layouts[layoutIndex]??props.layouts.layouts[props.layouts.current];
  const layout=useMemo(()=>buildRadialLayout(current),[current]);
  const layoutRef=useRef(layout);layoutRef.current=layout;
+ const boundsReporter=useMemo(()=>createKeyboardBoundsReporter(ctx),[ctx]);
+ useLayoutEffect(()=>()=>boundsReporter.dispose(),[boundsReporter]);
+ useLayoutEffect(()=>{boundsReporter.report(bounds?.map(b=>({left:b.left,top:b.top,width:b.diameter,height:b.diameter}))??[]);},[bounds,boundsReporter]);
  const close=useCallback(()=>live.current.session.close(),[]);
  const commit=useCallback((next:TypingState)=>{typing.current=next;live.current.setDraft(next.text);live.current.session.setCursor(cursorOf(next));},[]);
  useLayoutEffect(()=>{

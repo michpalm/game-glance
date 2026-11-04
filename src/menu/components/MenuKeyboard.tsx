@@ -1,6 +1,6 @@
 import { hideKeyboardNavigation } from '../keyboard/navigationVisibility';
 import { Focusable, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
-import { Component, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
+import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { LuMove } from 'react-icons/lu';
 import { backendKv } from '../../data/kv';
@@ -11,7 +11,7 @@ import { createStripPress, finishPadDrop, installDragGamepad, installHoldWatch, 
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, cursorOf, moveCursor, press, typeText, type CursorMove, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
-import {keyboardContext,type KeyboardContext} from '../keyboard/context';
+import {keyboardContext,createKeyboardBoundsReporter,keyboardViewport,type KeyboardContext} from '../keyboard/context';
 import { MenuAction } from './MenuAction';
 
 export type Layouts = { layouts: KeyboardLayout[]; current: number };
@@ -198,6 +198,9 @@ export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, 
 /** The Social chat's own keyboard, floating in the menu while the session is open. */
 export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSend, send, field }: { context?:KeyboardContext;session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
     const ctx=keyboardContext(context),contextRef=useRef(ctx);contextRef.current=ctx;
+    const boundsReporter=useMemo(()=>createKeyboardBoundsReporter(ctx),[ctx]);
+    useLayoutEffect(()=>()=>boundsReporter.dispose(),[boundsReporter]);
+    const reportBounds=()=>{const r=panel.current?.getBoundingClientRect();if(r)boundsReporter.report([{left:r.left,top:r.top,width:r.width,height:r.height}]);};
     const openedHost=useRef<HTMLElement|null>(null);
     const open = useSyncExternalStore(session.subscribe, session.get).open;
     const [typing, setTyping] = useState<TypingState>({ text: draft, shift: 'off', held: null });
@@ -245,7 +248,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!session.get().open || !contextRef.current.ownsInput() || !element?.isConnected || !root?.isConnected || root!==openedHost.current || !view) return null;
         const box = root.getBoundingClientRect(), scale = box.width / root.offsetWidth || 1;
         const menuRect = (r: { left: number; top: number; width: number; height: number }) => toMenuRect(r, box, scale);
-        return { scale, view: menuRect({ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight }),
+        return { scale, view: menuRect(keyboardViewport(contextRef.current,{ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight })),
             menu: menuRect((element.closest<HTMLElement>('.gg-menu-panel') ?? root).getBoundingClientRect()), field: menuRect(element.getBoundingClientRect()) };
     };
     const place = (p: Point) => { live.current.position = p; setPosition(p); };
@@ -280,6 +283,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     }, [open]);
 
     // The first key takes focus once the panel is placed.
+    useLayoutEffect(()=>{if(open&&position)reportBounds();else boundsReporter.report([]);},[open,position,host,boundsReporter]);
     const placed = open && !!position && !!host;
     useLayoutEffect(() => placed && host ? hideKeyboardNavigation(host.ownerDocument) : undefined, [placed, host]);
     useEffect(() => {
@@ -377,14 +381,14 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         moving.current = false;
         if (!at) return;
         const p = g ? settle(at, g.view, g.field, SIZE) : at;
-        movePanel(panel.current, live.current, p); place(p);
+        movePanel(panel.current, live.current, p); reportBounds(); place(p);
         if (!g) return;
         spot.current = null;
         void savePosition(backendKv, p);
     };
     const padMove = (delta: Point) => {
         const f = padFrame.current, at = live.current.position;
-        if (f && at) movePanel(panel.current, live.current, dragPosition(at, delta, f.scale, f.view, SIZE));
+        if (f && at) {movePanel(panel.current, live.current, dragPosition(at, delta, f.scale, f.view, SIZE));reportBounds();}
     };
     padActions.current = {
         cycle: onMove,
@@ -425,7 +429,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
             if (!d.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
             if (!d.moved) { d.moved = true; moving.current = true; setDragging(true); }
             // Kept inside the view while dragging (an area past the edge would cost the menu its frost); the release clears the field.
-            movePanel(panel.current, live.current, dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));
+            movePanel(panel.current, live.current, dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));reportBounds();
         },
         onPointerUp(e) {
             const d = drag.current;
