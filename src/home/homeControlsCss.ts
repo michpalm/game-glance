@@ -1,6 +1,6 @@
 import {SOURCE_PILL,sourcePillLook} from '../styles/sourcePill';
 import {homeHeaderCss} from './homeHeaderDom';
-import {focusRing} from '../styles/tokens';
+import {focusRing,TOKENS} from '../styles/tokens';
 // Steam recreates Select as the page takes focus. Its native background transition would animate
 // from transparent when our marker is applied, flashing bright before the glass settles.
 /** The footer part alone (owned native footer groups): Home and the game page render the same rules, so the footer never changes style between them. */
@@ -22,7 +22,8 @@ html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],
 .gh-keyboard-surface button.gh-search-control.DialogButton{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:32px;min-height:0;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font-family:inherit;text-align:left;transition:width 150ms ease;box-shadow:none}
 .gh-search-control svg{width:16px;height:16px;flex:none}
 .gh-search-control span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-:where(html:not([data-gg-mouse])) .gh-keyboard-surface button.gh-search-control.DialogButton:is(.gpfocus,:focus-visible){${focusRing('menu')}}
+:where(html:not([data-gg-mouse])) .gh-keyboard-surface button.gh-search-control.DialogButton:is(.gpfocus,:focus-visible){${focusRing('menu')};background:${TOKENS.strong}!important;color:#fff!important}
+.gh-keyboard-surface button.gh-search-control.DialogButton[data-home-search=editing]{${focusRing('menu')};background:${TOKENS.strong}!important;color:#fff!important}
 .gh-search-error{display:block;margin-top:8px;color:#fff;text-shadow:0 1px 2px #000;background:rgba(12,16,22,.75);padding:8px;border-radius:8px}
 .gh-keyboard-surface .gg-keyboard{pointer-events:auto}
 .gh-keyboard-surface .gg-keyboard-row button.DialogButton{display:flex;align-items:center;justify-content:center}

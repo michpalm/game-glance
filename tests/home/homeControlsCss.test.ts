@@ -21,3 +21,20 @@ describe('footer keycaps', () => {
         expect('footerAccentCss' in controls).toBe(false);
     });
 });
+
+describe('Search in the top bar', () => {
+    const focused = ':where(html:not([data-gg-mouse])) .gh-keyboard-surface button.gh-search-control.DialogButton:is(.gpfocus,:focus-visible)';
+    const typing = '.gh-keyboard-surface button.gh-search-control.DialogButton[data-home-search=editing]';
+    it('focused, it keeps the glass with the ring, as the round buttons, not Steam’s white button (Michael, 2026-11-04)', () => {
+        const css = rule(controls.homeControlsCss, focused);
+        expect(css).toContain('background:rgba(12,16,22,.55)!important');
+        expect(css).toContain('color:#fff!important');
+        expect(css).toContain('outline:2px solid #fff');
+    });
+    it('while typing it is the same glass and ring, wider (the width comes from homeSearchBounds)', () => {
+        const css = rule(controls.homeControlsCss, typing);
+        expect(css).toContain('background:rgba(12,16,22,.55)!important');
+        expect(css).toContain('color:#fff!important');
+        expect(css).toContain('outline:2px solid #fff');
+    });
+});
