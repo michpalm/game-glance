@@ -22,13 +22,34 @@ it('consumes both stick-click routing events while leaving Select, Start and sys
  }
  stop();
 });
-it('turns the D-pad into cursor moves only while it owns input, and still swallows those presses',()=>{
- const doc=new EventTarget(),view={requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{}} as unknown as Window;
- let owned=true;const moves:string[]=[];
- const stop=startRadialRuntime({document:doc as Document,view,read:()=>null,layout:()=>buildRadialLayout(BUILTIN_QWERTY),ownsInput:()=>owned,direction:m=>moves.push(m),changed:()=>{},command:()=>{},failed:()=>{}});
+// Steam also sends D-pad presses for a pushed stick (all with source 1, read on the Ally 2026-11-04), so a press waits a moment and is
+// dropped if either stick was pushed around it; the controller readings can lag the event by a frame or two.
+function dpadRig(){
+ let frame:FrameRequestCallback|undefined,owned=true,now=0;const moves:string[]=[],doc=new EventTarget();
+ const axes={nControllerIndex:0,LeftJoystick:{x:0,y:0},RightJoystick:{x:0,y:0}},buttons=b();
+ const view={requestAnimationFrame:(fn:FrameRequestCallback)=>{frame=fn;return 1;},cancelAnimationFrame:()=>{frame=undefined;}} as unknown as Window;
+ const stop=startRadialRuntime({document:doc as Document,view,now:()=>now,read:()=>({axes,buttons}),layout:()=>buildRadialLayout(BUILTIN_QWERTY),ownsInput:()=>owned,direction:m=>moves.push(m),changed:()=>{},command:()=>{},failed:()=>{throw Error('unexpected')}});
  const press=(button:number)=>{const event=new Event('vgp_onbuttondown',{cancelable:true});Object.defineProperty(event,'detail',{value:{button}});doc.dispatchEvent(event);return event;};
- for(const button of [11,12,9,10]) expect(press(button).defaultPrevented).toBe(true);
- expect(moves).toEqual(['left','right','start','end']);
- owned=false;press(11);expect(moves).toEqual(['left','right','start','end']);
- stop();
+ const wait=(ms:number)=>{for(let t=0;t<ms;t+=16){now+=16;const fn=frame;frame=undefined;fn?.(now);}};
+ return {moves,axes,press,wait,stop,own:(v:boolean)=>{owned=v;}};
+}
+it('turns the D-pad into cursor moves only while it owns input, and still swallows those presses',()=>{
+ const r=dpadRig();r.wait(300);
+ for(const button of [11,12,9,10]){expect(r.press(button).defaultPrevented).toBe(true);r.wait(100);}
+ expect(r.moves).toEqual(['left','right','start','end']);
+ r.own(false);r.press(11);r.wait(100);expect(r.moves).toEqual(['left','right','start','end']);
+ r.stop();
+});
+it('ignores the D-pad presses Steam makes from a pushed stick',()=>{
+ const r=dpadRig();r.wait(300);
+ r.axes.LeftJoystick.x=-0.9;r.wait(32);expect(r.press(11).defaultPrevented).toBe(true);r.wait(100);
+ r.axes.LeftJoystick.x=0;r.axes.RightJoystick.y=0.8;r.wait(32);r.press(9);r.wait(100);
+ expect(r.moves).toEqual([]);
+ r.axes.RightJoystick.y=0;r.wait(300);r.press(12);r.wait(100);expect(r.moves).toEqual(['right']);
+ r.stop();
+});
+it('also when the stick shows up in the readings only after the press (they lag)',()=>{
+ const r=dpadRig();r.wait(300);
+ r.press(11);r.wait(16);r.axes.LeftJoystick.x=-0.9;r.wait(100);expect(r.moves).toEqual([]);
+ r.stop();
 });
