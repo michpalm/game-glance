@@ -6,7 +6,8 @@ export function searchOverlayLayout(p:{viewport:{width:number;height:number};sca
  const width=Math.min(750*s,w-48*s),left=(w-width)/2,top=Math.max(24*s,p.statusBottom+16*s),overhead=140*s;
  const bandTop=top+overhead+p.rowHeight+8*s;
  if(width<180||bandTop>h-24*s)return null;
- const band={left:12,top:bandTop,width:w-24,height:h-36-bandTop};
+ const keyboardTop=Math.max(bandTop,Math.min(top+overhead+3*p.rowHeight+8*s,h-246));
+ const band={left:12,top:keyboardTop,width:w-24,height:h-36-keyboardTop};
  let bottom=h-24*s;
  for(const b of p.keyboards)if(b.left<left+width&&b.left+b.width>left&&b.top>=bandTop-8*s)bottom=Math.min(bottom,b.top-8*s);
  if(p.editing&&!p.keyboards.length)bottom=Math.min(bottom,Math.max(bandTop,h-252));

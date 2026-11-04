@@ -33,13 +33,13 @@ export function HomeSearch({search,active,account,controls,ownsInput,preferences
  const usable=useCallback(()=>live.current.active&&live.current.ownsInput(),[]);
  const environment=useMemo(()=>suppliedEnvironment??(doc?searchEnvironment(doc):unavailable),[doc,suppliedEnvironment]);
  const scale=homeCanvas(geometry.width,geometry.height).scale;
- const layout=useMemo(()=>searchOverlayLayout({viewport:geometry,scale,statusBottom:geometry.status?geometry.status.top+geometry.status.height:36,keyboards:state.phase==='editing'?keyboards:[],rowHeight:88*scale,editing:state.phase==='editing'}),[geometry,scale,keyboards,state.phase]);
+ const layout=useMemo(()=>{const box=searchOverlayLayout({viewport:geometry,scale,statusBottom:geometry.status?geometry.status.top+geometry.status.height:36,keyboards:state.phase==='editing'?keyboards:[],rowHeight:88*scale,editing:state.phase==='editing'});return box?{...box,listHeight:Math.min(box.listHeight,Math.max(box.rowHeight,state.matches.length*box.rowHeight))}:null;},[geometry,scale,keyboards,state.phase,state.matches.length]);
  const layoutRef=useRef(layout);layoutRef.current=layout;
  const window=layout?resultWindow({count:state.matches.length,scrollTop:state.scrollTop,rowHeight:layout.rowHeight,viewportHeight:layout.listHeight,focusedIndex:state.phase==='results'?state.matches.findIndex(a=>a.appId===state.focusedAppId):-1}):null;
  const visible=window?.indices.map(i=>state.matches[i])??[];
  const runtime=useLibrarySearch({doc,search,active:active&&!!layout,environment,returnToPage,ownsInput:usable,visibleEntries:visible});
  const complete=useCallback(()=>{if(!usable())return;search.dispatch({type:'results'});session.close();},[search,session,usable]);
- const context=useMemo<KeyboardContext>(()=>({host:()=>host,ownsInput:()=>usable()&&search.get().phase==='editing',restoreFocus:noop,completionLabel:'Results',inside:()=>[...doc?.querySelectorAll<HTMLElement>('.gg-search-overlay')??[]],placementBounds:()=>layoutRef.current?.keyboardBand??null,onBoundsChange:rects=>{if(usable())setKeyboards(old=>JSON.stringify(old)===JSON.stringify(rects)?old:rects);}}),[host,doc,search,usable]);
+ const context=useMemo<KeyboardContext>(()=>({host:()=>host,ownsInput:()=>usable()&&search.get().phase==='editing',restoreFocus:noop,completionLabel:'Results',portalZIndex:5002,inside:()=>[...doc?.querySelectorAll<HTMLElement>('.gg-search-overlay')??[]],placementBounds:()=>layoutRef.current?.keyboardBand??null,onBoundsChange:rects=>{if(usable())setKeyboards(old=>JSON.stringify(old)===JSON.stringify(rects)?old:rects);}}),[host,doc,search,usable]);
  useEffect(()=>{if(preferences.loadState()==='unloaded'||preferences.loadState()==='failed')void preferences.load().catch(()=>{});},[preferences]);
  useLayoutEffect(()=>{search.dispatch({type:'account',account});},[search,account]);
  useLayoutEffect(()=>{if(!active){search.dispatch({type:'suspend'});session.close();}},[active,search,session]);

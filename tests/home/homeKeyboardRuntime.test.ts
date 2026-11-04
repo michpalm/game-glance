@@ -51,3 +51,5 @@ it('hides navigation in the owner page while Radial is in a popup, then restores
  expect(document.querySelector('[data-gg-keyboard-navigation]')).toBeNull();
  expect(page.querySelector('[data-gg-keyboard-navigation]')).toBeNull();
 });
+
+it('layers a Search-owned Radial portal above its host without changing the Social default',async()=>{const session=createKeyboardSession();session.open();Object.defineProperty(win,'getComputedStyle',{configurable:true,value:()=>({length:0,visibility:'visible'})});await act(()=>root.render(createElement(RadialKeyboard,{context:{host:()=>host,ownsInput:()=>owned,restoreFocus:()=>{},completionLabel:'Results',portalZIndex:5002},session,layouts:{layouts:[BUILTIN_QWERTY],current:0},draft:'',setDraft:()=>{},canSend:true,send:()=>{},field:()=>field,unavailable:()=>session.close(),ownsInput:()=>owned})));expect((document.querySelector('.gg-radial-keyboard-host') as HTMLElement).style.zIndex).toBe('5002');});

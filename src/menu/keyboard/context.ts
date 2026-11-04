@@ -1,6 +1,6 @@
 import {takeSteamFocus} from '../../home/steamFocus';
 export interface KeyboardRect {left:number;top:number;width:number;height:number}
-export interface KeyboardContext {inside?():readonly HTMLElement[];placementBounds?():KeyboardRect|null;onBoundsChange?(rects:readonly KeyboardRect[]):void;host(field:HTMLElement):HTMLElement|null;ownsInput():boolean;restoreFocus(field:HTMLElement):void;completionLabel:string}
+export interface KeyboardContext {portalZIndex?:number;inside?():readonly HTMLElement[];placementBounds?():KeyboardRect|null;onBoundsChange?(rects:readonly KeyboardRect[]):void;host(field:HTMLElement):HTMLElement|null;ownsInput():boolean;restoreFocus(field:HTMLElement):void;completionLabel:string}
 const SOCIAL:KeyboardContext={host:field=>field.closest<HTMLElement>('.gg-menu'),ownsInput:()=>true,completionLabel:'Send',restoreFocus:field=>{if(!field.isConnected)return;const target=field.matches('button')?field:field.querySelector<HTMLElement>('button')??field;target.focus({preventScroll:true});takeSteamFocus(target);}};
 export const keyboardContext=(context?:KeyboardContext):KeyboardContext=>context??SOCIAL;
 

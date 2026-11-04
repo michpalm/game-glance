@@ -61,7 +61,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
  useLayoutEffect(()=>{
   const field=live.current.field(),root=field?ctx.host(field):null,doc=field?.ownerDocument;
   if(!field||!root||!doc||!feeds){live.current.unavailable();return;}
-  const element=doc.createElement('div');element.className='gg-radial-keyboard-host';
+  const element=doc.createElement('div');element.className='gg-radial-keyboard-host';if(ctx.portalZIndex!==undefined)element.style.zIndex=String(ctx.portalZIndex);
   const style=doc.defaultView?.getComputedStyle(root);
   if(style)for(let i=0;i<style.length;i++){const name=style.item(i);if(name.startsWith('--gg-'))element.style.setProperty(name,style.getPropertyValue(name));}
   doc.body.append(element);setHost(element);props.session.setMode('radial');
