@@ -31,7 +31,7 @@ export function RadialKeyboardView({bounds,layout,state,short,type,completionLab
    </div>
    <div className="gg-radial-hint" style={{left:b.left,top:b.top+b.diameter+8,width:b.diameter}}>{side===0?'L3 Type · L2 Symbols':'R3 Type · R2 Symbols'}</div>
   </div>;
- })}<div className="gg-radial-actions"><span>{`Y Space · B Delete · A ${completionLabel} · X Close`}</span><span>L1 Uppercase · R1 Layout · {short}</span></div></>;
+ })}<div className="gg-radial-actions"><span>{`Y Space · B Delete · A ${completionLabel} · X Close`}</span><span>D-pad Move cursor · L1 Uppercase · R1 Layout · {short}</span></div></>;
 }
 /** Wrapper ensures all hooks/effects below are torn down whenever this chat's session closes. */
 export function RadialKeyboard(props:RadialKeyboardProps){
