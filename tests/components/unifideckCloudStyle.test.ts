@@ -36,3 +36,10 @@ it('matches the cloud in its badge and plain states, and nothing in a three-butt
     for (const doc of [badge, plain]) expect([...doc.querySelectorAll(UNIFIDECK_CLOUD_BUTTON)].map(b => b.id)).toEqual(['c']);
     expect(row('<button class="unifideck-icon-btn" id="c"><svg></svg></button>', 3).querySelectorAll(UNIFIDECK_CLOUD_BUTTON)).toHaveLength(0);
 });
+
+it('neutralises Unifideck’s breathing tint, so the cloud sits on the same glass as its neighbours', () => {
+    // Unifideck's .unifideck-breathe paints `var(--unifideck-btn-bg, green)` and an animated ring (Ally 2026-11-04).
+    const first = unifideckCloudCss('busy').split('\n')[0];
+    expect(first).toContain('--unifideck-btn-bg:rgba(12,16,22,.40)!important');
+    expect(first).toContain('--unifideck-btn-shadow:none!important');
+});
