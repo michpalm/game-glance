@@ -74,7 +74,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   if(!host||!bounds)return;
   const doc=host.ownerDocument,view=doc.defaultView!;
   const owns=()=>{const next=activeControllerIndex();if(next!==index){snapshot.current=null;setIndex(next);return false;}return live.current.session.get().open&&keyboardContext(live.current.context).ownsInput()&&live.current.ownsInput()&&host.isConnected&&view.getComputedStyle(host).visibility!=='hidden'&&doc.visibilityState!=='hidden';};
-  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,canChangeLayout:()=>nextLayout(live.current.layouts.layouts,layoutIndexRef.current)!==layoutIndexRef.current,direction:move=>{if(!owns())return;commit(moveCursor(typing.current,move));},changed:setState,failed:()=>live.current.unavailable(),command:command=>{
+  const stop=startRadialRuntime({document:doc,view,read:()=>snapshot.current,layout:()=>layoutRef.current,ownsInput:owns,completeOnRelease:ctx.completeOnRelease,canChangeLayout:()=>nextLayout(live.current.layouts.layouts,layoutIndexRef.current)!==layoutIndexRef.current,direction:move=>{if(!owns())return;commit(moveCursor(typing.current,move));},changed:setState,failed:()=>live.current.unavailable(),command:command=>{
    if(command.type==='close'){close();return;}
    if(command.type==='send'){if(live.current.canSend)live.current.send();return;}
    if(command.type==='layout'){const next=nextLayout(live.current.layouts.layouts,layoutIndexRef.current);if(next!==layoutIndexRef.current){typing.current=clearHeld(typing.current);setLayoutIndex(next);}return;}

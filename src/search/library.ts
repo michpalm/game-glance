@@ -14,9 +14,9 @@ export function createLibrarySource(ports:LibraryPorts):LibrarySource {
    const kind=a.app_type===1?'game':a.app_type===8?'demo':a.app_type===1073741824?'shortcut':null;
    if(!kind)continue;
    if(typeof a.BIsOwned!=='function')return {status:'unavailable',account};
-   if(!a.BIsOwned()||ports.hidden(a.appid!)||seen.has(a.appid!))continue;
+   if(a.BIsOwned()!==true)continue;const hidden=ports.hidden(a.appid!);if(typeof hidden!=='boolean')return {status:'unavailable',account};if(hidden||seen.has(a.appid!))continue;
    seen.add(a.appid!);entries.push({appId:a.appid!,title:a.display_name,kind,installed:kind==='shortcut'?null:typeof a.installed==='boolean'?a.installed:null});
   }
   return {status:'ready',account,entries};
- }catch{return {status:'unavailable',account};}},subscribe(account,changed){if(ports.account()!==account)return()=>{};try{return once(ports.subscribe(changed));}catch{return()=>{};}}};
+ }catch{return {status:'unavailable',account};}},subscribe(account,changed){if(ports.account()!==account)return()=>{};const stop=ports.subscribe(changed);if(typeof stop!=='function')throw Error('Library subscription unavailable');return once(stop);}};
 }

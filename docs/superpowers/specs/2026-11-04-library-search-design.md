@@ -1,6 +1,6 @@
 # Library Search — centered overlay (C)
 
-Written 2026-11-04. Product direction and interaction approved by Michael ("Let's go with C", then "Sounds good"). Written spec approved by Michael ("looks good") on 2026-11-04; implementation plan prepared for review. Intended release: 4.0.0 on `release/4.0`.
+Written 2026-11-04. Product direction and interaction approved by Michael ("Let's go with C", then "Sounds good"). Written spec approved by Michael ("looks good") on 2026-11-04; Native implementation and local automated/browser validation complete; independent review findings addressed in one regression-first pass. Device UI acceptance and the expanded visual matrix remain pending; see `docs/validation/4.0-library-search.md`. Intended release: 4.0.0 on `release/4.0`.
 
 ## Intent and scope
 

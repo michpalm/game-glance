@@ -6,7 +6,8 @@ import {homeSearchBounds,searchOverlayOpen,type HomeSearchSession} from './homeS
 import type {HomeStatusControls} from './homeControls';
 import {focusElement} from './homeNav';
 import {homeCanvas} from './scale';
-import {tokenCss} from '../styles/tokens';
+import {tokenCss,installCalmFilter} from '../styles/tokens';
+import {installSearchOwnership} from '../search/ownership';
 import {keyboardStyles} from '../menu/keyboard/styles';
 import {radialStyles} from '../menu/radialStyles';
 import {createKeyboardSession} from '../menu/keyboard/session';
@@ -39,7 +40,14 @@ export function HomeSearch({search,active,account,controls,ownsInput,preferences
  const visible=window?.indices.map(i=>state.matches[i])??[];
  const runtime=useLibrarySearch({doc,search,active:active&&!!layout,environment,returnToPage,ownsInput:usable,visibleEntries:visible});
  const complete=useCallback(()=>{if(!usable())return;search.dispatch({type:'results'});session.close();},[search,session,usable]);
- const context=useMemo<KeyboardContext>(()=>({host:()=>host,ownsInput:()=>usable()&&search.get().phase==='editing',restoreFocus:noop,completionLabel:'Results',portalZIndex:5002,inside:()=>[...doc?.querySelectorAll<HTMLElement>('.gg-search-overlay')??[]],placementBounds:()=>layoutRef.current?.keyboardBand??null,onBoundsChange:rects=>{if(usable())setKeyboards(old=>JSON.stringify(old)===JSON.stringify(rects)?old:rects);}}),[host,doc,search,usable]);
+ const context=useMemo<KeyboardContext>(()=>({host:()=>host,ownsInput:()=>usable()&&search.get().phase==='editing',restoreFocus:noop,completionLabel:'Results',completeOnRelease:true,portalZIndex:5002,inside:()=>[...doc?.querySelectorAll<HTMLElement>('.gg-search-overlay')??[]],placementBounds:()=>layoutRef.current?.keyboardBand??null,onBoundsChange:rects=>{if(usable())setKeyboards(old=>JSON.stringify(old)===JSON.stringify(rects)?old:rects);}}),[host,doc,search,usable]);
+ useLayoutEffect(()=>{if(overlay)controls?.release?.();},[overlay,controls]);
+ useLayoutEffect(()=>{if(active&&overlay&&!layout){search.dispatch({type:'suspend'});session.close();}},[active,overlay,!!layout,search,session]);
+ useLayoutEffect(()=>doc&&overlay?installCalmFilter(doc):undefined,[doc,overlay]);
+ useLayoutEffect(()=>{
+  if(!doc||!host||!active||!overlay||!layout)return;
+  return installSearchOwnership(doc,{ownsInput:()=>usable()&&!!layoutRef.current&&searchOverlayOpen(search.get())&&search.get().account===account,roots:()=>[host,...doc.querySelectorAll<HTMLElement>('.gg-radial-keyboard-host')],fallback:()=>search.get().phase==='results'?doc.querySelector<HTMLElement>(`[data-search-result="${search.get().focusedAppId}"]`)??field.current:field.current,focus:node=>focusElement(node,'Search')});
+ },[doc,host,active,overlay,!!layout,usable,search,account]);
  useEffect(()=>{if(preferences.loadState()==='unloaded'||preferences.loadState()==='failed')void preferences.load().catch(()=>{});},[preferences]);
  useLayoutEffect(()=>{search.dispatch({type:'account',account});},[search,account]);
  useLayoutEffect(()=>{if(!active){search.dispatch({type:'suspend'});session.close();}},[active,search,session]);
@@ -52,26 +60,28 @@ export function HomeSearch({search,active,account,controls,ownsInput,preferences
   measure();view.addEventListener('resize',measure);const r=doc?.querySelector('.gg-status-host:not(.gg-menu-status-host) .gh-status'),observer=view.ResizeObserver?new view.ResizeObserver(measure):null;if(r)observer?.observe(r);
   return()=>{view.removeEventListener('resize',measure);observer?.disconnect();};
  },[doc,statusBounds,state.phase==='hidden',active]);
+ useLayoutEffect(()=>{if(list.current&&layout&&overlay){const max=Math.max(0,state.matches.length*layout.rowHeight-layout.listHeight);list.current.scrollTop=Math.min(state.scrollTop,max);}},[overlay,layout?.listHeight,state.scrollTop,state.matches.length]);
  useLayoutEffect(()=>{
   if(!overlay||!active||!layout||state.phase==='editing')return;
   const epoch=state.epoch,node=state.phase==='results'?doc?.querySelector<HTMLElement>(`[data-search-result="${state.focusedAppId}"]`):field.current;
   if(!usable()||search.get().epoch!==epoch||!node?.isConnected)return;
-  if(state.phase==='results'&&list.current){const index=state.matches.findIndex(a=>a.appId===state.focusedAppId),top=index*layout.rowHeight,bottom=top+layout.rowHeight;if(top<list.current.scrollTop)list.current.scrollTop=top;else if(bottom>list.current.scrollTop+layout.listHeight)list.current.scrollTop=bottom-layout.listHeight;}
+  if(state.phase==='results'&&list.current){const index=state.matches.findIndex(a=>a.appId===state.focusedAppId),top=index*layout.rowHeight,bottom=top+layout.rowHeight;if(top<list.current.scrollTop)list.current.scrollTop=top;else if(bottom>list.current.scrollTop+layout.listHeight)list.current.scrollTop=bottom-layout.listHeight;if(list.current.scrollTop!==state.scrollTop)search.dispatch({type:'scroll',top:list.current.scrollTop});}
   focusElement(node,'Search');
- },[overlay,active,state.phase,state.focusedAppId,state.epoch,doc,layout?.rowHeight,layout?.listHeight,usable,search]);
- useLayoutEffect(()=>{if(list.current&&layout&&overlay){const max=Math.max(0,state.matches.length*layout.rowHeight-layout.listHeight);list.current.scrollTop=Math.min(state.scrollTop,max);}},[overlay,layout?.listHeight]);
+ },[overlay,active,state.phase,state.focusedAppId,state.epoch,state.matches.findIndex(a=>a.appId===state.focusedAppId),doc,layout?.rowHeight,layout?.listHeight,usable,search]);
+
  useEffect(()=>()=>{session.close();search.dispatch({type:'suspend'});},[session,search]);
  const register=useCallback((node:HTMLElement|null)=>{field.current=node;controls?.register('search',node);},[controls]);
  const back=()=>{if(state.phase==='results')search.dispatch({type:'back'});else if(state.phase==='editing'){search.dispatch({type:'keyboard-close'});session.close();}else runtime.dismiss(true);};
- const fieldButtons=(e:GamepadEvent)=>{if(!overlay){controls?.button('search',e);return;}if(state.phase==='editing')return;if(e.detail.button===B.CANCEL||e.detail.button===B.DIR_DOWN){e.preventDefault();e.stopPropagation();if(e.detail.button===B.CANCEL)back();else search.dispatch({type:'results'});}};
+ const enterResults=()=>{if(search.get().library.status==='unavailable'){const retry=doc?.querySelector<HTMLElement>('[data-search-retry]');if(retry)focusElement(retry,'Search retry');}else search.dispatch({type:'results'});};
+ const fieldButtons=(e:GamepadEvent)=>{if(!overlay){controls?.button('search',e);return;}if(state.phase==='editing')return;if(e.detail.button===B.CANCEL||e.detail.button===B.DIR_DOWN){e.preventDefault();e.stopPropagation();if(e.detail.button===B.CANCEL)back();else enterResults();}};
  const fieldNode=<DialogButton ref={register} data-home-search={state.phase} className={overlay?'gg-search-field':'gh-search-control'} aria-label="Search library" aria-expanded={overlay} onGamepadFocus={()=>{if(!overlay)controls?.focused('search');}} onButtonDown={fieldButtons} onButtonUp={(e:GamepadEvent)=>{if(!overlay)controls?.buttonUp?.('search',e);}} onClick={()=>{if(usable())search.dispatch({type:'edit'});}}><LuSearch aria-hidden="true"/><span>{overlay?(state.draft?<DraftText text={state.draft} session={session}/>:'Search games…'):'Search'}</span></DialogButton>;
  const bounds=geometry.status?homeSearchBounds(geometry,geometry.status,false):null;
  if(!doc)return null;
- return createPortal(<Focusable className="gh-keyboard-surface" ref={setHost} style={{position:'fixed',inset:0,zIndex:5001,pointerEvents:'none'}} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onPointerCancel={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()} onKeyDown={e=>{if(!overlay||state.phase==='editing')return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();back();}else if(e.key==='ArrowDown'&&state.phase==='field'){e.preventDefault();e.stopPropagation();search.dispatch({type:'results'});}}} onButtonDown={(e:GamepadEvent)=>{if(state.phase==='editing'&&(failed||pref.socialKeyboard==='compact')&&e.detail.button===B.CANCEL){e.preventDefault();e.stopPropagation();back();}}}>
+ return createPortal(<Focusable className="gh-keyboard-surface" ref={setHost} style={{position:'fixed',inset:0,zIndex:5001,pointerEvents:'none'}} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onPointerCancel={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()} onKeyDown={e=>{if(!overlay||state.phase==='editing')return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();back();}else if(e.key==='ArrowDown'&&state.phase==='field'){e.preventDefault();e.stopPropagation();enterResults();}}} onButtonDown={(e:GamepadEvent)=>{if(state.phase==='editing'&&(failed||pref.socialKeyboard==='compact')&&e.detail.button===B.CANCEL){e.preventDefault();e.stopPropagation();back();}}}>
   <style>{tokenCss('.gh-keyboard-surface')}{keyboardStyles}{radialStyles}{searchStyles}</style>
   {active&&state.phase==='top'&&bounds&&<div className="gh-search-position" style={{left:bounds.left,top:bounds.top,width:bounds.width}}>{fieldNode}</div>}
-  {active&&overlay&&layout&&<><div className="gg-search-backdrop" onClick={e=>{e.preventDefault();e.stopPropagation();back();}}/><SearchOverlay state={state} layout={layout} metadata={runtime.metadata} field={fieldNode} listRef={list} onResult={appId=>void runtime.openResult(appId)} onFocus={appId=>{if(usable())search.dispatch({type:'focus-result',appId});}} onBack={back} onRetry={runtime.retry} onScroll={top=>search.dispatch({type:'scroll',top})}/></>}
+  {active&&overlay&&layout&&<><div className="gg-search-backdrop" onClick={e=>{e.preventDefault();e.stopPropagation();if(state.phase==='editing')back();else runtime.dismiss(true);}}/><SearchOverlay state={state} layout={layout} metadata={runtime.metadata} field={fieldNode} listRef={list} onResult={appId=>void runtime.openResult(appId)} onFocus={appId=>{if(usable())search.dispatch({type:'focus-result',appId});}} onBack={back} onRetry={runtime.retry} onScroll={top=>search.dispatch({type:'scroll',top})}/></>}
   {overlay&&failed&&<small className="gh-search-error" style={{position:'fixed',left:layout?.left,top:layout?layout.top-20:0,pointerEvents:'none'}}>Radial keyboard unavailable. Using Compact for this opening.</small>}
-  {active&&state.phase==='editing'&&layouts&&host&&(pref.socialKeyboard==='radial'&&!failed?<RadialKeyboard context={context} session={session} layouts={layouts} draft={state.draft} setDraft={text=>{if(usable())search.dispatch({type:'draft',text});}} canSend send={complete} field={()=>field.current} ownsInput={usable} unavailable={()=>setFailed(true)}/>:<MenuKeyboard context={context} session={session} layouts={layouts} draft={state.draft} setDraft={text=>{if(usable())search.dispatch({type:'draft',text});}} canSend send={complete} field={()=>field.current}/>)}
+  {active&&layout&&state.phase==='editing'&&layouts&&host&&(pref.socialKeyboard==='radial'&&!failed?<RadialKeyboard context={context} session={session} layouts={layouts} draft={state.draft} setDraft={text=>{if(usable())search.dispatch({type:'draft',text});}} canSend send={complete} field={()=>field.current} ownsInput={usable} unavailable={()=>setFailed(true)}/>:<MenuKeyboard context={context} session={session} layouts={layouts} draft={state.draft} setDraft={text=>{if(usable())search.dispatch({type:'draft',text});}} canSend send={complete} field={()=>field.current}/>)}
  </Focusable>,doc.body);
 }

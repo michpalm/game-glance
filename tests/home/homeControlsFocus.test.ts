@@ -43,3 +43,5 @@ describe('Home replacement Search navigation',()=>{
 });
 
 it('keeps browsing-results ownership even when the keyboard is closed',()=>{const f=fixture(true,true);f.add('search');f.flush();f.focus.externalFocus(f.document.body as unknown as HTMLElement);expect(f.hide).not.toHaveBeenCalled();expect(f.focus.actionUp(event(B.DIR_UP))).toBe(false);f.focus.button('search',event(B.DIR_DOWN));expect(f.home).not.toHaveBeenCalled();});
+
+it('releases status ownership before Search disappears so queued repair cannot take destination focus',()=>{const f=fixture(true),pill=f.add('search');f.add('connection');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(pill);f.focus.release();const count=f.moved.length;f.focus.register('search',null);f.flush();expect(f.moved).toHaveLength(count);expect(f.home).not.toHaveBeenCalled();});

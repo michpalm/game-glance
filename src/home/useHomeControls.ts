@@ -24,7 +24,7 @@ interface FocusOptions {
 }
 /** The only extra input owner is a registered Home status cell. It has no activation destinations. */
 export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls & {
-    setActive(value:boolean,repair:boolean):void;actionUp(event:GamepadEvent):boolean;externalFocus(target:Element|null):void;dispose():void;
+    setActive(value:boolean,repair:boolean):void;actionUp(event:GamepadEvent):boolean;externalFocus(target:Element|null):void;release():void;dispose():void;
 } {
     const nodes=new Map<HomeControlId,HTMLElement>(),visible=options.visible??visibleHomeControl;
     const searchBusy=()=>!!(options.search?.busy?.()||options.search?.editing());
@@ -73,6 +73,7 @@ export function createHomeStatusFocus(options:FocusOptions):HomeStatusControls &
             if(!value){pendingSearch=false;options.search?.hide();cancel?.();cancel=null;if(active&&owned&&repair)home();owned=false;bypass=false;setHandoff(false);lastNode=null;}
             active=value;
         },
+        release(){pendingSearch=false;searchArmed=false;owned=false;lastNode=null;cancel?.();cancel=null;},
         dispose(){disposed=true;active=false;owned=false;cancel?.();cancel=null;nodes.clear();},
     };
 }

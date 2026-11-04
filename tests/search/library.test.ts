@@ -8,3 +8,5 @@ describe('library source',()=>{
  it('fails closed on throwing hidden and membership predicates; preserves same-title ids',()=>{const p=port([app(1),app(2,{display_name:'Game 1'})]);expect((createLibrarySource(p).read('one') as any).entries).toHaveLength(2);expect(createLibrarySource({...p,apps:()=>[app(1,{BIsOwned:()=>{throw Error()}})]}).read('one').status).toBe('unavailable');expect(createLibrarySource({...p,hidden:()=>{throw Error()}}).read('one').status).toBe('unavailable');});
  it('only subscribes on demand and disposes once',()=>{const p=port();const s=createLibrarySource(p);expect(p.subscribe).not.toHaveBeenCalled();const stop=s.subscribe('one',vi.fn());stop();stop();expect(p.subscribe.mock.results[0].value).toHaveBeenCalledTimes(1);});
 });
+
+it('rejects an indeterminate hidden result rather than treating it as visible',()=>{expect(createLibrarySource({...port([app(1)]),hidden:()=>undefined} as any).read('one').status).toBe('unavailable');});

@@ -13,10 +13,11 @@ export function createSearchRuntime(p:RuntimePorts){
  const stop=()=>{alive=false;pending?.abort();pending=null;target=null;stopLibrary();stopRoute();stopLibrary=()=>{};stopRoute=()=>{};};
  const read=()=>{if(!current())return;const account=p.search.get().account;if(account)p.search.dispatch({type:'library',epoch,snapshot:p.environment.library.read(account)});};
  const dismiss=(restore:boolean)=>{const canReturn=current();p.search.dispatch({type:'dismiss'});stop();if(restore&&canReturn)p.returnToPage();};
- return {start(){if(alive)return;const s=p.search.get();if(!s.account||!searchOverlayOpen(s)||!p.ownsInput())return;alive=true;epoch=s.epoch;
-  stopRoute=p.environment.route.subscribe(()=>{if(!current())return;if(target&&p.environment.route.get()===target)return;p.search.dispatch({type:'suspend'});stop();});
-  stopLibrary=p.environment.library.subscribe(s.account,read);read();
- },stop,retry:read,dismiss,async openResult(appId:number){
+ const start=()=>{if(alive)return;const s=p.search.get();if(!s.account||!searchOverlayOpen(s)||!p.ownsInput())return;alive=true;epoch=s.epoch;
+  try{stopRoute=p.environment.route.subscribe(()=>{if(!current())return;if(target&&p.environment.route.get()===target)return;p.search.dispatch({type:'suspend'});stop();});}catch{p.search.dispatch({type:'library',epoch,snapshot:{status:'unavailable',account:s.account}});return;}
+  try{stopLibrary=p.environment.library.subscribe(s.account,read);read();}catch{stopLibrary();stopLibrary=()=>{};p.search.dispatch({type:'library',epoch,snapshot:{status:'unavailable',account:s.account}});}
+ };
+ return {start,stop,retry:()=>{stop();start();},dismiss,async openResult(appId:number){
   if(!current()||pending)return;const s=p.search.get(),snapshot=s.account?p.environment.library.read(s.account):null;
   if(snapshot?.status!=='ready'||!snapshot.entries.some(a=>a.appId===appId)){if(snapshot)p.search.dispatch({type:'library',epoch,snapshot});return;}
   const request=new AbortController();pending=request;target=`/library/app/${appId}`;
@@ -30,6 +31,7 @@ export function useLibrarySearch(p:RuntimePorts&{doc:Document|null;active:boolea
  const metadata=useMemo(()=>createResultMetadata({capsules:id=>capsuleUrls(id,browserStores),installed:unifideckInstalled}),[]);
  const values=useSyncExternalStore(metadata.subscribe,metadata.get);
  useLayoutEffect(()=>{metadata.reset();},[metadata,state.account]);
+ useLayoutEffect(()=>{if(!p.active||!open)metadata.suspend();},[metadata,p.active,open,state.epoch]);
  useLayoutEffect(()=>{if(p.active&&open)runtime.start();else runtime.stop();return runtime.stop;},[runtime,p.active,open,state.account,state.epoch]);
  useLayoutEffect(()=>{if(p.active&&open)metadata.visible(p.visibleEntries,state.epoch);},[metadata,p.active,open,p.visibleEntries,state.epoch]);
  useLayoutEffect(()=>()=>metadata.dispose(),[metadata]);

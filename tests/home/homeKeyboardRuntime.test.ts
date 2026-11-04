@@ -1,4 +1,4 @@
-import {act,createElement,forwardRef} from 'react';
+import {act,createElement,forwardRef,useLayoutEffect} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,it,expect,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
@@ -11,7 +11,7 @@ import {BUILTIN_QWERTY} from '../../src/menu/keyboard/layouts';
 import {createKeyboardSession} from '../../src/menu/keyboard/session';
 const kv=vi.hoisted(()=>({resolve:null as null|((value:unknown)=>void),set:vi.fn()}));
 vi.unmock('react-dom');
-vi.mock('../../src/menu/keyboard/controllerFeed',()=>({ControllerFeed:()=>null,ControllerFeedGuard:({children}:any)=>children,activeControllerIndex:()=>0,discoverControllerFeeds:()=>({})}));
+vi.mock('../../src/menu/keyboard/controllerFeed',()=>({ControllerFeed:({snapshot}:any)=>{useLayoutEffect(()=>{snapshot({axes:{nControllerIndex:0,LeftJoystick:{x:0,y:0},RightJoystick:{x:0,y:0}},buttons:{nControllerIndex:0,bLeftStickClick:false,bRightStickClick:false,bLeftTrigger:false,bRightTrigger:false,bLeftBumper:false,bRightBumper:false,bButtonNorth:false,bButtonEast:false,bButtonSouth:false,bButtonWest:false}});return()=>snapshot(null);},[snapshot]);return null;},ControllerFeedGuard:({children}:any)=>children,activeControllerIndex:()=>0,discoverControllerFeeds:()=>({})}));
 vi.mock('../../src/data/kv',()=>({backendKv:{get:()=>new Promise(resolve=>{kv.resolve=resolve;}),set:kv.set}}));
 vi.mock('@decky/ui',()=>({Focusable:forwardRef(({children,onButtonDown,onButtonUp,noFocusRing,...props}:any,ref:any)=>createElement('div',{...props,ref},children)),DialogButton:forwardRef(({children,onGamepadFocus,...props}:any,ref:any)=>createElement('button',{...props,ref},children)),findModule:()=>{},findModuleExport:()=>null}));
 let root:Root,win:any,field:HTMLElement,host:HTMLElement,owned:boolean,active:HTMLElement;

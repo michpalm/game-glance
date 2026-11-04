@@ -1,6 +1,6 @@
 import type {GamepadEvent} from '@decky/ui';
 export type HomeControlId='search'|'download'|'connection'|'battery'|'clock'|'profile'|`controller:${number}`|'controllers-more';
-export interface HomeStatusControls {register(id:HomeControlId,node:HTMLElement|null):void;focused(id:HomeControlId):void;button(id:HomeControlId,event:GamepadEvent):void;buttonUp?(id:HomeControlId,event:GamepadEvent):void}
+export interface HomeStatusControls {release?():void;register(id:HomeControlId,node:HTMLElement|null):void;focused(id:HomeControlId):void;button(id:HomeControlId,event:GamepadEvent):void;buttonUp?(id:HomeControlId,event:GamepadEvent):void}
 const rank=(id:HomeControlId)=>id==='search'?-1:id==='download'?0:id==='connection'?1:id.startsWith('controller:')?2+Number(id.split(':')[1]):id==='controllers-more'?100:id==='battery'?101:id==='clock'?102:103;
 export const orderHomeControls=(ids:readonly HomeControlId[]):HomeControlId[]=>[...new Set(ids)].sort((a,b)=>rank(a)-rank(b));
 export function nextHomeControl(current:HomeControlId,direction:'left'|'right',order:readonly HomeControlId[]):HomeControlId|null {
