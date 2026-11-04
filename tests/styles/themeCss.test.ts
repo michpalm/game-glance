@@ -301,6 +301,23 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
         expect(buildUnifideckCss(full, { restyle: true })).toMatch(rowRule);
         expect(buildUnifideckCss(full)).not.toMatch(/padding-top: 0 !important/);
     });
+    it("joins Unifideck's Stop to Resume as one accent pill, as Steam's Resume and ✕ (Ally 2026-11-04)", () => {
+        const css = buildUnifideckCss(full, { restyle: true });
+        const resume = '.unifideck-hide-native-play .unifideck-resume-btn:has(+ .unifideck-stop-btn)';
+        const stop = '.unifideck-hide-native-play .unifideck-resume-btn + .unifideck-stop-btn';
+        // Together as wide as the Play pill, Stop at Steam's share of it (35 of 212 css px measured on Mini Motorways).
+        expect(css).toContain(`${resume} { width: calc(var(--gg-play-w) * 0.835) !important;`);
+        expect(css).toMatch(/\.unifideck-resume-btn:has\(\+ \.unifideck-stop-btn\) \{[^}]*border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important;/);
+        expect(css).toMatch(new RegExp(`${stop.replace(/[.+()]/g, '\\$&')} \\{[^}]*width: calc\\(var\\(--gg-play-w\\) \\* 0.165\\) !important;[^}]*margin-left: calc\\(-1 \\* var\\(--gg-gap\\)\\) !important;[^}]*background: var\\(--gg-accent\\) !important;[^}]*border-left: 1px solid rgba\\(4, 17, 12, 0.25\\) !important;`));
+        // Focused: Steam's lighter segment over the accent, its ✕ white (Unifideck's own focus draws it near black, which vanished on our glass).
+        expect(css).toContain(`${stop}:is(.gpfocus, :focus) { background: linear-gradient(rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.28)), var(--gg-accent) !important; }`);
+        expect(css).toMatch(/\.unifideck-resume-btn \+ \.unifideck-stop-btn:is\(\.gpfocus, :focus\) svg \{[^}]*fill: #ffffff !important;/);
+        // One ring around both, whichever has focus, drawn by Resume's ::before reaching over Stop.
+        expect(css).toMatch(/\.unifideck-resume-btn:has\(\+ \.unifideck-stop-btn\)::before \{[^}]*content: "" !important;[^}]*right: calc\(-1 \* var\(--gg-play-w\) \* 0.165\) !important;/);
+        expect(css).toContain('.unifideck-resume-btn:has(+ .unifideck-stop-btn:is(.gpfocus, :focus))::before');
+        // Not without our page's look (Unifideck's own then stays).
+        expect(buildUnifideckCss(full)).not.toContain('.unifideck-stop-btn');
+    });
     it('puts the cloud-save button after controller and settings (the row with four buttons only), extras last', () => {
         const css = buildUnifideckCss(full);
         expect(css).toMatch(/\.unifideck-hide-native-play [^{]*:has\(> :nth-child\(4\)\) > :first-child \{ order: 3 !important; \}/);

@@ -496,7 +496,37 @@ export function buildUnifideckCss({ header, details, root }: ThemeClasses, optio
         options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:is(.gpfocus, :focus)`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `) : '',
         options.restyle ? rule(`${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-icon-btn:not(.gg-uni-cloud):is(.gpfocus, :focus) svg`, ` color: #ffffff !important; fill: currentColor !important; `) : '',
         options.restyle ? rule(focused, ` box-shadow: none !important; ${actionFocused} `) : '',
+        ...(options.restyle ? unifideckStopRules() : []),
     ].filter((r) => r.length > 0).join('\n');
+}
+
+/** Steam's ✕ segment's share of its running Play pill: 35 of 212 css px (Mini Motorways on the Ally, 2026-11-04). */
+const STOP_SHARE = 0.165;
+/**
+ * Unifideck's Stop (✕) while its game runs, joined to Resume as one accent pill, as Steam's Resume and ✕: together the Play pill's
+ * width, Steam's divider and lighter focused segment, and one focus ring around both (Resume's ::before, reaching over Stop; two
+ * rings would cross the divider). Unifideck's own focus draws the ✕ near black for its white fill, which vanished on our glass.
+ */
+function unifideckStopRules(): string[] {
+    const resume = `${UNIFIDECK_PAGE} .unifideck-resume-btn:has(+ .unifideck-stop-btn)`;
+    const stop = `${UNIFIDECK_PAGE} .unifideck-resume-btn + .unifideck-stop-btn`;
+    const stopW = `calc(var(--gg-play-w) * ${STOP_SHARE})`;
+    const lit = 'rgba(255, 255, 255, 0.28)';
+    return [
+        rule(resume, ` width: calc(var(--gg-play-w) * ${+(1 - STOP_SHARE).toFixed(3)}) !important; flex: 0 0 calc(var(--gg-play-w) * ${+(1 - STOP_SHARE).toFixed(3)}) !important;
+            border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; `),
+        rule(stop, ` width: ${stopW} !important; min-width: 0 !important; flex: 0 0 ${stopW} !important; height: var(--gg-icon) !important; margin-left: calc(-1 * var(--gg-gap)) !important;
+            background: var(--gg-accent) !important; border: 0 !important; border-left: 1px solid rgba(4, 17, 12, 0.25) !important; border-radius: 0 ${R_PLAY} ${R_PLAY} 0 !important;
+            box-shadow: none !important; outline: none !important; transform: none !important; color: #ffffff !important; `),
+        rule(`${stop} svg`, ` width: ${d(14)} !important; height: ${d(14)} !important; color: #ffffff !important; fill: #ffffff !important; `),
+        rule(`${stop}:is(.gpfocus, :focus)`, ` background: linear-gradient(${lit}, ${lit}), var(--gg-accent) !important; `),
+        rule(`${stop}:is(.gpfocus, :focus) svg`, ` color: #ffffff !important; fill: #ffffff !important; `),
+        // The ring: on neither button itself, on one layer over both.
+        rule(`${resume}:is(.gpfocus, :focus, :focus-within, :hover)`, ` outline: none !important; box-shadow: none !important; `),
+        rule(`${resume}::before`, ` content: "" !important; display: block !important; position: absolute !important; top: 0 !important; bottom: 0 !important; left: 0 !important;
+            right: calc(-1 * var(--gg-play-w) * ${STOP_SHARE}) !important; border-radius: ${R_PLAY} !important; pointer-events: none !important; z-index: 3 !important; outline: none; `),
+        rule([`${NOT_MOUSE} ${resume}:is(.gpfocus, :focus)::before`, `${NOT_MOUSE} ${UNIFIDECK_PAGE} .unifideck-resume-btn:has(+ .unifideck-stop-btn:is(.gpfocus, :focus))::before`], actionRing),
+    ];
 }
 
 /** The Clean look's bottom margin under the Play row (room for Steam's button legend), and the gaps around the row. */
