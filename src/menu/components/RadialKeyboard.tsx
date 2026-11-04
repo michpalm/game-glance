@@ -66,7 +66,7 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   if(style)for(let i=0;i<style.length;i++){const name=style.item(i);if(name.startsWith('--gg-'))element.style.setProperty(name,style.getPropertyValue(name));}
   doc.body.append(element);setHost(element);props.session.setMode('radial');
   const resize=()=>{const win=doc.defaultView!,r=field.getBoundingClientRect();const pair=radialBounds({width:win.innerWidth,height:win.innerHeight},{left:r.left,top:r.top,width:r.width,height:r.height});if(!pair){live.current.unavailable();return;}setBounds(pair);};
-  const stop=installRadialSurface(field,()=>[element],close,resize);
+  const stop=installRadialSurface(field,()=>[element,...ctx.inside?.()??[]],close,resize);
   return ()=>{stop();element.remove();props.session.setMode(null);typing.current=clearHeld(typing.current);if(props.context){if(ctx.ownsInput())ctx.restoreFocus(field);}else if(field.isConnected&&doc.querySelector('[data-gg-focus="social:compose"]')?.contains(field.querySelector('button')??field)){const button=field.querySelector<HTMLElement>('button');button?.focus({preventScroll:true});if(button)takeSteamFocus(button);}};
  },[feeds,close,props.session]);
  useLayoutEffect(()=>host&&bounds?hideKeyboardNavigation(host.ownerDocument):undefined,[host,!!bounds]);

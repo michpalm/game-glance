@@ -311,7 +311,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     useEffect(() => {
         const view = host?.ownerDocument.defaultView;
         if (!open || !view) return;
-        const removeTap = installKeyboardOutsideTap(view, () => [panel.current, field()].filter((e): e is HTMLElement => !!e), session.close);
+        const removeTap = installKeyboardOutsideTap(view, () => [...[panel.current, field()].filter((e): e is HTMLElement => !!e),...contextRef.current.inside?.()??[]], session.close);
         const removeKeys = installPhysicalKeys(view, event => {
             if(!ctx.ownsInput())return false;
             const { typing: t, canSend: can, send: go } = live.current;
