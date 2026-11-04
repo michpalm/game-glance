@@ -1,15 +1,15 @@
 import {describe,it,expect} from 'vitest';
-import {reduceHomeSearch,homeSearchBounds,type HomeSearchState} from '../../src/home/homeSearch';
-const initial:HomeSearchState={phase:'hidden',draft:'',account:'one'};
+import {reduceHomeSearch,homeSearchBounds,initialHomeSearch,type HomeSearchState} from '../../src/home/homeSearch';
+const initial:HomeSearchState=initialHomeSearch('one');
 describe('Home search preview',()=>{
  it('reveals only on top entry, opens editing there, completes without submission and retains the draft until account changes',()=>{
   expect(reduceHomeSearch(initial,{type:'edit'})).toBe(initial);
   let state=reduceHomeSearch(initial,{type:'enter'});expect(state.phase).toBe('top');
   state=reduceHomeSearch(state,{type:'edit'});expect(state.phase).toBe('editing');
   state=reduceHomeSearch(state,{type:'draft',text:'Example'});
-  expect(reduceHomeSearch(state,{type:'complete'})).toEqual({...state,phase:'top'});
-  for(const type of ['content','suspend'] as const)expect(reduceHomeSearch(state,{type})).toEqual({...state,phase:'hidden'});
-  expect(reduceHomeSearch(state,{type:'account',account:'two'})).toEqual({phase:'hidden',draft:'',account:'two'});
+  expect(reduceHomeSearch(state,{type:'complete'})).toEqual({...state,phase:'field',focusedAppId:null});
+  for(const type of ['content','suspend'] as const)expect(reduceHomeSearch(state,{type})).toEqual({...state,phase:'hidden',epoch:state.epoch+1});
+  expect(reduceHomeSearch(state,{type:'account',account:'two'})).toEqual(initialHomeSearch('two',state.epoch+1));
   expect(reduceHomeSearch(state,{type:'account',account:'one'})).toBe(state);
  });
  it('ignores draft writes outside editing and repeat events preserve identity',()=>{
