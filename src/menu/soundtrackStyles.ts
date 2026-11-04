@@ -14,4 +14,5 @@ export const soundtrackStyles = `
 .gg-menu .gg-soundtrack-button svg{width:26px;height:26px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-soundtrack-button.gg-soundtrack-play.DialogButton{width:76px;height:76px;border-color:transparent;background:var(--gg-accent);color:var(--gg-on-accent,#fff)}
 .gg-menu .gg-soundtrack-play svg{width:34px;height:34px}
+.gg-menu .gg-soundtrack-fill svg{fill:currentColor}
 `;

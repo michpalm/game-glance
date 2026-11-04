@@ -36,9 +36,9 @@ export function SoundtrackPanel({ s, a }: { s: SoundtrackSnapshot; a: Soundtrack
                 </div>
                 <Focusable className="gg-soundtrack-controls" flow-children="row">
                     <MenuAction id="soundtrack:shuffle" className="gg-soundtrack-button" ariaLabel="Shuffle" selected={s.shuffle} onAction={a.toggleShuffle}><LuShuffle aria-hidden="true" /></MenuAction>
-                    <MenuAction id="soundtrack:previous" className="gg-soundtrack-button" ariaLabel="Previous" onAction={a.previous}><LuSkipBack aria-hidden="true" /></MenuAction>
-                    <MenuAction id="soundtrack:play" className="gg-soundtrack-button gg-soundtrack-play" ariaLabel={playing ? 'Pause' : 'Play'} onAction={a.togglePlay}>{playing ? <LuPause aria-hidden="true" /> : <LuPlay aria-hidden="true" />}</MenuAction>
-                    <MenuAction id="soundtrack:next" className="gg-soundtrack-button" ariaLabel="Next" onAction={a.next}><LuSkipForward aria-hidden="true" /></MenuAction>
+                    <MenuAction id="soundtrack:previous" className="gg-soundtrack-button gg-soundtrack-fill" ariaLabel="Previous" onAction={a.previous}><LuSkipBack aria-hidden="true" /></MenuAction>
+                    <MenuAction id="soundtrack:play" className="gg-soundtrack-button gg-soundtrack-fill gg-soundtrack-play" ariaLabel={playing ? 'Pause' : 'Play'} onAction={a.togglePlay}>{playing ? <LuPause aria-hidden="true" /> : <LuPlay aria-hidden="true" />}</MenuAction>
+                    <MenuAction id="soundtrack:next" className="gg-soundtrack-button gg-soundtrack-fill" ariaLabel="Next" onAction={a.next}><LuSkipForward aria-hidden="true" /></MenuAction>
                     <MenuAction id="soundtrack:repeat" className="gg-soundtrack-button" ariaLabel={repeatLabel} selected={s.repeat !== 'off'} onAction={a.cycleRepeat}>{s.repeat === 'one' ? <LuRepeat1 aria-hidden="true" /> : <LuRepeat aria-hidden="true" />}</MenuAction>
                 </Focusable>
                 <div className="gg-menu-setting gg-menu-setting-slider" data-gg-focus="soundtrack:volume">

@@ -1,5 +1,5 @@
 import { isRadialControl } from './keyboard/radialControls';
-import type { MenuEvent, MenuState } from './model';
+import type { MenuEvent, MenuState, SectionId } from './model';
 import type { KeyboardSession } from './keyboard/session';
 
 export interface NativeInputOwner {
@@ -106,4 +106,11 @@ export function rememberFocusKey(key: string | undefined): key is string {
 /** Scoped fallback when a Steam routing event reaches the shell before the radial document listener. */
 export function radialOwnsButton(detail:{button:number},session:KeyboardSession):boolean {
     return session.get().open && session.mode() === 'radial' && isRadialControl(detail.button);
+}
+
+// Sections that always open on one control: the Soundtrack page on play/pause, whatever was focused last time.
+const OPEN_FOCUS: Partial<Record<SectionId, string>> = { soundtrack: 'soundtrack:play' };
+/** The control a section opens on: its fixed one, else the one the menu remembers for it. */
+export function openFocusKey(section: SectionId, remembered: string | undefined): string | undefined {
+    return OPEN_FOCUS[section] ?? remembered;
 }

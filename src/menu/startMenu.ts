@@ -85,7 +85,7 @@ export function startMenu(options?: Partial<Options>): Stop {
                 try { quickSettings = createQuickSettings(discoverQuickSettingsBindings()); } catch (error) { console.warn('[Game Glance] custom Quick Settings unavailable', error); }
                 try { performance = createPerformance(discoverPerformanceBindings()); } catch (error) { console.warn('[Game Glance] custom Performance unavailable', error); }
                 try { notificationBadge = createNotificationBadge(nativeNotificationBindings()); } catch (error) { console.warn('[Game Glance] notification badge unavailable', error); }
-                try { const music = nativeSoundtrackBindings(); if (music) soundtrack = createSoundtrack(music); } catch (error) { console.warn('[Game Glance] custom Soundtrack unavailable', error); }
+                try { const music = nativeSoundtrackBindings(); if (music) { soundtrack = createSoundtrack(music); soundtrack.subscribe(() => {}); } } catch (error) { console.warn('[Game Glance] custom Soundtrack unavailable', error); }
                 try { notifications = createNotificationList(nativeNotificationBindings()); notificationActions = nativeNotificationActions(); void notificationReads.load(); } catch (error) { console.warn('[Game Glance] notification list unavailable', error); }
             }
             state = reduceMenu(defaultMenuState(), { type: 'enable', value: true });

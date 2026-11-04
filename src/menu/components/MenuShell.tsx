@@ -9,7 +9,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey } from '../navigation';
+import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -55,8 +55,6 @@ export interface MenuShellProps {
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
 const NO_SUBSCRIBE = () => () => {};
-// Where focus starts in a section before the menu remembers one: the Soundtrack page opens on play/pause.
-const FIRST_FOCUS: Partial<Record<SectionId, string>> = { soundtrack: 'soundtrack:play' };
 const EMPTY_ROWS: TrayRow[] = [];
 const NO_ROWS = () => EMPTY_ROWS;
 const EMPTY_READS: ReadonlySet<string> = new Set();
@@ -90,7 +88,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         const element = root.current;
         if (!active) focusedSinceOpen.current = false;
         if (!element || !active || !inputActive()) return;
-        const key = state.focus[state.section] ?? FIRST_FOCUS[state.section];
+        const key = openFocusKey(state.section, state.focus[state.section]);
         const preferBar = focusPrefersBar(focusedSinceOpen.current, !!element.ownerDocument.activeElement?.closest('.gg-menu-bar'));
         focusedSinceOpen.current = true;
         const focus = () => {

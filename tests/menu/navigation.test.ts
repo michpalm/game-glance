@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey, focusPrefersBar } from '../../src/menu/navigation';
+import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey, focusPrefersBar, openFocusKey } from '../../src/menu/navigation';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
@@ -183,4 +183,11 @@ describe('Social chat from a notification', () => {
         expect(openSocialChat(s, dispatch, friend.steamId)).toBe(false); expect(dispatch).not.toHaveBeenCalled(); expect(s.enter).not.toHaveBeenCalled();
         expect(openSocialChat(undefined, dispatch, friend.steamId)).toBe(false);
     });
+});
+
+it('opens Soundtrack on play/pause and every other section on the control it remembers', () => {
+    expect(openFocusKey('soundtrack', 'soundtrack:position')).toBe('soundtrack:play');
+    expect(openFocusKey('soundtrack', undefined)).toBe('soundtrack:play');
+    expect(openFocusKey('quick-settings', 'quick:wifi')).toBe('quick:wifi');
+    expect(openFocusKey('navigate', undefined)).toBeUndefined();
 });

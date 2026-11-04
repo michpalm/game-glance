@@ -66,3 +66,9 @@ it('shows the empty state with nothing playing, Browse kept', () => {
     expect(nodes.some(n => n.props.children === 'Pick a soundtrack to start.')).toBe(true);
     expect(nodes.some(n => n.type === 'slider-field')).toBe(false);
 });
+
+it('fills the previous, play/pause and next icons, as drawn', () => {
+    const page = SoundtrackPanel({ s: playing, a: actions() });
+    for (const id of ['soundtrack:previous', 'soundtrack:play', 'soundtrack:next']) expect(byId(page, id).props.className).toContain('gg-soundtrack-fill');
+    for (const id of ['soundtrack:shuffle', 'soundtrack:repeat']) expect(byId(page, id).props.className).not.toContain('gg-soundtrack-fill');
+});
