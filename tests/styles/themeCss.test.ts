@@ -306,11 +306,11 @@ describe('buildUnifideckCss (a Unifideck game\u2019s page)', () => {
         expect(css).toMatch(/\.unifideck-hide-native-play [^{]*:has\(> :nth-child\(4\)\) > :first-child \{ order: 3 !important; \}/);
         expect(css).toMatch(/:has\(> :nth-child\(4\)\) > :nth-child\(n\+4\) \{ order: 4 !important; \}/);
     });
-    it('hides Unifideck\u2019s own meta items (the class-less div after its primary button) only with our page on', () => {
+    it('hides Unifideck\u2019s own meta items (the class-less div after its primary button, Stop in between too) only with our page on', () => {
         expect(buildUnifideckCss(full)).not.toContain('display: none');
         for (const css of [buildUnifideckCss(full, { restyle: true }), buildUnifideckCss({ ...full, details: undefined }, { restyle: true })]) {
             const line = css.split('\n').find((l) => l.includes('display: none'));
-            expect(line).toMatch(/^\.unifideck-hide-native-play :is\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) \+ div:not\(\[class\]\) \{ display: none !important; \}$/);
+            expect(line).toMatch(/^\.unifideck-hide-native-play :is\(\.unifideck-play-btn, \.unifideck-install-btn, \.unifideck-resume-btn, \.unifideck-update-btn\) ~ div:not\(\[class\]\) \{ display: none !important; \}$/);
             // Not the buttons, the round buttons or the download UI.
             expect(line).not.toMatch(/cancel|stop|button/i);
             expect(css.split('\n').filter((l) => l.includes('display: none'))).toHaveLength(1);

@@ -433,8 +433,11 @@ export const UNIFIDECK_PAGE = '.unifideck-hide-native-play';
 /** Unifideck's primary buttons (Play, Install, Resume, Update), each as one pill like ours. Cancel and Stop keep its look. */
 export const UNIFIDECK_PRIMARY = ['.unifideck-play-btn', '.unifideck-install-btn', '.unifideck-resume-btn', '.unifideck-update-btn'];
 
-/** Unifideck's meta row on its page: the class-less div right after its primary button (hidden by our page; read for its words, data/unifideckLabel). */
-export const UNIFIDECK_META = `${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) + div:not([class])`;
+/**
+ * Unifideck's meta row on its page: the class-less div after its primary button (hidden by our page; read for its words,
+ * data/unifideckLabel). Not only right after it: while a game starts, Stop sits between Resume and the meta (Ally 2026-11-04).
+ */
+export const UNIFIDECK_META = `${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(', ')}) ~ div:not([class])`;
 
 /**
  * The Game Glance layout on a Unifideck game's page, as its own stylesheet next to buildThemeCss's (with the layout only;
@@ -445,8 +448,8 @@ export const UNIFIDECK_META = `${UNIFIDECK_PAGE} :is(${UNIFIDECK_PRIMARY.join(',
 export function buildUnifideckCss({ header, details, root }: ThemeClasses, options: ThemeOptions = {}): string {
     const inner = cls(details, 'InnerContainer');
     // Our page is on: Unifideck's own meta items (Installed size or Space required, Played, Last played) are hidden, as our
-    // card shows them. They are the children of one class-less div right after the primary button (Install or Play; the
-    // Downloading row has none, nor its Cancel / Stop). Structural, since its labels are translated; whatever the layout.
+    // card shows them. They are the children of one class-less div after the primary button (Install, Play or Resume, with
+    // Stop between while a game starts; the Downloading row has none). Structural, since its labels are translated.
     const hideMeta = options.restyle
         ? rule(UNIFIDECK_META, ` display: none !important; `)
         : '';
