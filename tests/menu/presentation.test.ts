@@ -27,6 +27,13 @@ describe('single-window glass menu presentation', () => {
         expect(f.gate().textContent).toContain('.gg-menu,.gg-menu-status-host{opacity:0!important}');
         expect(f.gate().textContent).toContain('visibility:hidden!important');stop();
     });
+    // The tiles drew Steam's white button border for a frame before the menu's own, and their 250 ms transition faded it in
+    // as a ring on every tile (probed on the Ally 2026-11-04). Behind the gate a style change lands at once; the menu's own fade is untouched.
+    it('turns transitions off inside the menu while the gate is up, never on the menu itself',()=>{
+        const f=fixture(),stop=f.start();
+        expect(f.gate().textContent).toContain('.gg-menu *,.gg-menu *::before,.gg-menu *::after{transition:none!important}');
+        expect(f.gate().textContent).not.toMatch(/\.gg-menu\s*\{[^}]*transition/);stop();
+    });
     it('marks frost presentation immediately before the visible gate opens',async()=>{
         const f=fixture(),seen:string[]=[];
         const stop=prepareMenuPresentation(f.owner.document as unknown as Document,f.source.document as unknown as Document,

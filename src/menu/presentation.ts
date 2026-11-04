@@ -22,7 +22,10 @@ export function prepareMenuPresentation(owner: Document, source: Document, viewp
     gate.dataset.ggMenuPresentation = 'true';
     // Opacity rests at 0 behind the gate; lifting it fades the menu in over the
     // fast motion token, alongside the frost shader's own 150 ms fade.
-    gate.textContent = '.gg-menu-native-host,.gg-menu-status-host{visibility:hidden!important}.gg-menu,.gg-menu-status-host{opacity:0!important}.gg-radial-keyboard-host{visibility:hidden!important;opacity:0!important}';
+    // Behind the gate nothing inside the menu animates: its tiles drew Steam's white button border for a frame before ours, and
+    // their 250 ms transition showed it as a ring fading off every tile (Ally 2026-11-04). The menu's own fade (on .gg-menu) stays.
+    gate.textContent = '.gg-menu-native-host,.gg-menu-status-host{visibility:hidden!important}.gg-menu,.gg-menu-status-host{opacity:0!important}.gg-radial-keyboard-host{visibility:hidden!important;opacity:0!important}'
+        + '.gg-menu *,.gg-menu *::before,.gg-menu *::after{transition:none!important}';
     source.head.append(gate);
     let stopped = false, concealed = false, frame: number | undefined;
     let stable = '', samples = 0, hiding: Promise<void> | undefined;
