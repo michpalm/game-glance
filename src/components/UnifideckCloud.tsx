@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pageCloudNeeded } from '../data/unifideckCloud';
-import { CloudIcon } from '../home/ActionRow';
-import { UnifideckCloudGlyph } from './UnifideckCloudGlyph';
-import { CLOUD_COLOURS } from '../home/cloud';
+import { unifideckCloudCss } from './unifideckCloudStyle';
 import { useUnifideckCloud } from '../home/useCloud';
 
 /** How long the page is watched for Unifideck's row (it mounts after ours). */
@@ -18,18 +16,18 @@ function findRow(doc: Document): { row: Element; className: string } | null {
 }
 
 /**
- * A Unifideck game's cloud-save circle on its page where Unifideck draws none (data/unifideckCloud.pageCloudNeeded: a game
- * that is not installed), as Home shows it and Unifideck's own button looks: the same state, glyph, ring and dimming, after
- * the settings button, wearing Unifideck's own round-button classes so it looks like its neighbours. Display only, as Home's (A does
- * nothing there either). Lives in the page's window (found from a marker element, as UnifideckRowNav).
+ * A Unifideck game's cloud on its page, in Game Glance's look: Unifideck's own cloud button wears our white cloud and
+ * state dot (unifideckCloudStyle), and a game Unifideck draws no button for (data/unifideckCloud.pageCloudNeeded: not
+ * installed) gets our display-only circle after the settings button, in Unifideck's round-button classes so it sits like
+ * its neighbours. Lives in the page's window (found from a marker element, as UnifideckRowNav).
  */
 export function UnifideckCloud({ appId, installed }: { appId: number; installed: boolean | null | undefined }) {
     const marker = useRef<HTMLSpanElement>(null);
     const [row, setRow] = useState<{ row: Element; className: string } | null>(null);
-    const wanted = installed === false;
-    const cloud = useUnifideckCloud(appId, wanted);
+    const cloud = useUnifideckCloud(appId, true);
+    const ownCircle = installed === false;
     useEffect(() => {
-        if (!wanted) return undefined;
+        if (!ownCircle) return undefined;
         const doc = marker.current?.ownerDocument;
         if (!doc) return undefined;
         const found = findRow(doc);
@@ -44,30 +42,13 @@ export function UnifideckCloud({ appId, installed }: { appId: number; installed:
             if (next) setRow(next);
         }, 100);
         return () => clearInterval(timer);
-    }, [appId, wanted]);
+    }, [appId, ownCircle]);
     const show = row && cloud && pageCloudNeeded(installed, cloud) && row.row.isConnected;
     return (
         <>
             <span ref={marker} style={{ display: 'none' }} />
-            {show &&
-                createPortal(
-                    <div
-                        className={`${row.className} gg-uni-cloud${cloud.unifideck?.breathe ? ' unifideck-breathe' : ''}`}
-                        aria-label={cloud.label}
-                        role="img"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: cloud.unifideck ? '#fff' : CLOUD_COLOURS[cloud.tone],
-                            ...(cloud.unifideck?.ring ? { boxShadow: `0 0 0 2px ${cloud.unifideck.ring} inset` } : {}),
-                            ...(cloud.unifideck?.dim ? { opacity: 0.5 } : {}),
-                        }}
-                    >
-                        {cloud.unifideck ? <UnifideckCloudGlyph look={cloud.unifideck} /> : <CloudIcon cloud={cloud} />}
-                    </div>,
-                    row.row,
-                )}
+            {cloud && <style>{unifideckCloudCss(cloud.tone)}</style>}
+            {show && createPortal(<div className={`${row.className} gg-uni-cloud`} aria-label={cloud.label} role="img" />, row.row)}
         </>
     );
 }

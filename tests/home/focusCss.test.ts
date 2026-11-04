@@ -22,7 +22,7 @@ describe('focusCss.withDomFocus', () => {
     });
     it('makes "not focused" exclude DOM focus too, without a twin', () => {
         expect(withDomFocus('.gh-card:not(.gh-card-focus) .gh-card-bar')).toBe('.gh-card:not(.gh-card-focus):not(:focus) .gh-card-bar');
-        expect(withDomFocus('.gh-btn-cloud.gh-cloud-uni:not(.gh-focus)')).toBe('.gh-btn-cloud.gh-cloud-uni:not(.gh-focus):not(:focus)');
+        expect(withDomFocus('.gh-btn-cloud:not(.gh-focus)')).toBe('.gh-btn-cloud:not(.gh-focus):not(:focus)');
     });
     it('only matches whole class names', () => {
         expect(withDomFocus('.gh-focus-ring')).toBe('.gh-focus-ring');

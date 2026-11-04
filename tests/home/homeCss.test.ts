@@ -565,16 +565,17 @@ describe('homeCss', () => {
     });
     it('the cloud circle is the same circle as the others: a white cloud with a halo, its state in a badge at the top right (#64)', () => {
         const css = homeCss();
-        expect(css).not.toMatch(/\.gh-btn-cloud\s*\{/);
+        // Its only own rule places the state badge; nothing else sets the cloud circle apart from the others.
+        expect([...css.matchAll(/\.gh-btn-cloud\s*\{([^}]*)\}/g)].map((m) => m[1].trim())).toEqual(['position: relative !important;']);
         expect(css).toMatch(/\.gh-btn-cloud svg\s*\{[^}]*width:\s*26px[^}]*drop-shadow/);
         for (const [tone, colour] of Object.entries(CLOUD_COLOURS)) {
             expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-${tone}\\s*\\{\\s*--gh-cloud-dot:\\s*${colour}`));
         }
         expect(css).not.toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{[^}]*color:\s*#5cf2b4/);
-        expect(css).toMatch(/\.gh-btn-cloud:not\(\.gh-cloud-uni\)\s*\{[^}]*position:\s*relative/);
+        expect(css).toMatch(/\.gh-btn-cloud\s*\{[^}]*position:\s*relative/);
         expect(css).toMatch(
             new RegExp(
-                `\\.gh-btn-cloud:not\\(\\.gh-cloud-uni\\)::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
             ),
         );
     });
@@ -752,10 +753,10 @@ describe('homeCss open transition', () => {
     it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
         const all = rules(css);
         for (const i of [0, 1, 2, 3]) {
-            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`));
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`));
             expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
         }
-        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud:not(.gh-cloud-uni)::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
+        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
     });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);
@@ -1012,11 +1013,8 @@ describe('delayed fades in the open transition', () => {
     });
 });
 
-describe("a Unifideck game's cloud button (Unifideck's own look, as on its page)", () => {
+describe("a Unifideck game's page circles", () => {
     const css = homeCss(CARD_SCALE_HANDHELD);
-    it("opening, its ring grows with the circle to Unifideck's 2 CSS px on the page (openMotion --gho-uni-ring)", () => {
-        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-btn-cloud\.gh-cloud-uni:not\(\.gh-focus\):not\(:focus\)\s*\{[^}]*box-shadow: 0 0 0 var\(--gho-uni-ring, 2px\) var\(--gh-uni-ring, transparent\) inset/);
-    });
     it("Unifideck's trash circle: drawn at the page's fourth circle as Home's circles look, fading in late, held in the bridge", () => {
         const body = (sel: string) => {
             const i = css.indexOf(`${sel} {`);
@@ -1029,15 +1027,6 @@ describe("a Unifideck game's cloud button (Unifideck's own look, as on its page)
         expect(body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-open-circle')).toContain('animation: gh-open-extras-in');
         expect(body('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-open-circle')).toContain('opacity: 1');
         expect(body('.gh-open-circle svg')).toContain(`width: ${PAGE_LAYOUT.circleIcon}px`);
-    });
-
-    it('a white glyph at the circles\' glyph size, its state ring inside it (unless focused), dimmed without cloud support', () => {
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni\s*\{[^}]*color: #fff/);
-        expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-uni svg\\s*\\{[^}]*width: ${PAGE_LAYOUT.circleIcon}px[^}]*filter: none`));
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni:not\(\.gh-focus\):not\(:focus\)\s*\{[^}]*box-shadow: 0 0 0 2px var\(--gh-uni-ring, transparent\) inset/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni-dim\s*\{[^}]*opacity: \.5/);
-        // Its in-sync check badge at Unifideck's proportion to the cloud (13 of the 24).
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni svg\.gh-uni-badge\s*\{[^}]*width: 13px/);
     });
 });
 

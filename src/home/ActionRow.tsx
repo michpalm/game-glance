@@ -1,7 +1,6 @@
 import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ComponentType, CSSProperties, ReactNode, useRef, useState } from 'react';
-import { UnifideckCloudGlyph } from '../components/UnifideckCloudGlyph';
 import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
@@ -137,7 +136,7 @@ function ActionButton({ className, label, onPress, preferredFocus, fill, setRef,
     /** Receives the button element (the gear: the game menu's anchor for View/Select). */
     setRef?(el: HTMLElement | null): void;
     label: string;
-    /** Inline custom properties (a Unifideck cloud button's ring colour: --gh-uni-ring). */
+    /** Inline custom properties. */
     style?: CSSProperties;
     /** 0..100: a fill layer inside the pill that far from the left (the Play pill while Steam downloads the game). */
     fill?: number | null;
@@ -183,6 +182,11 @@ function ActionButton({ className, label, onPress, preferredFocus, fill, setRef,
 }
 
 /** The cloud circle's glyph: the same solid cloud in every state (#64); the state is the circle's badge (homeCss). */
+/** The cloud circle's classes: Game Glance's look (white cloud, state dot) for every game, Unifideck's too. */
+export function cloudCircleClass(cloud: CloudState): string {
+    return `gh-btn-circle gh-btn-cloud gh-cloud-${cloud.tone}`;
+}
+
 export function CloudIcon(_props: { cloud: CloudState }) {
     return <IoCloud />;
 }
@@ -371,13 +375,12 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             {cloud && (
                 <ActionButton
                     key="cloud"
-                    className={`gh-btn-circle gh-btn-cloud gh-cloud-${cloud.tone}${cloud.unifideck ? ` gh-cloud-uni${cloud.unifideck.dim ? ' gh-cloud-uni-dim' : ''}${cloud.unifideck.breathe ? ' unifideck-breathe' : ''}` : ''}`}
-                    style={cloud.unifideck?.ring ? ({ '--gh-uni-ring': cloud.unifideck.ring } as CSSProperties) : undefined}
+                    className={cloudCircleClass(cloud)}
                     label={cloud.label}
                     action="cloud"
                     onPress={(el) => pressCloud(cloud, appId, el?.ownerDocument?.defaultView ?? window)}
                 >
-                    <span className="gh-btn-icon">{cloud.unifideck ? <UnifideckCloudGlyph look={cloud.unifideck} /> : <CloudIcon cloud={cloud} />}</span>
+                    <span className="gh-btn-icon"><CloudIcon cloud={cloud} /></span>
                 </ActionButton>
             )}
         </Focusable>

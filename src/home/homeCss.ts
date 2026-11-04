@@ -380,19 +380,12 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-btn-cloud svg', `width: ${PAGE_LAYOUT.cloudIcon}px; height: ${PAGE_LAYOUT.cloudIcon}px; margin: 0; fill: currentColor; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.7))`),
         // The state is a badge at the top right (#64): the glyph stays white, the dot takes the state colour.
         ...(Object.keys(CLOUD_COLOURS) as CloudTone[]).map((tone) => rule(`.gh-btn-cloud.gh-cloud-${tone}`, `--gh-cloud-dot: ${CLOUD_COLOURS[tone]}`)),
-        rule('.gh-btn-cloud:not(.gh-cloud-uni)', 'position: relative'),
-        rule('.gh-btn-cloud:not(.gh-cloud-uni)::after', `content: ""; position: absolute; top: ${CLOUD_DOT.inset}px; right: ${CLOUD_DOT.inset}px; width: ${CLOUD_DOT.size}px; height: ${CLOUD_DOT.size}px;
+        rule('.gh-btn-cloud', 'position: relative'),
+        rule('.gh-btn-cloud::after', `content: ""; position: absolute; top: ${CLOUD_DOT.inset}px; right: ${CLOUD_DOT.inset}px; width: ${CLOUD_DOT.size}px; height: ${CLOUD_DOT.size}px;
             box-sizing: content-box; border-radius: 50%; background: var(--gh-cloud-dot); border: ${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour}; pointer-events: none`),
         // A Unifideck game's cloud button wears Unifideck's own look (data/unifideckCloud, as its page's button): a white
         // Font Awesome glyph at the circles' size, its state's ring inside the circle (focus shows ours instead), dimmed
         // without cloud support; its breathing is Unifideck's own class.
-        rule('.gh-btn-cloud.gh-cloud-uni', 'color: #fff'),
-        rule('.gh-btn-cloud.gh-cloud-uni svg', `width: ${PAGE_LAYOUT.circleIcon}px; height: ${PAGE_LAYOUT.circleIcon}px; filter: none`),
-        rule('.gh-btn-cloud.gh-cloud-uni:not(.gh-focus)', 'box-shadow: 0 0 0 2px var(--gh-uni-ring, transparent) inset'),
-        // Opening, its ring grows with the circle to the page's 2 CSS px (openMotion --gho-uni-ring), not to 2 canvas px.
-        rule('.gh-root[data-gh-opening="morph"] .gh-btn-cloud.gh-cloud-uni:not(.gh-focus)', 'box-shadow: 0 0 0 var(--gho-uni-ring, 2px) var(--gh-uni-ring, transparent) inset'),
-        rule('.gh-btn-cloud.gh-cloud-uni-dim', 'opacity: .5'),
-        rule('.gh-btn-cloud.gh-cloud-uni svg.gh-uni-badge', 'width: 13px; height: 13px'),
         // White words and glyph on the accent, as on the game page's Play.
         rule('.gh-btn-play', `width: ${HOME_PILL.width}px; flex: 0 0 ${HOME_PILL.width}px; background: var(--glance-accent); border-color: var(--glance-accent); color: #fff`),
         // The pill fills with the download progress: the shared darker layer (styles/downloadFill) from the left, clipped to
@@ -793,8 +786,8 @@ export function openingRules(): string[] {
         ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle) > .gh-btn-icon`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
         // The cloud's state badge (#64) too, about its top-right corner: that corner is the circle's, which the circle's
         // scale carries onto the page's corner, so the badge stays the page's size there throughout (no settling).
-        rule(`${M} .gh-actions > .gh-btn-cloud:not(.gh-cloud-uni)::after`, 'transform-origin: 100% 0'),
-        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
+        rule(`${M} .gh-actions > .gh-btn-cloud::after`, 'transform-origin: 100% 0'),
+        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
         // Chips: their glass gives way to the panels at once; texts move and grow; the bars and unmatched chips fade.
         rule(`${M} .gh-chip`, 'background: transparent; border-color: transparent; backdrop-filter: none; box-shadow: none'),
         // An accent copy of a value's words (data-text) over it, for a value the page draws in the accent (openMotion).
