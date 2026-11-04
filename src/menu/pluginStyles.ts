@@ -1,6 +1,7 @@
 // The Plugins section: plugin rows, Game Glance's cards, crumbs, pickers and the match card, on the menu's tokens.
-// Steam scrolls a focused row only until it touches the panel's edge, so the last two rules keep the padding, and for
-// each view's first row the heading above it, in view.
+// Steam scrolls a focused row only until it touches the panel's edge, so two rules keep the padding, and for each
+// view's first row the heading above it, in view. A long plugin list scrolls under its fixed heading and fades its
+// rows only while more is below (a scroll-driven animation; checked on the Ally).
 export const pluginStyles = `
 .gg-menu .gg-plugin-crumb-path{display:flex;align-items:center;gap:8px;min-width:0}
 .gg-menu .gg-plugin-crumb-path>span{color:var(--gg-text-dim);font-size:var(--gg-type-label);font-weight:var(--gg-weight-body)}
@@ -27,4 +28,9 @@ export const pluginStyles = `
 .gg-menu .gg-menu-switches.gg-menu-configure{margin-top:12px}
 .gg-menu .gg-menu-panel:has(.gg-plugin-rows,.gg-plugin-cards,.gg-plugin-list){scroll-padding-block:24px}
 .gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child,.gg-plugin-cards>:nth-child(-n+2)),.gg-menu :is(.gg-plugin-rows>:first-child,.gg-plugin-list>:first-child) *{scroll-margin-top:64px}
+@property --gg-list-fade{syntax:'<length>';inherits:false;initial-value:0px}
+@keyframes gg-list-fade{0%,92%{--gg-list-fade:56px}100%{--gg-list-fade:0px}}
+.gg-menu .gg-menu-panel:has(>.gg-plugin-list){display:flex;flex-direction:column;overflow:hidden}
+.gg-menu .gg-menu-panel>.gg-plugin-list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;margin:8px -6px 0;padding:4px 6px;scroll-padding-block:4px;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--gg-list-fade)),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - var(--gg-list-fade)),transparent);animation:gg-list-fade auto linear both;animation-timeline:scroll(self)}
+.gg-menu .gg-menu-panel>.gg-plugin-list::-webkit-scrollbar{display:none}
 `;
