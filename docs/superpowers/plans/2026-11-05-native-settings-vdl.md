@@ -1,6 +1,6 @@
 # Native Settings VDL Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Apply the handheld-first VDL shell to native Settings while retaining Steam's complete category list, controls and behavior.
 
@@ -45,10 +45,10 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 **Interfaces:** `NativeSettingsShell = {container:HTMLElement; layout:HTMLElement; navigation:HTMLElement; pane:HTMLElement; page:HTMLElement|null}`; `discoverNativeSettings(doc:Document,path:string|null):NativeSettingsShell|null`; `standardSettingRows(page:HTMLElement):readonly HTMLElement[]`. Discovery is read-only and never enumerates a replacement category list.
 
-- [ ] Write failing tests for valid `/settings/audio`, nested Settings routes, remounted content, absent/malformed sidebar, unrelated `.DialogContent`, and Storage/Downloads fixtures that preserve controls outside standard sections. Assert discovered node identity and unchanged category/control counts.
-- [ ] Run `pnpm exec vitest run tests/nativeSettings/discovery.test.ts`; observe the missing implementation failures.
-- [ ] Implement the verified `.PageListColumn`/native shell boundary and readable roles/classes. Standard rows are eligible for spacing only when their structure is recognized; otherwise retain native geometry.
-- [ ] Rerun the file; all cases pass. Commit this independently testable boundary.
+- [x] Write failing tests for valid `/settings/audio`, nested Settings routes, remounted content, absent/malformed sidebar, unrelated `.DialogContent`, and Storage/Downloads fixtures that preserve controls outside standard sections. Assert discovered node identity and unchanged category/control counts.
+- [x] Run `pnpm exec vitest run tests/nativeSettings/discovery.test.ts`; observe the missing implementation failures.
+- [x] Implement the verified `.PageListColumn`/native shell boundary and readable roles/classes. Standard rows are eligible for spacing only when their structure is recognized; otherwise retain native geometry.
+- [x] Rerun the file; all cases pass. Commit this independently testable boundary.
 
 ### Task 2: Measured safe areas
 
@@ -56,10 +56,10 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 **Interfaces:** `Rect={left:number;top:number;width:number;height:number}`; `settingsLayout(input:{width:number;height:number;headers:readonly Rect[];footers:readonly Rect[]}):{left:number;top:number;width:number;height:number;sidebarWidth:number}|null`; `observeSettingsLayout(doc:Document,changed:(layout:ReturnType<typeof settingsLayout>)=>void):()=>void`.
 
-- [ ] Write failing tests: 828×466 with no chrome gives 8px outer margins and 164px sidebar; a header ending at 36px yields top 44px; footer groups starting at 430px and 422px yield content bottom 414px; hidden/zero bounds are ignored, invalid dimensions return null. A 1280px viewport caps panel width at 1140px and sidebar at 210px.
-- [ ] Add observation tests for header/footer replacement, two unequal corner cards, UI resize and disposal. Never use the full `#Footer` wrapper as a corner-card rectangle.
-- [ ] Run the geometry test file and observe failures; implement pure layout plus coalesced observation using actual visible status/header and footer groups. Sidebar uses 20% of viewport width rounded to the nearest 4px, clamped within 128–210px; unusably narrow content falls back to native.
-- [ ] Rerun geometry/footer tests; commit. Do not take a second footer lease or replace existing chrome ownership.
+- [x] Write failing tests: 828×466 with no chrome gives 8px outer margins and 164px sidebar; a header ending at 36px yields top 44px; footer groups starting at 430px and 422px yield content bottom 414px; hidden/zero bounds are ignored, invalid dimensions return null. A 1280px viewport caps panel width at 1140px and sidebar at 210px.
+- [x] Add observation tests for header/footer replacement, two unequal corner cards, UI resize and disposal. Never use the full `#Footer` wrapper as a corner-card rectangle.
+- [x] Run the geometry test file and observe failures; implement pure layout plus coalesced observation using actual visible status/header and footer groups. Sidebar uses 20% of viewport width rounded to the nearest 4px, clamped within 128–210px; unusably narrow content falls back to native.
+- [x] Rerun geometry/footer tests; commit. Do not take a second footer lease or replace existing chrome ownership.
 
 ### Task 3: Scoped presentation lease and native popup styling
 
@@ -67,12 +67,12 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 **Interfaces:** `createSettingsPresentation(doc:Document):{update(shell:NativeSettingsShell|null,layout:ReturnType<typeof settingsLayout>,backdrop:{url:string;mode:'full'|'fallback'}|null):void;dispose():void}`. The lease owns only its markers, styles, decorative artwork layer and popup scope.
 
-- [ ] Write failing DOM tests for retained node/event-handler identity, pre-existing attribute restoration, page replacement, repeated updates without accumulating nodes, route-away cleanup, and unrelated popup exclusion.
-- [ ] Write popup ownership tests: only a popup opened from an active Settings control receives the scope; B/close/route change removes it, and no focus is programmatically stolen. Keep native popup creation, activation and focus return intact.
-- [ ] Implement VDL surfaces, readable body text, restrained selected-category styling and a single focus target. Use minimum row height, not fixed height; preserve multiline descriptions and complex native control geometry. Omit sidebar separators only if they remain decorative and all tabs are untouched.
-- [ ] Build native-shaped preview fixtures for Audio, long descriptions, dense notifications, tabbed Storage, Downloads, loading, disabled/error states, and a body-portalled dropdown. Keep fixture code outside product code.
-- [ ] Run mounted tests and browser fixtures at 828×466, 1280×800 and 1600×900. Assert no document overflow, 44px minimum eligible rows, long-row expansion, all category/control counts preserved, and the first/last focused controls fully above both footer cards. Verify native scrolling in fixtures, bright/dark artwork, selected-versus-focused states and popup dismissal.
-- [ ] Commit passing presentation and fixture work.
+- [x] Write failing DOM tests for retained node/event-handler identity, pre-existing attribute restoration, page replacement, repeated updates without accumulating nodes, route-away cleanup, and unrelated popup exclusion.
+- [x] Write popup ownership tests: only a popup opened from an active Settings control receives the scope; B/close/route change removes it, and no focus is programmatically stolen. Keep native popup creation, activation and focus return intact.
+- [x] Implement VDL surfaces, readable body text, restrained selected-category styling and a single focus target. Use minimum row height, not fixed height; preserve multiline descriptions and complex native control geometry. Omit sidebar separators only if they remain decorative and all tabs are untouched.
+- [x] Build native-shaped preview fixtures for Audio, long descriptions, dense notifications, tabbed Storage, Downloads, loading, disabled/error states, and a body-portalled dropdown. Keep fixture code outside product code.
+- [x] Run mounted tests and browser fixtures at 828×466, 1280×800 and 1600×900. Assert no document overflow, 44px minimum eligible rows, long-row expansion, all category/control counts preserved, and the first/last focused controls fully above both footer cards. Verify native scrolling in fixtures, bright/dark artwork, selected-versus-focused states and popup dismissal.
+- [x] Commit passing presentation and fixture work.
 
 ### Task 4: Production lifecycle, backdrop source and activation
 
@@ -80,11 +80,11 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 **Interfaces:** `SettingsBackdrop={url:string;mode:'full'|'fallback'}|null`; `createSettingsBackdrop(deps:{readContext():{account:string|null;appId:number|null};resolve(appId:number):Promise<Art>;subscribe(changed:()=>void):()=>void}):{get():SettingsBackdrop;subscribe(changed:()=>void):()=>void;dispose():void}` using the existing `Art` type; `startSettingsPresentation(doc:Document,deps:{route:RouteSource;backdrop:ReturnType<typeof createSettingsBackdrop>}):()=>void`.
 
-- [ ] Write failing tests for master/menu opt-in combinations, preference loading/failure, Settings route entry/exit, nested content replacement, side-menu/screensaver suspension and unload. No polling or observation when disabled; exactly one owned lifecycle when enabled.
-- [ ] Write backdrop tests for current Home/game context, no-context neutral fallback, delayed image resolution after route/account changes, failure recovery and disposal. Assert stale art never appears after account invalidation.
-- [ ] Implement the host using the main-document marker pattern from `ChromeHost`, existing master/menu preference subscriptions and `routeSource` for the native main-window history. Use disposable route/DOM/resize observers coalesced to animation frames rather than the trial's interval/session globals.
-- [ ] Capture real context outside Settings: game route app ID or `heroShownApp()`; use `heroArtFor()`/`resolveArt()` and clear invalid context on account change. The decorative source must not be a screenshot, contain settings text, intercept input or manufacture game context. Apply a neutral fallback when unavailable.
-- [ ] Register/unregister the host alongside existing global components; verify one failing cleanup step cannot suppress other plugin cleanup. Run all new tests and existing index/chrome/menu lifecycle tests. Commit.
+- [x] Write failing tests for master/menu opt-in combinations, preference loading/failure, Settings route entry/exit, nested content replacement, side-menu/screensaver suspension and unload. No polling or observation when disabled; exactly one owned lifecycle when enabled.
+- [x] Write backdrop tests for current Home/game context, no-context neutral fallback, delayed image resolution after route/account changes, failure recovery and disposal. Assert stale art never appears after account invalidation.
+- [x] Implement the host using the main-document marker pattern from `ChromeHost`, existing master/menu preference subscriptions and `routeSource` for the native main-window history. Use disposable route/DOM/resize observers coalesced to animation frames rather than the trial's interval/session globals.
+- [x] Capture real context outside Settings: game route app ID or `heroShownApp()`; use `heroArtFor()`/`resolveArt()` and clear invalid context on account change. The decorative source must not be a screenshot, contain settings text, intercept input or manufacture game context. Apply a neutral fallback when unavailable.
+- [x] Register/unregister the host alongside existing global components; verify one failing cleanup step cannot suppress other plugin cleanup. Run all new tests and existing index/chrome/menu lifecycle tests. Commit.
 
 ### Task 5: Full validation and reviewable Ally candidate
 

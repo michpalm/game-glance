@@ -8,7 +8,7 @@ interface Claim {before:string|null;value:string}
 /** Own only decoration and scoped markers. Native content, events and focus are untouched. */
 export function createSettingsPresentation(doc:Document){
  const claims=new Map<HTMLElement,Map<string,Claim>>();
- let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,stopped=false;
+ let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
  const ownedPopups=new Set<HTMLElement>();
  let pending:{source:HTMLElement;existing:Set<Element>}|null=null,expiry:ReturnType<typeof setTimeout>|undefined;
  const overlaySelector='[role="listbox"],[role="dialog"],[role="alertdialog"]';
@@ -28,8 +28,8 @@ export function createSettingsPresentation(doc:Document){
    for(const popup of ownedPopups){if(!popup.isConnected){ownedPopups.delete(popup);continue;}mark(popup,'data-gg-settings','popup');}
    const vars=`[data-gg-settings="container"]{--gg-settings-left:${layout.left}px;--gg-settings-top:${layout.top}px;--gg-settings-width:${layout.width}px;--gg-settings-height:${layout.height}px;--gg-settings-sidebar:${layout.sidebarWidth}px;--gg-settings-base:${backdrop?'transparent':'#0c1016'}}`;
    const css=nativeSettingsStyles+vars;if(style.textContent!==css)style.textContent=css;
-   if(backdrop){if(!art){art=doc.createElement('div');art.setAttribute('aria-hidden','true');}if(art.parentElement!==shell.container)shell.container.prepend(art);art.dataset.ggSettingsBackdrop=backdrop.mode;const image=`url(${JSON.stringify(backdrop.url)})`;if(art.style.backgroundImage!==image)art.style.backgroundImage=image;}else{art?.remove();art=null;}
-  }else{style?.remove();style=null;art?.remove();art=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();}
+   if(backdrop){if(!art){art=doc.createElement('div');art.setAttribute('aria-hidden','true');}if(art.parentElement!==shell.container)shell.container.prepend(art);art.dataset.ggSettingsBackdrop=backdrop.mode;const image=`url(${JSON.stringify(backdrop.url)})`;if(artUrl!==backdrop.url){art.style.backgroundImage=image;artUrl=backdrop.url;}}else{art?.remove();art=null;artUrl=null;}
+  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();}
   reconcile(next);
  }
  const intent=(event:Event)=>{
