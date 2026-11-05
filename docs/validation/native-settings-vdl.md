@@ -76,3 +76,7 @@ After the guarded corrected reload and completed Home remount, the real installe
 Route exit to Home removed every Settings marker/style/decoration; re-entry restored presentation and real artwork. Final readback: plugin loaded, temporary Audio trial removed, no side menu, no running games, `/settings/audio`. The Ally is left on Audio Settings for hands-on evaluation. Scratch audit globals were removed. No deliberate native settings writes or games were launched.
 
 Artifacts: `settings-handheld/installed-checks.json`, `installed-finish.json`, `installed-build.json`, and `installed-ally-audio.png` in this chat's visualization directory. Programmatic native dispatcher checks do not establish physical-controller/touch comfort or performance. Installed master/menu disable, screensaver suspension and full plugin unload remain covered locally rather than claimed as exercised in this installed pass.
+
+## Subsequent correction pass
+
+Following user feedback, the title, category-transition stability, broader native row coverage and dropdown alignment/ownership were corrected and installed **on the Steam Deck only**. The Ally was left untouched. See [Steam Deck correction evidence](native-settings-vdl-deck-corrections.md) for source `059f70a`, all-category frame sampling, native dropdown checks and rollback metadata. Earlier popup limitations and source-only statements above describe their historical validation stages.
