@@ -8,10 +8,9 @@ export function discoverNativeSettings(doc:Document,path:string|null):NativeSett
  if(!container||!layout||!pane?.matches('.DialogContentTransition')||!navigation.querySelector('[role="tab"]')||!container.contains(pane))return null;
  const pages=[...pane.querySelectorAll<HTMLElement>('.DialogContent')].filter(n=>!n.closest('[hidden],[inert],[aria-hidden="true"]'));
  // Native category transitions briefly contain both pages, or an empty loading host.
- if(pages.length>2)return null;
  for(const page of pages){
   if(![...page.children].some(e=>e.matches('.DialogContent_InnerWidth')))return null;
-  for(let host=page.parentElement;host&&host!==pane;host=host.parentElement)if(host.children.length!==1)return null;
+  for(let host=page.parentElement;host&&host!==pane;host=host.parentElement)if([...host.children].some(child=>!pages.some(candidate=>child===candidate||child.contains(candidate))))return null;
  }
  if(!pages.length&&pane.querySelector('button,input,textarea,[tabindex],[role]'))return null;
  return {container,layout,navigation,pane,page:pages[pages.length-1]??null,pages};
