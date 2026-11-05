@@ -3,7 +3,7 @@ import {useSettings} from '../data/settings';
 import {menuPreferences} from '../menu/preferences';
 import {useSteamUiState,subscribeSteamUiState,getSteamUiState} from '../home/steamUiState';
 import {useScreensaverActive} from '../screensaver/steamScreensaver';
-import {heroShownApp,heroArtFor,resolveArt} from '../home/HeroBackground';
+import {heroShownContext,resolveArt} from '../home/HeroBackground';
 import {routeSource} from '../search/steam';
 import {createSettingsBackdrop,type SettingsArtContext} from './backdrop';
 import {createSettingsActivation,startSettingsPresentation} from './runtime';
@@ -27,17 +27,18 @@ function NativeSettingsOn({doc}:{doc:Document}){
  const current=useRef(suspended);current.current=suspended;
  const activation=useRef<ReturnType<typeof createSettingsActivation>|null>(null);
  useEffect(()=>{
-  const route=routeSource(()=>historyFor(doc),true);let context:SettingsArtContext={account:null,appId:null};
+  const route=routeSource(()=>historyFor(doc),true);let context:SettingsArtContext={account:null,appId:null},initialized=false,blockedPath:string|null=null;
   const readContext=():SettingsArtContext=>{
    const account=getSteamUiState(doc).account,path=route.get();
-   if(account!==context.account)context={account,appId:null};
+   if(account!==context.account){if(initialized)blockedPath=path;context={account,appId:null};}initialized=true;
    if(!path||/^\/settings(?:\/|$)/.test(path))return context;
-   const match=/^\/library\/app\/(\d+)(?:\/|$)/.exec(path),appId=match?Number(match[1]):path==='/library/home'?heroShownApp():null;
-   const art=appId?heroArtFor(appId):null;context={account,appId,revision:art&&art.mode!=='none'?art.url:undefined};return context;
+   const match=/^\/library\/app\/(\d+)(?:\/|$)/.exec(path),home=path==='/library/home'?heroShownContext():null;
+   const appId=match&&path!==blockedPath?Number(match[1]):home?.account===account?home.appId:null;
+   context={account,appId,revision:home?.account===account?home.revision:undefined};return context;
   };
   let backdrop:ReturnType<typeof createSettingsBackdrop>|undefined;
   try{
-   backdrop=createSettingsBackdrop({readContext,resolve:async id=>heroArtFor(id)??await resolveArt(id),subscribe:changed=>{
+   backdrop=createSettingsBackdrop({readContext,resolve:resolveArt,subscribe:changed=>{
     const stops=[route.subscribe(changed)];let observer:MutationObserver|undefined;
     try{stops.push(subscribeSteamUiState(doc,changed));observer=doc.defaultView?.MutationObserver?new doc.defaultView.MutationObserver(changed):undefined;observer?.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','src']});}
     catch(error){stops.forEach(stop=>stop());observer?.disconnect();throw error;}

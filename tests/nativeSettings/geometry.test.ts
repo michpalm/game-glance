@@ -15,5 +15,6 @@ it('observes chrome replacement, resize and disposal without changing chrome own
  expect(changed.mock.lastCall?.[0]).toMatchObject({top:44,height:370});expect(d.querySelector('[data-gh-footer]')).toBeNull();
  addFooter(410);await Promise.resolve();await Promise.resolve();for(const fn of [...frames.values()])fn();frames.clear();expect(changed.mock.lastCall?.[0]).toMatchObject({height:358});
  header.firstElementChild!.setAttribute('style','display:none');resize();for(const fn of [...frames.values()])fn();frames.clear();expect(changed.mock.lastCall?.[0]).toMatchObject({top:8,height:394});
+ const group=d.getElementById('Footer')!.firstElementChild!.lastElementChild!;set(group,rect(600,390,220,38));d.getElementById('Footer')!.setAttribute('data-gh-footer','true');await Promise.resolve();await Promise.resolve();for(const fn of [...frames.values()])fn();frames.clear();expect(changed.mock.lastCall?.[0]).toMatchObject({height:374});
  const calls=changed.mock.calls.length;stop();resize();d.body.append(d.createElement('div'));await Promise.resolve();for(const fn of [...frames.values()])fn();expect(changed).toHaveBeenCalledTimes(calls);
 });

@@ -40,7 +40,7 @@ export function observeSettingsLayout(doc:Document,changed:(layout:SettingsLayou
  };
  const schedule=()=>{if(stopped||frame!==undefined)return;frame=view.requestAnimationFrame(()=>{frame=undefined;measure();});};
  const mo=view.MutationObserver?new view.MutationObserver(schedule):null;
- mo?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','aria-hidden']});
+ mo?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','aria-hidden','inert','data-gh-footer','data-gh-footer-wrapper','data-gh-footer-side','data-gh-footer-edge']});
  view.addEventListener('resize',schedule);doc.addEventListener('transitionend',schedule,true);doc.addEventListener('animationend',schedule,true);measure();
  return()=>{if(stopped)return;stopped=true;if(frame!==undefined)view.cancelAnimationFrame(frame);mo?.disconnect();ro?.disconnect();view.removeEventListener('resize',schedule);doc.removeEventListener('transitionend',schedule,true);doc.removeEventListener('animationend',schedule,true);};
 }

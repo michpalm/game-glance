@@ -37,7 +37,7 @@ Read-only native Ally snapshots visited all **25** current categories through St
 
 Proposed activation: make the presentation part of the existing custom-menu opt-in, requiring master `settings.enabled` and `menuPreferences.enabled` after successful preference loading. Disabling either restores native Settings. Do not tie it to Home's footer opt-in, and do not introduce a new settings toggle/schema in this change.
 
-Proposed backdrop boundary: retain the resolved current Home/game artwork context when entering Settings, using `heroShownApp()`, `heroArtFor()` and `resolveArt()`. Observe the source while outside Settings and invalidate on account change; never select a random library game. Render the actual artwork under translucent surfaces with the existing calm-filter treatment and supported same-document blur. This is artwork-backed frost, not live game-frame capture. Where there is no valid artwork context, use a neutral VDL surface. Extending the menu's Gamescope shader leases to full-screen native Settings/live gameplay is outside this plan; do not reuse fake region geometry to acquire that effect.
+Proposed backdrop boundary: retain the resolved current Home/game artwork context when entering Settings, using account/source-owned `heroShownContext()` and `resolveArt()`. Observe the source while outside Settings and invalidate on account change; never select a random library game. Render the actual artwork under translucent surfaces with the existing calm-filter treatment and supported same-document blur. This is artwork-backed frost, not live game-frame capture. Where there is no valid artwork context, use a neutral VDL surface. Extending the menu's Gamescope shader leases to full-screen native Settings/live gameplay is outside this plan; do not reuse fake region geometry to acquire that effect.
 
 ### Task 1: Native shell discovery and structural inventory
 
@@ -90,13 +90,15 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 **Files:** Create `docs/validation/native-settings-vdl.md`; update the design status and this plan's completion boxes as evidence is established.
 
-- [ ] Run fresh `pnpm test`, `pnpm typecheck`, `pnpm build` and `git diff --check`; report any failure by name and resolve relevant failures before completion claims.
-- [ ] Review the whole change with a fresh reviewer using the preserved Native execution workflow; fix findings with regression evidence and rerun affected/full required checks.
-- [ ] Produce screenshots at handheld/Deck and larger viewport sizes; compare the stock and new view at equal viewport sizes. Distinguish fixture tests from native device evidence.
-- [ ] Remove the temporary Ally session trial before candidate reload; preserve a verified frontend backup and baseline digest. Installation occurs only with authorization for the concrete candidate. Wait for the delayed Home remount before testing.
-- [ ] Revisit the full current native category inventory and compare native counts/order/reachability before and after. Check representative System, Display, Audio, Storage, Notifications, Downloads and Game Recording pages, first/last sidebar entries, footer-safe scrolling, dynamic content, popups, and route/unload cleanup. Avoid exporting personal data or changing system settings during navigation checks.
-- [ ] Deliberate slider/device writes, physical controller/touch comfort, Steam Deck device installation and performance acceptance are separate controlled checks. Record what was actually exercised; do not claim full acceptance from structural snapshots or browser fixtures.
-- [ ] Record installed commit/digest/backup if installation is authorized; otherwise leave a tested local candidate ready for review. No push, PR, release or publication.
+- [x] Run fresh `pnpm test`, `pnpm typecheck`, `pnpm build` and `git diff --check`; report any failure by name and resolve relevant failures before completion claims.
+- [x] Review the whole change with a fresh reviewer using the preserved Native execution workflow; fix findings with regression evidence and rerun affected/full required checks.
+- [x] Produce screenshots at handheld/Deck and larger viewport sizes; compare the stock and new view at equal viewport sizes. Distinguish fixture tests from native device evidence.
+- [x] Remove the temporary Ally session trial before candidate reload; preserve a verified frontend backup and baseline digest. Installation occurs only with authorization for the concrete candidate. Wait for the delayed Home remount before testing.
+- [x] Revisit the full current native category inventory and compare native counts/order/reachability before and after. Check representative System, Display, Audio, Storage, Notifications, Downloads and Game Recording pages, first/last sidebar entries, footer-safe scrolling, dynamic content, popups, and route/unload cleanup. Avoid exporting personal data or changing system settings during navigation checks.
+- [x] Deliberate slider/device writes, physical controller/touch comfort, Steam Deck device installation and performance acceptance are separate controlled checks. Record what was actually exercised; do not claim full acceptance from structural snapshots or browser fixtures.
+- [x] Record installed commit/digest/backup if installation is authorized; otherwise leave a tested local candidate ready for review. No push, PR, release or publication.
+
+Task 5 completion is the authorized local-candidate path: no persistent installation occurred. Backup/reload/installed acceptance steps remain conditional on installation authorization, as detailed in `docs/validation/native-settings-vdl.md`. Source-only native checks and restoration of the temporary preview are explicitly distinguished there.
 
 ## Plan self-review
 

@@ -1,6 +1,6 @@
 # Native Settings VDL — handheld-first direction
 
-Status: proposed production design following an approved visual direction and temporary Audio trial. The production integration described here has not been approved or implemented.
+Status: approved and implemented as a tested local candidate. See `docs/validation/native-settings-vdl.md` for fresh checks, native source-level evidence and remaining installed/physical acceptance. Persistent installation requires separate authorization.
 
 ## Intent and evidence
 
