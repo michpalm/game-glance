@@ -43,4 +43,14 @@ Local artifacts in this chat's `settings-handheld/deck-corrections` directory: `
 - Backend `main.py` already matched the current source SHA-256 `5fcc43aa89641098c6e19cef32bbada1dd0565db8ea87da1e38a9362226c1112`; no backend replacement was needed. Only the frontend was staged and atomically replaced, with side menus/keyboard closed and guarded Decky reloads.
 - Rollback if native content becomes inaccessible or cleanup breaks navigation: close menus/keyboard, restore the original Deck backup to `/home/deck/homebrew/plugins/game-glance/dist/index.js`, verify the original hash, and reload through Decky. Preserve backend and stored settings.
 
-The Ally remains on its previously authorized `dcd1d18` build; these corrections were not installed there because Michael is using it.
+At completion of this Deck-only pass, the Ally remained on its previously authorized `dcd1d18` build because Michael was using it. The subsequent separately authorized installation is recorded below.
+
+## Subsequent authorized Ally installation — 2026-11-05
+
+Michael explicitly requested “Can you install this version on the Ally?” Rebuilt documentation HEAD `2eac5ac` (unchanged tested source candidate `059f70a`); the bundle matched the tested Deck SHA-256 `1f01738db0770beb0c63ee5ba457e89949094a0824cc0bc20d99ccc8ac564c54`. Guarded frontend-only replacement and Decky reload occurred with side menu/keyboard closed and no running games. No backend or saved settings changes.
+
+Rollback frontend: `/home/deck/gg-backup-native-settings-20261105-4iwls8es/index.js`, independently verified SHA-256 `5465f5297d1e1249dde5ab80b5bf5ef259b1a3a49ddc5ce303b84279fe52ee91`. The installed frontend hash was independently checked after reload and matched the candidate.
+
+Installed Ally checks at 1500×844 CSS pixels retained all 25 styled categories and footer clearance. First/last sidebar focus was reachable and visible beneath the heading. Audio, Display, Downloads and System dropdowns had themed/right-aligned values/options, cancelled with B, returned focus and preserved value snapshots. Keyboard, Controller, Display and Audio switches contained zero unthemed frames across 286 samples. Route exit removed owned Settings styles/markers/title; re-entry restored styling and actual artwork-backed frost. Final state: Audio Settings, plugin loaded, no side menu or running games, temporary previews absent and scratch audit globals removed. This is native programmatic validation, not physical comfort acceptance.
+
+Evidence: this chat's `settings-handheld/ally-corrections/{installed-build,pickers,transitions,categories,navigation,finish}.json`. The Steam Deck was not modified by this follow-up.
