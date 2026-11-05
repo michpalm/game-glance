@@ -58,7 +58,7 @@ Proposed backdrop boundary: retain the resolved current Home/game artwork contex
 
 - [ ] Write failing tests: 828×466 with no chrome gives 8px outer margins and 164px sidebar; a header ending at 36px yields top 44px; footer groups starting at 430px and 422px yield content bottom 414px; hidden/zero bounds are ignored, invalid dimensions return null. A 1280px viewport caps panel width at 1140px and sidebar at 210px.
 - [ ] Add observation tests for header/footer replacement, two unequal corner cards, UI resize and disposal. Never use the full `#Footer` wrapper as a corner-card rectangle.
-- [ ] Run the geometry test file and observe failures; implement pure layout plus coalesced observation using actual visible status/header and footer groups. Sidebar clamps to 20% of panel width within 128–210px; unusably narrow content falls back to native.
+- [ ] Run the geometry test file and observe failures; implement pure layout plus coalesced observation using actual visible status/header and footer groups. Sidebar uses 20% of viewport width rounded to the nearest 4px, clamped within 128–210px; unusably narrow content falls back to native.
 - [ ] Rerun geometry/footer tests; commit. Do not take a second footer lease or replace existing chrome ownership.
 
 ### Task 3: Scoped presentation lease and native popup styling
