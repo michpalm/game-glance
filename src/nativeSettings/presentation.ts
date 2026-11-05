@@ -1,6 +1,7 @@
 import {standardSettingRows,settingSurfaces} from './discovery';
 import type {NativeSettingsShell,SettingsBackdrop} from './model';
 import {visibleSettingsElement,type SettingsLayout} from './geometry';
+import {nativePickerOwns} from './nativePicker';
 import {nativeSettingsStyles} from './styles';
 import {installCalmFilter} from '../styles/tokens';
 type Markers=Map<HTMLElement,Map<string,string>>;
@@ -45,15 +46,7 @@ export function createSettingsPresentation(doc:Document){
   const explicit=ids.some(id=>{const owner=doc.getElementById(id);return !!owner&&(owner===popup||owner.contains(popup));});
   if(explicit)return true;
   if(source.getAttribute('role')!=='combobox'||source.getAttribute('aria-expanded')!=='true'||popup.getAttribute('role')!=='listbox')return false;
-  // Some Steam pickers omit the referenced DOM id. Verify the same native option
-  // array on both React owners; never infer portal ownership from proximity/focus.
-  const options=(element:HTMLElement,handler:string):unknown=>{
-   const key=Object.keys(element).find(k=>k.startsWith('__reactFiber'));
-   let fiber=key?(element as unknown as Record<string,any>)[key]:null;
-   for(let depth=0;fiber&&depth<16;depth++,fiber=fiber.return){const props=fiber.memoizedProps;if(Array.isArray(props?.rgOptions)&&typeof props[handler]==='function')return props.rgOptions;}
-   return null;
-  };
-  const sourceOptions=options(source,'onChange');return !!sourceOptions&&sourceOptions===options(popup,'onValueSelected');
+  return nativePickerOwns(source,popup);
  }
  const intent=(event:Event)=>{
   if(!shell||!layout||!shell.container.isConnected)return;
