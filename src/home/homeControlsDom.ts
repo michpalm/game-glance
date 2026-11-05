@@ -14,6 +14,8 @@ function discover(root:HTMLElement,measure:boolean):NativeFooterControls|null {
     return {footer,wrapper,groups,spacer:spacers[0]};
 }
 export const discoverNativeFooter=(root:HTMLElement):NativeFooterControls|null=>discover(root,true);
+/** Read native hint groups without taking a styling lease. */
+export const homeFooterGroups=(doc:Document):readonly HTMLElement[]=>discoverNativeFooter(doc.documentElement)?.groups??[];
 interface Claim {before:string|null;value:string;owners:Set<symbol>}
 const claims=new WeakMap<HTMLElement,Map<string,Claim>>();
 type Markers=Map<HTMLElement,Map<string,string>>;

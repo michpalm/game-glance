@@ -1,0 +1,19 @@
+import {expect,it,vi} from 'vitest';
+import {settingsLayout,observeSettingsLayout} from '../../src/nativeSettings/geometry';
+import {nativePage} from './fixture';
+const rect=(left:number,top:number,width:number,height:number)=>({left,top,width,height});
+it('uses handheld margins and the nearest footer edge without assuming equal corner cards',()=>{expect(settingsLayout({width:828,height:466,headers:[],footers:[]})).toEqual({left:8,top:8,width:812,height:450,sidebarWidth:164});const l=settingsLayout({width:828,height:466,headers:[rect(580,0,240,36)],footers:[rect(8,430,110,30),rect(600,422,220,38)]})!;expect(l.top).toBe(44);expect(l.top+l.height).toBe(414);});
+it('ignores empty/offscreen bounds, caps large panels and rejects unusable viewports',()=>{expect(settingsLayout({width:1280,height:800,headers:[rect(0,0,0,36)],footers:[rect(0,900,200,40)]})).toEqual({left:70,top:8,width:1140,height:784,sidebarWidth:210});for(const width of [NaN,Infinity,-1,250])expect(settingsLayout({width,height:466,headers:[],footers:[]})).toBeNull();});
+it('observes chrome replacement, resize and disposal without changing chrome ownership',async()=>{
+ const d=nativePage(),w=d.defaultView! as any,frames=new Map<number,()=>void>();let id=0,resize=()=>{};
+ w.requestAnimationFrame=(fn:()=>void)=>{frames.set(++id,fn);return id;};w.cancelAnimationFrame=(i:number)=>frames.delete(i);w.ResizeObserver=class{constructor(fn:()=>void){resize=fn;}observe(){}disconnect(){}};
+ Object.defineProperty(w,'innerWidth',{value:828,configurable:true});Object.defineProperty(w,'innerHeight',{value:466,configurable:true});Object.defineProperty(d.documentElement,'clientWidth',{value:828,configurable:true});Object.defineProperty(d.documentElement,'clientHeight',{value:466,configurable:true});
+ w.getComputedStyle=(e:HTMLElement)=>({display:e.style.display,visibility:e.style.visibility,opacity:e.style.opacity,flexGrow:e.style.flexGrow});
+ const set=(e:Element,r:any)=>(e as HTMLElement).getBoundingClientRect=()=>({...r,bottom:r.top+r.height,right:r.left+r.width} as DOMRect);
+ const addFooter=(top:number)=>{d.getElementById('Footer')?.remove();const f=d.createElement('div');f.id='Footer';f.innerHTML='<div><div><span><svg></svg></span><span>Menu</span></div><div style="flex-grow:1"></div><div><span><svg></svg></span><span>Back</span></div></div>';d.body.append(f);set(f,rect(0,422,828,44));set(f.firstElementChild!.firstElementChild!,rect(0,430,110,30));set(f.firstElementChild!.lastElementChild!,rect(600,top,220,38));};
+ addFooter(422);const header=d.createElement('div');header.className='gg-status-host';header.innerHTML='<div class="gh-status"></div>';d.body.append(header);set(header.firstElementChild!,rect(580,0,240,36));const changed=vi.fn(),stop=observeSettingsLayout(d,changed);
+ expect(changed.mock.lastCall?.[0]).toMatchObject({top:44,height:370});expect(d.querySelector('[data-gh-footer]')).toBeNull();
+ addFooter(410);await Promise.resolve();await Promise.resolve();for(const fn of [...frames.values()])fn();frames.clear();expect(changed.mock.lastCall?.[0]).toMatchObject({height:358});
+ header.firstElementChild!.setAttribute('style','display:none');resize();for(const fn of [...frames.values()])fn();frames.clear();expect(changed.mock.lastCall?.[0]).toMatchObject({top:8,height:394});
+ const calls=changed.mock.calls.length;stop();resize();d.body.append(d.createElement('div'));await Promise.resolve();for(const fn of [...frames.values()])fn();expect(changed).toHaveBeenCalledTimes(calls);
+});
