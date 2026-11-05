@@ -19,7 +19,7 @@ export function startSettingsPresentation(doc:Document,deps:{route:RouteSource;b
  const route=()=>{
   if(!alive)return;
   if(!/^\/settings(?:\/|$)/.test(deps.route.get()??'')){release();return;}
-  if(!presentation){presentation=createSettingsPresentation(doc);observer=view?.MutationObserver?new view.MutationObserver(schedule):undefined;observer?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','aria-hidden']});stopGeometry=observeSettingsLayout(doc,next=>{layout=next;render();});}
+  if(!presentation){presentation=createSettingsPresentation(doc);observer=view?.MutationObserver?new view.MutationObserver(render):undefined;observer?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','aria-hidden']});stopGeometry=observeSettingsLayout(doc,next=>{layout=next;render();});}
   render();
  };
  const stop=()=>{if(!alive)return;alive=false;if(frame!==undefined)view?.cancelAnimationFrame(frame);safely(offRoute);safely(offArt);release();};

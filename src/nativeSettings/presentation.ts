@@ -1,4 +1,4 @@
-import {standardSettingRows} from './discovery';
+import {standardSettingRows,settingSurfaces} from './discovery';
 import type {NativeSettingsShell,SettingsBackdrop} from './model';
 import {visibleSettingsElement,type SettingsLayout} from './geometry';
 import {nativeSettingsStyles} from './styles';
@@ -8,7 +8,7 @@ interface Claim {before:string|null;value:string}
 /** Own only decoration and scoped markers. Native content, events and focus are untouched. */
 export function createSettingsPresentation(doc:Document){
  const claims=new Map<HTMLElement,Map<string,Claim>>();
- let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
+ let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,title:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
  const ownedPopups=new Map<HTMLElement,HTMLElement>();
  let pending:{source:HTMLElement;existing:Set<Element>}|null=null,expiry:ReturnType<typeof setTimeout>|undefined;
  const overlaySelector='[role="listbox"],[role="dialog"],[role="alertdialog"]';
@@ -23,20 +23,37 @@ export function createSettingsPresentation(doc:Document){
   const next:Markers=new Map(),mark=(e:HTMLElement|null,name:string,value:string)=>{if(!e)return;let map=next.get(e);if(!map){map=new Map();next.set(e,map);}map.set(name,value);};
   if(shell&&layout&&shell.container.isConnected){
    if(!style){style=doc.createElement('style');style.dataset.ggSettingsStyle='true';doc.head.append(style);releaseCalm=installCalmFilter(doc);}
-   mark(shell.container,'data-gg-settings','container');mark(shell.layout,'data-gg-settings','layout');mark(shell.navigation,'data-gg-settings','nav');mark(shell.pane,'data-gg-settings','pane');mark(shell.page,'data-gg-settings','page');
-   for(let host=shell.page?.parentElement;host&&host!==shell.pane;host=host.parentElement)mark(host,'data-gg-settings','page-host');
-   for(const row of shell.page?standardSettingRows(shell.page):[])mark(row,'data-gg-settings-row',row.querySelector('[role="slider"]')?'slider':row.querySelector('[role="checkbox"]')?'toggle':'field');
+   mark(shell.container,'data-gg-settings','container');mark(shell.layout,'data-gg-settings','layout');mark(shell.navigation,'data-gg-settings','nav');mark(shell.pane,'data-gg-settings','pane');
+   if(!title){title=doc.createElement('div');title.dataset.ggSettingsTitle='true';title.textContent='Settings';title.setAttribute('role','heading');title.setAttribute('aria-level','1');}
+   if(title.parentElement!==shell.container)shell.container.append(title);
+   for(const page of shell.pages??(shell.page?[shell.page]:[])){
+    mark(page,'data-gg-settings','page');
+    for(let host=page.parentElement;host&&host!==shell.pane;host=host.parentElement)mark(host,'data-gg-settings','page-host');
+    for(const row of settingSurfaces(page))mark(row,'data-gg-settings-surface','true');
+    for(const row of standardSettingRows(page))mark(row,'data-gg-settings-row',row.querySelector('[role="slider"]')?'slider':row.querySelector('[role="checkbox"]')?'toggle':'field');
+   }
    for(const [popup,source] of ownedPopups){if(!associated(source,popup)){ownedPopups.delete(popup);continue;}mark(popup,'data-gg-settings','popup');}
    const vars=`[data-gg-settings="container"]{--gg-settings-left:${layout.left}px;--gg-settings-top:${layout.top}px;--gg-settings-width:${layout.width}px;--gg-settings-height:${layout.height}px;--gg-settings-sidebar:${layout.sidebarWidth}px;--gg-settings-base:${backdrop?'transparent':'#0c1016'}}`;
    const css=nativeSettingsStyles+vars;if(style.textContent!==css)style.textContent=css;
    if(backdrop){if(!art){art=doc.createElement('div');art.setAttribute('aria-hidden','true');}if(art.parentElement!==shell.container)shell.container.prepend(art);art.dataset.ggSettingsBackdrop=backdrop.mode;const image=`url(${JSON.stringify(backdrop.url)})`;if(artUrl!==backdrop.url){art.style.backgroundImage=image;artUrl=backdrop.url;}}else{art?.remove();art=null;artUrl=null;}
-  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();}
+  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;title?.remove();title=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();}
   reconcile(next);
  }
  function associated(source:HTMLElement,popup:HTMLElement):boolean {
   if(!shell?.page?.contains(source)||!visibleSettingsElement(source)||!visibleSettingsElement(popup)||source.getAttribute('aria-expanded')==='false')return false;
   const ids=[source.getAttribute('aria-controls'),source.getAttribute('aria-owns')].filter(Boolean).join(' ').split(/\s+/);
-  return ids.some(id=>{const owner=doc.getElementById(id);return !!owner&&(owner===popup||owner.contains(popup));});
+  const explicit=ids.some(id=>{const owner=doc.getElementById(id);return !!owner&&(owner===popup||owner.contains(popup));});
+  if(explicit)return true;
+  if(source.getAttribute('role')!=='combobox'||source.getAttribute('aria-expanded')!=='true'||popup.getAttribute('role')!=='listbox')return false;
+  // Some Steam pickers omit the referenced DOM id. Verify the same native option
+  // array on both React owners; never infer portal ownership from proximity/focus.
+  const options=(element:HTMLElement,handler:string):unknown=>{
+   const key=Object.keys(element).find(k=>k.startsWith('__reactFiber'));
+   let fiber=key?(element as unknown as Record<string,any>)[key]:null;
+   for(let depth=0;fiber&&depth<16;depth++,fiber=fiber.return){const props=fiber.memoizedProps;if(Array.isArray(props?.rgOptions)&&typeof props[handler]==='function')return props.rgOptions;}
+   return null;
+  };
+  const sourceOptions=options(source,'onChange');return !!sourceOptions&&sourceOptions===options(popup,'onValueSelected');
  }
  const intent=(event:Event)=>{
   if(!shell||!layout||!shell.container.isConnected)return;
