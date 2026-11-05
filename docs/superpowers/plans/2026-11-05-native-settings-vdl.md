@@ -103,3 +103,5 @@ Task 5 completion is the authorized local-candidate path: no persistent installa
 ## Plan self-review
 
 The shared shell covers all 25 observed categories without requiring each to match Audio. Complex layouts deliberately keep native geometry. Each review-focus class has an owning task and tests. Account/async-art and cleanup failures have explicit tests. Backdrop and activation choices are stated above for review; live gameplay capture is explicitly excluded rather than silently represented by static imagery. Installation and unperformed device acceptance remain separately reported.
+
+Installation follow-up: explicitly authorized and installed corrected source candidate `dcd1d18`; see `docs/validation/native-settings-vdl.md` for backup/digest, installed navigation/cleanup checks and remaining acceptance.

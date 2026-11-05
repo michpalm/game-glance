@@ -1,6 +1,6 @@
 # Native Settings VDL validation — 2026-11-05
 
-Status: implemented and tested local candidate on `release/4.0`. No persistent installation, push, PR or release of this Settings candidate. The existing temporary Audio-only preview was restored on the Ally, returning to Home. Installed-candidate and physical usability acceptance remain pending.
+Status: installed on the Ally with explicit approval, source candidate `dcd1d18` on `release/4.0`. The temporary Audio preview was removed. Installed structural/navigation checks passed; physical usability, Steam Deck hardware and performance acceptance remain pending. No push, PR or release.
 
 ## Result
 
@@ -57,3 +57,22 @@ The existing isolated plugin lifecycle fixture needed a NativeSettingsHost mock,
 Deferred minor: the standalone preview needs an externally supplied `device-frame.png`; it is not a self-contained visual demo. Product artwork behavior is independent of that fixture asset.
 
 The previously recorded installed radial candidate was `a60bdf6`, frontend SHA-256 `36bfb3449062cf0bb035c16c5988c85290deb12473877a5d251c4246c991add0`. This is a historical baseline, not an installed Settings digest. Before an authorized persistent installation, verify the current frontend again, save and verify a rollback copy, close the in-game menu, remove the Audio trial and reload the candidate. Then allow delayed Home remount and validate the installed lifecycle and physical controls. No backup/install is claimed by this source-only validation.
+
+
+## Authorized persistent installation
+
+Michael authorized installation with “Yes, go ahead with the installation.” Rebuilt and installed `d505b44` frontend only, with guarded replacement, independently verified digest, rollback copy and Decky reload while the side menu and keyboard were closed. That installed host correctly fell back to native: the footer glyphs were font-backed `role="img"` elements rather than SVG/img nodes, so the existing shared footer detector returned no safe groups. The earlier source validation did not expose this installed glyph variant.
+
+A regression reproduced the null layout before accepting the verified native `role="img"` glyph structure in the existing footer detector. The corrected candidate `dcd1d18` passed 261 test files / **2,835 tests**, TypeScript, build and whitespace checks. Targeted native Settings geometry/shared footer coverage passed 20 tests. No settings schema, native setting values or controller handlers were changed.
+
+- Installed source commit: `dcd1d18`.
+- Independently verified installed frontend SHA-256: `5465f5297d1e1249dde5ab80b5bf5ef259b1a3a49ddc5ce303b84279fe52ee91`.
+- Original accepted radial frontend backup: `/home/deck/gg-backup-native-settings-20261105-l8vmxfik/index.js`, independently verified SHA-256 `36bfb3449062cf0bb035c16c5988c85290deb12473877a5d251c4246c991add0`. `original.sha256` and candidate metadata are alongside it.
+- Intermediate `d505b44` frontend backup: `/home/deck/gg-backup-native-settings-20261105-e6m08iej/index.js`.
+- Rollback: close side menus/keyboard, restore the original accepted frontend from the first backup to `/home/deck/homebrew/plugins/game-glance/dist/index.js`, verify its hash, then reload through Decky. Preserve backend and user settings. Roll back if installed native content becomes inaccessible or cleanup strands navigation.
+
+After the guarded corrected reload and completed Home remount, the real installed host applied artwork-backed frost at 1500×844 CSS pixels. A sequential installed pass visited all 25 categories with all 25 retained, bounded content and footer clearance. Native virtual-controller traversal reached first and last sidebar entries with the last fully visible. Last eligible controls on System, Display, Storage, Notifications, Downloads, Game Recording and Audio took native focus inside the safe area with unchanged value snapshots. The output picker opened with A, cancelled with B and returned focus without changing values; its unprovable portal deliberately retained native styling.
+
+Route exit to Home removed every Settings marker/style/decoration; re-entry restored presentation and real artwork. Final readback: plugin loaded, temporary Audio trial removed, no side menu, no running games, `/settings/audio`. The Ally is left on Audio Settings for hands-on evaluation. Scratch audit globals were removed. No deliberate native settings writes or games were launched.
+
+Artifacts: `settings-handheld/installed-checks.json`, `installed-finish.json`, `installed-build.json`, and `installed-ally-audio.png` in this chat's visualization directory. Programmatic native dispatcher checks do not establish physical-controller/touch comfort or performance. Installed master/menu disable, screensaver suspension and full plugin unload remain covered locally rather than claimed as exercised in this installed pass.

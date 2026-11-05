@@ -1,6 +1,6 @@
 # Native Settings VDL — handheld-first direction
 
-Status: approved and implemented as a tested local candidate. See `docs/validation/native-settings-vdl.md` for fresh checks, native source-level evidence and remaining installed/physical acceptance. Persistent installation requires separate authorization.
+Status: approved, implemented and installed on the Ally with explicit authorization. See `docs/validation/native-settings-vdl.md` for installed-build checks and remaining physical/hardware acceptance.
 
 ## Intent and evidence
 
