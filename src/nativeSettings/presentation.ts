@@ -12,6 +12,9 @@ export function createSettingsPresentation(doc:Document){
  let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,title:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
  const ownedPopups=new Map<HTMLElement,HTMLElement>();
  let pending:{source:HTMLElement;existing:Set<Element>}|null=null,expiry:ReturnType<typeof setTimeout>|undefined;
+ let retryFrame:number|undefined;
+ const settling=new Map<HTMLElement,{until:number;remaining:number}>();
+ const clearSettling=()=>{if(retryFrame!==undefined)doc.defaultView?.cancelAnimationFrame(retryFrame);retryFrame=undefined;settling.clear();};
  const overlaySelector='[role="listbox"],[role="dialog"],[role="alertdialog"]';
  const disarm=()=>{pending=null;if(expiry!==undefined)clearTimeout(expiry);expiry=undefined;};
  const release=(e:HTMLElement,name:string,c:Claim)=>{if(e.getAttribute(name)!==c.value)return;if(c.before===null)e.removeAttribute(name);else e.setAttribute(name,c.before);};
@@ -37,7 +40,7 @@ export function createSettingsPresentation(doc:Document){
    const vars=`[data-gg-settings="container"]{--gg-settings-left:${layout.left}px;--gg-settings-top:${layout.top}px;--gg-settings-width:${layout.width}px;--gg-settings-height:${layout.height}px;--gg-settings-sidebar:${layout.sidebarWidth}px;--gg-settings-base:${backdrop?'transparent':'#0c1016'}}`;
    const css=nativeSettingsStyles+vars;if(style.textContent!==css)style.textContent=css;
    if(backdrop){if(!art){art=doc.createElement('div');art.setAttribute('aria-hidden','true');}if(art.parentElement!==shell.container)shell.container.prepend(art);art.dataset.ggSettingsBackdrop=backdrop.mode;const image=`url(${JSON.stringify(backdrop.url)})`;if(artUrl!==backdrop.url){art.style.backgroundImage=image;artUrl=backdrop.url;}}else{art?.remove();art=null;artUrl=null;}
-  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;title?.remove();title=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();}
+  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;title?.remove();title=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();clearSettling();}
   reconcile(next);
  }
  function associated(source:HTMLElement,popup:HTMLElement):boolean {
@@ -61,15 +64,27 @@ export function createSettingsPresentation(doc:Document){
    const popup=[...doc.querySelectorAll<HTMLElement>(overlaySelector)].find(e=>!pending!.existing.has(e)&&!shell!.container.contains(e)&&associated(pending!.source,e));
    if(popup){ownedPopups.set(popup,pending.source);disarm();}
   }
-  // Steam's controller dispatcher can open pickers without a bubbling DOM activation.
-  // An explicit expanded ARIA relationship still proves ownership of that portal.
-  for(const source of shell.page?.querySelectorAll<HTMLElement>('[aria-expanded="true"][aria-controls],[aria-expanded="true"][aria-owns]')??[]){
-   for(const popup of doc.querySelectorAll<HTMLElement>(overlaySelector))if(!shell.container.contains(popup)&&associated(source,popup))ownedPopups.set(popup,source);
+  // Native refs can settle after the portal's DOM/focus events. Recheck only
+  // briefly while a real picker is expanded, without weakening ownership.
+  const sources=[...shell.page?.querySelectorAll<HTMLElement>('[aria-expanded="true"][aria-controls],[aria-expanded="true"][aria-owns]')??[]];
+  for(const source of settling.keys())if(!sources.includes(source))settling.delete(source);
+  let retry=false;
+  for(const source of sources){
+   let found=false;
+   for(const popup of doc.querySelectorAll<HTMLElement>(overlaySelector))if(!shell.container.contains(popup)&&associated(source,popup)){ownedPopups.set(popup,source);found=true;}
+   if(found){settling.delete(source);continue;}
+   let window=settling.get(source);if(!window){window={until:Date.now()+500,remaining:30};settling.set(source,window);}
+   if(window.remaining>0&&Date.now()<window.until)retry=true;
   }
+  if(retry&&retryFrame===undefined&&doc.defaultView?.requestAnimationFrame){
+   for(const window of settling.values())window.remaining--;
+   retryFrame=doc.defaultView.requestAnimationFrame(()=>{retryFrame=undefined;updatePopups();});
+  }else if(!retry&&retryFrame!==undefined){doc.defaultView?.cancelAnimationFrame(retryFrame);retryFrame=undefined;}
+
   if(ownedPopups.size)paint();
  };
  const observer=doc.defaultView?.MutationObserver?new doc.defaultView.MutationObserver(updatePopups):null;
  observer?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-controls','aria-owns','aria-expanded','hidden','inert','aria-hidden','style','class','id']});
  doc.addEventListener('pointerdown',intent,true);doc.addEventListener('click',intent,true);doc.addEventListener('vgp_onbuttondown',intent,true);doc.addEventListener('focusin',updatePopups,true);
- return {update(next:NativeSettingsShell|null,box:SettingsLayout|null,image:SettingsBackdrop|null){if(stopped)return;if(next?.container!==shell?.container||next?.page!==shell?.page){disarm();ownedPopups.clear();}shell=next;layout=box;backdrop=image;paint();},dispose(){if(stopped)return;this.update(null,null,null);stopped=true;disarm();observer?.disconnect();doc.removeEventListener('pointerdown',intent,true);doc.removeEventListener('click',intent,true);doc.removeEventListener('vgp_onbuttondown',intent,true);doc.removeEventListener('focusin',updatePopups,true);}};
+ return {update(next:NativeSettingsShell|null,box:SettingsLayout|null,image:SettingsBackdrop|null){if(stopped)return;if(next?.container!==shell?.container||next?.page!==shell?.page){disarm();ownedPopups.clear();clearSettling();}shell=next;layout=box;backdrop=image;paint();updatePopups();},dispose(){if(stopped)return;this.update(null,null,null);stopped=true;disarm();clearSettling();observer?.disconnect();doc.removeEventListener('pointerdown',intent,true);doc.removeEventListener('click',intent,true);doc.removeEventListener('vgp_onbuttondown',intent,true);doc.removeEventListener('focusin',updatePopups,true);}};
 }
