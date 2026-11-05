@@ -9,7 +9,7 @@ function discover(root:HTMLElement,measure:boolean):NativeFooterControls|null {
     const spacers=children.filter(e=>e.children.length===0&&!e.textContent?.trim()&&grow(e)>0);
     if(spacers.length!==1)return null;
     const groups=children.filter(e=>e!==spacers[0]);
-    if(!groups.length||groups.some(e=>e.children.length!==2||!e.children[0].querySelector('img,svg')||!e.children[1].textContent?.trim()))return null;
+    if(!groups.length||groups.some(e=>e.children.length!==2||!e.children[0].querySelector('img,svg,[role="img"]')||!e.children[1].textContent?.trim()))return null;
     if(measure){const f=footer.getBoundingClientRect(),r=area(root);if(r.width<=0||r.height<=0||f.width<r.width*.9||f.height<=0||f.height>r.height*.3||Math.abs(f.bottom-r.bottom)>2)return null;}
     return {footer,wrapper,groups,spacer:spacers[0]};
 }
