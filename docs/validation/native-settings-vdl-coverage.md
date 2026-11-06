@@ -1,6 +1,6 @@
 # Native Settings coverage corrections — 2026-11-06
 
-Status: device validation resumed after reconnection; coverage candidate `70c1333` is installed and verified, with final geometry refinement `8e0eba2` locally tested and awaiting reconnection for installation. Michael requested a category-by-category audit on the Steam Deck after reporting unthemed Display Colors and Customization video choices, enlarged styling and sidebar text clipping. The Deck became unreachable after the initial native diagnosis. Installation and the full native pass remain pending until it is awake and connected. The Ally was not accessed or modified.
+Status: **installed and verified on the Steam Deck**. Final tested source `8e0eba2` (installed from documentation HEAD `a9b45ff`). The connection interruptions and intermediate findings below are historical; the final native pass at the end resolves them. The Ally was not accessed or modified.
 
 ## Native diagnosis completed before disconnection
 
@@ -45,3 +45,22 @@ That installed candidate passed all 25 categories, 260/260 detected native field
 A final visual comparison exposed two gaps in the earlier geometry checks: the inner category contents still animated and retained native icon margins, causing an awkward wrapped Customization caption, and fixed-position calibration controls could cover part of the expanded preview frame despite its image/style identity remaining unchanged. Locally tested refinement `8e0eba2` removes inner sidebar zoom/icon margins, allows long row captions their natural height, and keeps calibration controls in normal flex flow above reserved footer space. Its preview wrapper flexes into the remaining space without filtering or replacing the image. Browser regressions explicitly reproduced row-bound clipping and preview/control overlap before correction, then passed at all three sizes. The full suite remains 263 files/2,852 tests, types/build/whitespace green.
 
 The Deck dropped offline again before `8e0eba2` could be staged; the install was stopped at preflight. The full candidate must still be installed and the stronger row/preview bounds checked natively before completion. Temporary normal-input keep-awake is prepared for the final test session, rather than changing sleep preferences. The Ally remains untouched throughout this work.
+
+
+## Final accepted Steam Deck pass
+
+After the second wake confirmation, temporary time-bounded normal mouse input kept the Deck active without changing sleep preferences. It was explicitly stopped at completion. Final source `8e0eba2`, documentation HEAD `a9b45ff`, installed frontend SHA-256 **`7858bf2948423ee5449f0ace82c430bf40e69f3171cacb19116c65299c346339`**; independently checked after reload. Immediate predecessor backup: `/home/deck/gg-backup-native-settings-20261106-gq37e1s8/index.js` (the `70c1333` build). The original pre-pass frontend remains backed up at `/home/deck/gg-backup-native-settings-20261106-7kpdp01f/index.js`, SHA-256 `1f01738db0770beb0c63ee5ba457e89949094a0824cc0bc20d99ccc8ac564c54`. No backend or stored setting changes.
+
+Final native checks at actual 1280×800 handheld display / approximately 854×534 CSS viewport:
+
+- All 25 categories inspected, 255/255 currently detected native fields themed and 61 scroll positions checked. Field counts vary with native loading/conditional rows; this count is the final observed state, not a replacement catalogue. No detected visible text crosses its content pane, sidebar, or own category row. No unintended page-level horizontal overflow; Storage retains bounded inner drive scrolling.
+- Customization's five startup choices receive VDL surfaces, label/description styling and check accent. First/middle/last native card focus stays within the pane without root zoom; selection indicator snapshots remain unchanged. Final visual capture confirms Customization is one line inside its category row: row 44px, caption/content 20px, icon margins zero.
+- Display Colors' two sliders use the mint accent, preserve values, stay focus-visible and clear the footer by 8px. The calibration preview has no filter, retains its source/style identity, and now ends exactly where the controls begin (approximately 340.61px); no control overlay obscures it. Native back exits slider focus then returns to Display and clears calibration markers/styles.
+- Four native dropdowns (Audio, Display, Downloads, System) pass owned styling, right alignment, B cancellation, focus return and unchanged value snapshots.
+- All 25 category transitions contain zero unthemed frames across 1,004 samples. First/last category focus is reachable and visible.
+- Exiting to Home removes every owned shell, field/part/choice/scroll marker, calibration page/preview/section marker and stylesheet. Re-entering Customization restores styling and artwork-backed frost. Final readback: loaded plugin, Customization, no side menu or running games; scratch audit globals removed.
+- Fresh local checks on the final source: 263 files / 2,852 tests passed; typecheck/build/whitespace passed. Browser cases include 24 normal Settings cases and 3 calibration sizes, with additional native-margin/focus-zoom, long category caption, Storage overflow, and unobscured-preview regressions observed RED→GREEN.
+
+Final artifacts: this chat's `settings-handheld/coverage-pass/native-*-final.json`, `installed-build-final.json`, `customization-final.png`, `display-colors-final.png` and fixture captures. Earlier `*-after.png` files describe intermediate findings and are superseded by the final captures.
+
+These are the current mounted native category states plus the explicitly tested calibration subpage. Unmounted hardware/account-specific options, future Steam versions, subjective physical-controller/touch comfort and measured performance are not established by this pass. No destructive settings actions or alternate startup movie selections were invoked. For rollback, close side menus/keyboard, restore the verified original Deck backup, verify its digest and reload through Decky while preserving backend and saved settings. No push, PR, release or Ally installation occurred.
