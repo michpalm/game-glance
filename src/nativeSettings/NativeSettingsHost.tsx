@@ -46,7 +46,7 @@ function NativeSettingsOn({doc}:{doc:Document}){
     catch(error){stops.forEach(stop=>stop());observer?.disconnect();throw error;}
     return()=>{stops.forEach(stop=>stop());observer?.disconnect();};
    }});
-   const source=backdrop,owner=createSettingsActivation(()=>startSettingsPresentation(doc,{route,backdrop:source,fields:nativeSettingsFields(),colorClasses:nativeColorClasses}));activation.current=owner;
+   const source=backdrop,owner=createSettingsActivation(()=>startSettingsPresentation(doc,{route,backdrop:source,fields:nativeSettingsFields(),colorClasses:nativeColorClasses,account:()=>getSteamUiState(doc).account}));activation.current=owner;
    owner.update({master:true,menu:true,ready:true,suspended:current.current});
    return()=>{activation.current=null;owner.dispose();source.dispose();};
   }catch{backdrop?.dispose();return undefined;}

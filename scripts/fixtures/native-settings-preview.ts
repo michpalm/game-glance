@@ -25,3 +25,20 @@ if(kind==='color'){
  let bounds:unknown;const off=observeSettingsLayout(document,layout=>{bounds=layout;colors.update(discoverColorSettings(document,'/colorsettings',{page:'ColorPage',preview:'ColorPreview',controls:'ColorControls',section:'ColorSection'}),layout);});
  (globalThis as any).colorFixture={previewBefore:before,layout:()=>bounds,dispose(){off();colors.dispose();}};
 }
+if(kind==='motion'){
+ // Native-shaped route handoff: controls are retired immediately; the common
+ // page/footer host survives, matching Steam's measured stacking structure.
+ const bounds=last!;(globalThis as any).settingsFixture.dispose();
+ const native=document.getElementById('container')!,markup=native.outerHTML,host=document.createElement('div');host.id='MainNavMenu-Rest';native.before(host);host.append(native,document.getElementById('Footer')!);
+ document.head.insertAdjacentHTML('beforeend','<style>#Footer{z-index:7000}.gg-status-host{z-index:5000}.gh-root{position:fixed;inset:0;background:linear-gradient(120deg,#315d76,#5e4230)}</style>');
+ const {createSettingsMotion}=await import('../../src/nativeSettings/motion');let account='fixture-a',destination=false,presentation=createSettingsPresentation(document);
+ const motion=createSettingsMotion(document,{account:()=>account,ready:()=>destination});
+ const show=()=>{presentation.update(discoverNativeSettings(document,'/settings/audio'),bounds,image);return presentation.scene()!;};
+ motion.update(show(),false);
+ (globalThis as any).motionFixture={
+  enter(){motion.update(null);motion.update(show(),true);},category(){motion.update(show(),false);},
+  leave(ready=true){destination=ready;motion.exit('/library/home');presentation.dispose();document.getElementById('container')?.remove();const home=document.createElement('div');home.className='gh-root';host.prepend(home);},
+  reenter(){document.querySelector('.gh-root')?.remove();host.insertAdjacentHTML('afterbegin',markup);presentation=createSettingsPresentation(document);motion.update(show(),true);},
+  ready(){destination=true;},account(){account='fixture-b';motion.checkAccount();},dispose(){motion.dispose();presentation.dispose();}
+ };
+}
