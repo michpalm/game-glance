@@ -3,7 +3,11 @@ import type {NativeSettingsShell} from './model';
 /** The selectors in this boundary describe observed native structure, not a Valve API. */
 export function discoverNativeSettings(doc:Document,path:string|null):NativeSettingsShell|null {
  if(!path||!/^\/settings(?:\/|$)/.test(path))return null;
- const candidates=[...doc.querySelectorAll<HTMLElement>('.PageListColumn')].filter(n=>!n.closest('[hidden],[inert],[aria-hidden="true"]'));
+ let candidates=[...doc.querySelectorAll<HTMLElement>('.PageListColumn')].filter(n=>!n.closest('[hidden],[inert],[aria-hidden="true"]'));
+ // A fresh route can mount before Steam removes our hidden outgoing shell.
+ // Prefer active candidates; a sole retired candidate may be reused on return.
+ const active=candidates.filter(n=>!n.closest('[data-gg-settings-retiring="true"]'));
+ if(active.length)candidates=active;
  if(candidates.length!==1||candidates[0].children.length!==1)return null;
  const navigation=candidates[0],container=navigation.closest<HTMLElement>('.DialogContent'),layout=navigation.parentElement,pane=navigation.nextElementSibling as HTMLElement|null;
  if(!container||!layout||!pane?.matches('.DialogContentTransition')||!navigation.querySelector('[role="tab"]')||!container.contains(pane))return null;

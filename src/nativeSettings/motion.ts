@@ -1,3 +1,4 @@
+import {createSettingsRetirement} from './retirement';
 import {TOKENS,frostFilter,tokenCss,installCalmFilter} from '../styles/tokens';
 import type {SettingsLayout} from './geometry';
 import {visibleSettingsElement} from './geometry';
@@ -10,6 +11,7 @@ const opacity=(doc:Document,e:HTMLElement)=>{const value=Number(doc.defaultView?
 /** Only our panel/art/heading animate. Exit carries decoration, never copied
  * native controls, so routing and input can proceed without a delayed action. */
 export function createSettingsMotion(doc:Document,deps:{account?:()=>string|null;ready?:(path:string,scene:SettingsMotionScene)=>boolean}={}){
+ const retirement=createSettingsRetirement(doc);
  const view=doc.defaultView,media=view?.matchMedia?.('(prefers-reduced-motion: reduce)');
  let current:SettingsMotionScene|null=null,owner:string|null=null,entry:Entry|null=null,exit:Exit|null=null,disposed=false;
  const account=()=>{try{return deps.account?.()??null;}catch{return null;}};
@@ -17,13 +19,13 @@ export function createSettingsMotion(doc:Document,deps:{account?:()=>string|null
  const cancel=(animation:Animation)=>{try{animation.cancel();}catch{/* A retired native window cannot block cleanup. */}};
  function clearEntry(){const old=entry;entry=null;if(!old)return;clearTimeout(old.timer);old.underlay?.remove();for(const animation of old.animations)cancel(animation);}
  function clearExit(){const old=exit;exit=null;if(!old)return;clearTimeout(old.timer);if(old.frame!==undefined)view?.cancelAnimationFrame(old.frame);old.root.remove();old.style.remove();old.releaseCalm();if(old.animation)cancel(old.animation);}
- function reset(){clearEntry();clearExit();current=null;owner=null;}
+ function reset(){clearEntry();clearExit();retirement.clear();current=null;owner=null;}
  function checkAccount(){const next=account();if((current||exit)&&next!==(exit?.account??owner))reset();}
  function ready(path:string,scene:SettingsMotionScene):boolean {
   if(deps.ready)return deps.ready(path,scene);
   const selector=path==='/library/home'?'.gh-root':/^\/library\/app\/\d+(?:\/|$)/.test(path)?'.gg-hero':null;
   if(selector&&[...doc.querySelectorAll<HTMLElement>(selector)].some(visibleSettingsElement))return true;
-  return !visibleSettingsElement(scene.container);
+  return scene.container.hasAttribute('data-gg-settings-retiring')?!scene.container.isConnected:!visibleSettingsElement(scene.container);
  }
  function fadeExit(state:Exit){
   if(exit!==state||state.animation)return;
@@ -45,6 +47,7 @@ export function createSettingsMotion(doc:Document,deps:{account?:()=>string|null
  function update(scene:SettingsMotionScene|null,animate=true){
   if(disposed)return;checkAccount();
   if(!scene){clearEntry();current=null;return;}
+  retirement.restore(scene.container);
   if(current?.panel===scene.panel){if(current.backdrop?.url!==scene.backdrop?.url)clearEntry();current=scene;return;}
   const returning=!!exit,from=exit?opacity(doc,exit.root):0;
   clearEntry();clearExit();current=scene;owner=account();
@@ -69,7 +72,7 @@ export function createSettingsMotion(doc:Document,deps:{account?:()=>string|null
   // outside its retiring route. Unknown chrome structure gets an instant exit.
   const footer=doc.getElementById('Footer');let parent=scene.container.parentElement;
   while(parent&&footer&&!parent.contains(footer))parent=parent.parentElement;
-  clearExit();current=null;
+  retirement.hide(scene.container);clearExit();current=null;
   if(!supported()||!footer||!parent||parent===doc.body||parent===doc.documentElement){clearEntry();return;}
   const root=doc.createElement('div'),style=doc.createElement('style'),panel=doc.createElement('div'),heading=doc.createElement('div');
   root.dataset.ggSettingsTransition='exit';root.dataset.ggSettingsTransitionPhase='waiting';root.setAttribute('aria-hidden','true');root.setAttribute('inert','');root.style.cssText='position:fixed;inset:0;z-index:1000;pointer-events:none;isolation:isolate';

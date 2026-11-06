@@ -37,7 +37,7 @@ if(kind==='motion'){
  motion.update(show(),false);
  (globalThis as any).motionFixture={
   enter(){motion.update(null);motion.update(show(),true);},category(){motion.update(show(),false);},
-  leave(ready=true){destination=ready;motion.exit('/library/home');presentation.dispose();document.getElementById('container')?.remove();const home=document.createElement('div');home.className='gh-root';host.prepend(home);},
+  leave(ready=true,linger=0){destination=ready;motion.exit('/library/home');presentation.dispose();const outgoing=document.getElementById('container');if(linger){outgoing!.id='retiring-container';setTimeout(()=>outgoing?.remove(),linger);}else outgoing?.remove();const home=document.createElement('div');home.className='gh-root';host.prepend(home);},
   reenter(){document.querySelector('.gh-root')?.remove();routeHost.insertAdjacentHTML('afterbegin',markup);presentation=createSettingsPresentation(document);motion.update(show(),true);},
   ready(){destination=true;},account(){account='fixture-b';motion.checkAccount();},dispose(){motion.dispose();presentation.dispose();}
  };
