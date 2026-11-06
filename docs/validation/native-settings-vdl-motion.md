@@ -56,3 +56,9 @@ Verification:
 - Audio, Display, Downloads and System native dropdown A/B, focus return, right alignment and unchanged values all rechecked successfully.
 
 Repeatable native audit: `scripts/fixtures/native-settings-live-back-audit.js`, evaluated in Steam SharedJSContext. It exports only route/category and rendering metadata, without account/library text or setting values. Results are frame samples rather than a guarantee under every workload.
+
+## Ally installation — 2026-11-06
+
+Installed the same verified frontend on Ally at the user's explicit request. Backend source already matched the device. Menu and keyboard were closed, no game was running, previous frontend was independently backed up to `/home/deck/gg-backup-native-settings-20261106-tx83ampr/index.js`, staged digest checked, frontend replaced atomically, and Game Glance reloaded with Home remounted. Installed frontend digest independently confirmed as `a3ecadadd9a2c8921db9eea58371f14e11543ab334d7889d0101e7c6454535be`.
+
+Actual native B exits from Audio, Display, Customization and early Audio introduction: **516 sampled frames**, **89 retained outgoing frames**, all guarded, **zero exposed native Settings frames**. All four reached Home without transition/retirement leftovers; device left on Home. Native unmount observed at 353–442 ms. No setting values changed.
