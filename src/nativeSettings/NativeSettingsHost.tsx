@@ -1,3 +1,5 @@
+import {nativeSettingsFields,nativeColorClasses} from './nativeClasses';
+import {settingsPresentationRoute} from './discovery';
 import {useCallback,useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import {useSettings} from '../data/settings';
 import {menuPreferences} from '../menu/preferences';
@@ -31,7 +33,7 @@ function NativeSettingsOn({doc}:{doc:Document}){
   const readContext=():SettingsArtContext=>{
    const account=getSteamUiState(doc).account,path=route.get();
    if(account!==context.account){if(initialized)blockedPath=path;context={account,appId:null};}initialized=true;
-   if(!path||/^\/settings(?:\/|$)/.test(path))return context;
+   if(!path||settingsPresentationRoute(path))return context;
    const match=/^\/library\/app\/(\d+)(?:\/|$)/.exec(path),home=path==='/library/home'?heroShownContext():null;
    const appId=match&&path!==blockedPath?Number(match[1]):home?.account===account?home.appId:null;
    context={account,appId,revision:home?.account===account?home.revision:undefined};return context;
@@ -44,7 +46,7 @@ function NativeSettingsOn({doc}:{doc:Document}){
     catch(error){stops.forEach(stop=>stop());observer?.disconnect();throw error;}
     return()=>{stops.forEach(stop=>stop());observer?.disconnect();};
    }});
-   const source=backdrop,owner=createSettingsActivation(()=>startSettingsPresentation(doc,{route,backdrop:source}));activation.current=owner;
+   const source=backdrop,owner=createSettingsActivation(()=>startSettingsPresentation(doc,{route,backdrop:source,fields:nativeSettingsFields(),colorClasses:nativeColorClasses}));activation.current=owner;
    owner.update({master:true,menu:true,ready:true,suspended:current.current});
    return()=>{activation.current=null;owner.dispose();source.dispose();};
   }catch{backdrop?.dispose();return undefined;}

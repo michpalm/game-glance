@@ -1,3 +1,4 @@
+import {classElements,type NativeFieldClasses} from './nativeFields';
 import type {NativeSettingsShell} from './model';
 /** The selectors in this boundary describe observed native structure, not a Valve API. */
 export function discoverNativeSettings(doc:Document,path:string|null):NativeSettingsShell|null {
@@ -16,15 +17,18 @@ export function discoverNativeSettings(doc:Document,path:string|null):NativeSett
  return {container,layout,navigation,pane,page:pages[pages.length-1]??null,pages};
 }
 /** Native labelled rows also occur outside DialogSettingsSection (Display, Downloads, etc.). */
-export function settingSurfaces(page:HTMLElement):readonly HTMLElement[] {
+export function settingSurfaces(page:HTMLElement,fields:NativeFieldClasses={}):readonly HTMLElement[] {
  const labelled=[...page.querySelectorAll<HTMLElement>('[id$="_Label"]')].map(e=>e.closest<HTMLElement>('.Panel')).filter((e):e is HTMLElement=>!!e&&e!==page&&page.contains(e));
- return [...new Set([...page.querySelectorAll<HTMLElement>('.DialogSettingsSection>.Panel'),...labelled])];
+ const native=classElements(page,fields.field);
+ return [...new Set([...page.querySelectorAll<HTMLElement>('.DialogSettingsSection>.Panel'),...labelled,...native])].filter(row=>!native.some(child=>child!==row&&row.contains(child)));
 }
-export function standardSettingRows(page:HTMLElement):readonly HTMLElement[] {
- return settingSurfaces(page).filter(row=>{
+export function standardSettingRows(page:HTMLElement,fields:NativeFieldClasses={}):readonly HTMLElement[] {
+ return settingSurfaces(page,fields).filter(row=>{
   if(row.querySelector('[role="radiogroup"],[role="list"],[role="tablist"],input,textarea'))return false;
   const controls=row.querySelectorAll('[role="slider"],[role="checkbox"],[role="combobox"]');
   const extra=[...row.querySelectorAll('button,[role=button],a[href]')].filter(action=>![...controls].some(control=>control===action||control.contains(action)||action.contains(control)));
   return controls.length===1&&extra.length===0||controls.length===0&&extra.length===1&&extra[0].matches('button.DialogButton');
  });
 }
+
+export const settingsPresentationRoute=(path:string|null):boolean=>!!path&&(/^\/settings(?:\/|$)/.test(path)||path==='/colorsettings');

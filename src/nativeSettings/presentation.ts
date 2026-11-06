@@ -1,3 +1,4 @@
+import {markFieldParts,type NativeFieldClasses} from './nativeFields';
 import {standardSettingRows,settingSurfaces} from './discovery';
 import type {NativeSettingsShell,SettingsBackdrop} from './model';
 import {visibleSettingsElement,type SettingsLayout} from './geometry';
@@ -7,7 +8,7 @@ import {installCalmFilter} from '../styles/tokens';
 type Markers=Map<HTMLElement,Map<string,string>>;
 interface Claim {before:string|null;value:string}
 /** Own only decoration and scoped markers. Native content, events and focus are untouched. */
-export function createSettingsPresentation(doc:Document){
+export function createSettingsPresentation(doc:Document,fields:NativeFieldClasses={}){
  const claims=new Map<HTMLElement,Map<string,Claim>>();
  let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,title:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
  const ownedPopups=new Map<HTMLElement,HTMLElement>();
@@ -33,8 +34,9 @@ export function createSettingsPresentation(doc:Document){
    for(const page of shell.pages??(shell.page?[shell.page]:[])){
     mark(page,'data-gg-settings','page');
     for(let host=page.parentElement;host&&host!==shell.pane;host=host.parentElement)mark(host,'data-gg-settings','page-host');
-    for(const row of settingSurfaces(page))mark(row,'data-gg-settings-surface','true');
-    for(const row of standardSettingRows(page))mark(row,'data-gg-settings-row',row.querySelector('[role="slider"]')?'slider':row.querySelector('[role="checkbox"]')?'toggle':'field');
+    markFieldParts(page,fields,mark);
+    for(const row of settingSurfaces(page,fields))mark(row,'data-gg-settings-surface','true');
+    for(const row of standardSettingRows(page,fields))mark(row,'data-gg-settings-row',row.querySelector('[role="slider"]')?'slider':row.querySelector('[role="checkbox"]')?'toggle':'field');
    }
    for(const [popup,source] of ownedPopups){if(!associated(source,popup)){ownedPopups.delete(popup);continue;}mark(popup,'data-gg-settings','popup');}
    const vars=`[data-gg-settings="container"]{--gg-settings-left:${layout.left}px;--gg-settings-top:${layout.top}px;--gg-settings-width:${layout.width}px;--gg-settings-height:${layout.height}px;--gg-settings-sidebar:${layout.sidebarWidth}px;--gg-settings-base:${backdrop?'transparent':'#0c1016'}}`;
