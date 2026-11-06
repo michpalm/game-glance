@@ -80,3 +80,7 @@ Michael requested centering category content against the entire highlighted/sele
 Installed source `16fec8b`. Native Audio, selected/focused Customization and wrapped Game Recording measured content/icon center error effectively zero (less than 0.001px after rounding). Browser regressions exercise idle/selected/focused states across 24 main Settings cases plus 3 calibration sizes; RED→GREEN observed. Full suite 263 files/2,853 tests passed; typecheck, build and whitespace passed. Native first/last navigation and route cleanup/re-entry passed. Left on Customization, no stored setting changes, temporary keep-awake stopped. Ally unchanged.
 
 Independently verified installed SHA-256 `37a1082e206684dd9ec59e1b65ea8802e84b2561d8a5a33613ecd608ee1212af`; predecessor backup `/home/deck/gg-backup-native-settings-20261106-mqy7hrqk/index.js`. Evidence in this chat's `settings-handheld/category-centering`: `native-centering.json`, `native-navigation.json`, `native-cleanup.json`, `installed-build.json`, and `deck-centered-categories.png`.
+
+## Settings entry/exit motion follow-up
+
+See [native-settings-vdl-motion.md](native-settings-vdl-motion.md) for the 250 ms transition behavior, native ancestor zoom suppression, reduced-motion handling, Deck installation and frame-sampled validation. Full suite now passes 264 files / 2861 tests; native dropdown behavior, centering and ownership cleanup were rechecked.
