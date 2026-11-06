@@ -87,4 +87,6 @@ export const nativeSettingsStyles=tokenCss('[data-gg-settings="container"],[data
 [data-gg-settings="color-controls"] .gpfocus{outline:2px solid #fff!important;outline-offset:2px;border-radius:8px!important;transform:none!important}
 
 [data-gg-settings-choice] [data-gg-settings-part="label"] svg{fill:var(--gg-accent)!important;color:var(--gg-accent)!important}
+[data-gg-settings="page"] [role="tablist"]{box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
+[data-gg-settings-scroll-row]{flex-wrap:nowrap!important;overflow-x:auto!important}
 `;

@@ -35,6 +35,7 @@ export function createSettingsPresentation(doc:Document,fields:NativeFieldClasse
     mark(page,'data-gg-settings','page');
     for(let host=page.parentElement;host&&host!==shell.pane;host=host.parentElement)mark(host,'data-gg-settings','page-host');
     markFieldParts(page,fields,mark);
+    for(const list of page.querySelectorAll<HTMLElement>('[role="tablist"]')){const overflow=doc.defaultView?.getComputedStyle?.(list).overflowX;if(overflow==='scroll'||overflow==='auto')mark(list,'data-gg-settings-scroll-row','true');}
     for(const row of settingSurfaces(page,fields))mark(row,'data-gg-settings-surface','true');
     for(const row of standardSettingRows(page,fields))mark(row,'data-gg-settings-row',row.querySelector('[role="slider"]')?'slider':row.querySelector('[role="checkbox"]')?'toggle':'field');
    }
