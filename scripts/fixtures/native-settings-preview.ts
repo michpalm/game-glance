@@ -29,8 +29,8 @@ if(kind==='motion'){
  // Native-shaped route handoff: controls are retired immediately; the common
  // page/footer host survives, matching Steam's measured stacking structure.
  const bounds=last!;(globalThis as any).settingsFixture.dispose();
- const native=document.getElementById('container')!,markup=native.outerHTML,host=document.createElement('div');host.id='MainNavMenu-Rest';native.before(host);host.append(native,document.getElementById('Footer')!);
- document.head.insertAdjacentHTML('beforeend','<style>#Footer{z-index:7000}.gg-status-host{z-index:5000}.gh-root{position:fixed;inset:0;background:linear-gradient(120deg,#315d76,#5e4230)}</style>');
+ const native=document.getElementById('container')!,markup=native.outerHTML,host=document.createElement('div');host.id='MainNavMenu-Rest';native.before(host);host.append(document.getElementById('Footer')!);const routeHost=document.createElement('div');routeHost.className='NativeRouteMotion';routeHost.append(native);const main=document.createElement('div');main.id='Main';main.append(routeHost);host.prepend(main);
+ document.head.insertAdjacentHTML('beforeend','<style>.NativeRouteMotion{transition:opacity .6s .2s,transform .6s .2s;transform:scale(.95);opacity:.4;height:100%}#Footer{z-index:7000}.gg-status-host{z-index:5000}.gh-root{position:fixed;inset:0;background:linear-gradient(120deg,#315d76,#5e4230)}</style>');
  const {createSettingsMotion}=await import('../../src/nativeSettings/motion');let account='fixture-a',destination=false,presentation=createSettingsPresentation(document);
  const motion=createSettingsMotion(document,{account:()=>account,ready:()=>destination});
  const show=()=>{presentation.update(discoverNativeSettings(document,'/settings/audio'),bounds,image);return presentation.scene()!;};
@@ -38,7 +38,7 @@ if(kind==='motion'){
  (globalThis as any).motionFixture={
   enter(){motion.update(null);motion.update(show(),true);},category(){motion.update(show(),false);},
   leave(ready=true){destination=ready;motion.exit('/library/home');presentation.dispose();document.getElementById('container')?.remove();const home=document.createElement('div');home.className='gh-root';host.prepend(home);},
-  reenter(){document.querySelector('.gh-root')?.remove();host.insertAdjacentHTML('afterbegin',markup);presentation=createSettingsPresentation(document);motion.update(show(),true);},
+  reenter(){document.querySelector('.gh-root')?.remove();routeHost.insertAdjacentHTML('afterbegin',markup);presentation=createSettingsPresentation(document);motion.update(show(),true);},
   ready(){destination=true;},account(){account='fixture-b';motion.checkAccount();},dispose(){motion.dispose();presentation.dispose();}
  };
 }

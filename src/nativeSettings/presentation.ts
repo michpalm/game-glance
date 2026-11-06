@@ -12,6 +12,7 @@ interface Claim {before:string|null;value:string}
 export function createSettingsPresentation(doc:Document,fields:NativeFieldClasses={}){
  const claims=new Map<HTMLElement,Map<string,Claim>>();
  let shell:NativeSettingsShell|null=null,layout:SettingsLayout|null=null,backdrop:SettingsBackdrop|null=null,style:HTMLStyleElement|null=null,art:HTMLDivElement|null=null,title:HTMLDivElement|null=null,releaseCalm:(()=>void)|null=null,artUrl:string|null=null,stopped=false;
+ let routeMotion:HTMLElement|null=null;
  const ownedPopups=new Map<HTMLElement,HTMLElement>();
  let pending:{source:HTMLElement;existing:Set<Element>}|null=null,expiry:ReturnType<typeof setTimeout>|undefined;
  let retryFrame:number|undefined;
@@ -29,6 +30,12 @@ export function createSettingsPresentation(doc:Document,fields:NativeFieldClasse
   const next:Markers=new Map(),mark=(e:HTMLElement|null,name:string,value:string)=>{if(!e)return;let map=next.get(e);if(!map){map=new Map();next.set(e,map);}map.set(name,value);};
   if(shell&&layout&&shell.container.isConnected){
    if(!style){style=doc.createElement('style');style.dataset.ggSettingsStyle='true';doc.head.append(style);releaseCalm=installCalmFilter(doc);}
+   // Steam's route host otherwise adds a delayed .95->1 scale/opacity
+   // transition above our stationary panel. Discover only that ancestor below
+   // #Main, retain the scoped claim while mounted, and restore it on release.
+   if(routeMotion&&!routeMotion.contains(shell.container))routeMotion=null;
+   if(!routeMotion&&shell.container.closest('#Main'))for(let host=shell.container.parentElement;host&&host!==doc.body&&host.id!=='Main';host=host.parentElement){const properties=doc.defaultView?.getComputedStyle?.(host)?.transitionProperty?.split(',').map(p=>p.trim());if(properties?.includes('transform')&&properties.includes('opacity')){routeMotion=host;break;}}
+   mark(routeMotion,'data-gg-settings-route-motion','true');
    mark(shell.container,'data-gg-settings','container');mark(shell.layout,'data-gg-settings','layout');mark(shell.navigation,'data-gg-settings','nav');mark(shell.pane,'data-gg-settings','pane');
    if(!title){title=doc.createElement('div');title.dataset.ggSettingsTitle='true';title.textContent='Settings';title.setAttribute('role','heading');title.setAttribute('aria-level','1');}
    if(title.parentElement!==shell.container)shell.container.append(title);
@@ -44,7 +51,7 @@ export function createSettingsPresentation(doc:Document,fields:NativeFieldClasse
    const vars=`[data-gg-settings="container"]{--gg-settings-left:${layout.left}px;--gg-settings-top:${layout.top}px;--gg-settings-width:${layout.width}px;--gg-settings-height:${layout.height}px;--gg-settings-sidebar:${layout.sidebarWidth}px;--gg-settings-base:${backdrop?'transparent':'#0c1016'}}`;
    const css=nativeSettingsStyles+vars;if(style.textContent!==css)style.textContent=css;
    if(backdrop){if(!art){art=doc.createElement('div');art.setAttribute('aria-hidden','true');}if(art.parentElement!==shell.container)shell.container.prepend(art);art.dataset.ggSettingsBackdrop=backdrop.mode;const image=`url(${JSON.stringify(backdrop.url)})`;if(artUrl!==backdrop.url){art.style.backgroundImage=image;artUrl=backdrop.url;}}else{art?.remove();art=null;artUrl=null;}
-  }else{style?.remove();style=null;art?.remove();art=null;artUrl=null;title?.remove();title=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();clearSettling();}
+  }else{routeMotion=null;style?.remove();style=null;art?.remove();art=null;artUrl=null;title?.remove();title=null;releaseCalm?.();releaseCalm=null;ownedPopups.clear();disarm();clearSettling();}
   reconcile(next);
  }
  function associated(source:HTMLElement,popup:HTMLElement):boolean {

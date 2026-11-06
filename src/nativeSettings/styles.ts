@@ -1,5 +1,6 @@
 import {TOKENS,tokenCss,frostFilter} from '../styles/tokens';
 export const nativeSettingsStyles=tokenCss('[data-gg-settings="container"],[data-gg-settings="popup"],[data-gg-settings="color-controls"]')+`
+[data-gg-settings-route-motion="true"]{transition:none!important;animation:none!important;transform:none!important;opacity:1!important}
 [data-gg-settings="container"]{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;isolation:isolate;background:var(--gg-settings-base,#0c1016)!important;color:var(--gg-text)!important;text-shadow:var(--gg-text-shadow);--gg-d:1px}
 [data-gg-settings-backdrop]{position:fixed;inset:-48px;z-index:-1;pointer-events:none;background-position:center;background-size:cover;filter:${frostFilter('16px')} saturate(.8) brightness(.8)}
 [data-gg-settings-backdrop="fallback"]{filter:${frostFilter('42px')} saturate(.7) brightness(.7)}
