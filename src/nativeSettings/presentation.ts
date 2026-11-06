@@ -1,7 +1,7 @@
 import {markFieldParts,type NativeFieldClasses} from './nativeFields';
 import {standardSettingRows,settingSurfaces} from './discovery';
 import type {NativeSettingsShell,SettingsBackdrop} from './model';
-import {visibleSettingsElement,type SettingsLayout} from './geometry';
+import {visibleSettingsElement,withSettingsHeading,type SettingsLayout} from './geometry';
 import {nativePickerOwns} from './nativePicker';
 import {nativeSettingsStyles} from './styles';
 import {installCalmFilter} from '../styles/tokens';
@@ -89,5 +89,5 @@ export function createSettingsPresentation(doc:Document,fields:NativeFieldClasse
  const observer=doc.defaultView?.MutationObserver?new doc.defaultView.MutationObserver(updatePopups):null;
  observer?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-controls','aria-owns','aria-expanded','hidden','inert','aria-hidden','style','class','id']});
  doc.addEventListener('pointerdown',intent,true);doc.addEventListener('click',intent,true);doc.addEventListener('vgp_onbuttondown',intent,true);doc.addEventListener('focusin',updatePopups,true);
- return {update(next:NativeSettingsShell|null,box:SettingsLayout|null,image:SettingsBackdrop|null){if(stopped)return;if(next?.container!==shell?.container||next?.page!==shell?.page){disarm();ownedPopups.clear();clearSettling();}shell=next;layout=box;backdrop=image;paint();updatePopups();},dispose(){if(stopped)return;this.update(null,null,null);stopped=true;disarm();clearSettling();observer?.disconnect();doc.removeEventListener('pointerdown',intent,true);doc.removeEventListener('click',intent,true);doc.removeEventListener('vgp_onbuttondown',intent,true);doc.removeEventListener('focusin',updatePopups,true);}};
+ return {update(next:NativeSettingsShell|null,box:SettingsLayout|null,image:SettingsBackdrop|null){if(stopped)return;if(next?.container!==shell?.container||next?.page!==shell?.page){disarm();ownedPopups.clear();clearSettling();}shell=next;layout=withSettingsHeading(box);backdrop=image;paint();updatePopups();},dispose(){if(stopped)return;this.update(null,null,null);stopped=true;disarm();clearSettling();observer?.disconnect();doc.removeEventListener('pointerdown',intent,true);doc.removeEventListener('click',intent,true);doc.removeEventListener('vgp_onbuttondown',intent,true);doc.removeEventListener('focusin',updatePopups,true);}};
 }

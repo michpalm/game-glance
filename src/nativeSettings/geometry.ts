@@ -13,6 +13,13 @@ export function settingsLayout({width,height,headers,footers}:{width:number;heig
  if(bottom-top<120||w-sidebarWidth<180)return null;
  return {left,top,width:w,height:bottom-top,sidebarWidth};
 }
+/** The main Settings heading lives above its panel; calibration keeps the raw layout. */
+export function withSettingsHeading(layout:SettingsLayout|null):SettingsLayout|null {
+ if(!layout)return null;
+ const top=Math.max(44,layout.top),height=layout.height-(top-layout.top);
+ return height<120?null:top===layout.top?layout:{...layout,top,height};
+}
+
 function visible(e:Element):boolean {
  if(!e.isConnected||e.closest('[hidden],[inert],[aria-hidden="true"]'))return false;
  const view=e.ownerDocument.defaultView;
