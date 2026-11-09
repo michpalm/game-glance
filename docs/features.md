@@ -135,7 +135,11 @@ Also in Quick Access:
   second. A game that does not answer is skipped, and Stop ends it at once.
 - **Clear cached data.**
 - **Screensaver → Preview:** shows the screensaver at once (any button ends it).
-- **Updates:** the installed version, **Update to …** when a newer release is out, and **Check for updates**.
+- **Updates:** the installed version, **Update to …** when a newer release is out, **Check for updates**, and
+  **Choose version**: every published version from 3.5.0 on, labelled latest stable, prerelease or installed.
+  Prereleases are listed only after **Show prereleases**; automatic checks offer stable releases only. Decky asks
+  before it upgrades or downgrades, and settings are kept. With the Game Glance menu (4.0), the same list is at
+  **Game Glance → General → Choose version** inside the menu.
 
 ## Your language
 
@@ -143,6 +147,13 @@ Game Glance follows Steam's language and uses Steam's own words wherever Steam h
 juego" in Spanish, the collection and sort names, the cloud states and more). Unifideck's labels come from Unifideck. A
 few words with no Steam equivalent stay in English: the HowLongToBeat column names and this Quick Access panel (see
 [localization.md](localization.md)).
+
+## 4.0 prerelease
+
+4.0.0-rc.1 is a prerelease: library search, Compact and Radial keyboards, the optional Game Glance menu (Navigate,
+Quick settings, Performance, In game, Social, Notifications, Soundtrack, Plugins), the shared status bar and footer,
+and the optional Steam Settings restyle. See [release-notes/4.0.0-rc.1.md](release-notes/4.0.0-rc.1.md). Its menu
+settings are under **Game Glance → Menu**.
 
 ## In development for 3.5.0
 

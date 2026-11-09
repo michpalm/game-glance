@@ -40,6 +40,10 @@ Game Glance is not in the Decky plugin store. Install it from a release:
 Updates install from Game Mode: Game Glance checks for a new release once a day, and Quick Access → Game Glance →
 Updates shows **Update to …**, which hands it to Decky to confirm, install and reload Game Glance.
 
+**Choose version** in the same place lists every published version, so you can go back to an earlier one. Prereleases
+(test builds such as 4.0.0-rc.1) are listed only after **Show prereleases**; automatic checks stay on stable releases.
+With the Game Glance menu on, **Game Glance → General → Choose version** opens the same list inside the menu.
+
 If you use **HLTB for Deck**, you can uninstall it; Game Glance shows the same times on the game page.
 
 ## Settings
