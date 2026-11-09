@@ -59,3 +59,13 @@ it('deduplicates equivalent shortened tags and prefers the first installable ass
     const shorter = release('3.5');
     expect(pickVersionCatalog([first, shorter])).toEqual([{ version: '3.5.0', url: first.assets[0].browser_download_url, sha256: '' }]);
 });
+
+it('lists published prereleases separately and keeps stable available for rollback', () => {
+    const beta = (version: string) => release(version, { prerelease: true });
+    const versions = pickVersionCatalog([
+        beta('4.0.0-rc.1'), beta('4.0.0-rc.10'), beta('4.0.0-rc.2'),
+        beta('4.0.0-beta.1'), release('4.0.0-rc.11', { prerelease: true, draft: true }),
+        release('3.6.0'),
+    ]);
+    expect(versions.map(r => r.version)).toEqual(['4.0.0-rc.10', '4.0.0-rc.2', '4.0.0-rc.1', '4.0.0-beta.1', '3.6.0']);
+});
