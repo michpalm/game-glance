@@ -30,6 +30,8 @@ export default definePlugin(() => {
         name: PLUGIN_NAME,
         titleView: <div className={staticClasses.Title}>{PLUGIN_NAME}</div>,
         content: <SettingsPanel />,
+        // Steam temporarily hides Quick Access while its dropdown owns focus.
+        alwaysRender: true,
         icon: <FaGamepad />,
         onDismount() {
             // Each step on its own: one that throws must not leave the others applied.
