@@ -21,7 +21,7 @@ function appearance({ gamepad = false, focused = false, mouse = false, hover = f
         const matchable = selector.trim().replaceAll(':focus', '[data-dom-focus]').replaceAll(':hover', '[data-hovered]');
         // The icon's generated content does not affect the link's own focus or row height.
         if (matchable.includes('::')) continue;
-        const declarations = [...body.matchAll(/(?:^|;)\s*(min-height|background|color|box-shadow):\s*([^;]+)/g)]
+        const declarations = [...body.matchAll(/(?:^|;)\s*(min-height|background|color|box-shadow|outline):\s*([^;]+)/g)]
             .map(([, name, value]) => [name, value.replace(/\s*!important$/, '').trim()]);
         if (row.matches(matchable)) Object.assign(rowStyle, Object.fromEntries(declarations));
         if (link.matches(matchable)) Object.assign(linkStyle, Object.fromEntries(declarations));
@@ -37,12 +37,12 @@ describe('preferred copy appearance', () => {
     it('keeps DOM focus visible when Steam has removed gpfocus after touch', () => {
         expect(appearance({ focused: true }).link.background).toBe('rgba(12, 16, 22, 0.4)');
         expect(appearance({ focused: true }).link.color).toBe('#fff');
-        expect(appearance({ focused: true }).link['box-shadow']).toContain('var(--glance-accent)');
+        expect(appearance({ focused: true }).link.outline).toContain('solid #fff');
     });
 
-    it('highlights gamepad focus with Home’s accent glow', () => {
+    it('highlights gamepad focus with the menu’s white ring', () => {
         expect(appearance({ gamepad: true }).link.background).toBe('rgba(12, 16, 22, 0.4)');
-        expect(appearance({ gamepad: true }).link['box-shadow']).toContain('var(--glance-accent)');
+        expect(appearance({ gamepad: true }).link.outline).toContain('solid #fff');
     });
 
     it('does not leave a pressed-looking fill when a mouse retains gamepad or DOM focus', () => {

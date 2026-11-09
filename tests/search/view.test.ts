@@ -1,0 +1,8 @@
+import {it,expect,vi} from 'vitest';
+import {SearchOverlay} from '../../src/search/SearchOverlay';
+import {initialHomeSearch} from '../../src/home/homeSearch';
+vi.mock('@decky/ui',()=>({DialogButton:'button',Focusable:'div',GamepadButton:{}}));
+const text=(v:any):string=>Array.isArray(v)?v.map(text).join(' '):v&&typeof v==='object'&&v.props?text(v.props.children):typeof v==='string'||typeof v==='number'?String(v):'';
+const props=(state:any)=>({state,layout:{left:0,top:0,width:750,listHeight:264,keyboardBand:{left:0,top:300,width:800,height:300},scale:1,rowHeight:88},metadata:new Map(),field:null,listRef:{current:null},onResult:()=>{},onFocus:()=>{},onBack:()=>{},onRetry:()=>{},onScroll:()=>{}});
+it('shows the empty, loading, unavailable and no-match states with exact copy',()=>{const s={...initialHomeSearch('one'),phase:'field' as const};expect(text(SearchOverlay(props(s)))).toContain('Search your library.');expect(text(SearchOverlay(props({...s,draft:'ori',library:{status:'loading',account:'one'}})))).toContain('Loading library…');expect(text(SearchOverlay(props({...s,draft:'ori'})))).toContain('Library unavailable. Try again.');expect(text(SearchOverlay(props({...s,draft:'ori',library:{status:'ready',account:'one',entries:[]}})))).toContain('No games found');});
+it('shows the full matching count and a navigation error',()=>{const a={appId:1,title:'Ori',kind:'game',installed:true};const s={...initialHomeSearch('one'),phase:'results',draft:'ori',matches:[a],library:{status:'ready',account:'one',entries:[a]},openError:true};expect(text(SearchOverlay(props(s)))).toContain('1 game');expect(text(SearchOverlay(props(s)))).toContain("Couldn't open this game. Try again.");});

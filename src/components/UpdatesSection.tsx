@@ -2,6 +2,7 @@ import { toaster } from '@decky/api';
 import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow } from '@decky/ui';
 import { useState } from 'react';
 import { createInstallGate, installUpdate, installVersion, isPreRelease, sameVersion, UpdateState, useUpdate } from '../data/update';
+import { versionChoices, versionsNote } from '../data/versionChoices';
 import { useVersionCatalog } from '../data/useVersionCatalog';
 import { PLUGIN_NAME } from '../constants';
 
@@ -33,10 +34,9 @@ export function UpdatesSection() {
     const [installing, setInstalling] = useState(false);
     const [installGate] = useState(() => createInstallGate(setInstalling));
     const catalog = useVersionCatalog(choosing);
-    const visibleReleases = catalog.releases.filter(r => showPrereleases || !isPreRelease(r.version));
-    const release = visibleReleases.find((r) => r.version === selected);
     const current = state.current;
-    const latestStable = catalog.releases.find(r => !isPreRelease(r.version));
+    const choices = versionChoices(catalog.releases, { current, showPrereleases });
+    const release = choices.some(c => c.version === selected) ? catalog.releases.find((r) => r.version === selected) : undefined;
     const requestInstall = async (action: () => Promise<boolean>) => {
         if ((await installGate.run(action)) === false) {
             toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
@@ -82,15 +82,15 @@ export function UpdatesSection() {
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                        {catalog.loading ? 'Loading versions…' : catalog.error ? 'Could not refresh versions. Showing saved choices when available.' : visibleReleases.length === 0 ? 'No matching versions are available yet.' : showPrereleases ? 'Prereleases are optional test builds. Select a stable version here to switch back.' : 'Stable versions. Decky asks before installing.'}
+                        {versionsNote({ loading: catalog.loading, error: catalog.error, showPrereleases, count: choices.length })}
                     </div>
                 </PanelSectionRow>
-                {visibleReleases.length > 0 && <PanelSectionRow>
+                {choices.length > 0 && <PanelSectionRow>
                     <DropdownItem
                         label="Version"
                         menuLabel="Choose version"
                         selectedOption={release?.version ?? ''}
-                        rgOptions={visibleReleases.map(r => ({ data: r.version, label: `${r.version}${isPreRelease(r.version) ? ' · prerelease' : r === latestStable ? ' · latest stable' : ''}${current && sameVersion(r.version, current) ? ' · installed' : ''}` }))}
+                        rgOptions={choices.map(c => ({ data: c.version, label: c.label }))}
                         onChange={(option) => setSelected(String(option.data))}
                         disabled={catalog.loading || installing}
                     />

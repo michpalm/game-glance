@@ -1,0 +1,211 @@
+// Game Glance QAM frost. Game pixels only; foreground Steam UI composes later.
+uniform float4 Bar < source = "Bar"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Panel < source = "Panel"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Notifications < source = "Notifications"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Status < source = "Status"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 Keyboard < source = "Keyboard"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 KeyboardLeft < source = "KeyboardLeft"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float4 KeyboardRight < source = "KeyboardRight"; defaultValue = float4(0, 0, 0, 0); > = float4(0, 0, 0, 0);
+uniform float2 BarRadius < source = "BarRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 PanelRadius < source = "PanelRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 NotificationsRadius < source = "NotificationsRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 StatusRadius < source = "StatusRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 KeyboardRadius < source = "KeyboardRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 KeyboardLeftRadius < source = "KeyboardLeftRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+uniform float2 KeyboardRightRadius < source = "KeyboardRightRadius"; defaultValue = float2(0, 0); > = float2(0, 0);
+// Milliseconds since Gamescope built this effect.
+uniform float Timer < source = "timer"; >;
+#define OutputSize float2(@OUT_W@, @OUT_H@)
+#define InputSize float2(BUFFER_WIDTH, BUFFER_HEIGHT)
+#if @FIT@ == 0
+#define FitScale min(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT)
+#define GameSize (InputSize * FitScale)
+#elif @FIT@ == 1
+#define FitScale max(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT)
+#define GameSize (InputSize * FitScale)
+#elif @FIT@ == 3
+#define FitScale min(min(@OUT_W@ * 1.0 / BUFFER_WIDTH, @OUT_H@ * 1.0 / BUFFER_HEIGHT), @MAX_SCALE@)
+#define GameSize (InputSize * FitScale)
+#else
+#define GameSize OutputSize
+#endif
+#define Offset ((OutputSize - GameSize) * 0.5)
+#define Pad (@PAD@.0 / OutputSize)
+// The menu fades in over the visual language's fast motion token; frost matches it.
+#define FadeMs 150.0
+// Bright game areas are calmed under the glass so menu text stays readable:
+// above the knee, brightness rises at a third of the rate. Hue is kept.
+#define CalmKnee 0.45
+#define CalmSlope 0.35
+texture2D Scene : COLOR;
+sampler2D SceneSampler { Texture = Scene; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
+texture2D BarD { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
+texture2D BarH { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
+texture2D BarV { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
+texture2D PanelD { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
+texture2D PanelH { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
+texture2D PanelV { Width = @PANEL_W@; Height = @PANEL_H@; Format = RGBA16F; };
+texture2D NotificationsD { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+texture2D NotificationsH { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+texture2D NotificationsV { Width = @NOTIFICATIONS_W@; Height = @NOTIFICATIONS_H@; Format = RGBA16F; };
+texture2D StatusD { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
+texture2D StatusH { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
+texture2D StatusV { Width = @STATUS_W@; Height = @STATUS_H@; Format = RGBA16F; };
+texture2D KeyboardD { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftD { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightD { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
+texture2D KeyboardH { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftH { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightH { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
+texture2D KeyboardV { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
+texture2D KeyboardLeftV { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
+texture2D KeyboardRightV { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
+// Render targets keep their contents between frames: the previous state is
+// copied aside, then updated, so the fade starts on the first visible frame.
+// RGBA32F, not RG32F: Gamescope can only create formats with a DRM equivalent.
+texture2D StateA { Width = 1; Height = 1; Format = RGBA32F; };
+texture2D StateB { Width = 1; Height = 1; Format = RGBA32F; };
+sampler2D BarDS { Texture = BarD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D BarHS { Texture = BarH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D BarVS { Texture = BarV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D PanelDS { Texture = PanelD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D PanelHS { Texture = PanelH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D PanelVS { Texture = PanelV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D NotificationsDS { Texture = NotificationsD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D NotificationsHS { Texture = NotificationsH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D NotificationsVS { Texture = NotificationsV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusDS { Texture = StatusD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusHS { Texture = StatusH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StatusVS { Texture = StatusV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardDS { Texture = KeyboardD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftDS { Texture = KeyboardLeftD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightDS { Texture = KeyboardRightD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardHS { Texture = KeyboardH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftHS { Texture = KeyboardLeftH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightHS { Texture = KeyboardRightH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardVS { Texture = KeyboardV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardLeftVS { Texture = KeyboardLeftV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D KeyboardRightVS { Texture = KeyboardRightV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StateAS { Texture = StateA; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D StateBS { Texture = StateB; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
+void VS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0) {
+    uv = float2((id << 1) & 2, id & 2);
+    pos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+float2 OutputUV(float2 inputUV) { return (Offset + inputUV * GameSize) / OutputSize; }
+float2 InputUV(float2 outputUV) { return (outputUV * OutputSize - Offset) / GameSize; }
+float2 CropUV(float2 uv, float4 rect) { return InputUV(rect.xy - Pad + uv * (rect.zw + 2.0 * Pad)); }
+float2 TileUV(float2 uv, float4 rect) { return (uv - rect.xy + Pad) / (rect.zw + 2.0 * Pad); }
+// Exact 8x8 output-pixel average: each bilinear tap sits between four pixels.
+float4 Box(float2 uv) {
+    float2 px = 1.0 / GameSize;
+    float4 c = 0;
+    [unroll] for (int y = -3; y <= 3; y += 2)
+        [unroll] for (int x = -3; x <= 3; x += 2)
+            c += tex2D(SceneSampler, uv + float2(x, y) * px);
+    return c / 16.0;
+}
+// Gaussian with sigma = 16 CSS px at this display scale, in 1/8-resolution texels.
+float4 Blur(sampler2D image, float2 uv, float2 texel) {
+@BLUR_TAPS@
+    return c;
+}
+float Mask(float2 uv, float4 rect, float2 radiusNorm) {
+    if (rect.z <= 0 || rect.w <= 0) return 0;
+    float2 halfSize = rect.zw * OutputSize * 0.5;
+    float2 position = abs((uv - rect.xy - rect.zw * 0.5) * OutputSize);
+    // Most of the screen is outside every region: skip the corner distance there.
+    if (any(position > halfSize + 1.0)) return 0;
+    float2 radius = min(radiusNorm * OutputSize, halfSize);
+    if (min(radius.x, radius.y) <= 0) return saturate(0.5 + min(halfSize.x - position.x, halfSize.y - position.y));
+    float2 q = (position - halfSize + radius) / radius;
+    float distance = (length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 1.0) * min(radius.x, radius.y);
+    return saturate(0.5 - distance);
+}
+float4 Remember(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return tex2D(StateAS, float2(0.5, 0.5)); }
+// x = timer at the first frame with visible masks, y = 1 once started.
+float4 Track(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
+    if (Bar.z <= 0 && Panel.z <= 0 && Notifications.z <= 0 && Status.z <= 0 && Keyboard.z <= 0 && KeyboardLeft.z <= 0 && KeyboardRight.z <= 0) return float4(0, 0, 0, 0);
+    float2 previous = tex2D(StateBS, float2(0.5, 0.5)).xy;
+    if (previous.y > 0.5 && previous.x <= Timer) return float4(previous, 0, 0);
+    return float4(Timer, 1, 0, 0);
+}
+float4 BarDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Bar)); }
+float4 BarHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarDS, uv, float2(1.0 / @BAR_W@, 0.0)); }
+float4 BarVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarHS, uv, float2(0.0, 1.0 / @BAR_H@)); }
+float4 PanelDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Panel)); }
+float4 PanelHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(PanelDS, uv, float2(1.0 / @PANEL_W@, 0.0)); }
+float4 PanelVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(PanelHS, uv, float2(0.0, 1.0 / @PANEL_H@)); }
+float4 NotificationsDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Notifications)); }
+float4 NotificationsHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsDS, uv, float2(1.0 / @NOTIFICATIONS_W@, 0.0)); }
+float4 NotificationsVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(NotificationsHS, uv, float2(0.0, 1.0 / @NOTIFICATIONS_H@)); }
+float4 StatusDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Status)); }
+// The status tile is sized to a cap, usually wider than the pill: one blur step is 8 output pixels of the pill's own
+// span, so the blur keeps its strength however wide the pill is.
+float4 StatusHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusDS, uv, float2(8.0 / ((Status.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 StatusVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(StatusHS, uv, float2(0.0, 8.0 / ((Status.w + 2.0 * Pad.y) * OutputSize.y))); }
+// The menu keyboard is usually closed (an all-zero area) and opens and moves while the menu is open. Its tile is sized
+// from the fixed panel, not its rectangle, so its blur steps follow its own span on screen, like the status bar's.
+float4 KeyboardDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Keyboard)); }
+float4 KeyboardLeftDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, KeyboardLeft)); }
+float4 KeyboardRightDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, KeyboardRight)); }
+float4 KeyboardHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardDS, uv, float2(8.0 / ((Keyboard.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 KeyboardLeftHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardLeftDS, uv, float2(8.0 / ((KeyboardLeft.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 KeyboardRightHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardRightDS, uv, float2(8.0 / ((KeyboardRight.z + 2.0 * Pad.x) * OutputSize.x), 0.0)); }
+float4 KeyboardVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardHS, uv, float2(0.0, 8.0 / ((Keyboard.w + 2.0 * Pad.y) * OutputSize.y))); }
+float4 KeyboardLeftVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardLeftHS, uv, float2(0.0, 8.0 / ((KeyboardLeft.w + 2.0 * Pad.y) * OutputSize.y))); }
+float4 KeyboardRightVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(KeyboardRightHS, uv, float2(0.0, 8.0 / ((KeyboardRight.w + 2.0 * Pad.y) * OutputSize.y))); }
+float4 Calm(float4 c) {
+    float y = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
+    float calmed = y > CalmKnee ? CalmKnee + (y - CalmKnee) * CalmSlope : y;
+    c.rgb *= calmed / max(y, 1e-4);
+    return c;
+}
+// The fade is one value per frame: read the state in the three vertices, not in
+// every output pixel, where that read cost ~20 ms a frame in game on the Ally.
+void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1) {
+    VS(id, pos, uv);
+    fade = saturate((Timer - tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).x) / FadeMs);
+}
+float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1) : SV_Target {
+    float4 color = tex2D(SceneSampler, uv);
+    float2 outUV = OutputUV(uv);
+    float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
+    float s = Mask(outUV, Status, StatusRadius) * fade;
+    float k = Mask(outUV, Keyboard, KeyboardRadius) * fade;
+    float kl = Mask(outUV, KeyboardLeft, KeyboardLeftRadius) * fade, kr = Mask(outUV, KeyboardRight, KeyboardRightRadius) * fade;
+    if (b > 0) color = lerp(color, Calm(tex2D(BarVS, TileUV(outUV, Bar))), b);
+    if (p > 0) color = lerp(color, Calm(tex2D(PanelVS, TileUV(outUV, Panel))), p);
+    if (n > 0) color = lerp(color, Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications))), n);
+    if (s > 0) color = lerp(color, Calm(tex2D(StatusVS, TileUV(outUV, Status))), s);
+    if (k > 0) color = lerp(color, Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard))), k);
+    if (kl > 0) color = lerp(color, Calm(tex2D(KeyboardLeftVS, TileUV(outUV, KeyboardLeft))), kl);
+    if (kr > 0) color = lerp(color, Calm(tex2D(KeyboardRightVS, TileUV(outUV, KeyboardRight))), kr);
+    return color;
+}
+technique QAMFrost {
+    pass Remember { VertexShader = VS; PixelShader = Remember; RenderTarget = StateB; }
+    pass Track { VertexShader = VS; PixelShader = Track; RenderTarget = StateA; }
+    pass BarDown { VertexShader = VS; PixelShader = BarDown; RenderTarget = BarD; }
+    pass BarX { VertexShader = VS; PixelShader = BarHorizontal; RenderTarget = BarH; }
+    pass BarY { VertexShader = VS; PixelShader = BarVertical; RenderTarget = BarV; }
+    pass PanelDown { VertexShader = VS; PixelShader = PanelDown; RenderTarget = PanelD; }
+    pass PanelX { VertexShader = VS; PixelShader = PanelHorizontal; RenderTarget = PanelH; }
+    pass PanelY { VertexShader = VS; PixelShader = PanelVertical; RenderTarget = PanelV; }
+    pass NotificationsDown { VertexShader = VS; PixelShader = NotificationsDown; RenderTarget = NotificationsD; }
+    pass NotificationsX { VertexShader = VS; PixelShader = NotificationsHorizontal; RenderTarget = NotificationsH; }
+    pass NotificationsY { VertexShader = VS; PixelShader = NotificationsVertical; RenderTarget = NotificationsV; }
+    pass StatusDown { VertexShader = VS; PixelShader = StatusDown; RenderTarget = StatusD; }
+    pass StatusX { VertexShader = VS; PixelShader = StatusHorizontal; RenderTarget = StatusH; }
+    pass StatusY { VertexShader = VS; PixelShader = StatusVertical; RenderTarget = StatusV; }
+    pass KeyboardDown { VertexShader = VS; PixelShader = KeyboardDown; RenderTarget = KeyboardD; }
+    pass KeyboardLeftDown { VertexShader = VS; PixelShader = KeyboardLeftDown; RenderTarget = KeyboardLeftD; }
+    pass KeyboardRightDown { VertexShader = VS; PixelShader = KeyboardRightDown; RenderTarget = KeyboardRightD; }
+    pass KeyboardX { VertexShader = VS; PixelShader = KeyboardHorizontal; RenderTarget = KeyboardH; }
+    pass KeyboardLeftX { VertexShader = VS; PixelShader = KeyboardLeftHorizontal; RenderTarget = KeyboardLeftH; }
+    pass KeyboardRightX { VertexShader = VS; PixelShader = KeyboardRightHorizontal; RenderTarget = KeyboardRightH; }
+    pass KeyboardY { VertexShader = VS; PixelShader = KeyboardVertical; RenderTarget = KeyboardV; }
+    pass KeyboardLeftY { VertexShader = VS; PixelShader = KeyboardLeftVertical; RenderTarget = KeyboardLeftV; }
+    pass KeyboardRightY { VertexShader = VS; PixelShader = KeyboardRightVertical; RenderTarget = KeyboardRightV; }
+    pass Output { VertexShader = FadeVS; PixelShader = Composite; }
+}

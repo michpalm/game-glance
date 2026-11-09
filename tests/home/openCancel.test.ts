@@ -14,6 +14,15 @@ describe('B during the opening animation', () => {
         expect(doc.dispatchEvent(new Event('vgp_oncancel', { cancelable: true }))).toBe(true);
         expect(cancel).toHaveBeenCalledOnce();
     });
+    it('after navigation can clean up the bridge without consuming Steam’s Back', () => {
+        const doc = new EventTarget(), cancel = vi.fn(), nativeBack = vi.fn();
+        const stop = listenOpenCancel(doc, cancel, false);
+        doc.addEventListener('vgp_oncancel', nativeBack);
+        expect(doc.dispatchEvent(new Event('vgp_oncancel', { cancelable: true }))).toBe(true);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(nativeBack).toHaveBeenCalledOnce();
+        stop();
+    });
     it('leaves other input alone', () => {
         const doc = new EventTarget(), cancel = vi.fn();
         const stop = listenOpenCancel(doc, cancel);

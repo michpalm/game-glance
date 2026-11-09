@@ -20,6 +20,20 @@ export function findTopBar(doc: Document, viewportWidth: number): Element | null
     return null;
 }
 
+/**
+ * findTopBar, remembered: the bar is measured again only once Steam has replaced it (or a caller forces it). Reading
+ * its rect forces a synchronous layout, and focus moves change classes on every D-pad press, so measuring on each of
+ * those cost a full layout per press. Never throws.
+ */
+export function createTopBarFinder(doc: Document): (force?: boolean) => Element | null {
+    let bar: Element | null = null;
+    return (force = false) => {
+        if (!force && bar?.isConnected) return bar;
+        bar = findTopBar(doc, doc.defaultView?.innerWidth ?? 0);
+        return bar;
+    };
+}
+
 interface BarLike {
     contains(node: unknown): boolean;
     querySelector(selector: string): unknown;

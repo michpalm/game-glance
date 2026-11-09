@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createOpenTransition, OpenDeps } from '../../src/home/openTransition';
+import { OPEN_TIMINGS } from '../../src/home/motion';
+import { runArrival } from '../../src/hooks/openArrival';
 
 /** Fake deps that log every call with the fake clock's time. */
 function setup(over: Partial<OpenDeps> = {}) {
@@ -82,6 +84,28 @@ describe('openTransition', () => {
         expect(log).toEqual(['startHome@0', 'mountBridge@450', 'fadeIn(150)@450', 'markOpen@600', 'navigate /library/app/620@600']);
     });
 
+
+    it('waits for the real movement to finish before freezing the endpoint, and Back cancels the wait', () => {
+        let completed: (() => void) | null = null;
+        const stop = vi.fn();
+        const f = setup({ waitForHome: (done: () => void) => { completed = done; return stop; } } as Partial<OpenDeps>);
+        f.t.open(620, 'morph');
+        vi.advanceTimersByTime(450);
+        expect(f.deps.mountBridge).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(30);
+        completed!();
+        expect(f.log).toContain('mountBridge@480');
+        f.t.cancel();
+        const g = setup({ waitForHome: (done: () => void) => { completed = done; return stop; } } as Partial<OpenDeps>);
+        g.t.open(620, 'morph');
+        vi.advanceTimersByTime(450);
+        g.t.cancel();
+        completed!();
+        expect(g.deps.mountBridge).not.toHaveBeenCalled();
+        expect(g.deps.navigate).not.toHaveBeenCalled();
+        expect(stop).toHaveBeenCalled();
+    });
+
     it('the hand-over comes at 300 for a feed card (heroFade) and 220 for a plain fade', () => {
         const a = setup();
         a.t.open(1, 'heroFade');
@@ -135,7 +159,7 @@ describe('openTransition', () => {
     it('no settle without ready (the cap fades the bridge as before)', () => {
         const { t, bridge } = setup();
         t.open(620, 'morph');
-        vi.advanceTimersByTime(600 + 500);
+        vi.advanceTimersByTime(600 + OPEN_TIMINGS.readyCap);
         expect(bridge.fadeOut).toHaveBeenCalled();
         expect(bridge.settle).not.toHaveBeenCalled();
     });
@@ -149,15 +173,56 @@ describe('openTransition', () => {
         fireReady();
         expect(bridge.fadeOut).toHaveBeenCalledTimes(1);
     });
-    it('no ready: the bridge leaves at the cap (500 ms after the page opened)', () => {
+    it('no ready: the bridge leaves at the cap (emergency timeout after the page opened)', () => {
         const { t, log } = setup();
         t.open(620, 'morph');
-        vi.advanceTimersByTime(1099);
+        vi.advanceTimersByTime(600 + OPEN_TIMINGS.readyCap - 1);
         expect(log.some((l) => l.startsWith('fadeOut'))).toBe(false);
         vi.advanceTimersByTime(1);
-        expect(log).toContain('fadeOut(300)@1100');
+        expect(log).toContain(`fadeOut(300)@${600 + OPEN_TIMINGS.readyCap}`);
         vi.advanceTimersByTime(300);
-        expect(log).toContain('remove@1400');
+        expect(log).toContain(`remove@${900 + OPEN_TIMINGS.readyCap}`);
+    });
+
+    it('Back after navigation removes the waiting bridge and leaves no late fade', () => {
+        let back: (() => void) | null = null;
+        const stop = vi.fn();
+        const { t, bridge, deps } = setup({ listenForPageBack: (cb) => { back = cb; return stop; } });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600 + 600);
+        expect(back).not.toBeNull();
+        back!();
+        expect(bridge.remove).toHaveBeenCalledOnce();
+        expect(stop).toHaveBeenCalledOnce();
+        vi.advanceTimersByTime(3000);
+        expect(bridge.fadeOut).not.toHaveBeenCalled();
+        expect(deps.navigate).toHaveBeenCalledOnce();
+    });
+
+    it('a cold page cannot lose its bridge at 500 ms before arrival reports a visible hero', () => {
+        const { t, deps, bridge, fireReady } = setup();
+        let stop = () => {};
+        vi.mocked(deps.navigate).mockImplementation(() => {
+            const readyAt = Date.now() + 800;
+            stop = runArrival({
+                ready: () => Date.now() >= readyAt,
+                now: () => Date.now(),
+                frame: (cb) => setTimeout(cb, 16),
+                cancelFrame: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+                setTimer: (cb, ms) => setTimeout(cb, ms),
+                clearTimer: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+                onReady: fireReady,
+                onPhase: () => {},
+            });
+        });
+        t.open(620, 'morph');
+        vi.advanceTimersByTime(600 + 600);
+        expect(bridge.fadeOut).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(220);
+        expect(bridge.fadeOut).toHaveBeenCalledOnce();
+        vi.advanceTimersByTime(300);
+        expect(bridge.remove).toHaveBeenCalledOnce();
+        stop();
     });
 
     it('Home cannot be measured: the page opens at once, nothing mounted', () => {
@@ -237,7 +302,7 @@ describe('openTransition', () => {
     it('after it finishes, a new open runs', () => {
         const { t, deps } = setup();
         t.open(620, 'morph');
-        vi.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(600 + OPEN_TIMINGS.readyCap + OPEN_TIMINGS.bridgeFade);
         t.open(700, 'fade');
         vi.advanceTimersByTime(2000);
         expect(deps.navigate).toHaveBeenCalledTimes(2);

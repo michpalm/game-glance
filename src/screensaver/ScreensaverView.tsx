@@ -17,6 +17,7 @@ import type { ScreensaverOptions } from './options';
 import { cardScale, CROSSFADE_MS, ScreensaverCanvas, screensaverCanvas, screensaverCss, shuffled, SLIDE_MS } from './screensaverCss';
 import { EMPTY_STACK, firstSettled, nextIndexes, nextSlides, PICK_AHEAD, PRELOAD_AHEAD, settledSlides, slideLayers, SlidePhase, SlideStack } from './slideStack';
 import { screensaverStats } from './stats';
+import { installCalmFilter } from '../styles/tokens';
 import { slideshowClasses, useScreensaverActive, useScreensaverDocument } from './steamScreensaver';
 
 interface Slide { id: number; appId: number; name: string; art: Exclude<Art, { mode: 'none' }> }
@@ -174,6 +175,8 @@ function useSlides(): SlideStack<Slide> {
 
 function ScreensaverView({ doc, options }: { doc: Document; options: ScreensaverOptions }) {
     const { width, height } = useWindowSize(doc.defaultView);
+    // The frost's calm filter (VDL Section 7); nothing while CALM_IN_CSS is off.
+    useEffect(() => installCalmFilter(doc), [doc]);
     const canvas = screensaverCanvas(width, height);
     const slides = useSlides();
     const locale = steamLanguageToLocale(peekSteamLanguage() ?? 'english');

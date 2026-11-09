@@ -1,0 +1,54 @@
+"""Strict JSON boundary: only geometry and presentation context are accepted."""
+import copy
+import math
+
+REGIONS = ("bar", "panel", "notifications", "status", "keyboard", "keyboard-left", "keyboard-right")
+# Areas that may be absent (the floating menu keyboard, usually closed): absent is an all-zero rectangle.
+OPTIONAL_REGIONS = frozenset({"keyboard", "keyboard-left", "keyboard-right"})
+
+REGION_UNIFORMS = {"bar": "Bar", "panel": "Panel", "notifications": "Notifications", "status": "Status", "keyboard": "Keyboard", "keyboard-left": "KeyboardLeft", "keyboard-right": "KeyboardRight"}
+
+
+def _fields(value, fields):
+    if not isinstance(value, dict) or set(value) != set(fields):
+        raise ValueError("invalid fields")
+
+
+def _number(value, minimum, maximum, integer=False):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError("invalid number")
+    if not minimum <= value <= maximum or integer and int(value) != value:
+        raise ValueError("number out of bounds")
+
+
+def identifier(value):
+    if not isinstance(value, str) or not 1 <= len(value) <= 128 or not all(c.isascii() and (c.isalnum() or c in "-_:.") for c in value):
+        raise ValueError("invalid identifier")
+    return value
+
+
+def validate_frame(value: object) -> dict:
+    _fields(value, ("generation", "context", "regions"))
+    _number(value["generation"], 0, 2**53 - 1, True)
+    c = value["context"]
+    _fields(c, ("viewportId", "background", "outputWidth", "outputHeight", "dpr", "fit", "colorMode") + (("maxScale",) if isinstance(c, dict) and c.get("fit") == "auto" else ()))
+    identifier(c["viewportId"])
+    if c["background"] not in ("game", "steam") or c["fit"] not in ("fit", "fill", "stretch", "auto") or c["colorMode"] not in ("sdr", "hdr"):
+        raise ValueError("unsupported context")
+    if c["fit"] == "auto":
+        _number(c["maxScale"], .001, 16384)
+    for key in ("outputWidth", "outputHeight"):
+        _number(c[key], 1, 16384, True)
+    _number(c["dpr"], .25, 8)
+    _fields(value["regions"], REGIONS)
+    for name, r in value["regions"].items():
+        _fields(r, ("x", "y", "width", "height", "radiusX", "radiusY"))
+        for n in r.values():
+            _number(n, 0, 1)
+        if name in OPTIONAL_REGIONS and not any(r.values()):
+            continue
+        if r["width"] <= 0 or r["height"] <= 0 or r["x"] + r["width"] > 1.000001 or r["y"] + r["height"] > 1.000001:
+            raise ValueError("invalid rectangle")
+        if r["radiusX"] > r["width"] / 2 or r["radiusY"] > r["height"] / 2:
+            raise ValueError("invalid radius")
+    return copy.deepcopy(value)

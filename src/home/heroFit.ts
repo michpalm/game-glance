@@ -7,6 +7,12 @@
 export type HeroFit = 'fill' | 'fit';
 export const HERO_FITS: readonly HeroFit[] = ['fill', 'fit'];
 
+/** The hero art setting's description, for the selected option. */
+export const HERO_FIT_COPY: Record<HeroFit, string> = {
+    fill: 'Fills the screen; the sides of wide art are cut off.',
+    fit: 'Shows the whole art at the top, with a blurred copy behind it.',
+};
+
 export function heroFitOf(value: unknown): HeroFit {
     return value === 'fit' ? 'fit' : 'fill';
 }

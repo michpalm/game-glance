@@ -8,7 +8,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -23,7 +23,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -35,16 +35,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -80,7 +80,7 @@ describe('settings: the removed Home switches', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -133,6 +133,24 @@ describe('settings: Games row', () => {
         await kv.set('settings', { heroFit: 'whole' });
         await reloaded.load();
         expect(reloaded.get().heroFit).toBe('fill');
+    });
+    it('shades the bottom half by default, and remembers None; settings saved before it and anything else read as Bottom half', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().pageShading).toBe('bottom');
+        await store.setPageShading('none');
+        expect(store.get().pageShading).toBe('none');
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().pageShading).toBe('none');
+        expect(await kv.get('settings')).toMatchObject({ pageShading: 'none' });
+        await kv.set('settings', { heroFit: 'fit' });
+        await reloaded.load();
+        expect(reloaded.get().pageShading).toBe('bottom');
+        await kv.set('settings', { pageShading: 'full' });
+        await reloaded.load();
+        expect(reloaded.get().pageShading).toBe('bottom');
     });
     it('keeps an unknown stored hero fit when another setting changes (a newer version may add one)', async () => {
         const kv = memoryKv();
@@ -310,5 +328,36 @@ describe('settings: gray out uninstalled games', () => {
         const kv = memoryKv(); await kv.set('settings', { homeGrayUninstalled: 'no' });
         const store = createSettingsStore(kv); await store.load();
         expect(store.get().homeGrayUninstalled).toBe(true);
+    });
+});
+
+describe('expanded Home controls opt-in',()=>{
+ it('keeps old status users opted out, persists explicit opt-in and retains future values',async()=>{
+  const kv=memoryKv();await kv.set('settings',{homeStatusBar:true,future:'retained'});const store=createSettingsStore(kv);await store.load();expect(store.get().homeExpandedControls).toBe(false);
+  await store.setHomeExpandedControls(true);await store.setHomeStatusBar(false);const next=createSettingsStore(kv);await next.load();expect(next.get().homeExpandedControls).toBe(true);expect(next.get().homeStatusBar).toBe(false);expect((await kv.get('settings') as any).future).toBe('retained');
+ });
+ it.each([undefined,'true',1,null])('ignores malformed opt-in %s',async value=>{const kv=memoryKv();await kv.set('settings',{homeExpandedControls:value});const store=createSettingsStore(kv);await store.load();expect(store.get().homeExpandedControls).toBe(false);});
+});
+
+describe('On every page opt-in', () => {
+    it('defaults to off, saves, and retains other values', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { future: 'retained' });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().chromeEveryPage).toBe(false);
+        await store.setChromeEveryPage(true);
+        expect(store.get().chromeEveryPage).toBe(true);
+        expect(await kv.get('settings')).toMatchObject({ chromeEveryPage: true, future: 'retained' });
+        const next = createSettingsStore(kv);
+        await next.load();
+        expect(next.get().chromeEveryPage).toBe(true);
+    });
+    it.each([undefined, 'true', 1, null])('ignores malformed value %s', async (value) => {
+        const kv = memoryKv();
+        await kv.set('settings', { chromeEveryPage: value });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().chromeEveryPage).toBe(false);
     });
 });

@@ -1,0 +1,20 @@
+import {describe,it,expect,vi} from 'vitest';
+import {StatusCell,ControllerItems,StatusItems} from '../../src/home/StatusBar';
+import type {HomeStatusControls} from '../../src/home/homeControls';
+vi.mock('@decky/ui',()=>({Focusable:'div'}));
+const bridge=():HomeStatusControls=>({register:vi.fn(),focused:vi.fn(),button:vi.fn()});
+describe('focus-only Home status cells',()=>{
+ it('keeps the legacy span unchanged without a Home bridge',()=>{const node=StatusCell({id:'clock',className:'gh-status-item',children:'22:49'});expect(node.type).toBe('span');expect(node.props.className).toBe('gh-status-item');expect(node.props.children).toBe('22:49');expect(node.props.role).toBeUndefined();});
+ it('registers one focusable cell and consumes OK without an activation action',()=>{const controls=bridge(),node=StatusCell({id:'battery',controls,children:'85%'}),e={detail:{button:1},preventDefault:vi.fn(),stopPropagation:vi.fn()};expect(node.type).toBe('div');expect(node.props.role).toBe('button');expect(node.props.tabIndex).toBe(0);node.props.ref(null);expect(controls.register).toHaveBeenCalledWith('battery',null);node.props.onFocus();expect(controls.focused).toHaveBeenCalledWith('battery');node.props.onButtonDown(e);expect(e.preventDefault).toHaveBeenCalledOnce();expect(e.stopPropagation).toHaveBeenCalledOnce();expect(controls.button).toHaveBeenCalledWith('battery',e);});
+ it('keeps visible controller slots/more independently focusable without changing values',()=>{const controls=bridge(),node=ControllerItems({controllers:[{name:'Same',percent:10,low:true},{name:'Same',percent:50,low:false},{name:'Third',percent:70,low:false}],controls});const items=(node.props.children as any[]).flat().filter(Boolean);expect(items.map(n=>n.props['data-gh-status'])).toEqual(['controller:0','controller:1','controllers-more']);expect(items[0].props.className).toContain('gh-status-low');expect(items[2].props.children).toEqual(['+',1]);});
+ it('creates no controller cell for missing data',()=>{const node=ControllerItems({controllers:[],controls:bridge()});expect((node.props.children as any[]).flat().filter(Boolean)).toHaveLength(0);});
+});
+
+const collect=(node:any):any[]=>{if(!node||typeof node!=='object')return [];if(Array.isArray(node))return node.flatMap(collect);if(node.type===ControllerItems)return collect(ControllerItems(node.props));return [...(node.props?.['data-gh-status']?[node]:[]),...collect(node.props?.children)];};
+const base={percent:null,connection:null,controllers:[],battery:null,clock:'22:49',avatar:null,dot:null} as const;
+describe('status item presentation',()=>{
+ it('renders only data-backed controls, keeping clock present',()=>{expect(collect(StatusItems({...base,controllers:[],controls:bridge()})).map(n=>n.props['data-gh-status'])).toEqual(['clock']);});
+ it('retains low/charging battery, connection/download, time and avatar labels/appearance',()=>{const nodes=collect(StatusItems({...base,connection:'wifi',percent:38,battery:{percent:12,low:true,charging:true},avatar:{url:'test-avatar',ring:'red'},dot:'online',controllers:[],controls:bridge()}));expect(nodes.map(n=>n.props['data-gh-status'])).toEqual(['download','connection','battery','clock','profile']);expect(nodes[0].props['aria-label']).toContain('38%');expect(nodes[2].props.className).toContain('gh-status-low');expect(nodes[2].props['aria-label']).toMatch(/12%.*charging/i);expect(nodes[3].props.children).toBe('22:49');expect(nodes[4].props.style.backgroundImage).toBe('url(test-avatar)');});
+ it('gives the persona-dot fallback its own cell without enlarging its visual dot',()=>{const [clock,profile]=collect(StatusItems({...base,controllers:[],dot:'away',controls:bridge()}));expect(clock.props['data-gh-status']).toBe('clock');expect(profile.props['data-gh-status']).toBe('profile');expect(profile.props.className).toContain('gh-status-dot-control');expect(profile.props.className).toContain('gh-status-dot-away');});
+ it('keeps all output read-only when controls are omitted',()=>{expect(collect(StatusItems({...base,controllers:[],connection:'offline',dot:'off'}))).toHaveLength(0);});
+});

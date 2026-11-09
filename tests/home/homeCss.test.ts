@@ -7,7 +7,10 @@ import {
     FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
-import { PAGE_LAYOUT, PAGE_SCRIMS, pageType, pillFocusScale, STEAM_PLAY_LINE, STEAM_TOP_GRADIENT } from '../../src/styles/themeCss';
+import { NOT_MOUSE } from '../../src/home/mouseMode';
+import { labelText } from '../../src/styles/tokens';
+import { normalCardsCss } from '../../src/styles/themeCss';
+import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
 
@@ -43,6 +46,157 @@ function selectors(css: string): string[] {
     return out;
 }
 
+/** Every rule as [selector list, body], keyframes excluded. */
+function rules(css: string): Array<[string[], string]> {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+    return [...flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, prelude]) => !prelude.trim().startsWith('@'))
+        .map(([, prelude, body]) => [topLevelCommas(prelude).map((s) => s.trim()), body]);
+}
+/** The bodies of every rule whose selector list holds exactly `selector`, joined. */
+function ruleFor(css: string, selector: string): string {
+    return rules(css).filter(([list]) => list.includes(selector)).map(([, body]) => body).join(' ');
+}
+/** The bodies of every rule with a selector matching `re`. */
+function rulesMatching(css: string, re: RegExp): string[] {
+    return rules(css).filter(([list]) => list.some((s) => re.test(s))).map(([, body]) => body);
+}
+
+describe('action row (VDL Section 7)', () => {
+    const css = homeCss();
+    it('Play and Library take r-action, circles become r-action-icon tiles', () => {
+        expect(ruleFor(css, '.gh-btn')).toContain('border-radius: 19px');
+        expect(ruleFor(css, '.gh-btn-circle')).toContain('border-radius: 16px');
+    });
+    it('the stream segment follows Play\'s corner', () => {
+        expect(ruleFor(css, '.gh-actions > .gh-btn-stream')).toContain('border-radius: 0 19px 19px 0');
+    });
+    it('focused buttons get the white ring only', () => {
+        const focus = rulesMatching(css, /\.gh-btn.*\.gh-focus|gh-btn-stream\.gh-focus\)|gh-(copy|store)-choice.*(gh-pill-focus|:focus)/);
+        expect(focus.length).toBeGreaterThan(0);
+        for (const r of focus) { expect(r).not.toMatch(/glance-accent|scale\(/); }
+        expect(ruleFor(css, `${NOT_MOUSE} .gh-btn.gh-focus`)).toContain('outline:2px solid #fff');
+    });
+    it('glass buttons use the frost; focused tiles step up to glass-strong', () => {
+        expect(ruleFor(css, '.gh-btn')).toContain('backdrop-filter:blur(16px)');
+        expect(ruleFor(css, `${NOT_MOUSE} .gh-btn-circle.gh-focus`)).toContain('rgba(12,16,22,.55)');
+    });
+    it('the opening Play layers keep the soft corner and the ring, never the glow', () => {
+        const layers = rulesMatching(css, /data-action="play"\]::(before|after)$/).join(' ');
+        expect(layers).not.toContain('999px'); expect(layers).not.toMatch(/14px 40px -8px/);
+        expect(layers).toContain('outline:2px solid #fff');
+        // The page's corner (22 of its 60) at the growing layer's height.
+        expect(layers).toContain('border-radius: calc(var(--gho-play-sy) * 19.8px)');
+    });
+});
+
+describe('feed tabs (VDL Section 7)', () => {
+    const css = homeCss();
+    it('sit on a glass strip as full-height slices', () => {
+        const strip = ruleFor(css, '.gh-tabs');
+        expect(strip).toContain('backdrop-filter:blur(16px)'); expect(strip).toContain('border-radius: 12px');
+        expect(strip).toContain('gap: 0'); expect(strip).toContain('overflow: hidden');
+        expect(strip).toContain('right: auto'); expect(strip).toContain('width: max-content');
+        expect(ruleFor(css, '.gh-tab')).toContain('color: rgba(255,255,255,.80)');
+    });
+    it('mark the current tab with the selected slice, never an underline', () => {
+        expect(ruleFor(css, '.gh-tab.gh-tab-on')).toContain('background:var(--gg-selected)');
+        expect(css).not.toContain('.gh-tab-line');
+        expect(ruleFor(css, '.gh-root')).toContain('--gg-accent: var(--glance-accent)');
+    });
+    it('focus is the inset ring and keeps the selected shade', () => {
+        const f = ruleFor(css, `${NOT_MOUSE} .gh-tab.gh-tab-focus`);
+        expect(f).toContain('outline-offset:-2px'); expect(f).not.toContain('background');
+    });
+    it('keeps the tab row height: the strip edge is drawn inside, adding nothing', () => {
+        expect(ruleFor(css, '.gh-tab')).toContain('padding: 8px 16px 10px');
+        expect(ruleFor(css, '.gh-tabs')).not.toMatch(/(^|;)\s*border:/);
+        expect(FEED_SHEET.tabHeight).toBe(8 + 10 + 13 * 1.2);
+    });
+});
+
+describe('card and capsule focus (VDL Section 7)', () => {
+    it('feed cards lift with the ring and a neutral shadow; capsules stay level', () => {
+        const css = homeCss();
+        expect(ruleFor(css, '.gh-card.gh-card-focus')).toContain('translateY(-4px)');
+        for (const sel of ['.gh-card.gh-card-focus', '.gh-cap.gh-cap-focus', '.gh-recents-focus .gh-cap-sel']) {
+            const r = ruleFor(css, sel);
+            expect(r).toContain('outline:2px solid #fff'); expect(r).toContain('rgba(0,0,0,.75)'); expect(r).not.toContain('glance-accent');
+        }
+        expect(ruleFor(css, '.gh-cap.gh-cap-focus')).not.toContain('translateY');
+        expect(css).not.toMatch(/\.gh-(card|cap)-bar/);
+    });
+});
+
+describe('frost and labels (VDL Section 7)', () => {
+    const css = homeCss();
+    it('every glass surface uses the frost and no other blur or tint', () => {
+        expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
+        expect(css).not.toMatch(/backdrop-filter:\s*blur\((10|12|14)px\)/);
+        expect(ruleFor(css, '.gh-chip')).toContain('rgba(12,16,22,.40)');
+        expect(ruleFor(css, '.gh-card')).toContain('backdrop-filter:blur(16px)');
+    });
+    it('small labels are 90% white with the shadow', () => {
+        for (const sel of ['.gh-chip-label', '.gh-feed-row-title', '.gh-card-sub']) {
+            for (const decl of labelText().split(';')) expect(ruleFor(css, sel), sel).toContain(decl);
+        }
+        expect(ruleFor(css, '.gh-eyebrow')).toContain('text-shadow: 0 0 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
+    });
+    it('the open transition copies the page: twin labels and the shell match', () => {
+        const page = normalCardsCss('gg', (n) => `calc(${n} * var(--gg-d))`);   // the page's cards, as restyleRules writes them
+        expect(page).toMatch(/\.gg-label \{[^}]*color:rgba\(255,255,255,\.90\);text-shadow:0 calc\(1 \* var\(--gg-d\)\) calc\(2 \* var\(--gg-d\)\) #0009/);
+        expect(css).toMatch(/\.gh-twin\[data-role="label"\][^{]*\{[^}]*rgba\(255,255,255,\.90\)[^}]*#0009/);
+        expect(ruleFor(css, '.gh-open-shell')).toContain('rgba(12,16,22,.40)');
+        expect(ruleFor(css, '.gh-open-shell')).toContain('backdrop-filter:blur(16px)');
+    });
+});
+
+describe('final review fixes (VDL Section 7)', () => {
+    const css = homeCss();
+    it("the opening Play drops Home's focus ring; only the page-size ring (::after) shows", () => {
+        expect(ruleFor(css, '.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]')).toContain('outline: none');
+    });
+    it("the end tabs follow the strip's corners, so their focus ring is not clipped", () => {
+        expect(ruleFor(css, '.gh-tab:first-child')).toContain('border-radius: 12px 0 0 12px');
+        expect(ruleFor(css, '.gh-tab:last-child')).toContain('border-radius: 0 12px 12px 0');
+    });
+});
+
+describe('status bar and chips match the menu (VDL Section 7)', () => {
+    it("the status bar, store and family chips take the cards' edge and bold text, as the menu's top bar", () => {
+        const css = homeCss();
+        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+            const r = ruleFor(css, sel);
+            expect(r, sel).toContain('border-color: rgba(255,255,255,.12)');
+            expect(r, sel).not.toMatch(/font-weight: 600/);
+            expect(r, sel).toContain('font-weight: 700');
+        }
+    });
+});
+
+describe('soft pills (VDL Section 7, option B)', () => {
+    it("the status bar, store and family chips take Play's share of their height: 12 on 32", () => {
+        const css = homeCss();
+        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+            expect(ruleFor(css, sel), sel).toContain('border-radius: 12px');
+            expect(ruleFor(css, sel), sel).not.toContain('999px');
+        }
+        // The open transition's copies of the page's chips, in the page's units.
+        for (const sel of ['.gh-x-pill', '.gh-x-family', '.gh-x-store-choice']) {
+            expect(rulesMatching(css, new RegExp(`\\${sel}$`)).join(' '), sel).toMatch(/border-radius: calc\(12px \* var\(--gho-x-d\)\)/);
+            expect(rulesMatching(css, new RegExp(`\\${sel}$`)).join(' '), sel).not.toContain('999px');
+        }
+    });
+});
+
+describe('status bar avatar (VDL Section 7)', () => {
+    it("is a 22 px square, 5 px clear of the bar's edges, its corner the bar's 12 minus those 5", () => {
+        const r = ruleFor(homeCss(), '.gh-status-avatar');
+        expect(r).toContain('width: 22px'); expect(r).toContain('height: 22px');
+        expect(r).toContain('border-radius: 7px'); expect(r).not.toContain('50%');
+    });
+});
+
 describe('homeCss', () => {
     it('matches the action buttons’ focus ring and glow on both selector pills', () => {
         const css = homeCss();
@@ -50,10 +204,11 @@ describe('homeCss', () => {
         const focus = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-copy-choice.gh-pill-focus'));
         expect(focus?.[1]).toContain('.gh-store-choice.gh-pill-focus');
         const button = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.includes('.gh-btn.gh-focus'));
-        const shadow = (body: string) => /box-shadow:\s*([^;]+)/.exec(body)?.[1];
-        expect(shadow(focus?.[2] ?? '')).toBe(shadow(button?.[2] ?? ''));
+        const ring = (body: string) => /outline:([^;]+)/.exec(body)?.[1];
+        expect(ring(focus?.[2] ?? '')).toBe(ring(button?.[2] ?? ''));
         expect(focus?.[2]).not.toContain('background:');
-        expect(css).toContain(`transform: translateY(-50%) scale(${PAGE_LAYOUT.focusScale})`);
+        // No growth (Section 7): the copy pill only keeps its centring.
+        expect(css).not.toContain(`translateY(-50%) scale(`);
     });
     it('homeCss prefixes every class with gh-', () => {
         const css = homeCss();
@@ -70,7 +225,8 @@ describe('homeCss', () => {
         expect(css).not.toMatch(/transition:[^;}]*--glance-accent/);
         expect(css).toMatch(/\.gh-root\s*\{[^}]*--glance-accent-text:\s*#5fd1ae/);
         // Small accent text uses the legible variant; bars, fills and rings keep the true accent.
-        expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*color:\s*var\(--glance-accent-text\)/);
+        // The eyebrow is white; the accent is its glow (Michael, 2026-10-30: always, in both Page shading modes).
+        expect(css).toMatch(/\.gh-eyebrow\s*\{[^}]*color:\s*#fff/);
         expect(css).not.toMatch(/(?<![-\w])color:\s*var\(--glance-accent\)/);
         expect(css).toMatch(/\.gh-root\s*\{[^}]*transition:\s*none\s*!important/);
         // The accent-coloured elements fade their own colour instead.
@@ -121,7 +277,7 @@ describe('homeCss', () => {
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
         expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
-        expect(pill).toMatch(/border-radius:\s*999px/);
+        expect(pill).toMatch(/border-radius:\s*12px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
         // The same look as the game page: one definition.
         for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
@@ -173,13 +329,12 @@ describe('homeCss', () => {
     });
     it('focus looks follow DOM focus too: after a tap, a click or the wheel Steam drops its focus classes', () => {
         const css = homeCss(CARD_SCALE_HANDHELD);
-        // The selected card's ring and glow, with the row under DOM focus.
-        expect(css).toMatch(/\.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\)/);
+        // The selected card's ring, with the row under DOM focus.
+        expect(css).toMatch(/\.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*outline:2px solid #fff/);
         // A button, the Play pill's growth, a feed card and a tab's line.
-        expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\)/);
-        expect(css).toMatch(/\.gh-actions > \.gh-btn-play\.gh-btn:focus\s*\{[^}]*transform:\s*scale/);
+        expect(css).toMatch(/\.gh-btn:focus\s*\{[^}]*outline:2px solid #fff/);
         expect(css).toMatch(/\.gh-card:focus\s*\{[^}]*translateY\(-4px\)/);
-        expect(css).toMatch(/\.gh-tab:focus \.gh-tab-line\s*\{[^}]*opacity:\s*1/);
+        expect(css).toMatch(/\.gh-tab:focus\s*\{[^}]*outline-offset:-2px/);
         // A hover never shows over a focused card.
         expect(css).toMatch(/\.gh-card\.gh-card-hover:not\(\.gh-card-focus\):not\(:focus\)\s*\{/);
     });
@@ -209,10 +364,10 @@ describe('homeCss', () => {
         // pointer-events, so they too take none under the sheet or while a game opens (an explicit auto would escape both).
         expect(css).toMatch(/\.gh-ghost\s*\{[^}]*cursor:\s*default/);
         expect(css).not.toMatch(/\.gh-ghost\s*\{[^}]*pointer-events/);
-        // While the card row has focus, the selected (or Library) card gets a white ring outside it and an even accent
-        // glow (no y offset), and no bar along its bottom edge. Wide or narrow (a fast L1/R1 run), only the selected card
+        // While the card row has focus, the selected (or Library) card gets the menu's white ring outside it and a neutral
+        // shadow, and no bar. Wide or narrow (a fast L1/R1 run), only the selected card
         // (gh-cap-sel): in Steam's row style the wide card is the first game, selected or not, and gets no ring.
-        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-sel, \.gh-recents-focus \.gh-cap-lib-on, \.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*box-shadow:\s*0 0 0 2px rgba\(255,255,255,\.9\), 0 0 [\d.]+px [\d.]+px var\(--glance-accent\)/);
+        expect(css).toMatch(/\.gh-recents-focus \.gh-cap-sel, \.gh-recents-focus \.gh-cap-lib-on, \.gh-recents:focus \.gh-cap-sel, \.gh-recents:focus \.gh-cap-lib-on\s*\{[^}]*outline:2px solid #fff[^}]*rgba\(0,0,0,\.75\)/);
         expect(css).not.toMatch(/gh-recents-focus[^{]*\.gh-cap-bar/);
         expect(css).not.toMatch(/\.gh-cap-wide[,\s]*\{[^}]*(box-shadow|--gh-edge)/);
         expect(css).not.toMatch(/\.gh-recents-focus \.gh-cap-wide/);
@@ -234,14 +389,13 @@ describe('homeCss', () => {
         expect(hand).toMatch(/\.gh-recents\s*\{[^}]*top:\s*calc\(478px - var\(--gh-top\)\)\s*!important[^}]*height:\s*210px/);
         expect(hand).toMatch(/\.gh-cap\s*\{[^}]*height:\s*210px\s*!important[^}]*border-radius:\s*12px/);
         expect(hand).toMatch(/\.gh-cap-cover\s*\{[^}]*width:\s*140px/);
-        expect(hand).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\), 0 24px 60px -18px var\(--glance-accent\)/);
+        expect(hand).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:0 14px 28px -12px rgba\(0,0,0,\.75\)/);
         expect(hand).toMatch(/\.gh-ghost-icon\s*\{[^}]*width:\s*54px/);
         const dock = homeCss(1.6);
         expect(dock).toMatch(/\.gh-recents\s*\{[^}]*top:\s*calc\(464px - var\(--gh-top\)\)\s*!important[^}]*height:\s*224px/);
         expect(dock).toMatch(/\.gh-cap\s*\{[^}]*height:\s*224px\s*!important[^}]*border-radius:\s*12\.8px/);
         expect(dock).toMatch(/\.gh-cap-cover\s*\{[^}]*width:\s*149px/);
-        expect(dock).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:\s*0 0 0 1px var\(--glance-accent\), 0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
-        expect(dock).toMatch(/\.gh-cap-bar\s*\{[^}]*height:\s*4\.8px/);
+        expect(dock).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*box-shadow:0 14px 28px -12px rgba\(0,0,0,\.75\)/);
         expect(dock).toMatch(/\.gh-ghost-icon\s*\{[^}]*width:\s*57\.6px[^}]*font-size:\s*32px/);
         expect(dock).toMatch(/\.gh-ghost-label\s*\{[^}]*font-size:\s*15\.2px/);
         // Default (before Home has measured its box): handheld.
@@ -327,7 +481,7 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
         expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
-        expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 25\.6px 64px -19\.2px var\(--glance-accent\)/);
+        expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 14px 28px -12px rgba\(0,0,0,\.75\)/);
     });
     describe('stackShift: the whole Home stack moves down into the bottom slack', () => {
         // Tab strip 700 + 33.6 (padding 8 + 10, 13px at line-height 1.2) = 733.6; it ends 18 above the 46 legend reserve.
@@ -411,16 +565,17 @@ describe('homeCss', () => {
     });
     it('the cloud circle is the same circle as the others: a white cloud with a halo, its state in a badge at the top right (#64)', () => {
         const css = homeCss();
-        expect(css).not.toMatch(/\.gh-btn-cloud\s*\{/);
+        // Its only own rule places the state badge; nothing else sets the cloud circle apart from the others.
+        expect([...css.matchAll(/\.gh-btn-cloud\s*\{([^}]*)\}/g)].map((m) => m[1].trim())).toEqual(['position: relative !important;']);
         expect(css).toMatch(/\.gh-btn-cloud svg\s*\{[^}]*width:\s*26px[^}]*drop-shadow/);
         for (const [tone, colour] of Object.entries(CLOUD_COLOURS)) {
             expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-${tone}\\s*\\{\\s*--gh-cloud-dot:\\s*${colour}`));
         }
         expect(css).not.toMatch(/\.gh-btn-cloud\.gh-cloud-ok\s*\{[^}]*color:\s*#5cf2b4/);
-        expect(css).toMatch(/\.gh-btn-cloud:not\(\.gh-cloud-uni\)\s*\{[^}]*position:\s*relative/);
+        expect(css).toMatch(/\.gh-btn-cloud\s*\{[^}]*position:\s*relative/);
         expect(css).toMatch(
             new RegExp(
-                `\\.gh-btn-cloud:not\\(\\.gh-cloud-uni\\)::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
             ),
         );
     });
@@ -429,7 +584,7 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-card \{[^}]*height: var\(--gh-card-h, 260px\) !important/);
         expect(css).not.toMatch(/\.gh-feed \{[^}]*height:/);
         expect(css).toMatch(/\.gh-feed-row \{[^}]*position: absolute/);
-        expect(css).toMatch(/\.gh-feed-row-title \{[^}]*height: 24px[^}]*text-transform: uppercase[^}]*color: rgba\(255,255,255,\.62\) !important; \}/);
+        expect(css).toMatch(/\.gh-feed-row-title \{[^}]*height: 24px[^}]*text-transform: uppercase[^}]*color:rgba\(255,255,255,\.90\) !important; text-shadow:0 1px 2px #0009 !important; \}/);
         expect(css).toMatch(/\.gh-card-wide \.gh-card-title \{[^}]*font-size: 14px/);
     });
     it('card and capsule edges are drawn over the art (no border beside it), so no bright bottom row can show', () => {
@@ -546,8 +701,8 @@ describe('homeCss open transition', () => {
         // The glass: the page panel's tint and blur from the start (Michael, on the Ally: moving blurred felt more seamless
         // than a blur growing in after the hand-over). 16 canvas px, the page's 16 d units.
         const shell = body((sel) => sel === '.gh-open-shell');
-        expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.38\)/);
-        expect(shell).toContain('backdrop-filter: blur(16px)');
+        expect(shell).toMatch(/background:\s*rgba\(12,16,22,\.40\)/);
+        expect(shell).toContain('backdrop-filter:blur(16px)');
         // No backdrop blur on a pseudo-element of the panel (it would see nothing behind it); its ::before draws only the ring.
         expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
@@ -586,8 +741,7 @@ describe('homeCss open transition', () => {
         expect(focus?.[1]).toMatch(/background: transparent[^]*box-shadow: none[^]*transform: none/);
         // Focused, the whole pill shows Home's focus (as the page's pill does for its arrow), and the segment is tinted.
         const pill = all.find(([sel]) => sel.split(', ')[0] === ':where(html:not([data-gg-mouse])) .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus)');
-        const hp = pillFocusScale(HOME_PILL.width, TITLE_BLOCK.button);
-        expect(pill?.[1]).toMatch(new RegExp(`box-shadow: 0 0 0 2px rgba\\(255,255,255,\\.9\\)[^]*transform: scale\\(${hp.x}, ${hp.y}\\)`));
+        expect(pill?.[1]).toMatch(/outline:2px solid #fff[^]*transform:none/);
         const tint = all.find(([sel]) => sel.split(', ')[0] === ':where(html:not([data-gg-mouse])) .gh-actions > .gh-btn-play:has(+ .gh-btn-stream.gh-focus) > .gh-play-arrow');
         expect(tint?.[1]).toMatch(/background: rgba\(255,255,255,\.28\)/);
         // Opening: the segment moves with the pill and grows onto the page's (openMotion --gho-play-arrow), about its right end.
@@ -599,10 +753,10 @@ describe('homeCss open transition', () => {
     it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
         const all = rules(css);
         for (const i of [0, 1, 2, 3]) {
-            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud:not(.gh-cloud-uni)::after`));
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`));
             expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
         }
-        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud:not(.gh-cloud-uni)::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
+        expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
     });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);
@@ -613,12 +767,14 @@ describe('homeCss open transition', () => {
         // The cloud's icon is the page's size too (PAGE_LAYOUT.cloudIcon, on both).
         expect(css).toMatch(new RegExp(`\\.gh-btn-cloud svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.cloudIcon}px`));
     });
-    it("Home shades its art as the game page does, at rest (Michael: Cronos's page shading, by default), so opening never changes it", () => {
+    it('Home shades its art as the game page does, per Page shading (Bottom half by default, None on .gh-shade-none), so opening never changes it', () => {
         const all = rules(css);
         const page = all.find(([sel]) => sel === '.gh-scrim-page');
-        // Steam's own top shadow on the page (its header's TopGradient, 75 px, probed on the Ally), then the restyle's layers.
-        expect(page?.[1]).toContain(`background: ${STEAM_TOP_GRADIENT}, ${PAGE_SCRIMS}`);
-        expect(STEAM_TOP_GRADIENT).toBe('linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0) 75px)');
+        // The page's layers for the mode (themeCss pageScrims); no top shadow (Steam's TopGradient is hidden on the page too).
+        expect(page?.[1]).toContain(`background: ${pageScrims('bottom')}`);
+        expect(all.find(([sel]) => sel === '.gh-shade-none .gh-scrim-page')?.[1]).toContain('background: none');
+        expect(css).not.toContain('rgba(0, 0, 0, 0.5) 0px');
+        expect(page?.[1]).not.toContain('90deg');
         expect(page?.[1]).not.toMatch(/opacity:\s*0/);
         // Home's own gradients are gone, and nothing about the shading changes while opening.
         expect(all.some(([sel]) => sel.includes('.gh-scrim-v') || sel.includes('.gh-scrim-l'))).toBe(false);
@@ -731,16 +887,6 @@ describe('homeCss logo', () => {
     });
 });
 
-describe('homeCss accent on hidden bars', () => {
-    it('bars nobody sees take a new accent at once (no colour transition): an unselected card, the hidden feed and tabs', () => {
-        const css = homeCss();
-        // Each L1/R1 step changes the accent: these ran ~30 colour transitions a step, all invisible (measured on the Ally).
-        expect(css).toMatch(/\.gh-cap:not\(\.gh-cap-focus\) \.gh-cap-bar \{ transition: opacity 250ms !important; \}/);
-        expect(css).toMatch(/\.gh-card:not\(\.gh-card-focus\):not\(:focus\) \.gh-card-bar \{ transition: opacity 250ms !important; \}/);
-        expect(css).toMatch(/\.gh-page:not\(\.gh-page-up\) \.gh-tab-line \{ transition: none !important; \}/);
-    });
-});
-
 describe('statusCss', () => {
     it("one status bar at a time: while Home's is up, the page's (mounted later, on the same body) stays invisible", () => {
         // Two stacked bars drew their white text twice, brighter, as Home's frozen copy faded over them (Michael: it blinked white).
@@ -754,13 +900,11 @@ describe('homeCss Play pill', () => {
         expect(body).toContain('color: #fff');
         expect(body).not.toContain('--gh-on-accent');
     });
-    it("focused: a white ring and accent glow, scaled by the page's focus scale (the page focuses its Play the same)", () => {
+    it("focused: the menu's white ring, no glow or growth (the page focuses its Play the same)", () => {
         const body = /:where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn\.gh-focus, :where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn:focus \{([^}]*)\}/.exec(homeCss())?.[1] ?? '';
-        expect(body).toContain('0 0 0 2px rgba(255,255,255,.9)');
-        expect(body).toContain(`scale(${PAGE_LAYOUT.focusScale})`);
-        // The Play pill grows by what a circle grows (its height's share), so its gap to the circles stays.
-        const hp = pillFocusScale(HOME_PILL.width, TITLE_BLOCK.button);
-        expect(/\.gh-actions > \.gh-btn-play\.gh-focus, :where\(html:not\(\[data-gg-mouse\]\)\) \.gh-actions > \.gh-btn-play\.gh-btn:focus \{([^}]*)\}/.exec(homeCss())?.[1] ?? '').toContain(`scale(${hp.x}, ${hp.y})`);
+        expect(body).toContain('outline:2px solid #fff'); expect(body).toContain('outline-offset:2px');
+        expect(body).not.toContain('scale(');
+        expect(homeCss()).not.toMatch(/\.gh-btn-play\.gh-focus[^{]*\{[^}]*scale\(/);
     });
 });
 
@@ -768,7 +912,7 @@ describe('homeCss Play pill while opening', () => {
     it("takes on the page's focused look as the morph settles (Steam focuses Play there): a ring layer at the page pill's exact size", () => {
         const css = homeCss();
         const after = /\.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(after).toContain('box-shadow: 0 0 0 2px rgba(255,255,255,.9)');
+        expect(after).toContain('outline:2px solid #fff');
         expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; }');
         // The page's focused Play keeps its accent fill, as Home's (no lighter overlay any more).
         expect(after).toContain('background: var(--glance-accent)');
@@ -800,11 +944,11 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
     });
     it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
-        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\) \.gh-safe :is\(/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\) \.gh-safe :is\(/);
         expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
     it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
@@ -869,32 +1013,20 @@ describe('delayed fades in the open transition', () => {
     });
 });
 
-describe("a Unifideck game's cloud button (Unifideck's own look, as on its page)", () => {
+describe("a Unifideck game's page circles", () => {
     const css = homeCss(CARD_SCALE_HANDHELD);
-    it("opening, its ring grows with the circle to Unifideck's 2 CSS px on the page (openMotion --gho-uni-ring)", () => {
-        expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-btn-cloud\.gh-cloud-uni:not\(\.gh-focus\):not\(:focus\)\s*\{[^}]*box-shadow: 0 0 0 var\(--gho-uni-ring, 2px\) var\(--gh-uni-ring, transparent\) inset/);
-    });
     it("Unifideck's trash circle: drawn at the page's fourth circle as Home's circles look, fading in late, held in the bridge", () => {
         const body = (sel: string) => {
             const i = css.indexOf(`${sel} {`);
             return i < 0 ? '' : css.slice(i, css.indexOf('}', i));
         };
         expect(body('.gh-open-circle')).toContain('display: none');
-        expect(body('.gh-open-circle')).toContain('backdrop-filter: blur(12px)');
+        expect(body('.gh-open-circle')).toContain('backdrop-filter:blur(16px)');
         const at = body('.gh-root[data-gh-opening="morph"] .gh-open-circle');
         for (const d of ['display: flex', 'left: calc(var(--gho-circle-extra-x) * 1px)', 'top: calc(var(--gho-circle-extra-y) * 1px)', 'width: calc(var(--gho-circle-extra-w) * 1px)']) expect(at).toContain(d);
         expect(body('.gh-root[data-gh-opening="morph"][data-gh-phase="to"] .gh-open-circle')).toContain('animation: gh-open-extras-in');
         expect(body('.gh-root.gh-bridge[data-gh-opening][data-gh-phase] .gh-open-circle')).toContain('opacity: 1');
         expect(body('.gh-open-circle svg')).toContain(`width: ${PAGE_LAYOUT.circleIcon}px`);
-    });
-
-    it('a white glyph at the circles\' glyph size, its state ring inside it (unless focused), dimmed without cloud support', () => {
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni\s*\{[^}]*color: #fff/);
-        expect(css).toMatch(new RegExp(`\\.gh-btn-cloud\\.gh-cloud-uni svg\\s*\\{[^}]*width: ${PAGE_LAYOUT.circleIcon}px[^}]*filter: none`));
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni:not\(\.gh-focus\):not\(:focus\)\s*\{[^}]*box-shadow: 0 0 0 2px var\(--gh-uni-ring, transparent\) inset/);
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni-dim\s*\{[^}]*opacity: \.5/);
-        // Its in-sync check badge at Unifideck's proportion to the cloud (13 of the 24).
-        expect(css).toMatch(/\.gh-btn-cloud\.gh-cloud-uni svg\.gh-uni-badge\s*\{[^}]*width: 13px/);
     });
 });
 
@@ -915,7 +1047,7 @@ describe('homeCss mouse hover', () => {
         // Every focus look of a button or a tab, and its DOM-focus twin, sits behind the gate; :where() adds nothing to its weight.
         for (const sel of selectors(css).filter((s) => /\.gh-(btn[\w-]*|tab)[^{]*(\.gh-focus|\.gh-tab-focus)(?![\w-])/.test(s) && !/:not\(\.gh-focus\)/.test(s))) expect(sel, sel).toContain(gate);
         expect(css).toContain(`${gate} .gh-btn.gh-focus`);
-        expect(css).toContain(`${gate} .gh-tab.gh-tab-focus .gh-tab-line`);
+        expect(css).toContain(`${gate} .gh-tab.gh-tab-focus`);
         // The selected game keeps its look: it says whose art and buttons these are.
         for (const sel of selectors(css).filter((s) => s.includes('gh-recents-focus'))) expect(sel).not.toContain(gate);
     });
@@ -923,8 +1055,8 @@ describe('homeCss mouse hover', () => {
         expect(css).toContain(`.gh-cap.gh-cap-hover:not(.gh-cap-sel):not(.gh-cap-lib-on)`);
         expect(css).toMatch(new RegExp(`\\.gh-cap\\.gh-cap-hover[^{]*\\{[^}]*box-shadow: ${ring.replace(/[().]/g, '\\$&')}`));
     });
-    it("opened with a mouse, the growing Play pill has no focus ring or glow (the page shows none then)", () => {
-        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*box-shadow: none !important/);
+    it("opened with a mouse, the growing Play pill has no focus ring (the page shows none then)", () => {
+        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*outline: none !important/);
     });
     it('no hover look without mouse mode: every :hover rule is under html[data-gg-mouse]', () => {
         for (const sel of css.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');
@@ -1015,7 +1147,7 @@ describe('homeCss open transition: text twins', () => {
         expect(css).toMatch(/@keyframes gh-twin-out \{ 0% \{ opacity: 1;[^}]*\} 40%, 100% \{ opacity: 0; \} \}/);
         const out = `animation: gh-twin-out ${OPEN_TIMINGS.morph}ms linear both`;
         expect(body(`${MT}[data-gh-twins~="title"] .gh-title-slot`)).toContain(out);
-        expect(body(`${MT}[data-gh-twins~="eyebrow"] .gh-eyebrow`)).toContain(out);
+        // The glowing eyebrow uses one visible twin throughout, tested below.
         expect(body(`${MT}[data-gh-twins~="play"] .gh-btn[data-action="play"] .gh-btn-label`)).toContain(out);
         for (const k of ['size', 'played', 'achievements', 'hltb']) {
             expect(body(`${MT}[data-gh-twins~="label-${k}"] .gh-chip[data-chip="${k}"] .gh-chip-label`), k).toContain(out);
@@ -1084,5 +1216,128 @@ describe('the cards\' crisp ring in the open transition', () => {
     it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
         expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
+    });
+});
+
+describe('text on the accent', () => {
+    it('the Library pill reads white on the accent, like Play (the visual language: text on the accent is white)', () => {
+        const all = rules(homeCss());
+        const library = all.find(([sel]) => sel.length === 1 && sel[0] === '.gh-btn-library');
+        expect(library?.[1]).toContain('background: var(--glance-accent)');
+        expect(library?.[1]).toMatch(/color: #fff/);
+        expect(library?.[1]).not.toContain('--gh-on-accent');
+    });
+});
+
+describe('Page shading None: contrast on the art (spec "Contrast in None mode")', () => {
+    const css = homeCss();
+    const GLASS = 'rgba(12,16,22,.40)';
+    const MIX = 'color-mix(in srgb, var(--glance-accent) 88%, #000)';
+    /** Bodies of the rules with a selector starting `.gh-shade-none <sel>`. */
+    const none = (sel: string) => rules(css).filter(([list]) => list.some((s) => s.startsWith(`.gh-shade-none ${sel}`))).map(([, b]) => b).join(' ');
+    it('the eyebrow is white with the accent only as a glow, in every mode (its base rule, nothing None-only)', () => {
+        expect(none('.gh-eyebrow')).toBe('');
+        const body = ruleFor(css, '.gh-eyebrow');
+        expect(body).toMatch(/color:\s*#fff/);
+        expect(body).toContain('text-shadow: 0 0 2px #000, 0 0 4px var(--glance-accent), 0 0 10px var(--glance-accent), 0 0 20px color-mix(in srgb, var(--glance-accent) 75%, transparent)');
+        // The box keeps its ellipsis but must not cut the glow off at its edges (it read as a band behind the line on the Ally).
+        expect(body).toMatch(/overflow:\s*clip/);
+        expect(body).toMatch(/overflow-clip-margin:\s*2em/);
+    });
+    it('the glass on the art (chips, circles, store and family pills, store choice) uses VDL glass, with a brighter edge and white text', () => {
+        for (const sel of ['.gh-chip', '.gh-btn-circle', '.gh-source:not(.gh-source-selectable)', '.gh-family', '.gh-store-choice']) {
+            const body = none(sel);
+            expect(body, sel).toContain(`background: ${GLASS} !important`);
+            expect(body, sel).toContain('border-color: rgba(255,255,255,.16) !important');
+            expect(body, sel).toMatch(/color:\s*#fff !important/);
+        }
+        // The feed cards and the Library card keep their look.
+        expect(none('.gh-card')).toBe('');
+        expect(none('.gh-lib-body')).toBe('');
+    });
+    it('chip labels and values get a dark shadow', () => {
+        for (const sel of ['.gh-chip-label', '.gh-chip-value']) expect(none(sel), sel).toContain('text-shadow: 0 1px 3px #000b !important');
+    });
+    it('Play and Library: a darker accent, a dark edge and drop shadow, a shadowed label', () => {
+        for (const sel of ['.gh-btn-play', '.gh-btn-library']) {
+            const body = none(sel);
+            expect(body, sel).toContain(`background: ${MIX} !important`);
+            expect(body, sel).toContain('border-color: rgba(0,0,0,.35) !important');
+            expect(body, sel).toContain('box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.8) !important');
+            expect(body, sel).toContain('text-shadow: 0 1px 2px #0009 !important');
+            expect(body, sel).not.toContain('outline');
+        }
+        // The download fill is its own layer over the pill, untouched.
+        expect(ruleFor(css, '.gh-btn-fill')).toContain('position: absolute');
+    });
+    it('focus and hover still win: a focused circle steps up to glass-strong, a focused Play keeps the ring', () => {
+        // The None glass skips a focused circle (gh-focus or DOM focus), so the focus rule's background applies.
+        const circle = rules(css).flatMap(([list]) => list).filter((s) => s.startsWith('.gh-shade-none .gh-btn-circle'));
+        expect(circle.length).toBeGreaterThan(0);
+        for (const s of circle) expect(s).toMatch(/:not\(\.gh-focus\)/);
+        expect(rulesMatching(css, /\.gh-btn-circle\.gh-focus$/).join(' ')).toContain('background: rgba(12,16,22,.55) !important');
+        expect(rulesMatching(css, /^:where\(html:not\(\[data-gg-mouse\]\)\) \.gh-btn\.gh-focus$/).join(' ')).toMatch(/outline:\s*2px solid #fff !important/);
+        // Hover is more specific (html[data-gg-mouse] .gh-btn:hover) than .gh-shade-none .gh-btn-play.
+        expect(rulesMatching(css, /^html\[data-gg-mouse\] \.gh-btn:hover/).join(' ')).toContain('box-shadow');
+    });
+    it('the open transition draws the page twins in the None look (shells, normal cards, Clean panel, pills, text twins, the Play layers)', () => {
+        for (const sel of ['.gh-open-shell', '.gh-open-circle', '.gh-normal-card', '.gh-clean-info', '.gh-x-pill:not(.gh-x-selectable)', '.gh-x-family', '.gh-x-store-choice']) {
+            expect(none(sel), sel).toContain(`background: ${GLASS} !important`);
+        }
+        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(255,255,255,.16) !important');
+        expect(none('.gh-open-ring')).toContain('border-color: rgba(255,255,255,calc(.16 * var(--gho-ring-boost, 1))) !important');
+        for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
+        const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
+        expect(eyebrowTwin).toContain('color: #fff');
+        expect(eyebrowTwin).toContain('overflow-clip-margin: 2em');
+        expect(eyebrowTwin).toContain('0 0 calc(4px * var(--gho-x-d)) var(--glance-accent)');
+        // Every layer is centred, the dark one too, so the glow is even all round (Michael: it read stronger above).
+        expect(eyebrowTwin).toContain('0 0 calc(2px * var(--gho-x-d)) #000');
+        expect(none('.gh-twin[data-role="label"]')).toContain('text-shadow: 0 calc(1px * var(--gho-x-d)) calc(3px * var(--gho-x-d)) #000b');
+        expect(none('.gh-twin[data-role="playLabel"]')).toContain('#0009');
+        const layers = rules(css).filter(([list]) => list.some((s) => s.startsWith('.gh-shade-none[data-gh-opening="morph"]') && /::(before|after)$/.test(s))).map(([, b]) => b);
+        expect(layers.length).toBe(2);
+        for (const b of layers) expect(b).toContain(`background: ${MIX} !important`);
+    });
+    it('Bottom half is unchanged apart from the eyebrow: every other new declaration sits under .gh-shade-none', () => {
+        for (const [list, body] of rules(css)) {
+            if ([MIX, '#000b'].some((v) => body.includes(v))) {
+                for (const s of list) expect(s, body).toContain('.gh-shade-none');
+            }
+        }
+    });
+});
+
+
+describe('opening paint continuity', () => {
+    const css = homeCss();
+    const M = '.gh-root[data-gh-opening="morph"]';
+    it('keeps the moving nested normal-card frost in the backdrop scene', () => {
+        expect(ruleFor(css, `${M}[data-gh-normal]:not(.gh-bridge) .gh-normal-card`)).toContain('transform-style:preserve-3d');
+    });
+    it('gives the eyebrow twin sole ownership from the first opening frame', () => {
+        const original = ruleFor(css, `${M}[data-gh-twins~="eyebrow"] .gh-eyebrow`);
+        const twin = ruleFor(css, `${M}[data-gh-twins~="eyebrow"] .gh-twin[data-role="eyebrow"]`);
+        expect(original).toContain('opacity: 0');
+        expect(original).toContain('animation: none');
+        expect(twin).toContain('opacity: 1');
+        expect(twin).toContain('animation: none');
+        // Movement still uses the existing transform transition, rather than a text crossfade.
+        expect(ruleFor(css, `${M}[data-gh-phase="to"] .gh-twin`)).toContain('transform: var(--t-to)');
+    });
+    it('does not let the return animation override a rapid reopening', () => {
+        const returning = rules(css).filter(([, body]) => body.includes('animation: gh-return-in'));
+        expect(returning.length).toBeGreaterThan(0);
+        for (const [selectors] of returning) for (const sel of selectors) expect(sel).toContain(':not([data-gh-opening])');
+    });
+});
+
+
+describe('shared status cell geometry',()=>{
+    it('keeps read-only connection, battery, clock and controller cells the Home size',()=>{
+        const item=ruleFor(statusCss(),'.gh-status-item');
+        for(const value of ['min-width: 24px','min-height: 24px','justify-content: center','border-radius: 6px']) expect(item).toContain(value);
+        const avatar=ruleFor(statusCss(),'.gh-status-avatar');
+        expect(avatar).toContain('min-width: 24px');expect(avatar).toContain('min-height: 24px');
     });
 });

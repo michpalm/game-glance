@@ -13,6 +13,8 @@ import { getDescription, getSteamLanguage, peekSteamLanguage, readGameInfo } fro
 import { accentFor } from '../home/accent';
 import { accentVersion, sampleAccent } from '../home/accentSample';
 import { homeMode } from '../home/mode';
+import { useChromeClaim, usePageShown } from '../chrome/useChromeClaim';
+import { useChromeHeld } from '../chrome/useChrome';
 import { formatLastPlayed } from '../home/recents';
 import { useAsync } from '../hooks/useAsync';
 import { useLauncherPlaytime } from '../hooks/useLauncherPlaytime';
@@ -34,6 +36,7 @@ import { accentMemo, knownAccent } from '../home/accentMemo';
 import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
 import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
+import { installCalmFilter } from '../styles/tokens';
 import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
 import { pageNavParts } from '../logic/cardNav';
 import { CleanInfo } from './CleanInfo';
@@ -189,7 +192,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const { homeStatusBar: statusBar, gameLogo, heroFit } = useSettings();
+    const settings = useSettings();
+    const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -203,6 +207,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => setPageDoc(heroRef.current?.ownerDocument ?? null), [game.appId]);
     // Hover looks follow a mouse (home/mouseMode), here as on Home.
     useEffect(() => (pageDoc ? installMouseMode(pageDoc) : undefined), [pageDoc]);
+    // The frost's calm filter (VDL Section 7); nothing while CALM_IN_CSS is off.
+    useEffect(() => (pageDoc ? installCalmFilter(pageDoc) : undefined), [pageDoc]);
     // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
     usePageHeroFit(pageDoc, heroFit, restyle);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
@@ -228,6 +234,11 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
+    // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while rendered (not
+    // display:none under another screen). During launch the host keeps its visuals and releases input.
+    const shown = usePageShown(heroRef, game.appId);
+    useChromeClaim(shown ? { page: 'game', statusHidden: false, launching } : null);
+    const hostBar = useChromeHeld();
 
     useEffect(() => {
         setCurrentGame(game, hltb);
@@ -242,7 +253,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     return (
         <>
             {/* Spotlight Home's status bar, over Steam's top strip, with the restyled page (not while Steam's launch screen is up). */}
-            {restyle && statusBar && !launching && <GameStatusBar />}
+            {restyle && statusBar && !launching && !hostBar && <GameStatusBar />}
             {/* A Unifideck game's circle buttons are reordered by CSS; the D-pad then steps by position. */}
             {game.isShortcut && <UnifideckRowNav />}
             {restyle && <PlayRowNav />}
@@ -256,7 +267,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 </div>
             )}
             <div className="gg-hero" ref={heroRef}>
-                <style>{themeCss({ restyle, heroFit })}</style>
+                <style>{themeCss({ restyle, heroFit, pageShading })}</style>
                 <style>{unifideckCss({ restyle })}</style>
                 {ringStyle && <style>{ringStyle}</style>}
                 {cleanStyle && <style>{cleanStyle}</style>}

@@ -295,7 +295,6 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
                                 {onlineFriends}
                             </span>
                         )}
-                        <div className="gh-tab-line" />
                     </Focusable>
                 ))}
             </Focusable>

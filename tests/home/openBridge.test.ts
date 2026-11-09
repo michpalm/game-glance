@@ -1,5 +1,7 @@
+import { parseHTML } from 'linkedom';
+import { installCalmFilter } from '../../src/styles/tokens';
 import { describe, expect, it, vi } from 'vitest';
-import { topBarCopy, withSteamBarBack } from '../../src/home/openBridge';
+import { mountOpenBridge, topBarCopy, withSteamBarBack } from '../../src/home/openBridge';
 import type { OpenBridge } from '../../src/home/openTransition';
 
 function fakeEl() {
@@ -71,5 +73,34 @@ describe('withSteamBarBack', () => {
     it('has no settle when the bridge has none', () => {
         const { settle: _s, ...bare } = fakeBridge();
         expect(withSteamBarBack(bare as OpenBridge, vi.fn()).settle).toBeUndefined();
+    });
+});
+
+
+describe('bridge frost lifetime', () => {
+    it('keeps the shared filter through Home unmount, until the page takes over', () => {
+        const { document } = parseHTML('<html><body><div class="gh-root"></div></body></html>');
+        const doc = document as unknown as Document;
+        const root = doc.querySelector<HTMLElement>('.gh-root')!;
+        root.getBoundingClientRect = () => ({left:0, top:0, width:829, height:467}) as DOMRect;
+        const stopHome = installCalmFilter(doc);
+        const bridge = mountOpenBridge(root);
+        stopHome(); root.remove();
+        expect(doc.querySelectorAll('#gg-calm')).toHaveLength(1);
+        const stopPage = installCalmFilter(doc);
+        bridge.remove(); bridge.remove();
+        expect(doc.querySelectorAll('#gg-calm')).toHaveLength(1);
+        stopPage();
+        expect(doc.querySelectorAll('#gg-calm')).toHaveLength(0);
+    });
+    it('releases its filter when an opening is cancelled without a page', () => {
+        const { document } = parseHTML('<html><body><div class="gh-root"></div></body></html>');
+        const doc = document as unknown as Document;
+        const root = doc.querySelector<HTMLElement>('.gh-root')!;
+        root.getBoundingClientRect = () => ({left:0, top:0, width:829, height:467}) as DOMRect;
+        const bridge = mountOpenBridge(root);
+        expect(doc.querySelectorAll('#gg-calm')).toHaveLength(1);
+        bridge.remove();
+        expect(doc.querySelectorAll('#gg-calm')).toHaveLength(0);
     });
 });

@@ -1,3 +1,5 @@
+import { GamepadButton, type GamepadEvent } from '@decky/ui';
+import { chromeFocus } from '../chrome/useChrome';
 import { useEffect, useRef, useState } from 'react';
 import { LOG_PREFIX } from '../constants';
 import { focusElement } from '../home/homeNav';
@@ -8,7 +10,7 @@ import { playRowControlSelector } from '../styles/theme';
 const LEFT = 11;
 const RIGHT = 12;
 
-/** Step between Steam's controls and the library selection pill in their visible order. */
+/** Move up to shared chrome or step across the Play row in its visible order. */
 export function PlayRowNav() {
     const marker = useRef<HTMLSpanElement>(null);
     const [doc, setDoc] = useState<Document | null>(null);
@@ -19,14 +21,19 @@ export function PlayRowNav() {
             try {
                 if (event.defaultPrevented) return;
                 const button = Number((event as CustomEvent<{ button?: unknown }>).detail?.button);
-                if (button !== LEFT && button !== RIGHT) return;
+                if (button !== GamepadButton.DIR_UP && button !== LEFT && button !== RIGHT) return;
                 const selector = playRowControlSelector();
                 if (!selector) return;
+                const target = event.target as HTMLElement | null;
+                if (button === GamepadButton.DIR_UP) {
+                    const origin = target?.closest?.<HTMLElement>(selector);
+                    if (origin) chromeFocus.actionUp(event as unknown as GamepadEvent, origin);
+                    return;
+                }
                 const items = [...doc.querySelectorAll<HTMLElement>(selector)].filter((el) => el.getBoundingClientRect().width > 0);
                 const xs = items.map((el) => el.getBoundingClientRect().x);
                 const crossesGroups = items.some((el) => el.matches('.gg-copy-pill, .gg-store-choice'));
                 if (!needsVisualNav(xs, crossesGroups)) return;
-                const target = event.target as HTMLElement | null;
                 const gp = doc.querySelector<HTMLElement>('.gpfocus');
                 const from = rowFocusIndex(items, target, gp, (el, focus) => el === focus || el.contains(focus));
                 if (from < 0) return;

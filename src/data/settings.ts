@@ -3,6 +3,7 @@ import { RECENT_ROW, RowSort, rowSortOf } from '../home/collections';
 import { FEED_TABS_DEFAULT, FeedTabs, feedTabsOf } from '../home/feedTabs';
 import type { FeedTab } from '../home/feedLayout';
 import { HeroFit, heroFitOf } from '../home/heroFit';
+import { PageShading, pageShadingOf } from '../home/pageShading';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
 import { backendKv, KvBackend } from './kv';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
@@ -14,6 +15,8 @@ export interface Settings {
     wishlistDeals: boolean; // look up wishlist sales on Steam's public store
     cleanPage: boolean; // the Game Glance page's Clean look: one row at the bottom, no description or HowLongToBeat cards
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
+    homeExpandedControls: boolean; // opt-in Home footer styling and focus-only status items
+    chromeEveryPage: boolean; // opt-in: the status bar and footer on every Steam page, not only Home
     statusAvatar: boolean; // your avatar, round and ringed in your status colour, in the status bar instead of the dot
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
@@ -21,12 +24,13 @@ export interface Settings {
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     homeGrayUninstalled: boolean; // gray treatment for uninstalled Steam games in Home's row
     heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
+    pageShading: PageShading; // the shading over the art on Home and the game page: 'bottom' (the bottom half) or 'none'
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -53,6 +57,8 @@ export function createSettingsStore(kv: KvBackend) {
                 wishlistDeals: pick('wishlistDeals'),
                 cleanPage: pick('cleanPage'),
                 homeStatusBar: pick('homeStatusBar'),
+                homeExpandedControls: pick('homeExpandedControls'),
+                chromeEveryPage: pick('chromeEveryPage'),
                 statusAvatar: pick('statusAvatar'),
                 gameLogo: pick('gameLogo'),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
@@ -60,6 +66,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
                 homeGrayUninstalled: pick('homeGrayUninstalled'),
                 heroFit: heroFitOf(raw?.heroFit),
+                pageShading: pageShadingOf(raw?.pageShading),
                 feedTabs: feedTabsOf(raw?.feedTabs),
                 screensaver: readScreensaverOptions(raw?.screensaver),
             };
@@ -116,6 +123,11 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             await persist({ heroFit });
         },
+        async setPageShading(pageShading: PageShading): Promise<void> {
+            current = { ...current, pageShading };
+            emit();
+            await persist({ pageShading });
+        },
         async setFeedTab(tab: FeedTab, on: boolean): Promise<void> {
             const feedTabs = { ...current.feedTabs, [tab]: on };
             current = { ...current, feedTabs };
@@ -127,6 +139,16 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, cleanPage };
             emit();
             await persist({ cleanPage });
+        },
+        async setHomeExpandedControls(homeExpandedControls: boolean): Promise<void> {
+            current = { ...current, homeExpandedControls };
+            emit();
+            await persist({ homeExpandedControls });
+        },
+        async setChromeEveryPage(chromeEveryPage: boolean): Promise<void> {
+            current = { ...current, chromeEveryPage };
+            emit();
+            await persist({ chromeEveryPage });
         },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };

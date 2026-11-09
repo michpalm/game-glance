@@ -265,12 +265,6 @@ describe('openMotion', () => {
         expect(v['--gho-circle-2']).toBeUndefined();
     });
 
-    it("a Unifideck cloud's ring: in canvas px, as wide as Unifideck's 2 CSS px once the circle has grown onto the page's", () => {
-        const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
-        // Home's cloud (circle 3) grows from its own box onto the page's third circle (62.5 wide).
-        expect(parseFloat(v['--gho-uni-ring'])).toBeCloseTo((2 * (r.circle3.w / s)) / 62.5, 3);
-        expect(v['--gho-uni-ring']).toMatch(/px$/);
-    });
     it("the page's fourth circle (Unifideck's trash) in canvas px, for the circle Home draws there as it opens", () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         expect(Number(v['--gho-circle-extra-x'])).toBeCloseTo(625 / s, 3);
@@ -285,7 +279,7 @@ describe('openMotion', () => {
     const pageW = 354.2 * pf.x;
     const pageH = 62.5 * pf.y;
     it('the Play pill moves by its left edge and centre; its background layer, inside it, grows onto the page pill as focused', () => {
-        expect(f).toBe(1.04);
+        expect(f).toBe(1);   // Section 7: a focused Play never grows, so the morph lands on the page pill at rest
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         const bg = parse(v['--gho-play-bg']);
         expect(bg.sx).toBeCloseTo(pageW / r.pill.w, 3);
@@ -385,7 +379,7 @@ describe('the Unifideck size column', () => {
 
 describe('open timings', () => {
     it('match the spec', () => {
-        expect(OPEN_TIMINGS).toEqual({ leave: 220, infoFade: 180, morph: 450, twinFade: 180, settleGlide: 150, settle: 180, extras: 250, feedHero: 300, feedUi: 220, bridgeFade: 300, bridgeIn: 150, readyCap: 500, revealDelay: 0, reveal: 200, leaveDrop: 70, feedRise: 14 });
+        expect(OPEN_TIMINGS).toEqual({ leave: 220, infoFade: 180, morph: 450, twinFade: 180, settleGlide: 150, settle: 180, extras: 250, feedHero: 300, feedUi: 220, bridgeFade: 300, bridgeIn: 150, readyCap: 2000, revealDelay: 0, reveal: 200, leaveDrop: 70, feedRise: 14 });
         expect(MORPH_EASE).toBe('cubic-bezier(.3,.55,.15,1)');
     });
 });

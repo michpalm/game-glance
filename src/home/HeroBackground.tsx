@@ -12,6 +12,12 @@ export type Art = { mode: 'full'; url: string } | { mode: 'fallback'; url: strin
 
 /** Games whose resolved art is kept (more than any recents row). */
 const ART_MEMO_MAX = 48;
+const artworkAccount=():string|null=>{try{const app=(globalThis as {App?:{m_CurrentUser?:{strSteamID?:unknown}}}).App;const id=app?.m_CurrentUser?.strSteamID;return typeof id==='string'&&id?id:null;}catch{return null;}};
+let scopedAccount:string|null|undefined,artworkEpoch=0;
+function scopedArtUrl(url:string):string {
+    if(!url.startsWith('https://steamloopback.host/customimages/'))return url;
+    const scoped=new URL(url);scoped.searchParams.set('gg-art-context',String(artworkEpoch));return scoped.href;
+}
 
 /**
  * The first url that loads, decoded, as the url to draw: a smaller copy when the file is far bigger than the screen or a
@@ -43,8 +49,10 @@ function remember(appId: number, key: string, art: Art) {
 
 /** A game's art urls now (hero files, then the fallback capsules) and their memo key. */
 function artSources(appId: number): { full: string[]; fallback: string[]; key: string } {
-    const { full, fallback } = heroSources(heroUrls(appId, browserStores), capsuleUrls(appId, browserStores));
-    return { full, fallback, key: `${full.join('|')}||${fallback.join('|')}` };
+    const account=artworkAccount();if(account!==scopedAccount){scopedAccount=account;artworkEpoch++;}
+    const sources=heroSources(heroUrls(appId, browserStores), capsuleUrls(appId, browserStores));
+    const full=sources.full.map(url=>scopedArtUrl(url)),fallback=sources.fallback.map(url=>scopedArtUrl(url));
+    return { full, fallback, key: `${account??''}|${full.join('|')}||${fallback.join('|')}` };
 }
 
 /** The art remembered for a game's current url list, or undefined. */
@@ -104,7 +112,7 @@ async function lookupArt(appId: number, { full, fallback, key }: ReturnType<type
 }
 
 /** The game whose art Home shows now, and that art (the open transition morphs only over a game's own full hero). */
-let shownNow: { appId: number; art: Art } | null = null;
+let shownNow: { appId: number; art: Art; account:string|null; key:string } | null = null;
 
 /** The game Home's hero shows now, or null. */
 export function heroShownApp(): number | null {
@@ -113,8 +121,14 @@ export function heroShownApp(): number | null {
 
 /** A game's hero art as Home shows or last resolved it (null when unknown); never loads anything. */
 export function heroArtFor(appId: number): Art | null {
-    if (shownNow?.appId === appId) return shownNow.art;
-    return artMemo.get(appId)?.art ?? null;
+    try{if(shownNow?.appId===appId&&shownNow.key===artSources(appId).key)return shownNow.art;}catch{/* Source no longer belongs to this context. */}
+    return knownArt(appId)??null;
+}
+
+/** A Home publication is attributable only to the account and source that resolved it. */
+export function heroShownContext():{appId:number;account:string|null;revision:string}|null {
+    try{if(shownNow&&shownNow.account===artworkAccount()&&shownNow.key===artSources(shownNow.appId).key)return{appId:shownNow.appId,account:shownNow.account,revision:shownNow.key};}catch{/* Native metadata is unavailable. */}
+    return null;
 }
 
 const sameArt = (a: Art | undefined, b: Art) =>
@@ -216,7 +230,7 @@ export function HeroBackground({ appId, detailsVersion, neighbours = [] }: { app
         const settled = settledHeroLayers(shown.current !== undefined, known, Date.now());
         if (!settled || !known) return;
         shown.current = known;
-        shownNow = { appId, art: known };
+        shownNow = { appId, art: known, account:artworkAccount(),key:artSources(appId).key };
         setLayers(settled);
     }, [appId]);
 
@@ -229,9 +243,10 @@ export function HeroBackground({ appId, detailsVersion, neighbours = [] }: { app
         }
         let active = true;
         let prune: ReturnType<typeof setTimeout> | undefined;
+        const owner=artworkAccount(),sourceKey=artSources(appId).key;
         resolveArt(appId).then((art) => {
-            if (!active) return;
-            shownNow = { appId, art };
+            if (!active||owner!==artworkAccount()) return;
+            shownNow = { appId, art, account:owner,key:sourceKey };
             if (sameArt(shown.current, art)) return; // re-resolved to what is already up
             shown.current = art;
             const id = ++nextId.current;

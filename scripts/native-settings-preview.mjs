@@ -1,0 +1,5 @@
+import {createRequire} from 'node:module';import {dirname,resolve} from 'node:path';import {mkdir,writeFile} from 'node:fs/promises';
+const require=createRequire(import.meta.url),repo=resolve(dirname(new URL(import.meta.url).pathname),'..'),{createServer}=await import(resolve(repo,'node_modules/.pnpm/vite@8.3.2/node_modules/vite/dist/node/index.js'));
+const root=resolve(repo,'.superpowers/sdd/2026-11-05-native-settings-vdl/preview');await mkdir(root,{recursive:true});
+await writeFile(resolve(root,'index.html'),`<html><head><meta charset="utf-8"></head><body><script type="module" src="/@fs/${repo}/scripts/fixtures/native-settings-preview.ts"></script></body></html>`);
+const server=await createServer({configFile:false,root,publicDir:process.argv[2]?resolve(process.argv[2]):false,resolve:{alias:[{find:'@decky/api',replacement:resolve(repo,'scripts/fixtures/search-api.ts')}]},server:{host:'127.0.0.1',port:18406,strictPort:true,fs:{allow:[repo,...process.argv.slice(2).map(p=>resolve(p))]}}});await server.listen();console.log('Native-shaped Settings fixture: http://127.0.0.1:18406');

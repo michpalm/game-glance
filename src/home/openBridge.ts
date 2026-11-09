@@ -1,3 +1,4 @@
+import { installCalmFilter } from '../styles/tokens';
 import type { OpenBridge } from './openTransition';
 
 /**
@@ -49,6 +50,9 @@ export function mountOpenBridge(root: HTMLElement, css = '', extras: Element[] =
     // Layers Home draws outside its root (our status bar, which also keeps Steam's top bar hidden), copied over the top.
     for (const extra of extras) box.appendChild(extra.cloneNode(true));
     parent.appendChild(box);
+    // The frozen copy still draws frost after Home unmounts. Keep its SVG filter alive until this bridge leaves,
+    // independently of the page's effects mounting (cards, action buttons and footer all reference the same filter).
+    const releaseFrost = installCalmFilter(doc);
     let removed = false;
     return {
         fadeIn(ms: number) {
@@ -73,6 +77,7 @@ export function mountOpenBridge(root: HTMLElement, css = '', extras: Element[] =
             if (removed) return;
             removed = true;
             box.remove();
+            releaseFrost();
         },
     };
 }

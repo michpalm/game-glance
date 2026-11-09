@@ -1,5 +1,7 @@
+import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
-import { HERO_FITS, HeroFit } from '../home/heroFit';
+import { HERO_FIT_COPY, HERO_FITS, HeroFit } from '../home/heroFit';
+import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -7,7 +9,7 @@ import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
-import { SpotlightRow, spotlightRows } from './settingsRows';
+import { everyPageAvailable, homeRows, HomeRow, matchLine, StatusRow, statusRows } from '../data/settingsCategories';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
@@ -15,14 +17,8 @@ import { RowStyle } from '../home/recentsLayout';
 import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
-/** The hero art setting's description, for the selected option. */
-const HERO_FIT_COPY: Record<HeroFit, string> = {
-    fill: 'Fills the screen; the sides of wide art are cut off.',
-    fit: 'Shows the whole art at the top, with a blurred copy behind it.',
-};
-
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -36,13 +32,7 @@ export function SettingsPanel() {
         overrides.get(game.appId).then(setOverrideId, () => setOverrideId(null));
     }, [game?.appId]);
 
-    const match = overrideId !== null
-        ? `Override: HowLongToBeat #${overrideId}`
-        : hltb?.status === 'found'
-            ? `Automatic: HowLongToBeat #${hltb.gameId}`
-            : hltb?.status === 'notFound'
-                ? 'Automatic: no match'
-                : 'Automatic';
+    const match = matchLine(overrideId, hltb);
 
     const save = async () => {
         if (!game) return;
@@ -64,8 +54,8 @@ export function SettingsPanel() {
         setOverrideId(null);
     };
 
-    // Spotlight Home's rows, shown in settingsRows' order: each only while the row it depends on is on.
-    const spotlightRow: Record<SpotlightRow, ReactElement> = {
+    // Home's rows, in settingsCategories' order: each only while the row it depends on is on.
+    const homeRowControl: Record<HomeRow, ReactElement> = {
         spotlightHome: (
             <ToggleField
                 label="Spotlight Home"
@@ -119,22 +109,6 @@ export function SettingsPanel() {
                 onChange={(value) => settings.setWishlistDeals(value)}
             />
         ),
-        statusBar: (
-            <ToggleField
-                label="Status bar"
-                description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
-                checked={homeStatusBar}
-                onChange={(value) => settings.setHomeStatusBar(value)}
-            />
-        ),
-        statusAvatar: (
-            <ToggleField
-                label="Profile picture in the status bar"
-                description="Shows your avatar, round and ringed in your online colour, instead of the dot."
-                checked={statusAvatar}
-                onChange={(value) => settings.setStatusAvatar(value)}
-            />
-        ),
         news: (
             <ToggleField
                 label="What's new"
@@ -161,12 +135,43 @@ export function SettingsPanel() {
         ),
     };
 
+    // The status bar and footer's rows, in the same order; each only while the row it depends on is on.
+    const statusRowControl: Record<StatusRow, ReactElement> = {
+        statusBar: (
+            <ToggleField
+                label="Status bar"
+                description="Clock, battery and connection at the top-right. Moving up to Steam's own top bar hides it."
+                checked={homeStatusBar}
+                onChange={(value) => settings.setHomeStatusBar(value)}
+            />
+        ),
+        statusAvatar: (
+            <ToggleField
+                label="Profile picture in the status bar"
+                description="Shows your avatar, round and ringed in your online colour, instead of the dot."
+                checked={statusAvatar}
+                onChange={(value) => settings.setStatusAvatar(value)}
+            />
+        ),
+        expandedControls: (
+            <ToggleField label="Expanded Home controls" description="Matching controller prompts and individually selectable status items."
+                checked={homeExpandedControls} onChange={value => settings.setHomeExpandedControls(value)} />
+        ),
+        everyPage: (
+            <ToggleField label="On every page" description="Use the status bar and footer on every Steam page, not only Home."
+                disabled={!everyPageAvailable({ enabled, spotlightHome, homeStatusBar, homeExpandedControls })}
+                checked={chromeEveryPage} onChange={value => settings.setChromeEveryPage(value)} />
+        ),
+    };
+
     return (
         <>
+            <PanelSection title="Home">
+                {homeRows({ spotlightHome, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
+                    <PanelSectionRow key={row}>{homeRowControl[row]}</PanelSectionRow>
+                ))}
+            </PanelSection>
             <PanelSection title="Game page">
-                <PanelSectionRow>
-                    <ToggleField label="Game Glance" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
-                </PanelSectionRow>
                 {enabled && (
                     <PanelSectionRow>
                         <ToggleField
@@ -177,32 +182,44 @@ export function SettingsPanel() {
                         />
                     </PanelSectionRow>
                 )}
+                {game ? (
+                    <>
+                        <PanelSectionRow>
+                            <div>{game.name}</div>
+                            <div style={{ opacity: 0.7, fontSize: '12px' }}>{match}</div>
+                        </PanelSectionRow>
+                        {hltb?.status === 'found' && (
+                            <PanelSectionRow>
+                                <ButtonItem
+                                    layout="below"
+                                    onClick={() => Navigation.NavigateToExternalWeb(`https://howlongtobeat.com/game/${hltb.gameId}`)}
+                                >
+                                    Open on HowLongToBeat
+                                </ButtonItem>
+                            </PanelSectionRow>
+                        )}
+                        <PanelSectionRow>
+                            <TextField label="HowLongToBeat link or ID" value={input} onChange={(e) => setInput(e.target.value)} />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <ButtonItem layout="below" onClick={save}>Use this game</ButtonItem>
+                        </PanelSectionRow>
+                        {overrideId !== null && (
+                            <PanelSectionRow>
+                                <ButtonItem layout="below" onClick={remove}>Remove override</ButtonItem>
+                            </PanelSectionRow>
+                        )}
+                    </>
+                ) : (
+                    <PanelSectionRow>Open a game page first.</PanelSectionRow>
+                )}
             </PanelSection>
-            <PanelSection title="Home page">
-                {spotlightRows({ spotlightHome, homeStatusBar, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
-                    <PanelSectionRow key={row}>{spotlightRow[row]}</PanelSectionRow>
-                ))}
+            <PanelSection title="Status bar & footer">
+                {statusRows({ spotlightHome, homeStatusBar }).length === 0
+                    ? <PanelSectionRow>Turn on Spotlight Home to use the status bar and footer.</PanelSectionRow>
+                    : statusRows({ spotlightHome, homeStatusBar }).map((row) => <PanelSectionRow key={row}>{statusRowControl[row]}</PanelSectionRow>)}
             </PanelSection>
-            <PanelSection title="Appearance">
-                <PanelSectionRow>
-                    <ToggleField
-                        label="Game logo"
-                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
-                        checked={gameLogo}
-                        onChange={(value) => settings.setGameLogo(value)}
-                    />
-                </PanelSectionRow>
-                <PanelSectionRow>
-                    <DropdownItem
-                        label="Hero art"
-                        description={HERO_FIT_COPY[heroFit]}
-                        menuLabel="Hero art"
-                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
-                        selectedOption={heroFit}
-                        onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
-                    />
-                </PanelSectionRow>
-            </PanelSection>
+            <MenuPreferences />
             <PanelSection title="Screensaver">
                 {!screensaverAvailable() ? (
                     <PanelSectionRow>Needs a newer Steam client, one with the screensaver (Settings → Customization → Screensaver).</PanelSectionRow>
@@ -250,40 +267,38 @@ export function SettingsPanel() {
                     </>
                 )}
             </PanelSection>
-            <PanelSection title="HowLongToBeat match">
-                {game ? (
-                    <>
-                        <PanelSectionRow>
-                            <div>{game.name}</div>
-                            <div style={{ opacity: 0.7, fontSize: '12px' }}>{match}</div>
-                        </PanelSectionRow>
-                        {hltb?.status === 'found' && (
-                            <PanelSectionRow>
-                                <ButtonItem
-                                    layout="below"
-                                    onClick={() => Navigation.NavigateToExternalWeb(`https://howlongtobeat.com/game/${hltb.gameId}`)}
-                                >
-                                    Open on HowLongToBeat
-                                </ButtonItem>
-                            </PanelSectionRow>
-                        )}
-                        <PanelSectionRow>
-                            <TextField label="HowLongToBeat link or ID" value={input} onChange={(e) => setInput(e.target.value)} />
-                        </PanelSectionRow>
-                        <PanelSectionRow>
-                            <ButtonItem layout="below" onClick={save}>Use this game</ButtonItem>
-                        </PanelSectionRow>
-                        {overrideId !== null && (
-                            <PanelSectionRow>
-                                <ButtonItem layout="below" onClick={remove}>Remove override</ButtonItem>
-                            </PanelSectionRow>
-                        )}
-                    </>
-                ) : (
-                    <PanelSectionRow>Open a game page first.</PanelSectionRow>
-                )}
-            </PanelSection>
-            <PanelSection title="Data">
+            <PanelSection title="General">
+                <PanelSectionRow>
+                    <ToggleField label="Game Glance" checked={enabled} onChange={(value) => settings.setEnabled(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField
+                        label="Game logo"
+                        description="Shows the game's logo instead of its name, on Home and the game page. A game without a logo keeps its name."
+                        checked={gameLogo}
+                        onChange={(value) => settings.setGameLogo(value)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Hero art"
+                        description={HERO_FIT_COPY[heroFit]}
+                        menuLabel="Hero art"
+                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                        selectedOption={heroFit}
+                        onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Page shading"
+                        description={PAGE_SHADING_COPY[pageShading].description}
+                        menuLabel="Page shading"
+                        rgOptions={PAGE_SHADINGS.map((mode) => ({ data: mode, label: PAGE_SHADING_COPY[mode].label }))}
+                        selectedOption={pageShading}
+                        onChange={(option) => settings.setPageShading(option.data as PageShading)}
+                    />
+                </PanelSectionRow>
                 <PanelSectionRow>
                     <ToggleField
                         label="Pre-load new games automatically"

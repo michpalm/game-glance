@@ -1,0 +1,65 @@
+import {describe,it,expect,vi} from 'vitest';
+import {parseHTML} from 'linkedom';
+import {GamepadButton as B} from '@decky/ui/dist/components/FooterLegend.js';
+import {createHomeStatusFocus,homeReturnTarget,homeRuntimeSuspended} from '../../src/home/useHomeControls';
+import type {HomeControlId} from '../../src/home/homeControls';
+vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Navigation:{},Focusable:()=>null}));
+function fixture(search=false,busy=false){
+ const {document}=parseHTML('<html><body><main id="home"><div class="gh-actions"><button id="play" class="gh-btn"></button><button id="info" class="gh-btn"></button></div><div id="recents" tabindex="0"></div></main><header><input type="search" data-native="keep"/></header><aside id="status"></aside></body></html>');
+ let editing=false;const reveal=vi.fn(),hide=vi.fn(),activate=vi.fn(),openStatusLink=vi.fn();
+ let pending:(()=>void)|null=null,available=true;const moved:HTMLElement[]=[],home=vi.fn(),stop=vi.fn(),handoff=vi.fn();
+ const focus=createHomeStatusFocus({openStatusLink,search:search?{busy:()=>busy,reveal,hide,activate,editing:()=>editing,contains:target=>target?.id==='editor'}:undefined,canUse:()=>available,visible:n=>n.isConnected&&!n.hidden,focus:n=>moved.push(n),returnHome:home,stopRepeats:stop,headerHandoff:handoff,schedule:callback=>{pending=callback;return ()=>{pending=null;};}});
+ const add=(id:HomeControlId)=>{const node=document.createElement('button') as unknown as HTMLElement;document.getElementById('status')!.append(node);focus.register(id,node);return node;};
+ const flush=()=>{const run=pending;pending=null;run?.();};
+ focus.setActive(true,false);
+ return {openStatusLink,editing:(value:boolean)=>{editing=value;},reveal,hide,activate,document,root:document.getElementById('home')! as unknown as HTMLElement,focus,add,flush,moved,home,stop,handoff,available:(value:boolean)=>{available=value;}};
+}
+const event=(button:number)=>({detail:{button,is_repeat:false},preventDefault:vi.fn(),stopPropagation:vi.fn()}) as any;
+describe('Home status focus coordinator',()=>{
+ it('enters the first visible cell, stops held selection and remembers its last cell',()=>{const f=fixture(),clock=f.add('clock'),conn=f.add('connection');f.flush();const up=event(B.DIR_UP);expect(f.focus.actionUp(up)).toBe(true);expect(f.moved.at(-1)).toBe(conn);expect(up.preventDefault).toHaveBeenCalled();expect(f.stop).toHaveBeenCalledOnce();f.focus.focused('clock');f.focus.button('clock',event(B.DIR_DOWN));expect(f.home).toHaveBeenCalledOnce();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(clock);});
+ it('clamps horizontal movement, consumes OK and bumpers without activation',()=>{const f=fixture(),conn=f.add('connection'),clock=f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.button('connection',event(B.DIR_LEFT));expect(f.moved.at(-1)).toBe(conn);f.focus.button('connection',event(B.DIR_RIGHT));expect(f.moved.at(-1)).toBe(clock);f.focus.button('clock',event(B.DIR_RIGHT));expect(f.moved.at(-1)).toBe(clock);for(const button of [B.OK,B.BUMPER_LEFT,B.BUMPER_RIGHT]){const e=event(button);f.focus.button('clock',e);expect(e.stopPropagation).toHaveBeenCalled();}expect(f.home).not.toHaveBeenCalled();});
+ it.each([B.DIR_DOWN,B.CANCEL])('returns Home with %s',button=>{const f=fixture();f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.button('clock',event(button));expect(f.home).toHaveBeenCalledOnce();});
+ it('allows one original action-row Up after Up from status without touching native Search',()=>{const f=fixture(),input=f.document.querySelector('input')!,listener=vi.fn();input.oninput=listener;const before=input.outerHTML;f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.button('clock',event(B.DIR_UP));expect(f.home).toHaveBeenCalledOnce();const native=event(B.DIR_UP);expect(f.focus.actionUp(native)).toBe(false);expect(native.preventDefault).not.toHaveBeenCalled();expect(input.outerHTML).toBe(before);expect(input.oninput).toBe(listener);expect(listener).not.toHaveBeenCalled();expect(f.focus.actionUp(event(B.DIR_UP))).toBe(true);});
+ it('defers ref churn, repairs a vanished focused cell to its neighbour, then Home if all disappear',()=>{const f=fixture(),download=f.add('download'),conn=f.add('connection');f.flush();f.focus.actionUp(event(B.DIR_UP));const calls=f.moved.length;f.focus.register('download',null);f.focus.register('download',download);f.flush();expect(f.moved).toHaveLength(calls);download.remove();f.focus.register('download',null);f.flush();expect(f.moved.at(-1)).toBe(conn);conn.remove();f.focus.register('connection',null);f.flush();expect(f.home).toHaveBeenCalledOnce();});
+ it('does not repair while native header/menu has focus and never steals focus on resume',()=>{const f=fixture();f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.externalFocus(f.document.querySelector('input') as unknown as HTMLElement);f.focus.register('clock',null);f.flush();expect(f.home).not.toHaveBeenCalled();f.focus.setActive(false,false);f.focus.setActive(true,false);expect(f.home).not.toHaveBeenCalled();expect(f.moved).toHaveLength(1);});
+ it('repairs setting-off while owned, but background/menu/launch suspension does not',()=>{const f=fixture();f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.setActive(false,true);expect(f.home).toHaveBeenCalledOnce();f.focus.setActive(true,false);f.focus.actionUp(event(B.DIR_UP));f.focus.setActive(false,false);expect(f.home).toHaveBeenCalledOnce();f.available(false);const e=event(B.DIR_UP);expect(f.focus.actionUp(e)).toBe(false);expect(e.preventDefault).not.toHaveBeenCalled();});
+ it('rejects hidden and detached targets and repairs replaced nodes with the same ID',()=>{const f=fixture(),conn=f.add('connection');conn.hidden=true;const clock=f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(clock);clock.remove();const replacement=f.add('clock');f.flush();expect(f.moved.at(-1)).toBe(replacement);});
+ it('temporarily removes our cells from native spatial navigation during the header handoff',()=>{const f=fixture();f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.button('clock',event(B.DIR_UP));expect(f.handoff).toHaveBeenLastCalledWith(true);f.focus.register('clock',null);f.flush();expect(f.focus.actionUp(event(B.DIR_UP))).toBe(false);f.focus.externalFocus(f.document.querySelector('input') as unknown as HTMLElement);expect(f.handoff).toHaveBeenLastCalledWith(false);expect(f.home).toHaveBeenCalledOnce();});
+ it('cancels pending repairs on disposal',()=>{const f=fixture();f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));f.focus.register('clock',null);f.focus.dispose();f.flush();expect(f.home).not.toHaveBeenCalled();});
+});
+describe('Home return and runtime ownership',()=>{
+ it('returns to the valid previous action, then Play, recents and empty-Home Library',()=>{const f=fixture(),play=f.document.getElementById('play') as unknown as HTMLElement,info=f.document.getElementById('info') as unknown as HTMLElement,recents=f.document.getElementById('recents') as unknown as HTMLElement;expect(homeReturnTarget(f.root,info,recents)).toBe(info);info.remove();expect(homeReturnTarget(f.root,info,recents)).toBe(play);play.remove();expect(homeReturnTarget(f.root,info,recents)).toBe(recents);recents.remove();const library=f.document.createElement('button');library.className='gh-btn';f.document.querySelector('.gh-actions')!.append(library);expect(homeReturnTarget(f.root,null,null)).toBe(library);});
+ it.each([{foreground:false},{menu:true},{opening:true},{launching:true},{connected:false},{hidden:true}])('suspends for %j',patch=>{expect(homeRuntimeSuspended({foreground:true,menu:false,opening:false,launching:false,connected:true,hidden:false,...patch})).toBe(true);});
+ it('does not suspend an owned, visible Home',()=>{expect(homeRuntimeSuspended({foreground:true,menu:false,opening:false,launching:false,connected:true,hidden:false})).toBe(false);});
+});
+
+describe('Home replacement Search navigation',()=>{
+ it('reveals Search and waits for its ref before taking focus',()=>{const f=fixture(true);f.add('clock');f.flush();const up=event(B.DIR_UP);expect(f.focus.actionUp(up)).toBe(true);expect(f.reveal).toHaveBeenCalledOnce();expect(f.moved).toHaveLength(0);const search=f.add('search');f.flush();expect(f.moved.at(-1)).toBe(search);f.focus.button('search',event(B.OK));expect(f.activate).not.toHaveBeenCalled();f.focus.buttonUp('search',event(B.OK));expect(f.activate).toHaveBeenCalledOnce();});
+ // The radial keyboard reads the controller itself: opened while A is still down, it took that A as "Done" (Ally 2026-11-04).
+ it('opens Search when A is released, as a click, not while it is still held',()=>{const f=fixture(true);const search=f.add('search');f.flush();f.focus.actionUp(event(B.DIR_UP));f.flush();expect(f.moved.at(-1)).toBe(search);const down=event(B.OK);f.focus.button('search',down);expect(down.preventDefault).toHaveBeenCalled();expect(f.activate).not.toHaveBeenCalled();const up=event(B.OK);f.focus.buttonUp('search',up);expect(f.activate).toHaveBeenCalledOnce();expect(up.preventDefault).toHaveBeenCalled();f.focus.buttonUp('search',event(B.OK));expect(f.activate).toHaveBeenCalledOnce();});
+ it('ignores an A release whose press began elsewhere',()=>{const f=fixture(true);f.add('search');f.flush();f.focus.actionUp(event(B.DIR_UP));f.flush();f.focus.buttonUp('search',event(B.OK));expect(f.activate).not.toHaveBeenCalled();});
+ it('enters Search every time, clamps Up and returns to content with Down',()=>{const f=fixture(true),search=f.add('search'),clock=f.add('clock');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(search);f.focus.button('search',event(B.DIR_RIGHT));expect(f.moved.at(-1)).toBe(clock);f.focus.button('clock',event(B.DIR_UP));expect(f.home).not.toHaveBeenCalled();f.focus.button('clock',event(B.DIR_DOWN));expect(f.hide).toHaveBeenCalled();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(search);expect(f.handoff).not.toHaveBeenCalledWith(true);});
+ it('keeps editing ownership through neutral DOM focus and cancels a delayed entry on suspend',()=>{const f=fixture(true);f.add('search');f.flush();f.focus.actionUp(event(B.DIR_UP));f.editing(true);f.focus.externalFocus(f.document.body as unknown as HTMLElement);expect(f.hide).not.toHaveBeenCalled();f.focus.setActive(false,false);expect(f.hide).toHaveBeenCalled();const g=fixture(true);g.focus.actionUp(event(B.DIR_UP));g.focus.setActive(false,false);g.add('search');g.flush();expect(g.moved).toHaveLength(0);});
+});
+
+it('keeps browsing-results ownership even when the keyboard is closed',()=>{const f=fixture(true,true);f.add('search');f.flush();f.focus.externalFocus(f.document.body as unknown as HTMLElement);expect(f.hide).not.toHaveBeenCalled();expect(f.focus.actionUp(event(B.DIR_UP))).toBe(false);f.focus.button('search',event(B.DIR_DOWN));expect(f.home).not.toHaveBeenCalled();});
+
+it('releases status ownership before Search disappears so queued repair cannot take destination focus',()=>{const f=fixture(true),pill=f.add('search');f.add('connection');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(pill);f.focus.release();const count=f.moved.length;f.focus.register('search',null);f.flush();expect(f.moved).toHaveLength(count);expect(f.home).not.toHaveBeenCalled();});
+
+it('opens status links on A release or click and ignores a release after suspension', () => {
+    const { focus, openStatusLink, add } = fixture();
+    add('connection');
+    add('battery');
+    add('clock');
+    add('profile');
+    focus.button('connection', event(B.OK));
+    expect(openStatusLink).not.toHaveBeenCalled();
+    focus.buttonUp('connection', event(B.OK));
+    focus.buttonUp('connection', event(B.OK));
+    focus.activate('profile');
+    focus.button('battery', event(B.OK));
+    focus.setActive(false, false);
+    focus.setActive(true, false);
+    focus.buttonUp('battery', event(B.OK));
+    expect(openStatusLink.mock.calls).toEqual([['connection'], ['profile']]);
+});

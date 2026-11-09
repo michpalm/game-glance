@@ -17,7 +17,7 @@ export interface RawFriend {
     /** persona.m_unGamePlayedAppID: 0 when not in a game. */
     gameAppId: number;
     onlineStatus: string;
-    /** persona.m_strGameExtraInfo: Steam's name for the game being played (also set for games not in the library). */
+    /** Steam's current game name: presence extra info or its native app-info fallback, including games outside the library. */
     gameName?: string;
     /**
      * friend.m_nAppIDLastSeenPlaying: the game this client last saw the friend stop playing (Steam sets it from a
@@ -196,6 +196,17 @@ export function friendsKey(friends: RawFriend[]): string {
         f.stateFlags ?? 0, f.lobbyId ?? '', f.serverIp ?? 0, f.connect ?? ''].join('\u0001')).join('\u0002');
 }
 
+/** Steam falls back to Friends app-info when presence omits the title. A vanished lookup must not discard the friend list. */
+function currentGameName(persona: any): string {
+    const extra = persona?.m_strGameExtraInfo;
+    if (typeof extra === 'string' && extra) return extra;
+    if (!(Number(persona?.m_unGamePlayedAppID) > 0)) return '';
+    try {
+        const name = persona?.GetCurrentGameName?.();
+        return typeof name === 'string' ? name : '';
+    } catch { return ''; }
+}
+
 export function readFriends(): RawFriend[] {
     try {
         const list = friendStore?.allFriends;
@@ -207,7 +218,7 @@ export function readFriends(): RawFriend[] {
             personaState: Number(f.persona?.m_ePersonaState) || 0,
             gameAppId: Number(f.persona?.m_unGamePlayedAppID) || 0,
             onlineStatus: String(f.localized_online_status ?? ''),
-            gameName: typeof f.persona?.m_strGameExtraInfo === 'string' ? f.persona.m_strGameExtraInfo : '',
+            gameName: currentGameName(f.persona),
             lastPlayedAppId: Number(f.m_nAppIDLastSeenPlaying) || 0,
             stateFlags: Number(f.persona?.m_unPersonaStateFlags) || 0,
             lobbyId: f.persona?.m_game_lobby_id == null ? '' : String(f.persona.m_game_lobby_id),

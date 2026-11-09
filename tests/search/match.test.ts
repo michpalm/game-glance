@@ -1,0 +1,6 @@
+import {it,expect} from 'vitest';
+import {normalizeSearch,indexLibrary,matchLibrary} from '../../src/search/match';
+const game=(appId:number,title:string,installed=false)=>({appId,title,kind:'game' as const,installed});
+it('normalizes accents, punctuation and whitespace while retaining Unicode letters',()=>{expect(normalizeSearch('  POKÉMON—Blue! ')).toBe('pokemon blue');expect(normalizeSearch('é')).toBe(normalizeSearch('e\u0301'));expect(normalizeSearch('!?  ')).toBe('');expect(normalizeSearch('日本語 2')).toBe('日本語 2');});
+it('ranks exact, full prefix, word prefix and other matches independently of install state',()=>{const entries=[game(4,'Gloria',true),game(3,'The Original Game'),game(2,'Ori and the Blind Forest'),game(1,'Ori')];expect(matchLibrary(indexLibrary(entries),'ori').map(a=>a.appId)).toEqual([1,2,3,4]);});
+it('requires every token and retains display names, distinct editions and deterministic ties',()=>{const index=indexLibrary([game(2,'Pokémon—Blue!'),game(1,'Pokémon—Blue!'),game(4,'Ori and the Blind Forest'),game(5,'Ori')]);expect(matchLibrary(index,'pokemon blue').map(a=>a.appId)).toEqual([1,2]);expect(matchLibrary(index,'pokemon blue')[0].title).toBe('Pokémon—Blue!');expect(matchLibrary(index,'ori blind').map(a=>a.appId)).toEqual([4]);expect(matchLibrary(index,' . ')).toEqual([]);});

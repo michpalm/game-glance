@@ -27,12 +27,16 @@ export interface OpenDeps {
     startHome(): (() => void) | null;
     /** The frozen copy of Home over the route change; null (or a throw) for none. */
     mountBridge(): OpenBridge | null;
+    /** The timer is only a minimum: CSS starts on its own animation frame. Wait for its actual endpoint. */
+    waitForHome?(done: () => void): () => void;
     /** Tells the page it is arriving (data/openIntent.markOpen). */
     markOpen(): void;
     /** Hears when the page is ready (data/openIntent.onOpenReady for this game); returns the unsubscribe. */
     onReady(cb: () => void): () => void;
     /** Controller Back while Home is animating; removed before navigation. */
     listenForCancel?(cancel: () => void): () => void;
+    /** After navigation, observes Back without consuming it, so the waiting bridge cannot cover the return. */
+    listenForPageBack?(back: () => void): () => void;
     /** B cancelled the open (listenForCancel's callback only, never another finish): Home's return look and sound. */
     onCancelled?(): void;
     setTimer(fn: () => void, ms: number): unknown;
@@ -64,6 +68,8 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
     let bridge: OpenBridge | null = null;
     let stopCancel: (() => void) | null = null;
     let stopReady: (() => void) | null = null;
+    let stopMotion: (() => void) | null = null;
+    let generation = 0;
     let timers: unknown[] = [];
 
     const warn = (message: string, error: unknown) => {
@@ -98,6 +104,10 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
 
     /** Clears every timer and listener and takes the bridge down; Home is usable again. */
     const finish = (undo: boolean) => {
+        ++generation;
+        const motion = stopMotion;
+        stopMotion = null;
+        if (motion) safely('could not stop waiting for Home motion', motion);
         clearCancel();
         for (const id of timers) safely('could not clear a transition timer', () => deps.clearTimer(id));
         timers = [];
@@ -163,6 +173,9 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
         if (!navigate(path)) return finish(true);
         // A missing bridge is a fallback, not a reason to leave Home's text and chips mid-morph.
         if (!bridge) return finish(true);
+        safely('could not listen for page Back', () => {
+            stopCancel = deps.listenForPageBack?.(() => finish(true)) ?? null;
+        });
         if (!later(() => leave(false), OPEN_TIMINGS.readyCap)) leave(false);
     };
 
@@ -190,7 +203,29 @@ export function createOpenTransition(deps: OpenDeps): OpenTransition {
                     safely('could not show the cancel', () => deps.onCancelled?.());
                 }) ?? null;
             });
-            if (!later(() => handOver(path, bridgeInFor(variant)), handOverAt(variant))) {
+            const own = ++generation;
+            const handOverWhenStill = () => {
+                if (variant !== 'morph' || !deps.waitForHome) return handOver(path, bridgeInFor(variant));
+                let completed = false;
+                const done = () => {
+                    if (completed) return;
+                    completed = true;
+                    if (!running || own !== generation) return;
+                    const stop = stopMotion;
+                    stopMotion = null;
+                    if (stop) safely('could not stop waiting for Home motion', stop);
+                    handOver(path, bridgeInFor(variant));
+                };
+                try {
+                    const stop = deps.waitForHome(done);
+                    if (completed || !running || own !== generation) safely('could not stop waiting for Home motion', stop);
+                    else stopMotion = stop;
+                } catch (error) {
+                    warn('could not wait for Home motion', error);
+                    done();
+                }
+            };
+            if (!later(handOverWhenStill, handOverAt(variant))) {
                 finish(true);
                 navigate(path);
             }

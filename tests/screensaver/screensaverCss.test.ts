@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultGrowth } from '../../src/home/scale';
+import { labelText } from '../../src/styles/tokens';
 import { cardScale, CARD_MIN_SCALE, screensaverBaseCanvas, screensaverCanvas, screensaverCss, shuffled, SS_CANVAS, SS_MIN_WIDTH } from '../../src/screensaver/screensaverCss';
 
 describe('screensaverBaseCanvas (before the default growth)', () => {
@@ -81,5 +82,17 @@ describe('screensaverCanvas: the default growth (#55)', () => {
         const c = screensaverCanvas(1920, 1080);
         expect(c.scale).toBeCloseTo((4 / 3) * defaultGrowth(810), 6);
         expect(c.logicalHeight).toBeCloseTo(810 / defaultGrowth(810), 6);
+    });
+});
+
+describe('frost and labels (VDL Section 7)', () => {
+    it('the card is the frost and its labels are 90% white with the shadow', () => {
+        const css = screensaverCss(null);
+        expect(css).not.toMatch(/rgba\(12,\s*16,\s*22,\s*0?\.38\)/);
+        expect(css).toContain('background:rgba(12,16,22,.40);backdrop-filter:blur(16px) url(#gg-calm)');
+        // the card's fade-in and fade-out end on the same frost, calm included (a fill-both animation overrides the rule)
+        expect(css).toMatch(/@keyframes ggs-glass-in \{[^]*?to \{[^}]*backdrop-filter: blur\(16px\) url\(#gg-calm\)/);
+        expect(css).toMatch(/@keyframes ggs-glass-out \{ from \{[^}]*backdrop-filter: blur\(16px\) url\(#gg-calm\)/);
+        expect(css).toMatch(new RegExp(`\\.ggs-label \\{[^}]*${labelText().replace(/[().]/g, (c) => `\\${c}`)}`));
     });
 });

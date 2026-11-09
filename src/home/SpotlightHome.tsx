@@ -19,13 +19,15 @@ import { sheetSwipe } from './rowDrag';
 import { rowWheelTarget } from './mouse';
 import { useWheelStep } from './useMouse';
 import { installMouseMode } from './mouseMode';
+import { installCalmFilter } from '../styles/tokens';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './motion';
 import { steamEnterOffCss } from '../styles/theme';
 import { legibleAccent } from './accent';
+import { shownAccent } from './shownAccent';
 import { solveRaiseDelta } from './raised';
-import { findLegendHeight, legendReserve } from './legend';
+import { watchLegendHeight, legendReserve } from './legend';
 import { FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
@@ -51,13 +53,16 @@ import { collectionEyebrow } from './collections';
 import { preloadLogos } from './logoArt';
 import { tr } from '../i18n/steamText';
 import { FaTrash } from 'react-icons/fa';
+import { useHomeClaim } from './useHomeClaim';
+import { chromeFocus } from '../chrome/useChrome';
+import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
 
 /** How often Home checks whether Quick Access has closed, and how long it then lets Steam restore focus first. */
 const MENU_POLL_MS = 250;
 const MENU_SETTLE_MS = 300;
 
-/** Hero dim: none at rest (the art is shaded as on the game page, homeCss .gh-scrim-page), .45 while the feed sheet is up. */
+/** Hero dim: none at rest (the art is shaded as on the game page, per Page shading: homeCss .gh-scrim-page), .45 while the feed sheet is up. */
 const DIM_REST = 0;
 const DIM_SHEET = 0.45;
 /** Two activations closer than this are one press (A and a touch both arriving); see onRecentsActivate. */
@@ -75,21 +80,15 @@ interface Size {
  * keeping the last good size.
  */
 /**
- * Steam's legend height in css px (legend.findLegendHeight), measured when Home's box changes and again shortly after
- * mount (the footer may not be laid out yet); null when it is not found. Layout reads only, no transforms.
+ * Steam's legend height in css px, observed through footer removal/remount and resizing.
+ * Keep the last measured reserve while the menu hides the footer; null until its first layout.
  */
 function useLegendHeight(ref: RefObject<HTMLDivElement | null>, size: Size | null): number | null {
     const [height, setHeight] = useState<number | null>(null);
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return undefined;
-        const measure = () => setHeight((old) => {
-            const next = findLegendHeight(el);
-            return old === next ? old : next;
-        });
-        measure();
-        const later = [setTimeout(measure, 500), setTimeout(measure, 2000)];
-        return () => later.forEach(clearTimeout);
+        return watchLegendHeight(el, next => setHeight(old => old === next ? old : next));
     }, [ref, size?.width, size?.height]);
     return height;
 }
@@ -152,7 +151,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, feedTabs } = useSettings();
+    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs } = useSettings();
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -182,6 +181,8 @@ export function SpotlightHome() {
     const heldAccent = useRef(data.accent);
     if (!cycle.holding) heldAccent.current = data.accent;
     const accent = heldAccent.current;
+    useEffect(() => { shownAccent.set(accent); }, [accent]);
+    useEffect(() => () => shownAccent.set(undefined), []);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.
     const [zone, setZone] = useState<Zone>('recents');
     // Set once Home has had focus in this mount: until then the game cards claim Steam's preferred focus (Home opens on
@@ -216,6 +217,11 @@ export function SpotlightHome() {
     useEffect(() => {
         const doc = rootRef.current?.ownerDocument;
         return doc ? installMouseMode(doc) : undefined;
+    }, []);
+    // The frost's calm filter (VDL Section 7), on the same document; nothing while CALM_IN_CSS is off.
+    useEffect(() => {
+        const doc = rootRef.current?.ownerDocument;
+        return doc ? installCalmFilter(doc) : undefined;
     }, []);
     const cloud = useCloud(onLibrary ? null : data.focused?.appId ?? null);
     // The action button that last had focus. A button can leave while focused (the cloud circle when the next game
@@ -350,10 +356,18 @@ export function SpotlightHome() {
             console.warn(`${LOG_PREFIX} Home: opening the selected game failed`, error);
         }
     };
+    // Up from the actions enters the host's bar (Search first, chrome/useChrome); a held bumper or direction stops repeating.
+    const actionUp = (evt: GamepadEvent) => {
+        if (!chromeFocus.actionUp(evt)) return false;
+        bumpers.stop();
+        directions.stop();
+        return true;
+    };
     // The action row's buttons: L1/R1 always put focus on the Play pill (from any circle), then select as before.
     const actionRowButtons = {
         onButtonDown: (evt: GamepadEvent) => {
             try {
+                if (actionUp(evt)) return;
                 if (Number(evt?.detail?.button) === 10) {
                     evt.preventDefault?.();
                     evt.stopPropagation?.();
@@ -501,6 +515,8 @@ export function SpotlightHome() {
     const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
     const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
+    // The chrome host owns the bar, Search and footer (chrome/ChromeHost); Home claims it while mounted (useHomeClaim).
+    const { ownBar } = useHomeClaim({ root: rootRef, lastAction, recents: recentsRef, statusHidden: sheetUp, launching: () => !!data.focused && launchPending(data.focused.appId) });
     // A Unifideck game's size, as its page shows it right after Played (not during a fast run): the open draws that column
     // (OpenExtras), in Unifideck's own word once a page has shown it, so nothing shifts or pops in at the hand-over.
     const uniShortcut = !!game && !onLibrary && game.gameId !== undefined && !cycle.holding;
@@ -536,7 +552,7 @@ export function SpotlightHome() {
     }, [contentUp, restore]);
 
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
@@ -551,7 +567,8 @@ export function SpotlightHome() {
             >
                 {/* In Steam's top strip, above the safe area: clock, battery, connection and your online status. */}
                 {/* The status bar is drawn above Steam's menu layers, outside this root (components/GameStatusBar): the menus blur everything under them. */}
-                {homeStatusBar && contentUp && <GameStatusBar hidden={sheetUp} />}
+                {/* Only while the host does not have the bar (Expanded Home controls off, or it stepped aside): the read-only one. */}
+                {homeStatusBar && contentUp && ownBar && <GameStatusBar hidden={sheetUp} />}
                 {/* Open transition: the glass panels the chips grow into, one per page card (hidden until opening). */}
                 <div className="gh-open-shell" data-i="0" />
                 <div className="gh-open-shell" data-i="1" />
@@ -610,8 +627,8 @@ export function SpotlightHome() {
                         ) : showEmptyMessage(data.games.length, data.recentsSettled) ? (
                             // No recents once the boot-time retries are over: the Library action, so Home is never
                             // a dead end. During the retries only the plain hero shows.
-                            <div className="gh-empty">
-                                <LibraryActionRow preferred />
+                            <div className="gh-empty" onFocus={ownBar ? undefined : onActionsFocus}>
+                                <LibraryActionRow preferred buttons={{ onButtonDown: actionUp }} />
                             </div>
                         ) : null}
                     </div>

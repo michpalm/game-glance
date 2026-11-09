@@ -215,6 +215,24 @@ describe('readFriends', () => {
     it('returns an empty list when Steam globals are absent', () => {
         expect(readFriends()).toEqual([]);
     });
+    it('resolves an empty presence title through Steam’s native game-name lookup', () => {
+        const GetCurrentGameName = vi.fn(() => 'Synthetic multiplayer game');
+        vi.stubGlobal('friendStore', { allFriends: [{ steamid64: '76561190000000001', display_name: 'Synthetic player', persona: { m_ePersonaState: 1, m_unGamePlayedAppID: 42, m_strGameExtraInfo: '', GetCurrentGameName } }] });
+        const [card] = mapFriends(readFriends(), () => '');
+        expect(card).toMatchObject({ game: 'Synthetic multiplayer game', sub: 'Playing Synthetic multiplayer game' });
+        expect(GetCurrentGameName).toHaveBeenCalledOnce();
+    });
+    it('retains a provided presence title without querying the app-info fallback', () => {
+        const GetCurrentGameName = vi.fn(() => 'Other title');
+        vi.stubGlobal('friendStore', { allFriends: [{ persona: { m_unGamePlayedAppID: 42, m_strGameExtraInfo: 'Presence title', GetCurrentGameName } }] });
+        expect(readFriends()[0].gameName).toBe('Presence title');
+        expect(GetCurrentGameName).not.toHaveBeenCalled();
+    });
+    it.each([undefined, () => null, () => { throw Error('Unavailable app info'); }])('preserves the friend list when the game-name fallback is absent or unavailable (%s)', GetCurrentGameName => {
+        vi.stubGlobal('friendStore', { allFriends: [{ persona: { m_unGamePlayedAppID: 42, GetCurrentGameName } }, { persona: { m_unGamePlayedAppID: 0 } }] });
+        expect(readFriends()).toHaveLength(2);
+        expect(readFriends()[0].gameName).toBe('');
+    });
     it('reads the game Steam last saw a friend playing (m_nAppIDLastSeenPlaying), 0 when unset', () => {
         // Placeholder friends only; the field names are the ones probed on the Ally.
         vi.stubGlobal('friendStore', {

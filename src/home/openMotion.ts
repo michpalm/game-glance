@@ -41,7 +41,6 @@ const PAGE_LABEL_LINE = 1.5;
 // 4 decimals: placements rounded to 0.01 px put the bridge's text a whole device px off near a half pixel (Ally, docked).
 const px = (n: number) => `${Math.round(n * 10000) / 10000}px`;
 /** Unifideck's cloud state ring on its page: a 2 CSS px inset shadow (its button's inline style, probed on the Ally). */
-const UNIFIDECK_RING_PX = 2;
 const k = (n: number) => `${Math.round(n * 10000) / 10000}`;
 // Sizes of text unrounded: a font 0.001 px off the page's (31.251 for 31.25) set its digits a device px lower (Ally, docked).
 const font = (n: number) => `${n}px`;
@@ -102,9 +101,6 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         out[`--gho-circle-${i}`] = mapBox(circle, to, s, true);
         // Its icon is already the page's size (homeCss): it shrinks as the circle grows, to stay that size.
         out[`--gho-circle-icon-${i}`] = `scale(${k(circle.w / to.w)})`;
-        // A Unifideck cloud's state ring (2 CSS px inset, Unifideck's inline style on its page), in the circle's canvas px:
-        // as wide as the page's once the circle has grown onto it (Home's 2 canvas px ended at 1.15 CSS px handheld).
-        out['--gho-uni-ring'] ??= px((UNIFIDECK_RING_PX * (circle.w / s)) / to.w);
     });
     // The page's fourth circle (a Unifideck game's Uninstall, after controller, settings and cloud): Home draws one there as
     // it opens (homeCss .gh-open-circle), in canvas px like the glass panels.

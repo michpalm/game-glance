@@ -1,0 +1,44 @@
+vi.mock('../../src/nativeSettings/nativeClasses',()=>({nativeSettingsFields:()=>({}),nativeColorClasses:()=>undefined}));
+import {act,createElement} from 'react';import {createRoot,type Root} from 'react-dom/client';import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {NativeSettingsHost} from '../../src/nativeSettings/NativeSettingsHost';import {nativePage} from './fixture';
+const state=vi.hoisted(()=>({master:true,prefs:{enabled:true,restyleSteamSettings:true},stage:'ready',screen:false,ui:{foreground:true,menu:false,nativeHeaderFocused:false,account:'one'},listeners:new Set<()=>void>(),routes:new Set<()=>void>(),uiSubscriptions:0,home:{account:'one',appId:1,revision:'one-art'} as {account:string;appId:number;revision:string},art:'one-art'}));
+vi.unmock('react-dom');
+vi.mock('../../src/data/settings',()=>({useSettings:()=>({enabled:state.master})}));
+vi.mock('../../src/menu/preferences',()=>({menuPreferences:{get:()=>state.prefs,subscribe:(fn:()=>void)=>{state.listeners.add(fn);return()=>state.listeners.delete(fn);},loadState:()=>state.stage,load:async()=>{state.stage='ready';state.listeners.forEach(fn=>fn());}}}));
+vi.mock('../../src/home/steamUiState',()=>({useSteamUiState:()=>state.ui,getSteamUiState:()=>state.ui,subscribeSteamUiState:()=>{state.uiSubscriptions++;return()=>{state.uiSubscriptions--;};}}));
+vi.mock('../../src/screensaver/steamScreensaver',()=>({useScreensaverActive:()=>state.screen}));
+vi.mock('../../src/home/HeroBackground',()=>({heroShownApp:()=>1,heroShownContext:()=>state.home,heroArtFor:()=>({mode:'full',url:'stale-memo'}),resolveArt:async()=>({mode:'full',url:state.art})}));
+let d:Document,root:Root;
+beforeEach(()=>{state.home={account:'one',appId:1,revision:'one-art'};state.art='one-art';state.master=true;state.prefs={enabled:true,restyleSteamSettings:true};state.stage='ready';state.screen=false;state.ui={foreground:true,menu:false,nativeHeaderFocused:false,account:'one'};state.listeners.clear();state.routes.clear();state.uiSubscriptions=0;d=nativePage();const w=d.defaultView! as any;Object.defineProperty(w,'innerWidth',{value:828,configurable:true});Object.defineProperty(w,'innerHeight',{value:466,configurable:true});w.requestAnimationFrame=(fn:()=>void)=>setTimeout(fn,0);w.cancelAnimationFrame=clearTimeout;vi.stubGlobal('window',w);vi.stubGlobal('document',d);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);vi.stubGlobal('SteamUIStore',{WindowStore:{GamepadUIMainWindowInstance:{BrowserWindow:w,History:{location:{pathname:'/settings/audio'},listen:(fn:()=>void)=>{state.routes.add(fn);return()=>state.routes.delete(fn);}}}}});const host=d.createElement('div');d.body.append(host);root=createRoot(host);});
+afterEach(async()=>{await act(()=>root.unmount());vi.unstubAllGlobals();});
+const render=async(props:any={})=>act(()=>root.render(createElement(NativeSettingsHost,props)));
+it('waits for master preferences to finish loading before touching the native document',async()=>{let done!:()=>void;const ready=new Promise<void>(r=>done=r);await render({masterReady:ready});expect(d.querySelector('[data-gg-settings]')).toBeNull();expect(state.uiSubscriptions).toBe(0);await act(()=>done());expect(d.querySelector('[data-gg-settings=page]')).toBeTruthy();});
+it('mounts only for the existing opt-in and suspends styling under menus and screensaver',async()=>{state.master=false;await render();expect(state.uiSubscriptions).toBe(0);state.home={account:'one',appId:1,revision:'one-art'};state.art='one-art';state.master=true;state.prefs={enabled:false,restyleSteamSettings:true};await render();expect(state.uiSubscriptions).toBe(0);state.prefs={enabled:true,restyleSteamSettings:true};await render();expect(d.querySelector('[data-gg-settings=page]')).toBeTruthy();state.ui={...state.ui,menu:true};await render();expect(d.querySelector('[data-gg-settings]')).toBeNull();state.ui={...state.ui,menu:false};state.screen=true;await render();expect(d.querySelector('[data-gg-settings]')).toBeNull();state.screen=false;await render();expect(d.querySelector('[data-gg-settings=page]')).toBeTruthy();state.master=false;await render();expect(d.querySelector('[data-gg-settings]')).toBeNull();expect(state.uiSubscriptions).toBe(0);expect(state.routes.size).toBe(0);});
+it('leaves failed or future preference loading native without automatic retry loops',async()=>{state.stage='failed';await render();expect(d.querySelector('[data-gg-settings]')).toBeNull();expect(state.uiSubscriptions).toBe(0);});
+
+it('does not relabel a previous account Home hero and resolves fresh source art for the same app',async()=>{
+ const history=(globalThis as any).SteamUIStore.WindowStore.GamepadUIMainWindowInstance.History;
+ const navigate=async(path:string)=>act(async()=>{history.location.pathname=path;state.routes.forEach(fn=>fn());await Promise.resolve();await Promise.resolve();});
+ history.location.pathname='/library/home';await render();await navigate('/settings/audio');await new Promise(r=>setTimeout(r,10));expect(d.querySelector('[data-gg-settings-backdrop]')?.getAttribute('style')).toContain('one-art');
+ await navigate('/library/home');state.ui={...state.ui,account:'two'};state.art='two-art';await render();await navigate('/settings/audio');await new Promise(r=>setTimeout(r,10));expect(d.querySelector('[data-gg-settings-backdrop]')).toBeNull();
+ await navigate('/library/home');state.home={account:'two',appId:1,revision:'two-art'};state.routes.forEach(fn=>fn());await navigate('/settings/audio');await new Promise(r=>setTimeout(r,10));expect(d.querySelector('[data-gg-settings-backdrop]')?.getAttribute('style')).toContain('two-art');
+});
+it('retains attributable artwork while visiting native calibration instead of clearing the Settings context',async()=>{const history=(globalThis as any).SteamUIStore.WindowStore.GamepadUIMainWindowInstance.History;const navigate=async(path:string)=>act(async()=>{history.location.pathname=path;state.routes.forEach(fn=>fn());await Promise.resolve();await Promise.resolve();});history.location.pathname='/library/home';await render();await navigate('/settings/display');await new Promise(r=>setTimeout(r,10));expect(d.querySelector('[data-gg-settings-backdrop]')?.getAttribute('style')).toContain('one-art');await navigate('/colorsettings');await navigate('/settings/display');await new Promise(r=>setTimeout(r,10));expect(d.querySelector('[data-gg-settings-backdrop]')?.getAttribute('style')).toContain('one-art');});
+
+it('removes the Settings theme when its preference is switched off and reapplies it when switched on', async () => {
+    await render();
+    expect(d.querySelector('[data-gg-settings=page]')).toBeTruthy();
+
+    async function setRestyle(restyleSteamSettings: boolean) {
+        await act(() => {
+            state.prefs = { ...state.prefs, restyleSteamSettings };
+            state.listeners.forEach(listener => listener());
+        });
+    }
+
+    await setRestyle(false);
+    expect(d.querySelector('[data-gg-settings],[data-gg-settings-style]')).toBeNull();
+    expect(state.routes.size).toBe(0);
+    await setRestyle(true);
+    expect(d.querySelector('[data-gg-settings=page]')).toBeTruthy();
+});
