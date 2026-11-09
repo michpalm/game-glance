@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryView, GAME_GLANCE_VIEW, HOME_ROW_VIEW, pluginFocusKey, returnFocusKey } from '../../src/menu/views';
+import { categoryView, GAME_GLANCE_VIEW, HOME_ROW_VIEW, pluginFocusKey, returnFocusKey, VERSIONS_VIEW } from '../../src/menu/views';
 import { defaultMenuState, reduceMenu, type MenuState } from '../../src/menu/model';
 
 function openOnPlugins(): MenuState {
@@ -12,6 +12,7 @@ describe('menu views for the Plugins section', () => {
     it('names the views', () => {
         expect(GAME_GLANCE_VIEW).toBe('game-glance');
         expect(HOME_ROW_VIEW).toBe('gg:home:row');
+        expect(VERSIONS_VIEW).toBe('gg:general:versions');
         expect(categoryView('status-bar')).toBe('gg:status-bar');
         expect(pluginFocusKey('Game Glance')).toBe('plugins:Game Glance');
     });
@@ -20,6 +21,7 @@ describe('menu views for the Plugins section', () => {
         expect(returnFocusKey('gg:home')).toBe('gg:card:home');
         expect(returnFocusKey('gg:game-page')).toBe('gg:card:game-page');
         expect(returnFocusKey('gg:home:row')).toBe('gg:home:games');
+        expect(returnFocusKey('gg:general:versions')).toBe('gg:general:versions');
     });
     it('leaves other views alone', () => {
         expect(returnFocusKey('configure-menu')).toBeNull();

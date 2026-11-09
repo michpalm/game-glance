@@ -1,5 +1,6 @@
 import type { CategoryId } from '../../data/settingsCategories';
 import type { createSettingsStore, Settings } from '../../data/settings';
+import type { VersionChoice } from '../../data/versionChoices';
 import type { SocialKeyboardMode } from '../preferences';
 
 /** The settings store's setters. */
@@ -22,6 +23,8 @@ export interface GgValues {
     game: { name: string; match: string; matched: boolean; override: boolean } | null;
     fetching: { running: boolean; found: number; done: number; total: number };
     update: { line: string; available: string | null; checking: boolean; installing: boolean };
+    /** The Choose version view: GitHub's release list, read only while that view is open. */
+    versions: { showPrereleases: boolean; note: string; loading: boolean; installing: boolean; choices: VersionChoice[] };
     version: string;
     error: string;
 }
@@ -43,7 +46,10 @@ export interface GgActions {
     clearCache(): void;
     checkUpdate(): void;
     installUpdate(): void;
-    chooseVersion(): void;
+    setShowPrereleases(value: boolean): void;
+    refreshVersions(): void;
+    /** Asks Decky to install this version (its own prompt confirms), closing the menu so the prompt shows. */
+    installVersion(version: string): void;
 }
 
 export interface PageProps { v: GgValues; a: GgActions }

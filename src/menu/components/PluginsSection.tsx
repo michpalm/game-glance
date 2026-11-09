@@ -8,7 +8,9 @@ import { useCurrentGame } from '../../data/currentGame';
 import { fetchAll, useFetchAll } from '../../data/fetchAll';
 import { settings, useSettings } from '../../data/settings';
 import { CATEGORY_IDS, categorySummary, matchLine, type CategoryId } from '../../data/settingsCategories';
-import { createInstallGate, installUpdate, useUpdate } from '../../data/update';
+import { createInstallGate, installUpdate, installVersion, useUpdate } from '../../data/update';
+import { useVersionCatalog } from '../../data/useVersionCatalog';
+import { versionChoices, versionsNote } from '../../data/versionChoices';
 import { RECENT_ROW, steamHomeCollections } from '../../home/collections';
 import { tr } from '../../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../../screensaver/steamScreensaver';
@@ -16,8 +18,8 @@ import type { MenuEvent, MenuState } from '../model';
 import { menuPreferences } from '../preferences';
 import { activateDeckyPlugin, listDeckyPlugins } from '../steam/deckyPlugins';
 import type { NativeRequest } from '../steam/runtime';
-import { GAME_GLANCE_VIEW, HOME_ROW_VIEW } from '../views';
-import { CATEGORY_PAGES, HomeRowPicker } from './GameGlancePages';
+import { GAME_GLANCE_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
+import { CATEGORY_PAGES, HomeRowPicker, VersionPicker } from './GameGlancePages';
 import type { GgActions, GgValues } from './gameGlanceTypes';
 import { GameGlanceGrid } from './GameGlanceViews';
 import { PluginsList } from './PluginsList';
@@ -54,6 +56,9 @@ function GameGlanceSettings({ top, dispatch, openPlugin, close }: { top: string;
     const [installing, setInstalling] = useState(false);
     const [gate] = useState(() => createInstallGate(setInstalling));
     const [error, setError] = useState('');
+    const [showPrereleases, setShowPrereleases] = useState(false);
+    const catalog = useVersionCatalog(top === VERSIONS_VIEW);
+    const choices = versionChoices(catalog.releases, { current: update.current ?? null, showPrereleases });
 
     const rowChosen = collections.some(c => c.id === s.homeRow) ? s.homeRow : RECENT_ROW;
     const recent = tr('recentGames');
@@ -74,6 +79,10 @@ function GameGlanceSettings({ top, dispatch, openPlugin, close }: { top: string;
         game: game ? { name: game.name, match: matchLine(overrideId, hltb), matched: hltb?.status === 'found', override: overrideId !== null } : null,
         fetching: { running: fetching.running, found: fetching.found, done: fetching.done, total: fetching.total },
         update: { line: updateLine(update), available: update.status === 'available' ? update.release.version : null, checking: update.status === 'checking', installing },
+        versions: {
+            showPrereleases, loading: catalog.loading, installing, choices,
+            note: versionsNote({ loading: catalog.loading, error: catalog.error, showPrereleases, count: choices.length }),
+        },
         version: update.current ?? '',
         error,
     };
@@ -107,9 +116,21 @@ function GameGlanceSettings({ top, dispatch, openPlugin, close }: { top: string;
                 if (started === false) toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
             });
         },
-        chooseVersion: () => openPlugin(PLUGIN_NAME),
+        setShowPrereleases,
+        refreshVersions: catalog.refresh,
+        installVersion: version => {
+            const release = catalog.releases.find(r => r.version === version);
+            const current = update.current;
+            if (!release || !current) return;
+            // Decky's prompt opens in Steam's main window, under this popup, and the install reloads Game Glance anyway.
+            close();
+            void gate.run(() => installVersion(release, current)).then(started => {
+                if (started === false) toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
+            });
+        },
     };
     if (top === HOME_ROW_VIEW) return <HomeRowPicker v={v} a={a} />;
+    if (top === VERSIONS_VIEW) return <VersionPicker v={v} a={a} />;
     const category = /^gg:([a-z-]+)$/.exec(top)?.[1] as CategoryId | undefined;
     const Page = category && CATEGORY_PAGES[category];
     return Page ? <Page v={v} a={a} /> : <GameGlanceGrid v={v} a={a} />;

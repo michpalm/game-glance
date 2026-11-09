@@ -6,7 +6,7 @@ import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/c
 import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
-import { HOME_ROW_VIEW } from '../views';
+import { HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
 import type { PageProps } from './gameGlanceTypes';
 import { MenuAction } from './MenuAction';
 import { Crumb, SegmentRow, ToggleRow } from './SettingRows';
@@ -174,9 +174,30 @@ export function GeneralPage({ v, a }: PageProps) {
             <Focusable className="gg-plugin-buttons" flow-children="row">
                 {v.update.available && <MenuAction id="gg:general:update" disabled={v.update.installing} onAction={a.installUpdate}>{`Update to ${v.update.available}`}</MenuAction>}
                 <MenuAction id="gg:general:check" disabled={v.update.checking} onAction={a.checkUpdate}>Check for updates</MenuAction>
-                <MenuAction id="gg:general:versions" onAction={a.chooseVersion}>Choose version</MenuAction>
+                <MenuAction id="gg:general:versions" onAction={() => a.open(VERSIONS_VIEW)}>Choose version</MenuAction>
             </Focusable>
         </>)}
+        {error(v.error)}
+    </>;
+}
+
+/** General › Choose version: every published version inside the menu. Picking one hands over to Decky's own prompt. */
+export function VersionPicker({ v, a }: PageProps) {
+    const x = v.versions;
+    return <>
+        <Crumb parent="General" title="Choose version" />
+        {rows(<>
+            <ToggleRow id="gg:versions:prereleases" label="Show prereleases" description="Optional test builds, labelled prerelease."
+                checked={x.showPrereleases} onChange={a.setShowPrereleases} />
+            <p className="gg-plugin-note">{x.note}</p>
+        </>)}
+        <Focusable className="gg-plugin-list" flow-children="column">{x.choices.map(choice =>
+            <MenuAction key={choice.version} id={`gg:versions:v:${choice.version}`} className="gg-plugin-picker" selected={choice.installed}
+                disabled={choice.installed || x.loading || x.installing} onAction={() => a.installVersion(choice.version)}>{choice.label}</MenuAction>)}
+        </Focusable>
+        <Focusable className="gg-plugin-buttons" flow-children="row">
+            <MenuAction id="gg:versions:refresh" disabled={x.loading || x.installing} onAction={a.refreshVersions}>Refresh versions</MenuAction>
+        </Focusable>
         {error(v.error)}
     </>;
 }

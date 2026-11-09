@@ -1,6 +1,6 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage } from '../../src/menu/components/GameGlancePages';
+import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
 import type { GgActions, GgValues } from '../../src/menu/components/gameGlanceTypes';
 import type { Settings } from '../../src/data/settings';
 
@@ -27,6 +27,8 @@ function values(change: Partial<GgValues> = {}): GgValues {
         game: { name: 'Monster Hunter Rise', match: 'Automatic: HowLongToBeat #1', matched: true, override: false },
         fetching: { running: false, found: 0, done: 0, total: 0 },
         update: { line: 'Version 4.0.0 · up to date', available: null, checking: false, installing: false },
+        versions: { showPrereleases: false, note: 'Stable versions. Decky asks before installing.', loading: false, installing: false,
+            choices: [{ version: '4.0.0', label: '4.0.0 · latest stable · installed', installed: true, prerelease: false }, { version: '3.6.1', label: '3.6.1', installed: false, prerelease: false }] },
         version: '4.0.0', error: '', ...change,
     };
 }
@@ -34,7 +36,7 @@ function actions() {
     const store = new Proxy({}, { get: (target: Record<string, any>, key: string) => target[key] ??= vi.fn(() => Promise.resolve()) });
     const a = { store, setRestyleSteamSettings: vi.fn(() => Promise.resolve()), setMenuEnabled: vi.fn(() => Promise.resolve()), setSocialKeyboard: vi.fn(() => Promise.resolve()), run: vi.fn(), open: vi.fn(), back: vi.fn(),
         changeMatch: vi.fn(), openHltb: vi.fn(), removeOverride: vi.fn(), preview: vi.fn(), togglePreload: vi.fn(), clearCache: vi.fn(),
-        checkUpdate: vi.fn(), installUpdate: vi.fn(), chooseVersion: vi.fn() };
+        checkUpdate: vi.fn(), installUpdate: vi.fn(), setShowPrereleases: vi.fn(), refreshVersions: vi.fn(), installVersion: vi.fn() };
     return a as unknown as GgActions & { store: Record<string, ReturnType<typeof vi.fn>> };
 }
 const ids = (node: ReactNode) => tree(node).map(n => n.props.id).filter((id): id is string => typeof id === 'string');
@@ -158,9 +160,41 @@ describe('General', () => {
         update.props.onAction();
         expect(a.installUpdate).toHaveBeenCalledTimes(1);
     });
+    it('opens Choose version inside the menu', () => {
+        const a = actions();
+        byId(GeneralPage({ v: values(), a }), 'gg:general:versions').props.onAction();
+        expect(a.open).toHaveBeenCalledWith('gg:general:versions');
+    });
     it('shows pre-load progress as a Stop button', () => {
         const page = GeneralPage({ v: values({ fetching: { running: true, found: 3, done: 4, total: 10 } }), a: actions() });
         expect(byId(page, 'gg:general:preload').props.children).toBe('Stop (4 / 10)');
+    });
+});
+
+describe('Choose version', () => {
+    it('lists the prerelease switch, each version, then Refresh', () => {
+        expect(ids(VersionPicker({ v: values(), a: actions() }))).toEqual(['gg:versions:prereleases', 'gg:versions:v:4.0.0', 'gg:versions:v:3.6.1', 'gg:versions:refresh']);
+    });
+    it('marks the installed version and keeps it from reinstalling', () => {
+        const installed = byId(VersionPicker({ v: values(), a: actions() }), 'gg:versions:v:4.0.0');
+        expect(installed.props.selected).toBe(true);
+        expect(installed.props.disabled).toBe(true);
+    });
+    it('installs a picked version and switches prereleases', () => {
+        const a = actions();
+        const page = VersionPicker({ v: values(), a });
+        byId(page, 'gg:versions:v:3.6.1').props.onAction();
+        expect(a.installVersion).toHaveBeenCalledWith('3.6.1');
+        byId(page, 'gg:versions:prereleases').props.onChange(true);
+        expect(a.setShowPrereleases).toHaveBeenCalledWith(true);
+        byId(page, 'gg:versions:refresh').props.onAction();
+        expect(a.refreshVersions).toHaveBeenCalledTimes(1);
+    });
+    it('disables every version while an install request is pending or loading', () => {
+        for (const change of [{ installing: true }, { loading: true }]) {
+            const page = VersionPicker({ v: values({ versions: { ...values().versions, ...change } }), a: actions() });
+            expect(byId(page, 'gg:versions:v:3.6.1').props.disabled).toBe(true);
+        }
     });
 });
 
