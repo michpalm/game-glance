@@ -1,20 +1,20 @@
 import { fetchNoCors } from '@decky/api';
 import { cache, Cache, DAY_MS } from './cache';
-import { isNewer, parseVersion, pickRelease, Release } from './update';
+import { isNewer, isPreRelease, parseVersion, pickRelease, Release } from './update';
 
-const FRESH_KEY = 'update:catalog:fresh';
+const FRESH_KEY = 'update:catalog:fresh:v2';
 const SNAPSHOT_KEY = 'update:catalog:complete';
 const RELEASES = 'https://api.github.com/repos/michpalm/game-glance/releases';
 
-/** All installable stable releases, including the preserved 3.5 series, newest first. */
+/** Installable stable releases and explicitly marked prereleases, newest first. */
 export function pickVersionCatalog(rows: unknown[]): Release[] {
     const kept = new Map<string, Release>();
     for (const row of rows) {
-        const release = pickRelease(row);
-        if (!release || release.version.includes('-') || isNewer('3.5.0', release.version)) continue;
+        const release = pickRelease(row, true);
+        if (!release || isNewer('3.5.0', release.version)) continue;
         const parts = parseVersion(release.version)!;
         while (parts.length > 1 && parts[parts.length - 1] === 0) parts.pop();
-        const key = parts.join('.');
+        const key = isPreRelease(release.version) ? release.version.split('+')[0] : parts.join('.');
         if (!kept.has(key)) kept.set(key, release);
     }
     return [...kept.values()].sort((a, b) => isNewer(a.version, b.version) ? -1 : isNewer(b.version, a.version) ? 1 : 0);

@@ -1,13 +1,13 @@
 import { toaster } from '@decky/api';
 import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow } from '@decky/ui';
 import { useState } from 'react';
-import { createInstallGate, installUpdate, installVersion, sameVersion, UpdateState, useUpdate } from '../data/update';
+import { createInstallGate, installUpdate, installVersion, isPreRelease, sameVersion, UpdateState, useUpdate } from '../data/update';
 import { useVersionCatalog } from '../data/useVersionCatalog';
 import { PLUGIN_NAME } from '../constants';
 
 /** The Updates section's line under the title: the installed version and what the check found. */
-function updateLine(state: UpdateState): string {
-    const version = state.current ? `Version ${state.current}` : 'Game Glance';
+export function updateLine(state: UpdateState): string {
+    const version = state.current ? `Version ${state.current}${isPreRelease(state.current) ? ' · prerelease' : ''}` : 'Game Glance';
     switch (state.status) {
         case 'checking':
             return `${version} · checking for updates…`;
@@ -28,12 +28,15 @@ function updateLine(state: UpdateState): string {
 export function UpdatesSection() {
     const { state, recheck } = useUpdate();
     const [choosing, setChoosing] = useState(false);
+    const [showPrereleases, setShowPrereleases] = useState(false);
     const [selected, setSelected] = useState('');
     const [installing, setInstalling] = useState(false);
     const [installGate] = useState(() => createInstallGate(setInstalling));
     const catalog = useVersionCatalog(choosing);
-    const release = catalog.releases.find((r) => r.version === selected);
+    const visibleReleases = catalog.releases.filter(r => showPrereleases || !isPreRelease(r.version));
+    const release = visibleReleases.find((r) => r.version === selected);
     const current = state.current;
+    const latestStable = catalog.releases.find(r => !isPreRelease(r.version));
     const requestInstall = async (action: () => Promise<boolean>) => {
         if ((await installGate.run(action)) === false) {
             toaster.toast({ title: PLUGIN_NAME, body: 'Could not start the install. Try again or use the release page.' });
@@ -62,28 +65,38 @@ export function UpdatesSection() {
                 </ButtonItem>
             </PanelSectionRow>
             <PanelSectionRow>
-                <ButtonItem layout="below" onClick={() => setChoosing(!choosing)}>
+                <ButtonItem layout="below" onClick={() => {
+                    setChoosing(!choosing);
+                    setShowPrereleases(false);
+                    setSelected('');
+                }}>
                     {choosing ? 'Hide versions' : 'Choose version'}
                 </ButtonItem>
             </PanelSectionRow>
             {choosing && <>
                 <PanelSectionRow>
+                    <ButtonItem layout="below" onClick={() => {
+                        setShowPrereleases(!showPrereleases);
+                        setSelected('');
+                    }}>{showPrereleases ? 'Hide prereleases' : 'Show prereleases'}</ButtonItem>
+                </PanelSectionRow>
+                <PanelSectionRow>
                     <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                        {catalog.loading ? 'Loading versions…' : catalog.error ? 'Could not refresh versions. Showing saved choices when available.' : catalog.releases.length === 0 ? 'No versions from 3.5.0 onward are available yet.' : 'Stable versions from 3.5.0 onward. Decky asks before installing.'}
+                        {catalog.loading ? 'Loading versions…' : catalog.error ? 'Could not refresh versions. Showing saved choices when available.' : visibleReleases.length === 0 ? 'No matching versions are available yet.' : showPrereleases ? 'Prereleases are optional test builds. Select a stable version here to switch back.' : 'Stable versions. Decky asks before installing.'}
                     </div>
                 </PanelSectionRow>
-                {catalog.releases.length > 0 && <PanelSectionRow>
+                {visibleReleases.length > 0 && <PanelSectionRow>
                     <DropdownItem
                         label="Version"
                         menuLabel="Choose version"
                         selectedOption={release?.version ?? ''}
-                        rgOptions={catalog.releases.map((r, i) => ({ data: r.version, label: `${r.version}${current && sameVersion(r.version, current) ? ' · installed' : ''}${i === 0 ? ' · latest' : ''}` }))}
+                        rgOptions={visibleReleases.map(r => ({ data: r.version, label: `${r.version}${isPreRelease(r.version) ? ' · prerelease' : r === latestStable ? ' · latest stable' : ''}${current && sameVersion(r.version, current) ? ' · installed' : ''}` }))}
                         onChange={(option) => setSelected(String(option.data))}
                         disabled={catalog.loading || installing}
                     />
                 </PanelSectionRow>}
                 <PanelSectionRow>
-                    <ButtonItem layout="below" disabled={!release || !current || sameVersion(release.version, current) || catalog.loading || installing} onClick={() => { if (release && current) void requestInstall(() => installVersion(release, current)); }}>
+                    <ButtonItem layout="below" description={release && isPreRelease(release.version) ? 'Optional test build. You can switch back to stable here.' : undefined} disabled={!release || !current || sameVersion(release.version, current) || catalog.loading || installing} onClick={() => { if (release && current) void requestInstall(() => installVersion(release, current)); }}>
                         {release ? `Install ${release.version}` : 'Select a version to install'}
                     </ButtonItem>
                 </PanelSectionRow>

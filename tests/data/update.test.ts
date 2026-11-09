@@ -191,3 +191,17 @@ it('shares one pending install across latest-update and selected-version actions
     expect(await gate.run(async () => false)).toBe(false);
     expect(states).toEqual([true, false, true, false]);
 });
+
+it('keeps prereleases out of automatic updates and allows deliberate upgrade and rollback', async () => {
+    const { installVersion } = await import('../../src/data/update');
+    const candidate = release({ tag_name: 'v4.0.0-rc.1', prerelease: true });
+    expect(pickRelease(candidate)).toBeNull();
+    expect(pickRelease({ ...candidate, prerelease: false })).toBeNull();
+    const beta = pickRelease(candidate, true)!;
+    const stable = pickRelease(release({ tag_name: 'v3.6.1' }))!;
+    const call = vi.fn(async () => undefined);
+    expect(await installVersion(beta, stable.version, { call })).toBe(true);
+    expect(call).toHaveBeenLastCalledWith('utilities/install_plugin', beta.url, 'Game Glance', beta.version, beta.sha256, 2);
+    expect(await installVersion(stable, beta.version, { call })).toBe(true);
+    expect(call).toHaveBeenLastCalledWith('utilities/install_plugin', stable.url, 'Game Glance', stable.version, stable.sha256, 3);
+});

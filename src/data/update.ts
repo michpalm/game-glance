@@ -13,7 +13,7 @@ export const RELEASES_URL = 'https://api.github.com/repos/michpalm/game-glance/r
 /** The release asset Decky installs (scripts/package.sh builds it). */
 export const ASSET_NAME = 'game-glance.zip';
 /** The same zip uploaded under a versioned name ("game-glance-v2.0.0.zip", as v2.0.0 was): taken when there is no ASSET_NAME. */
-const VERSIONED_ASSET = /^game-glance-v?\d+(\.\d+){1,3}\.zip$/i;
+const VERSIONED_ASSET = /^game-glance-v?\d+(\.\d+){1,3}(?:-[a-z0-9.-]+)?\.zip$/i;
 /** Decky's install type for an update of an installed plugin (1 reinstall, 2 update, 3 downgrade). */
 export const INSTALL_TYPE_UPDATE = 2;
 
@@ -26,7 +26,11 @@ export function parseVersion(text: unknown): number[] | null {
 }
 
 /** A pre-release tag ("3.1.0-rc.1"): a "-" after the version numbers. */
-const isPreRelease = (text: string) => text.trim().replace(/^v/i, '').includes('-');
+function prereleaseParts(text: string): string[] | null {
+    const suffix = text.trim().split('+', 1)[0].match(/-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)$/)?.[1];
+    return suffix ? suffix.split('.') : null;
+}
+export const isPreRelease = (text: string): boolean => prereleaseParts(text) !== null;
 
 /**
  * Whether `latest` is a higher version than `current` (2.0.10 > 2.0.9; 2.1 = 2.1.0). False if either is not a version.
@@ -40,7 +44,22 @@ export function isNewer(latest: string, current: string): boolean {
         const d = (a[i] ?? 0) - (b[i] ?? 0);
         if (d !== 0) return d > 0;
     }
-    return isPreRelease(current) && !isPreRelease(latest);
+    const latestParts = prereleaseParts(latest);
+    const currentParts = prereleaseParts(current);
+    if (!latestParts || !currentParts) return !latestParts && !!currentParts;
+    for (let i = 0; i < Math.min(latestParts.length, currentParts.length); i++) {
+        const left = latestParts[i], right = currentParts[i];
+        if (left === right) continue;
+        const leftNumeric = /^\d+$/.test(left), rightNumeric = /^\d+$/.test(right);
+        if (leftNumeric && rightNumeric) {
+            const difference = Number(left) - Number(right);
+            if (difference !== 0) return difference > 0;
+            continue;
+        }
+        if (leftNumeric !== rightNumeric) return !leftNumeric;
+        return left > right;
+    }
+    return latestParts.length > currentParts.length;
 }
 
 /** Version labels can omit trailing zeros; the picker must agree with the updater about what is installed. */
@@ -58,10 +77,14 @@ export interface Release {
 }
 
 /** The installable release in GitHub's latest-release JSON: a published, non-prerelease tag with the zip (ASSET_NAME, else a versioned name). Null otherwise. */
-export function pickRelease(json: unknown): Release | null {
+export function pickRelease(json: unknown, allowPrerelease = false): Release | null {
     try {
         const r = json as { tag_name?: unknown; draft?: unknown; prerelease?: unknown; assets?: unknown } | null;
-        if (!r || r.draft === true || r.prerelease === true || !parseVersion(r.tag_name)) return null;
+        if (!r || r.draft === true || typeof r.tag_name !== 'string' || !parseVersion(r.tag_name)) return null;
+        const prerelease = isPreRelease(r.tag_name);
+        if (prerelease || r.prerelease === true) {
+            if (!allowPrerelease || !prerelease || r.prerelease !== true) return null;
+        }
         const assets = Array.isArray(r.assets) ? (r.assets as Array<{ name?: unknown; browser_download_url?: unknown; digest?: unknown }>) : [];
         const zip = assets.find((a) => a?.name === ASSET_NAME) ?? assets.find((a) => typeof a?.name === 'string' && VERSIONED_ASSET.test(a.name));
         const url = zip?.browser_download_url;
