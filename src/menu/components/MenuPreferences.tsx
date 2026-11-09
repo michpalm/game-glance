@@ -11,6 +11,9 @@ export function MenuPreferences() {
     const run = (action: () => Promise<void>) => { setError(''); void action().catch(() => setError('Could not save or open this option. Try again.')); };
     return <PanelSection title="Menu">
         <PanelSectionRow><ToggleField label="Use Game Glance menu" description="Replace the Home and quick access menus. Requires Game Glance to be enabled. Native views remain available inside the menu." checked={value.enabled} disabled={!current || loadState !== 'ready'} onChange={enabled => run(() => menuPreferences.setEnabled(enabled))} /></PanelSectionRow>
+        <PanelSectionRow><ToggleField label="Restyle Steam Settings" description="Apply the Game Glance theme to Steam Settings. Requires the Game Glance menu."
+            checked={value.restyleSteamSettings} disabled={!current || loadState !== 'ready' || !value.enabled}
+            onChange={enabled => run(() => menuPreferences.setRestyleSteamSettings(enabled))} /></PanelSectionRow>
         <PanelSectionRow><DropdownItem label="Social keyboard" description="Choose the keyboard for the Social message field." rgOptions={[{label:'Compact',data:'compact'},{label:'Radial',data:'radial'}]} selectedOption={value.socialKeyboard} disabled={!current || loadState !== 'ready'} onChange={option => run(() => menuPreferences.setSocialKeyboard(option.data === 'radial' ? 'radial' : 'compact'))} /></PanelSectionRow>
         {!current && <PanelSectionRow>Game Glance was reloaded. Close and reopen its settings to continue.</PanelSectionRow>}
         {current && loadState === 'failed' && <PanelSectionRow><ButtonItem layout="below" onClick={() => run(() => menuPreferences.load())}>Retry loading menu preferences</ButtonItem></PanelSectionRow>}

@@ -20,7 +20,7 @@ export interface HeaderRedirectOptions {
  * remember where it came from so Down/B can return. Arrival is seen as DOM `focusin` or as Steam's gamepad focus class
  * (`.gpfocus`) appearing in the bar, which Steam can set without any focus event. One entry per arrival.
  */
-export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): { leave(fallback?: () => void): void; dispose(): void } {
+export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): { rememberFrom(element: HTMLElement): void; leave(fallback?: () => void): void; dispose(): void } {
     const findBar = createTopBarFinder(doc);
     let remembered: HTMLElement | null = null;
     let lastOutside: HTMLElement | null = null;
@@ -82,6 +82,9 @@ export function installHeaderRedirect(doc: Document, o: HeaderRedirectOptions): 
     observer?.observe(doc.documentElement, { attributes: true, attributeFilter: ['class'], subtree: true });
 
     return {
+        rememberFrom(element) {
+            remembered = outsideBoth(element) && element.ownerDocument === doc ? element : null;
+        },
         leave(fallback) {
             const target = remembered;
             remembered = null;

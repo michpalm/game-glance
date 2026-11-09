@@ -64,6 +64,7 @@ function GameGlanceSettings({ top, dispatch, openPlugin, close }: { top: string;
         menuEnabled: prefs.enabled,
         menuReady: prefsState === 'ready',
         socialKeyboard: prefs.socialKeyboard,
+        restyleSteamSettings: prefs.restyleSteamSettings,
         rowChosen,
         rowName,
         collectionRow: rowChosen !== RECENT_ROW,
@@ -78,6 +79,7 @@ function GameGlanceSettings({ top, dispatch, openPlugin, close }: { top: string;
     };
     const a: GgActions = {
         store: settings,
+        setRestyleSteamSettings: value => menuPreferences.setRestyleSteamSettings(value),
         setMenuEnabled: value => menuPreferences.setEnabled(value),
         setSocialKeyboard: mode => menuPreferences.setSocialKeyboard(mode),
         run: change => { setError(''); void change.catch(() => setError('Could not save this setting. Try again.')); },

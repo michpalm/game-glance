@@ -6,12 +6,13 @@ export interface MenuPreferences {
     readonly socialKeyboard: SocialKeyboardMode;
     readonly version: 1;
     readonly enabled: boolean;
+    readonly restyleSteamSettings: boolean;
     readonly pins: readonly PinnedSectionId[];
 }
 const KEY = 'menu:preferences';
 const MOCK_IDS: Record<number, PinnedSectionId> = { 0: 'navigate', 1: 'quick-settings', 2: 'performance', 3: 'social', 4: 'plugins', 6: 'soundtrack', 7: 'help' };
-function snapshot(enabled: boolean, pins: readonly PinnedSectionId[], socialKeyboard: SocialKeyboardMode = 'compact'): MenuPreferences {
-    return Object.freeze({ version: 1, enabled, socialKeyboard, pins: Object.freeze([...pins]) });
+function snapshot(enabled: boolean, pins: readonly PinnedSectionId[], socialKeyboard: SocialKeyboardMode = 'compact', restyleSteamSettings = false): MenuPreferences {
+    return Object.freeze({ version: 1, enabled, socialKeyboard, restyleSteamSettings, pins: Object.freeze([...pins]) });
 }
 function readPins(raw: Record<string, unknown>): PinnedSectionId[] {
     const source = Array.isArray(raw.pins) ? raw.pins : Array.isArray(raw.barMenus) ? raw.barMenus.map(id => MOCK_IDS[id]) : [];
@@ -43,7 +44,7 @@ export function createMenuPreferences(kv: KvBackend) {
                     const value = await kv.get(KEY);
                     const raw = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
                     futureSchema = typeof raw.version === 'number' && raw.version > 1;
-                    current = futureSchema ? snapshot(false, DEFAULT_PINS) : snapshot(raw.enabled === true, readPins(raw), raw.socialKeyboard === 'radial' ? 'radial' : 'compact');
+                    current = futureSchema ? snapshot(false, DEFAULT_PINS) : snapshot(raw.enabled === true, readPins(raw), raw.socialKeyboard === 'radial' ? 'radial' : 'compact', raw.restyleSteamSettings === true);
                     loadState = 'ready';
                 } catch (error) { loadState = 'failed'; throw error; }
                 finally { loading = undefined; emit(); }
@@ -55,12 +56,15 @@ export function createMenuPreferences(kv: KvBackend) {
         subscribe(listener: Stop): Stop { listeners.add(listener); return () => { listeners.delete(listener); }; },
         setSocialKeyboard(mode: SocialKeyboardMode): Promise<void> {
             if (mode !== 'compact' && mode !== 'radial') return Promise.reject(new Error('Choose Compact or Radial'));
-            return save(snapshot(current.enabled, current.pins, mode));
+            return save(snapshot(current.enabled, current.pins, mode, current.restyleSteamSettings));
         },
-        setEnabled(enabled: boolean): Promise<void> { return save(snapshot(enabled, current.pins, current.socialKeyboard)); },
+        setRestyleSteamSettings(enabled: boolean): Promise<void> {
+            return save(snapshot(current.enabled, current.pins, current.socialKeyboard, enabled));
+        },
+        setEnabled(enabled: boolean): Promise<void> { return save(snapshot(enabled, current.pins, current.socialKeyboard, current.restyleSteamSettings)); },
         setPins(pins: readonly PinnedSectionId[]): Promise<void> {
             if (!validPins(pins)) return Promise.reject(new Error('Choose between one and four different menu sections'));
-            return save(snapshot(current.enabled, pins, current.socialKeyboard));
+            return save(snapshot(current.enabled, pins, current.socialKeyboard, current.restyleSteamSettings));
         },
     };
 }

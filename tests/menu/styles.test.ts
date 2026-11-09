@@ -10,7 +10,10 @@ describe('menu glass and reveal motion',()=>{
     it('gives the notification bell, the third frost region, the same glass and edge', ()=>{
         const bell=rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton');
         expect(bell).toContain(`background:${TOKENS.glass}`);
-        expect(bell).toContain('border-color:var(--gg-edge)');
+        const panel = rule('.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel');
+        const panelBorder = panel.match(/border:([^;]+);/)?.[1];
+        expect(panelBorder).toBeTruthy();
+        expect(bell).toContain(`border:${panelBorder};`);
     });
     it('keeps bell and count-slot geometry fixed as notifications are read',()=>{
         const bell=rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton');
@@ -96,7 +99,7 @@ describe('menu glass and reveal motion',()=>{
         expect(menuStyles).toContain('outline-offset:-2px');
     });
     it('keeps every focus rule out of mouse mode', () => {
-        for (const line of all.filter(l => /gpfocus|:focus-visible|:focus-within/.test(l)))
+        for (const line of all.filter(l => /gpfocus|:focus-visible|:focus-within/.test(l.replace(/:not\(:is\([^)]*\)\)/g, ''))))
             expect(line, line.slice(0, 90)).toMatch(/^:where\(html:not\(\[data-gg-mouse\]\)\)/);
     });
     it('keeps tab labels on one line and the bar scrollable', () => {

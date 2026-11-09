@@ -22,7 +22,7 @@ export function NativeSettingsHost({masterReady}:{masterReady?:Promise<void>}={}
  useEffect(()=>{let live=true;setReady(!masterReady);masterReady?.then(()=>{if(live)setReady(true);},()=>{});return()=>{live=false;};},[masterReady]);
  const [doc,setDoc]=useState<Document|null>(null),marker=useCallback((e:HTMLSpanElement|null)=>{if(e)setDoc(e.ownerDocument);},[]);
  useEffect(()=>{if(ready&&master.enabled&&load==='unloaded')void menuPreferences.load().catch(()=>{});},[ready,master.enabled,load]);
- return <><span ref={marker} style={{display:'none'}}/>{doc&&ready&&master.enabled&&load==='ready'&&preferences.enabled&&<NativeSettingsOn doc={doc}/>}</>;
+ return <><span ref={marker} style={{display:'none'}}/>{doc&&ready&&master.enabled&&load==='ready'&&preferences.enabled&&preferences.restyleSteamSettings&&<NativeSettingsOn doc={doc}/>}</>;
 }
 function NativeSettingsOn({doc}:{doc:Document}){
  const ui=useSteamUiState(doc),screensaver=useScreensaverActive(),suspended=ui.menu||screensaver||!ui.foreground;

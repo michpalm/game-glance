@@ -61,6 +61,7 @@ export interface NativeOwner {
     FooterStore?: { HideFooter(): { unhide(): void } };
     MenuStore: NativeMenu;
     BrowserWindow?: Window;
+    History?: { location?: { pathname?: string } };
     MainRunningApp?: { appid?: number; gameid?: unknown; display_name?: string };
     MainRunningAppID?: number;
     BIsOverlayPath?(): boolean;

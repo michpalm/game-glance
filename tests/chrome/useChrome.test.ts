@@ -4,7 +4,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {settings} from '../../src/data/settings';
 import {chromeClaims} from '../../src/chrome/claims';
-import {chromeHeld,subscribeChromeHeld,useChrome} from '../../src/chrome/useChrome';
+import {chromeFocus,chromeHeld,subscribeChromeHeld,useChrome} from '../../src/chrome/useChrome';
 import {pageFooterCanRestore} from '../../src/menu/pageFooter';
 import {ChromeHost} from '../../src/chrome/ChromeHost';
 vi.unmock('react-dom');
@@ -113,6 +113,25 @@ describe('useChrome',()=>{
   const focus=vi.spyOn(card,'focus');back();expect(focus).toHaveBeenCalledTimes(1);expect(returnHome).not.toHaveBeenCalled();expect(chrome.search.get().phase).toBe('hidden');
   await enter();card.remove();back();expect(returnHome).toHaveBeenCalledTimes(1);
  });
+ it('returns to the same game-page action after entering the bar directly with Up', async () => {
+  const { GamepadButton: B } = await import('@decky/ui/dist/components/FooterLegend.js');
+  claim({ page: 'game' });
+  await show();
+  const action = doc.getElementById('card') as HTMLElement;
+  const returnFocus = vi.spyOn(action, 'focus');
+  const event = (button: number) => ({
+   detail: { button, is_repeat: false }, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+  }) as any;
+
+  await act(() => { expect(chromeFocus.actionUp(event(B.DIR_UP), action)).toBe(true); });
+  expect(chrome.search.get().phase).toBe('top');
+  const cell = doc.createElement('button');
+  doc.body.append(cell);
+  chrome.controls!.register('clock', cell);
+  chrome.controls!.button('clock', event(B.CANCEL));
+  expect(returnFocus).toHaveBeenCalledOnce();
+  expect(chrome.search.get().phase).toBe('hidden');
+ });
  it('Down/B with nothing remembered goes to the page’s first visible item, not Steam’s header',async()=>{
   const {GamepadButton:B}=await import('@decky/ui/dist/components/FooterLegend.js');
   await everyPage(true);await show();
@@ -197,11 +216,18 @@ describe('useChrome',()=>{
    steam.ui={...steam.ui,menu:true};await everyPage(true);await act(()=>root.render(createElement(ChromeHost)));
   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);expect(pageFooterCanRestore(doc)).toBe(false);
   });
-  it('does not hold the bar over Steam’s launch screen: a claim going to launching clears the latch',async()=>{
-   await everyPage(true);const home=claim({page:'home'});await act(()=>root.render(createElement(ChromeHost)));
-   expect(bar()).toBe(true);expect(chromeHeld()).toBe(true);
+  it('keeps the bar and native footer styling during a launch while releasing input',async()=>{
+   const home=claim();await show();expect(marked()).toBe(true);
+   await act(()=>{chrome.search.dispatch({type:'enter'});chrome.search.dispatch({type:'edit'});});
+   expect(chrome.search.get().phase).toBe('editing');
+
    await act(()=>{home.update({page:'home',statusHidden:false,launching:true});});
-   expect(bar()).toBe(false);expect(chromeHeld()).toBe(false);
+   expect(marked()).toBe(true);expect(chrome.bar).toBe(true);expect(chromeHeld()).toBe(true);
+   expect(chrome.controls).toBeUndefined();expect(chrome.ownsInput()).toBe(false);
+   expect(chrome.search.get().phase).toBe('hidden');
+
+   await act(()=>{home.update({page:'home',statusHidden:false,launching:false});});
+   expect(marked()).toBe(true);expect(chrome.controls).toBeDefined();
   });
   it('lets go when launching starts with the side menu already open',async()=>{
    await everyPage(true);const home=claim({page:'home'});await act(()=>root.render(createElement(ChromeHost)));await menu(true);expect(chromeHeld()).toBe(true);

@@ -4,6 +4,8 @@ import type { Display } from '@decky/ui/dist/globals/steam-client/system/Display
 import type { Stop } from '../model';
 import type { AudioState, QuickSettingsBindings, ValueBinding } from './quickSettings';
 import type { NativeOwner, NativeRequest } from './runtime';
+import { HOME_ROUTE } from '../../home/guard';
+import { markLeaving } from '../../home/homeMemory';
 import type { RouteBindings } from './routes';
 interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
@@ -30,17 +32,24 @@ function displaySettings():DisplaySettings|undefined {
 export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(request:NativeRequest)=>Promise<void>):RouteBindings {
     const root=globals();
     const window=owner as NativeOwner&{Navigate?(path:string):void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
-    function navigate(path:string){if(!window.Navigate)throw Error('Steam navigation is unavailable');window.Navigate(path);}
+    const rememberHome = () => {
+        if (owner.History?.location?.pathname === HOME_ROUTE) markLeaving();
+    };
+    function navigate(path: string) {
+        if (!window.Navigate) throw Error('Steam navigation is unavailable');
+        if (path !== HOME_ROUTE) rememberHome();
+        window.Navigate(path);
+    }
     return {deactivate,tabs:QuickAccessTab,openMain(){owner.MenuStore.OpenMainMenu?owner.MenuStore.OpenMainMenu():owner.MenuStore.OpenSideMenu(1);},openQam:tab=>owner.MenuStore.OpenQuickAccessMenu(tab),
         library(){navigate('/library');},
-        libraryTab(tab){if(typeof window.Navigator?.LibraryTab==='function')window.Navigator.LibraryTab(tab);else navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
+        libraryTab(tab){if(typeof window.Navigator?.LibraryTab==='function'){rememberHome();window.Navigator.LibraryTab(tab);}else navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
         power(){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');Router.OpenPowerMenu();},
         joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
         // As Steam's own notification list opens invite urls and account links.
         openUrl(url){const chat=root.SteamClient?.WebChat;if(typeof chat?.OpenURLInClient!=='function')throw Error('Steam cannot open this link');chat.OpenURLInClient(url,0,false);},
         openStore(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('The Steam store is unavailable');steamUrl.ExecuteSteamURL(`steam://openurl/${url}`);},
         exitGame(gameId){const apps=root.SteamClient?.Apps;if(typeof apps?.TerminateApp!=='function')throw Error('Steam cannot exit this game');apps.TerminateApp(gameId,false);},
-        profile:{allowed:()=>friendsOnline(root)&&parentalAllowed(3),resolve:()=>root.urlStore?.ResolveURL('SteamIDMyProfile')??'',open(url){if(!window.Navigator?.ExternalWeb)throw Error('Steam Profile is unavailable');window.Navigator.ExternalWeb(url);}},
+        profile:{allowed:()=>friendsOnline(root)&&parentalAllowed(3),resolve:()=>root.urlStore?.ResolveURL('SteamIDMyProfile')??'',open(url){if(!window.Navigator?.ExternalWeb)throw Error('Steam Profile is unavailable');rememberHome();window.Navigator.ExternalWeb(url);}},
         async fallback(request){
             if(request.kind==='friend-chat'&&root.SteamClient?.WebChat?.ShowFriendChatDialog){if(!/^\d{17}$/.test(request.steamId))throw Error('Invalid Steam ID');root.SteamClient.WebChat.ShowFriendChatDialog(request.steamId);return;}
             await fallback(request);

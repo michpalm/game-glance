@@ -85,7 +85,8 @@ export function StatusCell({id,controls,cellKey,...props}:Omit<HTMLAttributes<HT
         className={`${props.className??''} gh-status-control`} data-gh-status={id} role="button" tabIndex={0} noFocusRing
         onFocus={()=>controls.focused(id)} onGamepadFocus={()=>controls.focused(id)}
         onButtonDown={(event:GamepadEvent)=>{if(event.detail.button===1){event.preventDefault();event.stopPropagation();}controls.button(id,event);}}
-        children={props.children} onClick={event=>{event.preventDefault();event.stopPropagation();event.currentTarget.focus();controls.focused(id);}} />;
+        onButtonUp={(event:GamepadEvent)=>controls.buttonUp?.(id,event)}
+        children={props.children} onClick={event=>{event.preventDefault();event.stopPropagation();event.currentTarget.focus();controls.focused(id);controls.activate?.(id);}} />;
 }
 
 /** Connected controller slots, lowest first, at most two, then +n. No additional subscriptions. */

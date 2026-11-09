@@ -4,6 +4,9 @@ import { TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
 // Active navigation tabs stay legible after focus moves into the panel; other option slices retain their quieter role.
 const selectedTab = `${selectedSlice()};--gg-selected:rgba(255,255,255,.24);--gg-selected-edge:inset 0 -3px 0 color-mix(in srgb,var(--gg-accent-text,var(--gg-accent)) 65%,#fff)`;
 
+const menuSurfaceRim = 'border:1.5px solid rgba(182,199,224,.34);box-shadow:0 0 0 1px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08)';
+const idleTileTint = 'rgba(124,151,191,.075)';
+
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
 export const menuStyles = radialStyles + `
@@ -19,7 +22,7 @@ export const menuStyles = radialStyles + `
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:is(:disabled,[aria-disabled=true]){${ghost()};transform:none}
 html[data-gg-mouse] .gg-menu button.gg-menu-action.DialogButton:not(:disabled):hover{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:not(:disabled):active{transform:scale(.98);transition-duration:var(--gg-fast)}
-.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:${TOKENS.glass};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel)}
+.gg-menu .gg-menu-bar,.gg-menu .gg-menu-panel{background:${TOKENS.glass};backdrop-filter:none;${menuSurfaceRim};border-radius:var(--gg-r-panel)}
 .gg-menu .gg-menu-bar{flex:none;display:flex;align-items:stretch;min-height:64px;overflow:hidden}
 .gg-menu-tabs{display:flex;align-items:stretch;justify-content:stretch;gap:0;padding:0;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
 .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton{position:relative;flex:1 0 auto;min-height:0;padding:0 12px;gap:4px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);white-space:nowrap;box-shadow:none}
@@ -38,6 +41,10 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu .gg-menu-grid.gg-menu-grid-navigate{grid-template-columns:repeat(4,minmax(0,1fr))}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
+.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:not(:is(.gpfocus,:focus-visible,:hover,[aria-pressed=true])){
+    border-color:rgba(182,199,224,.24);
+    background-image:linear-gradient(${idleTileTint},${idleTileTint});
+}
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
 .gg-menu .gg-ingame{display:flex;flex-direction:column;gap:16px;min-height:100%}
 .gg-menu .gg-ingame-hero{position:relative;flex:none;height:176px;margin:-24px -24px 0;border-radius:var(--gg-r-panel) var(--gg-r-panel) 0 0;overflow:hidden;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:16px 24px}
@@ -104,7 +111,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-m
 .gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:first-child{border-radius:calc(var(--gg-r-card) - 1px) 0 0 calc(var(--gg-r-card) - 1px)}
 .gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:last-child{border-radius:0 calc(var(--gg-r-card) - 1px) calc(var(--gg-r-card) - 1px) 0}
 .gg-menu .gg-menu-perf-content{padding-top:8px}.gg-menu .gg-menu-performance-profile{padding:0}
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{width:80px;min-width:80px;height:40px;min-height:40px;flex:none;padding:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:${TOKENS.glass}}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton{width:80px;min-width:80px;height:40px;min-height:40px;flex:none;padding:8px;border-radius:var(--gg-r-card);${menuSurfaceRim};background:${TOKENS.glass}}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton svg{transition:transform var(--gg-fast) ease}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-notifications.DialogButton .gg-menu-notification-count:empty+svg{transform:translateX(-20px)}
 .gg-menu-notification-count{display:block;width:32px;min-width:32px;height:20px;line-height:20px;flex:none;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}

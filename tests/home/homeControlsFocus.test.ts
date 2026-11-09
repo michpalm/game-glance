@@ -6,13 +6,13 @@ import type {HomeControlId} from '../../src/home/homeControls';
 vi.mock('@decky/ui',async()=>({...await import('@decky/ui/dist/components/FooterLegend.js'),Navigation:{},Focusable:()=>null}));
 function fixture(search=false,busy=false){
  const {document}=parseHTML('<html><body><main id="home"><div class="gh-actions"><button id="play" class="gh-btn"></button><button id="info" class="gh-btn"></button></div><div id="recents" tabindex="0"></div></main><header><input type="search" data-native="keep"/></header><aside id="status"></aside></body></html>');
- let editing=false;const reveal=vi.fn(),hide=vi.fn(),activate=vi.fn();
+ let editing=false;const reveal=vi.fn(),hide=vi.fn(),activate=vi.fn(),openStatusLink=vi.fn();
  let pending:(()=>void)|null=null,available=true;const moved:HTMLElement[]=[],home=vi.fn(),stop=vi.fn(),handoff=vi.fn();
- const focus=createHomeStatusFocus({search:search?{busy:()=>busy,reveal,hide,activate,editing:()=>editing,contains:target=>target?.id==='editor'}:undefined,canUse:()=>available,visible:n=>n.isConnected&&!n.hidden,focus:n=>moved.push(n),returnHome:home,stopRepeats:stop,headerHandoff:handoff,schedule:callback=>{pending=callback;return ()=>{pending=null;};}});
+ const focus=createHomeStatusFocus({openStatusLink,search:search?{busy:()=>busy,reveal,hide,activate,editing:()=>editing,contains:target=>target?.id==='editor'}:undefined,canUse:()=>available,visible:n=>n.isConnected&&!n.hidden,focus:n=>moved.push(n),returnHome:home,stopRepeats:stop,headerHandoff:handoff,schedule:callback=>{pending=callback;return ()=>{pending=null;};}});
  const add=(id:HomeControlId)=>{const node=document.createElement('button') as unknown as HTMLElement;document.getElementById('status')!.append(node);focus.register(id,node);return node;};
  const flush=()=>{const run=pending;pending=null;run?.();};
  focus.setActive(true,false);
- return {editing:(value:boolean)=>{editing=value;},reveal,hide,activate,document,root:document.getElementById('home')! as unknown as HTMLElement,focus,add,flush,moved,home,stop,handoff,available:(value:boolean)=>{available=value;}};
+ return {openStatusLink,editing:(value:boolean)=>{editing=value;},reveal,hide,activate,document,root:document.getElementById('home')! as unknown as HTMLElement,focus,add,flush,moved,home,stop,handoff,available:(value:boolean)=>{available=value;}};
 }
 const event=(button:number)=>({detail:{button,is_repeat:false},preventDefault:vi.fn(),stopPropagation:vi.fn()}) as any;
 describe('Home status focus coordinator',()=>{
@@ -45,3 +45,21 @@ describe('Home replacement Search navigation',()=>{
 it('keeps browsing-results ownership even when the keyboard is closed',()=>{const f=fixture(true,true);f.add('search');f.flush();f.focus.externalFocus(f.document.body as unknown as HTMLElement);expect(f.hide).not.toHaveBeenCalled();expect(f.focus.actionUp(event(B.DIR_UP))).toBe(false);f.focus.button('search',event(B.DIR_DOWN));expect(f.home).not.toHaveBeenCalled();});
 
 it('releases status ownership before Search disappears so queued repair cannot take destination focus',()=>{const f=fixture(true),pill=f.add('search');f.add('connection');f.flush();f.focus.actionUp(event(B.DIR_UP));expect(f.moved.at(-1)).toBe(pill);f.focus.release();const count=f.moved.length;f.focus.register('search',null);f.flush();expect(f.moved).toHaveLength(count);expect(f.home).not.toHaveBeenCalled();});
+
+it('opens status links on A release or click and ignores a release after suspension', () => {
+    const { focus, openStatusLink, add } = fixture();
+    add('connection');
+    add('battery');
+    add('clock');
+    add('profile');
+    focus.button('connection', event(B.OK));
+    expect(openStatusLink).not.toHaveBeenCalled();
+    focus.buttonUp('connection', event(B.OK));
+    focus.buttonUp('connection', event(B.OK));
+    focus.activate('profile');
+    focus.button('battery', event(B.OK));
+    focus.setActive(false, false);
+    focus.setActive(true, false);
+    focus.buttonUp('battery', event(B.OK));
+    expect(openStatusLink.mock.calls).toEqual([['connection'], ['profile']]);
+});

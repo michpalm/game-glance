@@ -11,6 +11,7 @@ export interface GgValues {
     menuEnabled: boolean;
     menuReady: boolean;
     socialKeyboard: SocialKeyboardMode;
+    restyleSteamSettings: boolean;
     rowChosen: string;
     rowName: string;
     collectionRow: boolean;
@@ -28,6 +29,7 @@ export interface GgValues {
 /** What the views can ask for. Every setting change goes through run(), which shows the menu's error line on failure. */
 export interface GgActions {
     store: SettingsActions;
+    setRestyleSteamSettings(value: boolean): Promise<void>;
     setMenuEnabled(value: boolean): Promise<void>;
     setSocialKeyboard(mode: SocialKeyboardMode): Promise<void>;
     run(change: Promise<unknown>): void;

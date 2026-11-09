@@ -21,7 +21,7 @@ const settings: Settings = {
 };
 function values(change: Partial<GgValues> = {}): GgValues {
     return {
-        settings, menuEnabled: true, menuReady: true, socialKeyboard: 'compact', rowChosen: 'recent', rowName: 'Recent games', collectionRow: false,
+        settings, menuEnabled: true, menuReady: true, restyleSteamSettings: true, socialKeyboard: 'compact', rowChosen: 'recent', rowName: 'Recent games', collectionRow: false,
         rowChoices: [{ id: 'recent', label: 'Recent games' }, { id: 'c1', label: 'Backlog (12)' }],
         summaries: {} as GgValues['summaries'], screensaverAvailable: true,
         game: { name: 'Monster Hunter Rise', match: 'Automatic: HowLongToBeat #1', matched: true, override: false },
@@ -32,7 +32,7 @@ function values(change: Partial<GgValues> = {}): GgValues {
 }
 function actions() {
     const store = new Proxy({}, { get: (target: Record<string, any>, key: string) => target[key] ??= vi.fn(() => Promise.resolve()) });
-    const a = { store, setMenuEnabled: vi.fn(() => Promise.resolve()), setSocialKeyboard: vi.fn(() => Promise.resolve()), run: vi.fn(), open: vi.fn(), back: vi.fn(),
+    const a = { store, setRestyleSteamSettings: vi.fn(() => Promise.resolve()), setMenuEnabled: vi.fn(() => Promise.resolve()), setSocialKeyboard: vi.fn(() => Promise.resolve()), run: vi.fn(), open: vi.fn(), back: vi.fn(),
         changeMatch: vi.fn(), openHltb: vi.fn(), removeOverride: vi.fn(), preview: vi.fn(), togglePreload: vi.fn(), clearCache: vi.fn(),
         checkUpdate: vi.fn(), installUpdate: vi.fn(), chooseVersion: vi.fn() };
     return a as unknown as GgActions & { store: Record<string, ReturnType<typeof vi.fn>> };
@@ -116,12 +116,14 @@ describe('Status bar & footer', () => {
     });
 });
 
-it('Menu switches our menu and the social keyboard', () => {
+it('Menu switches the menu, Steam Settings theme, and Social keyboard', () => {
     const a = actions();
     const page = MenuPage({ v: values(), a });
-    expect(ids(page)).toEqual(['gg:menu:enabled', 'gg:menu:keyboard']);
+    expect(ids(page)).toEqual(['gg:menu:enabled', 'gg:menu:restyle-steam-settings', 'gg:menu:keyboard']);
     byId(page, 'gg:menu:enabled').props.onChange(false);
     expect(a.setMenuEnabled).toHaveBeenCalledWith(false);
+    byId(page, 'gg:menu:restyle-steam-settings').props.onChange(false);
+    expect(a.setRestyleSteamSettings).toHaveBeenCalledWith(false);
     byId(page, 'gg:menu:keyboard').props.onSelect('radial');
     expect(a.setSocialKeyboard).toHaveBeenCalledWith('radial');
 });

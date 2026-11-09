@@ -32,7 +32,7 @@ function ChromeHostOn({doc}:{doc:Document}) {
             <style>{homeControlsCss}</style>
             {/* The replacement for Steam's bar, only while Steam's is found and hidden (no Steam bar, neither bar); focus redirected out of Steam's header must not fade it. It stays through a side-menu-only suspension it owned the bar before (held), so the menu's holds keep it up. */}
             {(chrome.bar||chrome.held)&&<GameStatusBar hidden={chrome.statusHidden} controls={chrome.controls} replacement={active} />}
-            <HomeSearch search={chrome.search} active={active&&!chrome.statusHidden} account={ui.account} controls={chrome.controls} ownsInput={chrome.ownsInput} returnToPage={chrome.returnToPage} document={doc} />
+            <HomeSearch search={chrome.search} active={chrome.interactive&&!chrome.statusHidden} account={ui.account} controls={chrome.controls} ownsInput={chrome.ownsInput} returnToPage={chrome.returnToPage} document={doc} />
         </>
     );
 }

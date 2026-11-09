@@ -7,7 +7,7 @@ import {homeReturnTarget} from './useHomeControls';
 
 /**
  * Home's claim on the chrome host while mounted (chrome/useChromeClaim): its feed sheet hides the bar, Play's launch
- * steps the host aside, and Down/B's last resort is Home's own target (the last action, Play, then the recents row).
+ * releases the host's input, and Down/B's last resort is Home's own target (the last action, Play, then the recents row).
  * `launching` is re-read on each launch mark or clear and when the latest mark runs out. `ownBar`: the host does not draw its
  * bar (Expanded Home controls off, or stepped aside), so Home draws its own read-only one as before.
  */

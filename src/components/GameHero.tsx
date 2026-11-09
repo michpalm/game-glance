@@ -235,7 +235,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
     // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while rendered (not
-    // display:none under another screen); Steam's launch screen steps it aside. `key` re-binds when the hero comes or goes.
+    // display:none under another screen). During launch the host keeps its visuals and releases input.
     const shown = usePageShown(heroRef, game.appId);
     useChromeClaim(shown ? { page: 'game', statusHidden: false, launching } : null);
     const hostBar = useChromeHeld();
