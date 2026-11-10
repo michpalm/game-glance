@@ -58,7 +58,7 @@ export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-source', '.gh-store-choic
 /** Hover looks apply only in mouse mode (mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
 /** Section 7: the one frost (tokens.frostSurface) with Home's hairline edge. */
-const GLASS = `${frostSurface('16px')}; border: 1px solid rgba(255,255,255,.12)`;
+const GLASS = `${frostSurface('16px')}; border: 1px solid ${SOURCE_PILL.border}`;
 const SCRIM = '5,7,10';
 
 /**
@@ -95,8 +95,6 @@ export const TITLE_BLOCK = {
 const STATUS_AVATAR = 22;
 const R_ACTION = actionRadius(TITLE_BLOCK.button, 'action');
 const R_ICON = actionRadius(TITLE_BLOCK.button, 'icon');
-/** The page's Play corner at the size the opening layer draws it: the page's share of the pill's height, times its growth (--gho-play-sy). */
-const R_PAGE_PLAY = Math.round((actionRadius(PAGE_LAYOUT.icon, 'action') / PAGE_LAYOUT.icon) * TITLE_BLOCK.button * 100) / 100;
 
 export interface TitleBlockLayout {
     /** Top of the title's two-line slot. */
@@ -510,7 +508,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // Section 7: the tabs are slices of one glass strip that hugs them, as the menu's tabs; its edge is an inset outline,
         // drawn over the slices and adding no height (FEED_SHEET.tabHeight and the give-way numbers hold).
         rule('.gh-tabs', `position: absolute; left: var(--gh-row, ${SIDE_INSET.handheld - ROW_OFFSET}px); top: calc(${FEED_SHEET.tabsTop}px - var(--gh-top)); display: flex; justify-content: flex-start; gap: 0; margin: 0; padding: 0; pointer-events: none;
-            right: auto; width: max-content; border-radius: 12px; overflow: hidden; ${frostSurface('16px')}; outline: 1px solid ${TOKENS.edge}; outline-offset: -1px`),
+            right: auto; width: max-content; border-radius: 12px; overflow: hidden; ${frostSurface('16px')}; outline: 1px solid ${SOURCE_PILL.border}; outline-offset: -1px`),
         // Out of sight under the games row at rest: taps there are the row's; with the sheet up a tap picks a tab.
         rule('.gh-page-up .gh-tabs', 'pointer-events: auto'),
         rule('.gh-tab', `position: relative; margin: 0; padding: 8px 16px 10px; font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
@@ -622,8 +620,8 @@ function shadeNoneRules(): string[] {
     const px = (n: number) => `${n}px`;
     const dd = (n: number) => `calc(${n}px * var(--gho-x-d))`;
     const glass = `background: ${S.glass}; border-color: rgba(255,255,255,${S.edge}); color: #fff`;
-    // The page's cards and Clean panel: their ring brightened as the page's is (--gg-ring, themeCss ring()).
-    const pageGlass = `background: ${S.glass}; border-color: rgba(255,255,255,calc(${S.edge} * var(--gg-ring, 1))); color: #fff`;
+    // Match the settled game-page card edge in both shading modes.
+    const pageGlass = `background: ${S.glass}; border-color: ${SOURCE_PILL.border}; color: #fff`;
     const pill = `background: ${S.pill}; border-color: ${S.pillEdge}; box-shadow: ${S.pillShadow(px)}; text-shadow: ${S.pillTextShadow(px)}`;
     const play = '.gh-actions > .gh-btn[data-action="play"]';
     const M = `${N}[data-gh-opening="morph"]`;
@@ -633,9 +631,8 @@ function shadeNoneRules(): string[] {
         rule(`${N} .gh-btn-play, ${N} .gh-btn-library`, pill),
         // The open transition's copies of the page's parts.
         rule([`${N} .gh-open-shell`, `${N} .gh-open-circle`, `${N} .gh-x-pill:not(.gh-x-selectable)`, `${N} .gh-x-family`, `${N} .gh-x-store-choice`].join(', '), glass),
-        rule(`${N} .gh-open-shell::before`, `border-color: rgba(255,255,255,${S.edge})`),
-        rule(`${N} .gh-open-ring`, `border-color: rgba(255,255,255,calc(${S.edge} * var(--gho-ring-boost, 1)))`),
-        rule(`${N} .gh-normal-card, ${N} .gh-clean-info`, pageGlass),
+        rule([`${N} .gh-open-shell::before`, `${N} .gh-open-circle`, `${N} .gh-btn-circle:not(.gh-focus)`].join(', '), `border-color: ${SOURCE_PILL.border}`),
+                rule(`${N} .gh-normal-card, ${N} .gh-clean-info`, pageGlass),
         rule([`${N} .gh-normal-label`, `${N} .gh-normal-value`, `${N} .gh-clean-label`, `${N} .gh-clean-value`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
         soft([`${N} .gh-twin[data-role="label"]`, `${N} .gh-twin[data-role="value"]`, `${N} .gh-twin[data-role="cleanValue"]`].join(', '), `text-shadow: ${S.labelShadow(dd)}`),
         soft(`${N} .gh-twin[data-role="playLabel"]`, `text-shadow: ${S.pillTextShadow(dd)}`),
@@ -719,15 +716,15 @@ export function openingRules(): string[] {
         // in the canvas's own units, before the scale, so the page's 1 device px drawn in here came out half as bright on the Ally.
         // The page cards' ring drawn as the page draws it (openMotion --gho-ring-*): outside the scaled canvas, so Chromium
         // snaps it to whole device px as it does the page's; brightened by the page's --gg-ring (ringBoost).
-        rule('.gh-open-ring', 'display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; box-sizing: border-box; background: none; border-radius: var(--gho-ring-r, 16px); border: var(--gho-ring-w, 1px) solid rgba(255,255,255,calc(.12 * var(--gho-ring-boost, 1)))'),
+        rule('.gh-open-ring', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; box-sizing: border-box; background: none; border-radius: var(--gho-ring-r, 16px); border: var(--gho-ring-w, 1px) solid ${SOURCE_PILL.border}`),
         rule('.gh-open-shell', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; transform-origin: 0 0; border-radius: 16px; ${frostSurface('16px')}; border: 1px solid transparent`),
         // Its soft canvas ring, as Home's chips draw theirs: fades out as the crisp ring (.gh-open-ring) fades in.
-        rule('.gh-open-shell::before', 'content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid rgba(255,255,255,.12); pointer-events: none; opacity: 1'),
+        rule('.gh-open-shell::before', `content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid ${SOURCE_PILL.border}; pointer-events: none; opacity: 1`),
         // A Unifideck game's page has a fourth circle (Uninstall) Home has no button for: one is drawn at its place as Home's
         // circles look at the page's size, and fades in late as the page's other parts do, so it does not pop in after the
         // hand-over. Its own fade, not the extras layer's: a backdrop blur inside a fading parent sees nothing behind it.
         rule('.gh-open-circle', `display: none; position: absolute; left: 0; top: 0; margin: 0; padding: 0; pointer-events: none; box-sizing: border-box; aspect-ratio: 1;
-            align-items: center; justify-content: center; border-radius: 30%; color: #fff; ${frostSurface('16px')}; border: 1px solid rgba(255,255,255,.18);
+            align-items: center; justify-content: center; border-radius: 30%; color: #fff; ${frostSurface('16px')}; border: 1px solid ${HOME_BUTTON_GLASS.borderColor};
             opacity: 0`),
         rule('.gh-open-circle svg', `width: ${PAGE_LAYOUT.circleIcon}px; height: ${PAGE_LAYOUT.circleIcon}px; margin: 0; fill: currentColor`),
         rule(`${M} .gh-open-circle`, 'display: flex; left: calc(var(--gho-circle-extra-x) * 1px); top: calc(var(--gho-circle-extra-y) * 1px); width: calc(var(--gho-circle-extra-w) * 1px)'),
@@ -743,6 +740,8 @@ export function openingRules(): string[] {
         rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase][data-gh-extras] .gh-open-extras', 'opacity: 1; animation: none'),
         rule('.gh-root.gh-bridge[data-gh-opening][data-gh-phase][data-gh-extras~="pills"] .gh-source', 'opacity: 0; animation: none'),
         rule(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] ${play}::after`, 'opacity: 1; animation: none'),
+        rule(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] ${play}::before`, 'opacity: 0; animation: none'),
+        rule(`.gh-root.gh-bridge[data-gh-opening][data-gh-phase] ${play} > .gh-open-play-ring`, 'opacity: 1; animation: none'),
 
         // Scrims: Home already shades its art as the page does; only the feed sheet's dim goes.
         rule(`${MT} .gh-scrim-dim`, `opacity: 0; transition: opacity ${T.morph}ms ease`),
@@ -760,15 +759,16 @@ export function openingRules(): string[] {
         // The Play pill moves; its accent background becomes a layer inside it that grows to the page pill (the pill
         // stops clipping it, and keeps its focus ring on that layer).
         rule(`${M} ${play}`, 'overflow: visible; background: transparent; border-color: transparent; box-shadow: none; outline: none'),
-        // (Both layers start at the pill's outer edge, its 1px border, as openMotion's scales are of its outer size: from inside
-        // the border they ended a border's width short all round, and the page pill grew at the hand-over.)
-        rule(`${M} ${play}::before`, `content: ''; position: absolute; left: -1px; top: -1px; width: calc(100% + 2px); height: calc(100% + 2px); border-radius: ${R_ACTION}px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none`),
+        // Anchor both layers at the outer edge and use the measured border-box sizes from openMotion.
+        rule(`${M} ${play}::before`, `content: ''; position: absolute; left: var(--gho-play-inset-x); top: var(--gho-play-inset-y); width: var(--gho-play-home-w); height: var(--gho-play-home-h); border-radius: ${R_ACTION}px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none`),
         // The page focuses Play (its white ring, as Home's focus): the page's focused pill at its exact size
         // (round ends; the stretched layer's are oval) fades in as the pill comes to rest, under the glyph and label.
-        rule(`${M} ${play}::after`, `content: ''; position: absolute; left: -1px; top: calc(var(--gho-play-dy) - 1px); width: calc((100% + 2px) * var(--gho-play-sx)); height: calc((100% + 2px) * var(--gho-play-sy)); border-radius: calc(var(--gho-play-sy) * ${R_PAGE_PLAY}px); background: var(--glance-accent); ${focusRing('menu').replace(';transform:none', '')}; box-shadow: none; pointer-events: none`),
-        soft(`${M} ${play}::after`, 'opacity: 0'),
+        rule(`${M} ${play}::after`, `content: ''; position: absolute; left: var(--gho-play-inset-x); top: calc(var(--gho-play-dy) + var(--gho-play-inset-y)); width: var(--gho-play-page-w); height: var(--gho-play-page-h); border-radius: var(--gho-play-page-radius); background: var(--glance-accent); box-shadow: none; pointer-events: none`),
+        soft(`${M} ${play}::after`, 'opacity: 0; transform-origin: 0 0; transform: var(--gho-play-settle-from, none)'),
         // Opened with a mouse, the page shows its Play without the focus look (mouseMode): the pill grows without its ring and glow.
-        rule(`${HOVER} ${M} ${play}::after`, 'outline: none'),
+        rule('.gh-open-play-ring', 'display: none'),
+        rule(`${M} ${play} > .gh-open-play-ring`, 'display: block; position: absolute; left: calc(var(--gho-play-inset-x) - var(--gho-play-ring-pad, 0px)); top: calc(var(--gho-play-dy) + var(--gho-play-inset-y) - var(--gho-play-ring-pad, 0px)); width: calc(var(--gho-play-page-w) + 2 * var(--gho-play-ring-pad, 0px)); height: calc(var(--gho-play-page-h) + 2 * var(--gho-play-ring-pad, 0px)); background: var(--gho-play-ring-image, none) center / 100% 100% no-repeat; pointer-events: none; opacity: 0; transform-origin: var(--gho-play-ring-pad, 0px) var(--gho-play-ring-pad, 0px); transform: var(--gho-play-settle-from, none)'),
+        rule(`${HOVER} ${M} ${play} > .gh-open-play-ring`, 'display: none'),
         rule([`${M} ${play} > .gh-btn-icon`, `${M} ${play} > .gh-btn-label`, `${M} ${play} > .gh-play-arrow`].join(', '), 'z-index: 1'),
         rule(`${M} ${play} > .gh-play-arrow`, 'transform-origin: 100% 50%'),
         rule(`${MT} ${play} > .gh-play-arrow`, `transform: var(--gho-play-arrow); transition: ${move}`),
@@ -778,7 +778,8 @@ export function openingRules(): string[] {
         rule(`${MT} ${play} > .gh-btn-icon`, `transform: var(--gho-play-icon); transition: ${move}`),
         rule(`${MT} ${play} > .gh-btn-label`, `transform: var(--gho-play-label); transition: ${move}`),
         rule(`${MT} ${play}::before`, `transform: var(--gho-play-bg); transition: ${move}`),
-        rule(`${MT} ${play}::after`, settle),
+        rule(`${MT} ${play}::after`, `${settle}; transform: translate(0, 0) scale(1, 1); transition: ${move}`),
+        rule(`${MT} ${play} > .gh-open-play-ring`, `${settle}; transform: translate(0, 0) scale(1, 1); transition: ${move}`),
         // The circles by their order among circles (openHome measures .gh-btn-circle), whatever comes before them (the stream arrow).
         ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle)`, `transform: var(--gho-circle-${i}, none); transition: ${move}`)),
         // Each circle's icon shrinks as the circle grows (openMotion), so it is the page's size throughout.

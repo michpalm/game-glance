@@ -1,3 +1,4 @@
+import { CONTROL_EDGE } from './tokens';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
@@ -571,7 +572,7 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
     return [
         `.gg-cards { display: grid; grid-template-columns: minmax(0, ${PAGE_LAYOUT.cards.split[0]}fr) minmax(0, ${PAGE_LAYOUT.cards.split[1]}fr); gap: ${unit(PAGE_LAYOUT.cards.gridGap)}; }`,
         `.gg-card { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.cards.colGap)}; padding: ${unit(PAGE_LAYOUT.cards.padY)} ${unit(PAGE_LAYOUT.cards.padX)}; border-radius: ${unit(16)};
-            ${frostSurface(unit(16))}; border-color: ${ring(0.12)}; border-style: solid; border-width: ${unit(1)};
+            ${frostSurface(unit(16))}; border-color: ${CONTROL_EDGE}; border-style: solid; border-width: ${unit(1)};
             min-height: ${unit(PAGE_LAYOUT.playTop.tvCards - 2 * PAGE_LAYOUT.cards.padY - 2)}; max-width: ${cardContentMax(cardMaxWidths()[0])}; }`,
         // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
         // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
@@ -597,7 +598,7 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
 /** The actual Clean card skin and flex layout, shared with its moving Home copy. */
 export function cleanInfoCss(panel: string, unit: (n: number) => string, prefix = 'gg'): string {
     return `
-${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; ${frostSurface(unit(16))}; color: #fff; }
+${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${CONTROL_EDGE}; ${frostSurface(unit(16))}; color: #fff; }
 ${panel} > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }
 ${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; ${labelText(unit)}; }
 ${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
@@ -807,7 +808,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rule(playButton && `${playButton} > div:has(> [role="button"])`, ` border-radius: ${R_PLAY} !important; `),
         rule(menuButton, ` border-radius: ${R_TILE} !important; `),
         rule(cloud, ` border-radius: ${R_TILE} !important; `),
-        rule(menuButton, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; ${actionTransition} `),
+        rule(menuButton, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${CONTROL_EDGE} !important; ${actionTransition} `),
         rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `),
         // (Each focus look here also under DOM focus: after a tap or a click Steam keeps focus but drops gpfocus, and a page
         // opened that way has its Play focused without it, which the open transition lands on.)
@@ -817,7 +818,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
         // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring.
-        rule(cloud, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
+        rule(cloud, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${CONTROL_EDGE} !important;
             box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
@@ -991,9 +992,10 @@ function shadeNoneRules({ root, play }: ThemeClasses): string[] {
     const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
     const pill = playButton && `${playButton} > div:has(> [role="button"])`;
     return [
-        rule(menuButton, glass),
-        rule(cloud, glass),
-        ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
+        rule(menuButton, `${glass} border-color: ${CONTROL_EDGE} !important;`),
+        rule(cloud, `${glass} border-color: ${CONTROL_EDGE} !important;`),
+        ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice'].map((sel) => `${sel} {${glass}}`),
+        ...['.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass} border-color: ${CONTROL_EDGE} !important; }`),
         `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,
         `.gg-value { text-shadow: ${S.labelShadow(d)} !important; }`,
         // A colour only: the download fill is the pill's background image (buildDownloadCss). The page pill has no border,

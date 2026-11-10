@@ -701,9 +701,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('border-width: calc(1 * var(--gg-d)) !important;');
     });
     it("the glass rings are as bright as Home's: their colour is Home's times --gg-ring (ringBoost), 1 when not set", () => {
-        expect(rulesFor(restyled, '.ps_Menu')).toContain('border-color: rgba(255, 255, 255, calc(0.18 * var(--gg-ring, 1))) !important;');
-        expect(rulesFor(restyled, '.gg-card')).toContain('border-color: rgba(255, 255, 255, calc(0.12 * var(--gg-ring, 1)));');
-        expect(buildCleanCss(full)).toMatch(/\.gg-clean-info \{[^}]*border: calc\(1 \* var\(--gg-d\)\) solid rgba\(255, 255, 255, calc\(0\.12 \* var\(--gg-ring, 1\)\)\)/);
+        expect(rulesFor(restyled, '.ps_Menu')).toContain('border-color: rgba(182,199,224,.40) !important;');
+        expect(rulesFor(restyled, '.gg-card')).toContain('border-color: rgba(182,199,224,.40);');
+        expect(buildCleanCss(full)).toMatch(/\.gg-clean-info \{[^}]*border: calc\(1 \* var\(--gg-d\)\) solid rgba\(182,199,224,\.40\)/);
         expect(buildRingCss(1.15)).toBe(':root { --gg-ring: 1.15; }');
     });
     it("everything clickable takes the hover ring under a mouse (in d units), never when focused, ring only but the cards", () => {
@@ -1385,7 +1385,9 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
         for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
             const body = exact(none, sel);
             expect(body, sel).toContain(`background: ${GLASS} !important`);
-            expect(body, sel).toContain('border-color: rgba(255, 255, 255, calc(0.16 * var(--gg-ring, 1))) !important');
+            expect(body, sel).toContain(['.ps_Menu', '.gg-card', '.gg-clean-info'].includes(sel)
+                ? 'border-color: rgba(182,199,224,.40) !important'
+                : 'border-color: rgba(255, 255, 255, calc(0.16 * var(--gg-ring, 1))) !important');
             expect(body, sel).toContain('color: #fff !important');
         }
         for (const sel of ['.gg-label', '.gg-value']) expect(exact(none, sel), sel).toContain(`text-shadow: 0 ${D(1)} ${D(3)} #000b !important`);

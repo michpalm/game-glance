@@ -6,8 +6,8 @@ import {focusRing,TOKENS} from '../styles/tokens';
 /** The footer part alone (owned native footer groups): Home and the game page render the same rules, so the footer never changes style between them. */
 export const homeFooterCss=`[data-gh-footer=true]{background:transparent!important;box-shadow:none!important;border-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-color:transparent!important}
 [data-gh-footer-wrapper=true]{align-items:center}
-[data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);margin:0;white-space:nowrap;transition:none!important}
-[data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+[data-gh-footer-side]{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;border:1px solid ${SOURCE_PILL.border};margin:0;white-space:nowrap;transition:none!important}
+[data-gh-footer-side]>:first-child{display:flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px ${SOURCE_PILL.border}}
 [data-gh-footer-side]>:first-child img,[data-gh-footer-side]>:first-child svg{max-height:14px;max-width:16px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
 [data-gh-footer-side]>:last-child{font:inherit;letter-spacing:normal;text-transform:none}
 [data-gh-footer-side=end][data-gh-footer-edge=first]{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0;padding-right:10px}
@@ -19,7 +19,7 @@ export const homeControlsCss=`
 ${homeHeaderCss}
 html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true],html:has(.gh-keyboard-surface [data-home-search=editing]) [data-gh-footer=true] *{visibility:hidden!important}
 .gh-search-position{position:absolute;pointer-events:auto;height:32px}
-.gh-keyboard-surface button.gh-search-control.DialogButton{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:32px;min-height:0;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font-family:inherit;text-align:left;transition:width 150ms ease;box-shadow:none}
+.gh-keyboard-surface button.gh-search-control.DialogButton{${sourcePillLook(n=>`${n}px`)}display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:32px;min-height:0;padding:0 14px;border:1px solid ${SOURCE_PILL.border};border-radius:12px;color:#fff;font-family:inherit;text-align:left;transition:width 150ms ease;box-shadow:none}
 .gh-search-control svg{width:16px;height:16px;flex:none}
 .gh-search-control span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .gh-search-control .gg-draft span{overflow:visible!important;text-overflow:clip!important;min-width:auto!important}

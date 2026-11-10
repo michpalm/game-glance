@@ -322,17 +322,28 @@ describe('openMotion', () => {
     it("opened with a mouse, it lands on the page's pill unfocused (mouse mode hides the focus look and its growth)", () => {
         const page = spotlight();
         const v = vars(openMotion(homeRects(), page, 'spotlight', s, false));
-        expect(Number(v['--gho-play-sx'])).toBeCloseTo(page.play.w / r.pill.w, 3);
-        expect(Number(v['--gho-play-sy'])).toBeCloseTo(page.play.h / r.pill.h, 3);
+        expect(parseFloat(v['--gho-play-page-w'])).toBeCloseTo(page.play.w / s, 3);
+        expect(parseFloat(v['--gho-play-page-h'])).toBeCloseTo(page.play.h / s, 3);
         const fg = parse(v['--gho-play-fg']);
         expect(fg.tx).toBeCloseTo((page.play.x - r.pill.x) / s, 1);
         const a = parse(v['--gho-play-arrow']);
         expect(a.sx).toBeCloseTo(PAGE_LAYOUT.playArrow.w / HOME_PILL.arrow, 3);
     });
+    it('uses the rounded page outline width in screen pixels for the Play ring', () => {
+        const page = { ...spotlight(), d: 1.1316, dpr: 1.28 };
+        const home = { ...homeRects(), playBorder: { left: 0.78125, top: 0.78125 } };
+        const v = vars(openMotion(home, page, 'spotlight', 1.1316));
+        expect(parseFloat(v['--gho-play-inset-x'])).toBeCloseTo(-0.78125, 4);
+        expect(parseFloat(v['--gho-play-inset-y'])).toBeCloseTo(-0.78125, 4);
+        const svg = decodeURIComponent(v['--gho-play-ring-image']);
+        const stroke = Number(svg.match(/stroke-width="([^"]+)"/)?.[1]);
+        expect(stroke * 1.1316).toBeCloseTo(2 / 1.28, 5);
+        expect(vars(openMotion(homeRects(), page, 'spotlight', 1.1316, false))['--gho-play-ring-image']).toBeUndefined();
+    });
     it("the page's focused pill's exact box (round ends, unlike the stretched layer), relative to Home's pill", () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
-        expect(Number(v['--gho-play-sx'])).toBeCloseTo(pageW / r.pill.w, 3);
-        expect(Number(v['--gho-play-sy'])).toBeCloseTo(pageH / r.pill.h, 3);
+        expect(parseFloat(v['--gho-play-page-w'])).toBeCloseTo(pageW / s, 3);
+        expect(parseFloat(v['--gho-play-page-h'])).toBeCloseTo(pageH / s, 3);
         expect(parseFloat(v['--gho-play-dy'])).toBeCloseTo((r.pill.h - pageH) / 2 / s, 1);
         expect(v['--gho-play-dy']).toMatch(/px$/);
     });

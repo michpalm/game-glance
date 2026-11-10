@@ -1,4 +1,4 @@
-import { actionRadius, frostSurface } from './tokens';
+import { CONTROL_EDGE, actionRadius, frostSurface } from './tokens';
 
 /**
  * The store pill's look (icon + store name), shared by the restyled game page (`.gg-pill`, sized in --gg-d units) and
@@ -15,8 +15,8 @@ export const SOURCE_PILL = {
     iconGap: 8,
     /** Distance from the screen's right edge (the page's side inset). */
     right: 56,
-    /** Section 7: the cards' edge, as the in-game menu's top bar (TOKENS.edge). */
-    border: 'rgba(255,255,255,.12)',
+    /** Shared edge for glass controls over artwork. */
+    border: CONTROL_EDGE,
 } as const;
 
 /** Size, type, corner and fill of the pill (the game page's restyle on top of its 1.1.1 pill: 1px border, inline-flex). Section 7, option B:

@@ -1,6 +1,8 @@
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 
 /** Approved VDL, 20 October / 25 October review. Sizes use the consuming surface's design unit. */
+export const CONTROL_EDGE = 'rgba(182,199,224,.40)';
+
 export const TOKENS = {
     glass: 'rgba(12,16,22,.40)', strong: 'rgba(12,16,22,.55)', solid: 'rgba(12,16,22,.75)',
     ink: '#07090c', scrim: 'rgb(5,7,10)',

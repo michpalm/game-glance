@@ -34,6 +34,7 @@ export interface PageTargets {
     cards?: Box[];
     /** The page's d unit (CSS px per handoff px), exactly as its --gg-d. Absent: Home's canvas scale. */
     d?: number;
+    dpr?: number;
     /** Each stat's label and value; on Clean, the progress bar under a stat that has one. */
     stats: Partial<Record<StatKey, { label: Box; value: Box; bar?: Box }>>;
     /** Spotlight look, when asked for: the description and the rest of the HowLongToBeat card. */
@@ -210,7 +211,7 @@ export function pageTargets(
         shells = cards.map(snapBox);
         store = { x: W - side - storeSize.w, y: playTop - L.clean.storeGap * d - storeSize.h, w: storeSize.w, h: storeSize.h };
     }
-    return { titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, d, border: BORDER, ring: ringBoost(screen.dpr ?? 0, W, H), stats: out, extras };
+    return { titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, d, dpr: screen.dpr, border: BORDER, ring: ringBoost(screen.dpr ?? 0, W, H), stats: out, extras };
 }
 
 /** The page card (`cards`: PageTargets.shells) that point `p` is in, edges included, or null. Pure. */

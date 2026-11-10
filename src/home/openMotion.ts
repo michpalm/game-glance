@@ -1,6 +1,7 @@
+import { actionRadius } from '../styles/tokens';
 import { PAGE_LAYOUT, pillFocusScale } from '../styles/themeCss';
 import { HOME_PILL, TITLE_BLOCK } from './homeCss';
-import { cardAround } from './openTargets';
+import { cardAround, cardBorder } from './openTargets';
 import type { Box, PageLook, PageTargets, StatKey } from './openTargets';
 
 /**
@@ -24,6 +25,7 @@ export interface HomeRects {
     titleText?: boolean;
     eyebrow: Box;
     play: Box;
+    playBorder?: { left: number; top: number };
     circles: Box[];
     /** Index in `circles` of the info button (the page has none: it fades), or null. */
     infoCircle: number | null;
@@ -79,9 +81,29 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // pill's size about that centre line, so the label never stretches.
     out['--gho-play-bg'] = `${translate(0, (home.play.h - to.h) / 2 / s)} scale(${k(to.w / home.play.w)}, ${k(to.h / home.play.h)})`;
     // The page pill's exact box in the pill's own px (its round ends: the stretched layer's are oval), for the settle.
-    out['--gho-play-sx'] = k(to.w / home.play.w);
-    out['--gho-play-sy'] = k(to.h / home.play.h);
+    const border = (value: number | undefined) => value !== undefined && Number.isFinite(value) ? value : HOME_PILL.border;
+    out['--gho-play-inset-x'] = px(-border(home.playBorder?.left));
+    out['--gho-play-inset-y'] = px(-border(home.playBorder?.top));
+    out['--gho-play-home-w'] = px(home.play.w / s);
+    out['--gho-play-home-h'] = px(home.play.h / s);
+    out['--gho-play-page-w'] = px(to.w / s);
+    out['--gho-play-page-h'] = px(to.h / s);
+    const radius = actionRadius(PAGE_LAYOUT.icon, 'action') * to.h / PAGE_LAYOUT.icon / s;
+    out['--gho-play-page-radius'] = px(radius);
+    if (focused) {
+        // Chromium rounds CSS outlines before the Home canvas transform. Draw the
+        // ring as a vector stroke using the page's already rounded screen width.
+        const stroke = cardBorder(page.dpr, 2 * d) / s;
+        const gap = 2 * d / s;
+        const pad = gap + stroke;
+        const w = to.w / s + 2 * pad, h = to.h / s + 2 * pad;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><rect x="${stroke / 2}" y="${stroke / 2}" width="${w - stroke}" height="${h - stroke}" rx="${radius + gap + stroke / 2}" fill="none" stroke="white" stroke-width="${stroke}"/></svg>`;
+        out['--gho-play-ring-image'] = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        out['--gho-play-ring-pad'] = px(pad);
+    }
     out['--gho-play-dy'] = px((home.play.h - to.h) / 2 / s);
+    // The exact-shape settle layer starts at Home's size and grows on the same timeline.
+    out['--gho-play-settle-from'] = `${translate(0, (to.h - home.play.h) / 2 / s)} scale(${k(home.play.w / to.w)}, ${k(home.play.h / to.h)})`;
     out['--gho-play-fg'] = translate((to.x - home.play.x) / s, (to.y + to.h / 2 - (home.play.y + home.play.h / 2)) / s);
     // Inside it (origin: its left edge and centre line), the glyph and the label grow to the page's and move to its insets
     // (scaled with the focused pill).

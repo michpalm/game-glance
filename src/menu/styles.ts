@@ -1,21 +1,21 @@
 import { radialStyles } from './radialStyles';
-import { TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
+import { CONTROL_EDGE, TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
 
 // Active navigation tabs stay legible after focus moves into the panel; other option slices retain their quieter role.
 const selectedTab = `${selectedSlice()};--gg-selected:rgba(255,255,255,.24);--gg-selected-edge:inset 0 -3px 0 color-mix(in srgb,var(--gg-accent-text,var(--gg-accent)) 65%,#fff)`;
 
-const menuSurfaceRim = 'border:1.5px solid rgba(182,199,224,.34);box-shadow:0 0 0 1px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08)';
+const menuSurfaceRim = 'border:1.5px solid rgba(182,199,224,.49);box-shadow:0 0 0 1px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08)';
 const idleTileTint = 'rgba(124,151,191,.075)';
 
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
 export const menuStyles = radialStyles + `
 .gg-menu-native-host{position:absolute;inset:0;width:100%;height:100%;background:transparent;color:var(--gg-text,#fff);overflow:hidden;transform:translateZ(0)}
-.gg-menu{--gg-d:1px;--gg-glass:var(--gg-glass-strong);--gg-text-dim:${TOKENS.label};position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
+.gg-menu{--gg-menu-detail-edge:${CONTROL_EDGE};--gg-d:1px;--gg-glass:var(--gg-glass-strong);--gg-text-dim:${TOKENS.label};position:absolute;left:50%;top:7.6923vh;transform:translateX(-50%) scale(var(--gg-menu-scale,.65));transform-origin:top center;width:calc(60vw / var(--gg-menu-scale,.65));height:calc(84vh / var(--gg-menu-scale,.65));margin:0;display:flex;flex-direction:column;font-family:"Motiva Sans",Arial,sans-serif;color:var(--gg-text);font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);line-height:1.3;text-shadow:var(--gg-text-shadow);transition:--gg-accent var(--gg-accent-duration),opacity var(--gg-fast) linear}
 .gg-menu *{box-sizing:border-box}
 .gg-menu>header{flex:none;display:flex;align-items:center;padding:0 16px 12px;gap:8px}
 .gg-menu-caption-actions{display:flex;align-items:center;gap:8px}
-.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton{width:auto;min-width:0;min-height:44px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--gg-edge-raised);border-radius:var(--gg-r-card);background:var(--gg-glass);color:var(--gg-text);font:inherit;font-weight:var(--gg-weight-body);line-height:1.3;text-transform:none;text-shadow:var(--gg-text-shadow);box-shadow:none;white-space:normal;transition:background var(--gg-base),box-shadow var(--gg-base),transform var(--gg-base),border-color var(--gg-fast)}
+.gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton{width:auto;min-width:0;min-height:44px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--gg-menu-detail-edge);border-radius:var(--gg-r-card);background:var(--gg-glass);color:var(--gg-text);font:inherit;font-weight:var(--gg-weight-body);line-height:1.3;text-transform:none;text-shadow:var(--gg-text-shadow);box-shadow:none;white-space:normal;transition:background var(--gg-base),box-shadow var(--gg-base),transform var(--gg-base),border-color var(--gg-fast)}
 .gg-menu button.gg-menu-action.DialogButton svg{width:20px;height:20px;flex:none}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible){${focusRing('menu')}}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible):not([aria-pressed=true]){background:var(--gg-glass-strong)}
@@ -31,7 +31,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:is(.gpfocus,:focus-visible){${focusRing('slice')};color:var(--gg-text)}
 html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButton:hover{box-shadow:none;color:var(--gg-text)}
 .gg-menu .gg-menu-shoulder{display:flex;align-items:center;justify-content:center;flex:none;min-width:40px;padding:8px;font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
-.gg-menu .gg-menu-shoulder:first-child{border-right:1px solid var(--gg-edge)}.gg-menu .gg-menu-shoulder:last-child{border-left:1px solid var(--gg-edge)}
+.gg-menu .gg-menu-shoulder:first-child{border-right:1px solid var(--gg-menu-detail-edge)}.gg-menu .gg-menu-shoulder:last-child{border-left:1px solid var(--gg-menu-detail-edge)}
 .gg-menu .gg-menu-panel{margin-top:12px;padding:24px;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
 .gg-menu h2{font-size:var(--gg-type-heading);font-weight:var(--gg-weight-heading);letter-spacing:-.02em;margin:0 0 12px}
 .gg-menu h3{font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);letter-spacing:.16em;text-transform:uppercase;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);margin:12px 0 4px}
@@ -40,7 +40,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-notifications>.gg-menu-heading,.gg-menu .gg-social>.gg-menu-heading{flex:none;margin:0}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu .gg-menu-grid.gg-menu-grid-navigate{grid-template-columns:repeat(4,minmax(0,1fr))}
-.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);background:var(--gg-glass)}
+.gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-menu-detail-edge);background:var(--gg-glass)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:not(:is(.gpfocus,:focus-visible,:hover,[aria-pressed=true])){
     border-color:rgba(182,199,224,.24);
     background-image:linear-gradient(${idleTileTint},${idleTileTint});
@@ -61,7 +61,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
 .gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px;min-height:100%}
 .gg-menu .gg-notifications-list{display:flex;flex-direction:column;gap:12px}
-.gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-edge);text-align:left}
+.gg-menu-native-host .gg-menu .gg-notifications-list button.gg-menu-action.DialogButton{justify-content:flex-start;gap:16px;padding:10px 16px 10px 10px;border-radius:var(--gg-r-card);border-color:var(--gg-menu-detail-edge);text-align:left}
 .gg-menu .gg-notification-art{flex:none;width:112px;height:52px;border-radius:var(--gg-r-small);object-fit:cover;display:grid;place-items:center;background:var(--gg-edge)}
 .gg-menu .gg-notification-text{flex:1;min-width:0;display:grid;gap:2px}
 .gg-menu .gg-notification-text small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label);text-transform:uppercase;letter-spacing:.08em}
@@ -88,23 +88,23 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-setting .SliderTrack::before{height:100%;background:var(--gg-accent);border-radius:var(--gg-r-pill)}
 .gg-menu .gg-menu-setting .SliderHandle{width:18px;height:18px;top:3px;right:3px;left:auto;bottom:auto;margin:0;border:0;border-radius:var(--gg-r-pill);background:var(--gg-on-accent)}
 .gg-menu .gg-menu-setting [role=checkbox]::after{content:none}
-.gg-menu .gg-menu-setting [role=checkbox]>:first-child{outline:1px solid var(--gg-edge-active);outline-offset:-1px;background:var(--gg-track);box-shadow:var(--gg-track-edge)}
+.gg-menu .gg-menu-setting [role=checkbox]>:first-child{outline:1px solid var(--gg-menu-detail-edge);outline-offset:-1px;background:var(--gg-track);box-shadow:var(--gg-track-edge)}
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
 .gg-menu .gg-menu-setting [role=checkbox][aria-checked=true]>:first-child{background:var(--gg-accent)}
 .gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;border-radius:var(--gg-r-pill);background:var(--gg-on-accent);box-shadow:none}
 .gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;grid-auto-rows:minmax(56px,auto)}
 .gg-menu-switches>div{min-width:0}.gg-menu-setting-toggle{display:flex;align-items:center}.gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}
 .gg-menu-setting-header{margin:0 0 8px;font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);letter-spacing:0;text-transform:none;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
-.gg-menu-segmented{display:flex;gap:0;padding:0;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-edge)}
+.gg-menu-segmented{display:flex;gap:0;padding:0;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-menu-detail-edge)}
 .gg-menu-native-host .gg-menu .gg-menu-segmented button.gg-menu-action.DialogButton{flex:1;min-width:0;min-height:44px;padding:8px;border:0;border-radius:0;background:transparent}
-.gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton+button{box-shadow:inset 1px 0 0 var(--gg-edge)}
+.gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton+button{border-inline-start:1px solid var(--gg-menu-detail-edge)}
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu :is(.gg-menu-segmented,.gg-menu-perf-tabs) button.gg-menu-action.DialogButton:is(.gpfocus,:focus-visible){${focusRing('slice')}}
 .gg-menu-native-host .gg-menu .gg-menu-segmented button.gg-menu-action.DialogButton[aria-pressed=true]{${selectedSlice()}}
 .gg-menu .gg-menu-performance-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
 .gg-menu .gg-menu-performance-heading{flex:1;min-width:0}.gg-menu .gg-menu-performance-heading h2{margin:0 0 4px}
 .gg-menu .gg-menu-performance-power{margin:0;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-menu-profile-context{flex:0 1 44%;min-width:0}.gg-menu .gg-menu-profile-context .gg-menu-setting{padding-right:0}
-.gg-menu-perf-tabs{display:flex;gap:0;padding:0;margin-bottom:16px;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-edge)}
+.gg-menu-perf-tabs{display:flex;gap:0;padding:0;margin-bottom:16px;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-menu-detail-edge)}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton{position:relative;flex:1;min-height:44px;border:0;border-radius:0;background:transparent;color:var(--gg-text-idle);padding:8px 4px}
 .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]{${selectedTab}}
 html[data-gg-mouse] .gg-menu-native-host .gg-menu .gg-menu-perf-tabs button.gg-menu-action.DialogButton[aria-pressed=true]:hover{box-shadow:var(--gg-selected-edge);color:var(--gg-text)}

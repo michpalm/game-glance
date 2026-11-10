@@ -84,9 +84,9 @@ describe('action row (VDL Section 7)', () => {
     it('the opening Play layers keep the soft corner and the ring, never the glow', () => {
         const layers = rulesMatching(css, /data-action="play"\]::(before|after)$/).join(' ');
         expect(layers).not.toContain('999px'); expect(layers).not.toMatch(/14px 40px -8px/);
-        expect(layers).toContain('outline:2px solid #fff');
+        expect(css).toContain('background: var(--gho-play-ring-image, none)');
         // The page's corner (22 of its 60) at the growing layer's height.
-        expect(layers).toContain('border-radius: calc(var(--gho-play-sy) * 19.8px)');
+        expect(layers).toContain('border-radius: var(--gho-play-page-radius)');
     });
 });
 
@@ -167,7 +167,7 @@ describe('status bar and chips match the menu (VDL Section 7)', () => {
         const css = homeCss();
         for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
             const r = ruleFor(css, sel);
-            expect(r, sel).toContain('border-color: rgba(255,255,255,.12)');
+            expect(r, sel).toContain('border-color: rgba(182,199,224,.40)');
             expect(r, sel).not.toMatch(/font-weight: 600/);
             expect(r, sel).toContain('font-weight: 700');
         }
@@ -312,11 +312,11 @@ describe('homeCss', () => {
         // (The ring is drawn by its ::before, which fades out as the page's crisp ring, outside the canvas, fades in; the
         // panel keeps a transparent 1px border so its box and edges stay the page card's.)
         expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid transparent/);
-        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(182,199,224,\.40\)/);
         expect(css).not.toContain('--gho-x-border');
         // The pill's layers that grow into the page pill start at its outer edge (its 1px border), as openMotion's scales assume.
-        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: -1px[^}]*top: -1px[^}]*width: calc\(100% \+ 2px\)[^}]*height: calc\(100% \+ 2px\)/);
-        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::after \{[^}]*left: -1px[^}]*top: calc\(var\(--gho-play-dy\) - 1px\)[^}]*width: calc\(\(100% \+ 2px\) \* var\(--gho-play-sx\)\)[^}]*height: calc\(\(100% \+ 2px\) \* var\(--gho-play-sy\)\)/);
+        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: var\(--gho-play-inset-x\)[^}]*top: var\(--gho-play-inset-y\)[^}]*width: var\(--gho-play-home-w\)[^}]*height: var\(--gho-play-home-h\)/);
+        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::after \{[^}]*left: var\(--gho-play-inset-x\)[^}]*top: calc\(var\(--gho-play-dy\) \+ var\(--gho-play-inset-y\)\)[^}]*width: var\(--gho-play-page-w\)[^}]*height: var\(--gho-play-page-h\)/);
     });
     it('never marks transform or opacity !important: Chromium will not run an animation of an !important property on its compositor', () => {
         // (compositeFailed 262144, kAffectsImportantProperty, probed on the Ally: the open transition's motion then ran on the
@@ -707,9 +707,9 @@ describe('homeCss open transition', () => {
         expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
         const pill = body((sel) => sel.includes('data-gh-opening="morph"') && !sel.includes('data-gh-phase') && sel.endsWith('[data-action="play"]::after'));
-        expect(pill).toContain('width: calc((100% + 2px) * var(--gho-play-sx))');
-        expect(pill).toContain('height: calc((100% + 2px) * var(--gho-play-sy))');
-        expect(pill).toContain('top: calc(var(--gho-play-dy) - 1px)');
+        expect(pill).toContain('width: var(--gho-play-page-w)');
+        expect(pill).toContain('height: var(--gho-play-page-h)');
+        expect(pill).toContain('top: calc(var(--gho-play-dy) + var(--gho-play-inset-y))');
         expect(pill).not.toContain('transform: var(--gho-play-bg)');
         expect(body((sel) => sel.includes('data-gh-phase="to"') && sel.endsWith('[data-action="play"]::after'))).toContain(`animation: gh-open-settle ${OPEN_TIMINGS.morph}ms linear both`);
         expect(css).toContain(`@keyframes gh-open-settle { 0%, ${settleAt}% { opacity: 0; animation-timing-function: ease-in-out; } 100% { opacity: 1; } }`);
@@ -912,13 +912,14 @@ describe('homeCss Play pill while opening', () => {
     it("takes on the page's focused look as the morph settles (Steam focuses Play there): a ring layer at the page pill's exact size", () => {
         const css = homeCss();
         const after = /\.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(after).toContain('outline:2px solid #fff');
-        expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; }');
+        expect(after).not.toContain('outline:');
+        expect(css).toContain('background: var(--gho-play-ring-image, none)');
+        expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; transform-origin: 0 0; transform: var(--gho-play-settle-from, none); }');
         // The page's focused Play keeps its accent fill, as Home's (no lighter overlay any more).
         expect(after).toContain('background: var(--glance-accent)');
         expect(after).not.toContain('rgba(255,255,255,.28)');
         const to = /\[data-gh-phase="to"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(to).not.toContain('transform');
+        expect(to).toContain('transform: translate(0, 0) scale(1, 1)');
         // Faded in by the late-fade animation, which holds it at 1 (its own value stays 0: see "delayed fades").
         expect(to).toContain('animation: gh-open-settle');
     });
@@ -1056,7 +1057,7 @@ describe('homeCss mouse hover', () => {
         expect(css).toMatch(new RegExp(`\\.gh-cap\\.gh-cap-hover[^{]*\\{[^}]*box-shadow: ${ring.replace(/[().]/g, '\\$&')}`));
     });
     it("opened with a mouse, the growing Play pill has no focus ring (the page shows none then)", () => {
-        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*outline: none !important/);
+        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\] > \.gh-open-play-ring \{[^}]*display: none !important/);
     });
     it('no hover look without mouse mode: every :hover rule is under html[data-gg-mouse]', () => {
         for (const sel of css.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');
@@ -1207,14 +1208,14 @@ describe('the stack under the default growth (#55)', () => {
 describe('the cards\' crisp ring in the open transition', () => {
     const css = homeCss();
     it('draws it as the page\'s card ring, outside the canvas', () => {
-        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(255,255,255,calc\(\.12 \* var\(--gho-ring-boost, 1\)\)\)/);
+        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(182,199,224,\.40\)/);
     });
     it('starts on the chips, transparent, and grows to the card as it fades in', () => {
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-open-ring\[data-i="0"\] \{[^}]*display: block[^}]*transform: var\(--gho-ring-0-from\)[^}]*opacity: 0/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-ring\[data-i="0"\] \{[^}]*transform: none[^}]*opacity: 1[^}]*transition: transform/);
     });
     it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
-        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(182,199,224,\.40\)/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
     });
 });
@@ -1284,8 +1285,7 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         for (const sel of ['.gh-open-shell', '.gh-open-circle', '.gh-normal-card', '.gh-clean-info', '.gh-x-pill:not(.gh-x-selectable)', '.gh-x-family', '.gh-x-store-choice']) {
             expect(none(sel), sel).toContain(`background: ${GLASS} !important`);
         }
-        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(255,255,255,.16) !important');
-        expect(none('.gh-open-ring')).toContain('border-color: rgba(255,255,255,calc(.16 * var(--gho-ring-boost, 1))) !important');
+        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(182,199,224,.40) !important');
         for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
         const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
         expect(eyebrowTwin).toContain('color: #fff');

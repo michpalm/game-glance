@@ -71,8 +71,10 @@ export function measureHome(root: Element | null): HomeRects | null {
         const canvas = boxOf(root.querySelector('.gh-canvas'));
         const titleSlot = boxOf(root.querySelector('.gh-title-slot'));
         const eyebrow = boxOf(root.querySelector('.gh-eyebrow'));
-        const play = boxOf(root.querySelector('.gh-actions .gh-btn[data-action="play"]'));
+        const playElement = root.querySelector('.gh-actions .gh-btn[data-action="play"]');
+        const play = boxOf(playElement);
         if (!canvas || !titleSlot || !eyebrow || !play) return null;
+        const playStyle = playElement && root.ownerDocument?.defaultView?.getComputedStyle(playElement);
         const circleEls = [...root.querySelectorAll('.gh-actions .gh-btn-circle')];
         const info = circleEls.findIndex((c) => c.getAttribute('data-action') === 'info');
         const chips = drawnChips(root).map((chip) => ({
@@ -89,6 +91,7 @@ export function measureHome(root: Element | null): HomeRects | null {
             titleText: root.querySelector('.gh-title-slot .gh-title') !== null,
             eyebrow,
             play,
+            playBorder: playStyle ? { left: parseFloat(playStyle.borderLeftWidth), top: parseFloat(playStyle.borderTopWidth) } : undefined,
             circles: circleEls.map((c) => boxOf(c)!),
             infoCircle: info >= 0 ? info : null,
             store: boxOf(root.querySelector('.gh-source')),
