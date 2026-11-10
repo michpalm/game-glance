@@ -24,7 +24,7 @@ export function createQuickSettings(bindings:QuickSettingsBindings) {
             read(){const d=device(),value=d?(type===1?d.flOutputVolume:d.flInputVolume):null;
                 const available=!!d&&(type===1?d.bHasOutput:d.bHasInput)&&typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
                 return {available,value:available?value!*100:null,scope:{kind:'global'},min:0,max:100,step:1};},
-            subscribe:bindings.subscribe,contextKey:()=>`audio:${type}:${device()?.id??'none'}`,validate:validatePercent,coalesceMs:100,
+            subscribe:bindings.subscribe,contextKey:()=>`audio:${type}:${device()?.id??'none'}`,validate:validatePercent,liveIntervalMs:50,
             async write(value,key){const d=device();if(!d||`audio:${type}:${d.id}`!==key||typeof value!=='number')throw Error('Audio device changed');await audio.write(d.id,type,value/100);},
         });
     }
@@ -32,7 +32,7 @@ export function createQuickSettings(bindings:QuickSettingsBindings) {
         controls.brightness=createSettingAdapter<number|boolean>({
             read(){const value=binding.read();const available=binding.available?.()!==false&&typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
                 return {available,value:available?value!*100:null,scope:{kind:'global'},min:0,max:100,step:1};},
-            subscribe:bindings.subscribe,contextKey:binding.contextKey,validate:validatePercent,coalesceMs:100,
+            subscribe:bindings.subscribe,contextKey:binding.contextKey,validate:validatePercent,liveIntervalMs:50,
             async write(value,key){if(typeof value!=='number'||binding.contextKey()!==key)throw Error('Display changed');await binding.write(value/100,key);},
         });
     }

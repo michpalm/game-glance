@@ -219,8 +219,7 @@ function clampedShift(logicalHeight: number, legendReserve: number): number {
 export function statusRules(): string[] {
     return [
 
-        // Status bar (clock, battery, connection) in Steam's top strip: the store pill's glass pill, then your online status
-        // dot over Steam's top-bar avatar (StatusBar sets --gh-status-right / --gh-status-cy from statusPlacement; STATUS_BAR is the fallback), above the page (the raised feed slides under it). It all fades out while
+        // The status pill contains the clock, battery, connection and presence indicator. It fades out while
         // focus is in Steam's own top bar (`.gh-status-away`, set by SpotlightHome).
         rule('.gh-status', `position: absolute; right: var(--gh-status-right, ${STATUS_BAR.right}px); top: calc(var(--gh-status-cy, ${STATUS_BAR.centreY}px) - ${SOURCE_PILL.height / 2}px);
             height: ${SOURCE_PILL.height}px; display: flex; align-items: center; gap: var(--gh-status-gap, ${STATUS_BAR.gap}px); margin: 0; padding: 0;
@@ -238,6 +237,7 @@ export function statusRules(): string[] {
         // follows the bar's (VDL: a nested shape takes the outer radius minus the gap), 12 - (32 - 22) / 2 = 7.
         rule('.gh-status-avatar', `flex: 0 0 auto; width: ${STATUS_AVATAR}px; height: ${STATUS_AVATAR}px; min-width: 24px; min-height: 24px; box-sizing: border-box; border: 2px solid var(--gh-avatar-ring, #fff);
             border-radius: ${actionRadius(SOURCE_PILL.height, 'action') - (SOURCE_PILL.height - STATUS_AVATAR) / 2}px; background-size: cover; background-position: center`),
+        rule('.gh-status-avatar.gh-status-avatar-circle', 'border-radius: 50%'),
         rule('.gh-status-low', `color: ${CLOUD_COLOURS.bad}`),
         rule('.gh-status-offline svg', 'opacity: .6'),
     ];

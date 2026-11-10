@@ -17,6 +17,11 @@ describe('frost context',()=>{
     it('recognizes Home and HDR independently',()=>{
         expect(readFrostContext(owner(false,3,true),'v1')).toMatchObject({background:'steam',colorMode:'hdr'});
     });
+    it('builds Home geometry without HDR metadata from Steam or Gamescope',()=>{
+        const o=owner(false,3,null);
+        Object.assign(o,{SystemPerfStore:{msgSettingsGlobal:{}}});
+        expect(readFrostContext(o,'v1')).toMatchObject({background:'steam',fit:'fit',outputWidth:1920});
+    });
     it('rejects unknown game mapping, color and viewport',()=>{
         expect(readFrostContext(owner(true,1),'v1')).toBeNull();
         expect(readFrostContext(owner(true,3,undefined),'v1')).not.toBeNull();

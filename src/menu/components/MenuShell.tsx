@@ -1,3 +1,4 @@
+import { menuScale } from '../menuScale';
 import { Focusable, type GamepadEvent } from '@decky/ui';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuArrowUpRight, LuBell } from 'react-icons/lu';
@@ -106,7 +107,7 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         if (!element || !view || !active) return;
         // Steam changes CSS viewport/DPR between Home and the in-game overlay.
         // Normalize against the approved 829px handheld viewport instead of switching layouts.
-        const resize = () => element.style.setProperty('--gg-menu-scale', String(view.innerWidth * .65 / 829));
+        const resize = () => element.style.setProperty('--gg-menu-scale', String(menuScale(view.innerWidth)));
         resize(); view.addEventListener('resize', resize);
         return () => view.removeEventListener('resize', resize);
     }, [active]);

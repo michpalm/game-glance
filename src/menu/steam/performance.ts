@@ -55,12 +55,25 @@ function describe(id:string,s:PerformanceState):NativeSnapshot {
     switch(id){
         case 'profile':result.options=p?.platform_performance_profiles_available?.filter(v=>typeof v==='string'&&v.length>0);available=platform&&!!result.options?.length;break;
         case 'frameLimit':{
-            result.options=numbers(d?.supported_frame_rates);available=gamescope&&g?.is_app_refresh_rate_supported===true&&c.gamescope_enable_app_target_framerate===true&&!!result.options.length;
+            const rates=numbers(d?.supported_frame_rates).filter(rate=>rate>0);
+            available=gamescope&&g?.is_app_refresh_rate_supported===true&&c.gamescope_enable_app_target_framerate===true&&rates.length>0;
+            // Integer rates define the endpoints for Steam's continuous FPS mode.
+            if(rates.length&&rates.every(Number.isInteger))range(Math.min(...rates),Math.max(...rates),1);
+            else result.options=rates;
             disabled ||= c.gamescope_disable_framelimit===true||g?.is_refresh_rate_switching_restricted===true&&d?.is_external!==true;
             if(c.gamescope_disable_framelimit===true)reason='Disable limit is on';break;
         }
         case 'disableLimit':available=gamescope&&g?.is_app_refresh_rate_supported===true&&c.gamescope_enable_app_target_framerate===true;break;
-        case 'refreshRate':result.options=numbers(d?.supported_refresh_rates);available=gamescope&&g?.is_refresh_rate_switching_supported===true&&d?.is_external===false&&!!result.options.length;disabled ||= g?.is_refresh_rate_switching_restricted===true;break;
+        case 'refreshRate':{
+            const modes=numbers(d?.supported_refresh_rates).filter(rate=>rate>0).sort((a,b)=>a-b);
+            result.options=[...new Set(modes)];
+            available=gamescope&&result.options.length>0;
+            const canSwitch=g?.is_refresh_rate_switching_supported===true&&d?.is_external===false&&result.options.length>1;
+            disabled ||= !canSwitch||g?.is_refresh_rate_switching_restricted===true;
+            if(result.options.length===1)value=result.options[0];
+            if(!canSwitch&&!reason)reason='Refresh rate is fixed or managed by Steam';
+            break;
+        }
         case 'hdr':available=gamescope&&d?.is_hdr_capable===true;break;
         case 'tearing':available=gamescope;break;
         case 'halfRate':available=platform&&p?.is_vrs_available===true;break;
@@ -113,7 +126,7 @@ export function createPerformance(bindings:PerformanceBindings) {
             return JSON.stringify([s.accountId,s.currentGameId,clientKey?'client':s.activeProfileId,s.gamescope?.active_display_info?.connector_name,meta.available,meta.disabled,meta.min,meta.max,meta.options]);
         };
         controls[id]=createSettingAdapter<PerformanceValue>({read:()=>describe(id,bindings.read()),subscribe:bindings.subscribe,contextKey,validate,
-            coalesceMs:['frameLimit','refreshRate'].includes(id)?700:id==='gpuClock'?200:['tdp','sharpness','overlayLevel'].includes(id)?100:0,
+            liveIntervalMs:['refreshRate','gpuClock'].includes(id)?200:['frameLimit','tdp','sharpness','overlayLevel'].includes(id)?100:undefined,
             async write(value,key){
                 if(contextKey()!==key)throw Error('Performance context changed');
                 if(clientKey)await bindings.writeClient(clientKey,value);

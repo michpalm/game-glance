@@ -15,7 +15,7 @@ interface Receipt<T> {
 }
 interface Options<T> {
     read(): NativeSnapshot<T>; subscribe(listener: Stop): Stop; write(value: T, contextKey: string): Promise<void>;
-    contextKey(): string; validate(value: T, snapshot: SettingSnapshot<T>): T | null; coalesceMs?: number; timeoutMs?: number;
+    contextKey(): string; validate(value: T, snapshot: SettingSnapshot<T>): T | null; coalesceMs?: number; liveIntervalMs?: number; timeoutMs?: number;
 }
 export function createSettingAdapter<T>(options: Options<T>): SettingAdapter<T> {
     let key = options.contextKey(), epoch = 0, revision = 0, latest = 0, disposed = false;
@@ -66,7 +66,7 @@ export function createSettingAdapter<T>(options: Options<T>): SettingAdapter<T> 
     }
     read(); publish();
     const queue = createWriteQueue<Receipt<T>>({
-        contextKey: options.contextKey, coalesceMs: options.coalesceMs,
+        contextKey: options.contextKey, coalesceMs: options.coalesceMs, liveIntervalMs: options.liveIntervalMs,
         async write(receipt, capturedKey) {
             if (!receipts.has(receipt.id) || receipt.epoch !== epoch || capturedKey !== options.contextKey()) throw new WriteCancelledError('context changed');
             const value = options.validate(receipt.value, snapshot);

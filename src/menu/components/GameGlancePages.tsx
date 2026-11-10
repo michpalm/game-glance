@@ -1,3 +1,4 @@
+import { PROFILE_STYLES, PROFILE_STYLE_LABELS } from '../../data/settings';
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
 import type { ReactElement } from 'react';
 import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
@@ -91,9 +92,9 @@ export function StatusBarPage({ v, a }: PageProps) {
         {shown.length === 0 ? <p className="gg-plugin-note">Turn on Spotlight Home to use the status bar and footer.</p> : rows(<>
             <ToggleRow id="gg:status-bar:statusBar" label="Status bar" description="Clock, battery and connection at the top-right of Home."
                 checked={s.homeStatusBar} onChange={value => a.run(a.store.setHomeStatusBar(value))} />
-            {shown.includes('statusAvatar') && <ToggleRow id="gg:status-bar:statusAvatar" label="Profile picture"
-                description="Your avatar, ringed in your online colour, instead of the dot." checked={s.statusAvatar}
-                onChange={value => a.run(a.store.setStatusAvatar(value))} />}
+            {shown.includes('statusAvatar') && <SegmentRow id="gg:status-bar:statusAvatar" label="Profile style"
+                options={PROFILE_STYLES} labels={PROFILE_STYLE_LABELS} value={s.profileStyle ?? (s.statusAvatar ? 'square' : 'dot')}
+                onSelect={value => a.run(a.store.setProfileStyle(value))} />}
             {shown.includes('expandedControls') && <h3>Controls</h3>}
             {shown.includes('expandedControls') && <ToggleRow id="gg:status-bar:expandedControls" label="Expanded Home controls"
                 description="Matching controller prompts and individually selectable status items." checked={s.homeExpandedControls}

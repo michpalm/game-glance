@@ -23,8 +23,9 @@ export function reduceHomeSearch(s:HomeSearchState,e:HomeSearchEvent):HomeSearch
  case 'focus-result':return e.appId===null?{...s,phase:'field'}:s.matches.some(a=>a.appId===e.appId)?{...s,phase:'results',focusedAppId:e.appId}:s;
  case 'scroll':return Number.isFinite(e.top)&&s.scrollTop!==e.top?{...s,scrollTop:Math.max(0,e.top)}:s;
  case 'open-error':return e.epoch===s.epoch&&searchOverlayOpen(s)?{...s,openError:true}:s;
- case 'back':if(s.phase==='results')return {...s,phase:'field'};if(s.phase==='editing')return {...s,phase:'field'};return s.phase==='hidden'?s:{...s,phase:'hidden',epoch:s.epoch+1};
- case 'dismiss':case 'content':case 'suspend':return s.phase==='hidden'?s:{...s,phase:'hidden',epoch:s.epoch+1};
+ case 'back':case 'dismiss':case 'content':case 'suspend':
+  if(e.type==='back'&&(s.phase==='results'||s.phase==='editing'))return {...s,phase:'field'};
+  return s.phase==='hidden'?s:{...s,phase:'hidden',epoch:s.epoch+1,draft:'',matches:[],focusedAppId:null,scrollTop:0,openError:false};
  }
 }
 export function homeSearchBounds(viewport:{width:number;height:number},status:{left:number;top:number;width:number;height:number},editing:boolean):{left:number;top:number;width:number}|null {

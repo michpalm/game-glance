@@ -7,7 +7,7 @@ import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
 import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
-import { settings, useSettings } from '../data/settings';
+import { PROFILE_STYLES, PROFILE_STYLE_LABELS, settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
 import { everyPageAvailable, homeRows, HomeRow, matchLine, StatusRow, statusRows } from '../data/settingsCategories';
 import { checkOverride } from '../logic/hltbId';
@@ -18,7 +18,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -146,11 +146,12 @@ export function SettingsPanel() {
             />
         ),
         statusAvatar: (
-            <ToggleField
-                label="Profile picture in the status bar"
-                description="Shows your avatar, round and ringed in your online colour, instead of the dot."
-                checked={statusAvatar}
-                onChange={(value) => settings.setStatusAvatar(value)}
+            <DropdownItem
+                label="Status bar profile style"
+                description="Show a presence dot or an avatar with a coloured ring."
+                rgOptions={PROFILE_STYLES.map(style => ({ data: style, label: PROFILE_STYLE_LABELS[style] }))}
+                selectedOption={profileStyle ?? (statusAvatar ? 'square' : 'dot')}
+                onChange={option => settings.setProfileStyle(option.data)}
             />
         ),
         expandedControls: (

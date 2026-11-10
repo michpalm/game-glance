@@ -27,11 +27,10 @@ describe('native Performance controls',()=>{
         expect(h.perf.controls.frameLimit.get().scope).toEqual({kind:'unknown'});
         h.state.activeProfileId='';h.emit();expect(h.perf.getProfile()).toMatchObject({isGameSpecific:false,label:'Profile unavailable'});h.perf.dispose();
     });
-    it('preserves fractional native frame choices and waits700ms plus authoritative readback',async()=>{
+    it('writes fractional frame choices immediately and waits for authoritative readback',async()=>{
         const h=fixture(),c=h.perf.controls.frameLimit;
         expect(c.get().options).toEqual([23.976,29.97,59.94]);const p=c.set(29.97);
-        await vi.advanceTimersByTimeAsync(699);expect(h.writeClient).not.toHaveBeenCalled();
-        await vi.advanceTimersByTimeAsync(1);expect(h.writeClient).toHaveBeenCalledWith('gamescope_app_target_framerate',29.97);
+        await vi.advanceTimersByTimeAsync(0);expect(h.writeClient).toHaveBeenCalledWith('gamescope_app_target_framerate',29.97);
         expect(c.get()).toMatchObject({value:59.94,pending:true});h.state.client.gamescope_app_target_framerate=29.97;h.emit();await p;
         expect(c.get()).toMatchObject({value:29.97,pending:false});h.perf.dispose();
     });
@@ -51,14 +50,23 @@ describe('native Performance controls',()=>{
         const p=c.set(5);await vi.advanceTimersByTimeAsync(0);expect(h.writeLegacy).toHaveBeenCalledWith('SetSplitScalingScaler',5,'769');
         h.state.legacy.perApp.split_scaling_scaler=5;h.emit();await p;h.perf.dispose();
     });
-    it('drops a queued GPU clock on a display change and uses native200ms coalescing',async()=>{
-        const h=fixture(),c=h.perf.controls.gpuClock;const p=c.set(1700).catch(e=>e.message);
+    it('writes the first GPU clock immediately and drops a queued adjustment on display change',async()=>{
+        const h=fixture(),c=h.perf.controls.gpuClock;
+        const first=c.set(1700);await vi.advanceTimersByTimeAsync(0);
+        expect(h.writeClient).toHaveBeenCalledWith('steamos_manual_gpu_clock_hz',1700);
+        h.state.client.steamos_manual_gpu_clock_hz=1700;h.emit();await first;
+        h.writeClient.mockClear();
+        const p=c.set(1600).catch(e=>e.message);
         await vi.advanceTimersByTimeAsync(199);expect(h.writeClient).not.toHaveBeenCalled();
         h.state.gamescope!.active_display_info!.connector_name='DP-1';h.emit();await vi.advanceTimersByTimeAsync(1);
         expect(await p).toContain('context');expect(h.writeClient).not.toHaveBeenCalled();h.perf.dispose();
     });
     it('invalidates queued writes when power-dependent capability bounds change',async()=>{
-        const h=fixture();h.state.client.steamos_tdp_limit_enabled=true;h.emit();const p=h.perf.controls.tdp.set(18).catch(e=>e.message);
+        const h=fixture(),c=h.perf.controls.tdp;h.state.client.steamos_tdp_limit_enabled=true;h.emit();
+        const first=c.set(19);await vi.advanceTimersByTimeAsync(0);
+        expect(h.writeClient).toHaveBeenCalledWith('steamos_tdp_limit',19);
+        h.state.client.steamos_tdp_limit=19;h.emit();await first;
+        h.writeClient.mockClear();const p=c.set(18).catch(e=>e.message);
         h.state.platform!.tdp_limit_max=12;h.emit();await vi.advanceTimersByTimeAsync(100);
         expect(await p).toContain('context');expect(h.writeClient).not.toHaveBeenCalled();h.perf.dispose();
     });
@@ -91,7 +99,7 @@ it('treats zero game IDs as default scope rather than a running game',()=>{
 it('uses Steam overlay notch order rather than equating the visible level with the native enum',async()=>{
     const h=fixture(),c=h.perf.controls.overlayLevel;
     expect(c.get().options).toEqual([0,4,1,2,3]);
-    const levelOne=c.get().options![1];const p=c.set(levelOne);await vi.advanceTimersByTimeAsync(100);
+    const levelOne=c.get().options![1];const p=c.set(levelOne);await vi.advanceTimersByTimeAsync(0);
     expect(h.writeLegacy).toHaveBeenCalledWith('SetPerfOverlayLevel',4,'769');
     h.state.legacy.global.perf_overlay_level=4;h.emit();await p;
     expect(c.get().value).toBe(4);h.perf.dispose();
@@ -101,18 +109,17 @@ it('uses native sharpness bounds and cancels a pending adjustment when the filte
     expect(c?.get()).toMatchObject({min:0,max:5,disabled:true});
     h.state.legacy.perApp.split_scaling_filter=3;h.emit();
     expect(c.get()).toMatchObject({value:3,disabled:false});
-    const p=c.set(4);await vi.advanceTimersByTimeAsync(100);
+    const p=c.set(4);await vi.advanceTimersByTimeAsync(0);
     expect(h.writeLegacy).toHaveBeenCalledWith('SetFSRSharpness',4,'769');
     h.state.legacy.perApp.fsr_sharpness=4;h.emit();await p;
     h.writeLegacy.mockClear();const pending=c.set(5).catch(e=>e.message);
     h.state.legacy.perApp.split_scaling_filter=1;h.emit();await vi.advanceTimersByTimeAsync(100);
     expect(await pending).toContain('context');expect(h.writeLegacy).not.toHaveBeenCalled();h.perf.dispose();
 });
-it('writes Hz choices to native refresh settings at the same700ms delay as Steam',async()=>{
+it('writes the first supported refresh mode immediately',async()=>{
     const h=fixture(),c=h.perf.controls.refreshRate;h.state.client.gamescope_disable_framelimit=true;h.emit();
     expect(c.get()).toMatchObject({available:true,disabled:false,options:[59.94,119.88]});
-    const p=c.set(59.94);await vi.advanceTimersByTimeAsync(699);expect(h.writeClient).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1);expect(h.writeClient).toHaveBeenCalledWith('gamescope_display_refresh_rate',59.94);
+    const p=c.set(59.94);await vi.advanceTimersByTimeAsync(0);expect(h.writeClient).toHaveBeenCalledWith('gamescope_display_refresh_rate',59.94);
     h.state.client.gamescope_display_refresh_rate=59.94;h.emit();await p;
     expect(h.state.client.gamescope_app_target_framerate).toBe(59.94);h.perf.dispose();
 });
@@ -124,4 +131,26 @@ it('treats Steam’s own 769 profile as no game running: no per-game switch, def
     expect(h.perf.getProfile()).toMatchObject({ isGameSpecific: false, label: 'Using default profile' });
     expect(h.perf.controls.vrr.get().scope).toEqual({ kind: 'global' });
     h.perf.dispose();
+});
+
+it('accepts intermediate whole-number FPS targets on the docked Ally',async()=>{
+    const h=fixture(),d=h.state.gamescope!.active_display_info!;
+    d.is_external=true;d.supported_frame_rates=[12,15,20,30,60];
+    h.state.client.gamescope_app_target_framerate=60;h.emit();
+    const c=h.perf.controls.frameLimit;
+    expect(c.get()).toMatchObject({min:12,max:60,step:1});
+    const pending=c.set(43);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.writeClient).toHaveBeenCalledWith('gamescope_app_target_framerate',43);
+    h.state.client.gamescope_app_target_framerate=43;h.emit();
+    await pending;h.perf.dispose();
+});
+it('shows the fixed external refresh mode without allowing a mode write',async()=>{
+    const h=fixture(),d=h.state.gamescope!.active_display_info!;
+    d.is_external=true;d.supported_refresh_rates=[60];
+    h.state.client.gamescope_disable_framelimit=true;h.emit();
+    const c=h.perf.controls.refreshRate;
+    expect(c.get()).toMatchObject({available:true,disabled:true,value:60,options:[60]});
+    await expect(c.set(60)).rejects.toThrow();
+    expect(h.writeClient).not.toHaveBeenCalled();h.perf.dispose();
 });
