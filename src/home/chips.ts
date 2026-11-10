@@ -2,6 +2,8 @@ import { formatAchievements, formatBytes, formatHours, minutesToHours } from '..
 import { formatLastPlayed } from './recents';
 import { tr } from '../i18n/steamText';
 import type { ProtonTier } from '../logic/protonTier';
+import type { GameInfoSlots } from '../logic/infoSlots';
+import { orderBySlots } from '../logic/slotStats';
 
 export interface Chip {
     key: string;
@@ -28,7 +30,8 @@ export interface GameChipInput {
     protonTier?: ProtonTier | null;
 }
 
-export function gameChips(i: GameChipInput, now: number, locale: string): Chip[] {
+/** The game's chips: everything it has, in the order of the user's info slots (a slot with nothing to show closes up). */
+export function gameChips(i: GameChipInput & { slots: GameInfoSlots }, now: number, locale: string): Chip[] {
     const playedHours = minutesToHours(i.playedMinutes);
     const isNew = typeof i.addedAt === 'number' && i.addedAt > 0;
     const chips: Chip[] = isNew
@@ -57,7 +60,7 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
     }
     // ProtonDB's own names for its ratings (Platinum ... Borked), as its site writes them: not translated.
     if (i.protonTier) chips.push({ key: 'protondb', label: 'ProtonDB', value: i.protonTier[0].toUpperCase() + i.protonTier.slice(1), tone: i.protonTier });
-    return chips;
+    return orderBySlots(chips, i.slots);
 }
 
 export interface LibraryChipInput {

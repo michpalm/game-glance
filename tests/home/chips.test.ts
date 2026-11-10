@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_SLOTS, type GameInfoSlots } from '../../src/logic/infoSlots';
 import { gameChips, libraryChips } from '../../src/home/chips';
 import { formatBytes } from '../../src/logic/format';
 
 const NOW = 1_700_000_000;
-const base = { playedMinutes: 600, achievements: { achieved: 5, total: 20 }, lastPlayed: NOW, hltbMainHours: 20 };
+const base = { slots: DEFAULT_SLOTS, playedMinutes: 600, achievements: { achieved: 5, total: 20 }, lastPlayed: NOW, hltbMainHours: 20 };
 
 describe('gameChips', () => {
     it('returns Played, Achievements, HLTB main in that order (Last played is the eyebrow\'s)', () => {
@@ -70,14 +71,31 @@ describe('gameChips: the space a Steam game that is not installed needs', () => 
 });
 
 describe('gameChips: ProtonDB', () => {
-    it("comes last, with the rating's name and its tone", () => {
-        const chips = gameChips({ ...base, protonTier: 'gold' }, NOW, 'en-US');
+    const withProton = { ...base, slots: { stats: ['played', 'achievements', 'hltb'], featured: 'protondb' } as GameInfoSlots };
+    it("comes where its slot puts it, with the rating's name and its tone", () => {
+        const chips = gameChips({ ...withProton, protonTier: 'gold' }, NOW, 'en-US');
         expect(chips.map((c) => c.key)).toEqual(['played', 'achievements', 'hltb', 'protondb']);
         expect(chips[3]).toEqual({ key: 'protondb', label: 'ProtonDB', value: 'Gold', tone: 'gold' });
-        expect(gameChips({ ...base, protonTier: 'borked' }, NOW, 'en-US')[3].value).toBe('Borked');
+        expect(gameChips({ ...withProton, protonTier: 'borked' }, NOW, 'en-US')[3].value).toBe('Borked');
     });
-    it('is left out when the rating is unknown', () => {
-        expect(gameChips({ ...base, protonTier: null }, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
-        expect(gameChips(base, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
+    it('is left out when the rating is unknown, or no slot holds it', () => {
+        expect(gameChips({ ...withProton, protonTier: null }, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
+        expect(gameChips({ ...base, protonTier: 'gold' }, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
+    });
+});
+
+describe('gameChips: ordered by the slots', () => {
+    it('slot order, then the featured one, empty slots closed up', () => {
+        const slots: GameInfoSlots = { stats: ['protondb', 'achievements', null], featured: 'played' };
+        expect(gameChips({ ...base, slots, protonTier: 'gold' }, NOW, 'en-US').map((c) => c.key)).toEqual(['protondb', 'achievements', 'played']);
+    });
+    it("a new game's added chip keeps Played's slot", () => {
+        const slots: GameInfoSlots = { stats: ['played', 'achievements', null], featured: 'hltb' };
+        expect(gameChips({ ...base, slots, playedMinutes: 0, lastPlayed: 0, addedAt: NOW }, NOW, 'en-US')[0].key).toBe('added');
+        const second: GameInfoSlots = { stats: ['achievements', 'played', null], featured: 'hltb' };
+        expect(gameChips({ ...base, slots: second, playedMinutes: 0, lastPlayed: 0, addedAt: NOW }, NOW, 'en-US').map((c) => c.key)).toEqual(['achievements', 'added', 'hltb']);
+    });
+    it('default slots and an installed game: size closes up', () => {
+        expect(gameChips(base, NOW, 'en-US').map((c) => c.key)).toEqual(['played', 'achievements', 'hltb']);
     });
 });

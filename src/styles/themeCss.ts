@@ -1,4 +1,5 @@
 import { CONTROL_EDGE } from './tokens';
+import { PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
@@ -545,6 +546,14 @@ const TV_CARDS_GAP = PAGE_LAYOUT.playTop.tvGap;
 const CLEAN_MIN_BELOW_ROW = PAGE_LAYOUT.clean.minBelowRow;
 const CLEAN_GAP = PAGE_LAYOUT.clean.gap;
 
+/** ProtonDB's mark before its rating (the same mark and colours as Home's chip), for a stats block with this class prefix. */
+function protonMarkCss(prefix: string): string {
+    return [
+        `.${prefix}-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }`,
+        ...PROTON_TIERS.map((tier) => `.${prefix}-mark[data-tone="${tier}"] { color: ${PROTON_COLOURS[tier]}; }`),
+    ].join('\n');
+}
+
 /** The native card content rules, shared by the page and its non-interactive Home copy. */
 export function cardBaseCss(prefix: string, unit: (n: number) => string): string {
     return [
@@ -592,6 +601,7 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
         `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
         `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
+        protonMarkCss('gg'),
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
 
@@ -604,6 +614,7 @@ ${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; whit
 ${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
 ${panel} .${prefix}-bar { width: ${unit(PAGE_LAYOUT.cleanInfo.barW)}; height: ${unit(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${unit(PAGE_LAYOUT.cleanInfo.barTop)}; border-radius: ${unit(3)}; background: rgba(255,255,255,.14); overflow: hidden; }
 ${panel} .${prefix}-bar > div { height: 100%; border-radius: ${unit(3)}; background: var(--gg-accent); }
+${protonMarkCss(prefix)}
 `;
 }
 

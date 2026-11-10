@@ -2,6 +2,7 @@ import { InfoCardPanel } from '../components/InfoCard';
 import { HltbCard } from '../components/HltbCard';
 import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
+import { pageInfoStats } from '../logic/slotStats';
 import type { GamepadEvent } from '@decky/ui';
 import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
@@ -151,7 +152,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs } = useSettings();
+    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots } = useSettings();
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -634,10 +635,10 @@ export function SpotlightHome() {
                 </div>
             </div>
             {game && !cycle.holding && <div className="gh-normal-cards">
-                <InfoCardPanel prefix="gh-normal" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn).filter((s) => s.key !== 'hltb')} description={data.description} />
+                <InfoCardPanel prefix="gh-normal" stats={pageInfoStats(homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots), slots)} description={data.description} />
                 <HltbCard prefix="gh-normal" result={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} restyle />
             </div>}
-            {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn)} />}
+            {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots)} />}
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
             <div className="gh-open-ring" data-i="0" />
             <div className="gh-open-ring" data-i="1" />

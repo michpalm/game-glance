@@ -44,3 +44,17 @@ describe('Home uses the same Clean content', () => {
         }
     });
 });
+
+describe('cleanStats by slots', () => {
+    it('the slots order them, ProtonDB with its tone, an empty featured slot drops HLTB', () => {
+        const slots = { stats: ['hltb', 'played', 'protondb'], featured: null } as never;
+        const stats = cleanStats(game, found, 'en-US', null, slots, { status: 'found', tier: 'gold' });
+        expect(stats.map((s) => s.key)).toEqual(['hltb', 'played', 'protondb']);
+        expect(stats[2]).toMatchObject({ value: 'Gold', tone: 'gold' });
+    });
+    it('Home matches the page with slots and ProtonDB', () => {
+        const slots = { stats: ['protondb', 'played', null], featured: 'hltb' } as never;
+        const chips = [{ key: 'protondb', label: 'ProtonDB', value: 'Gold', tone: 'gold' }];
+        expect(homeCleanStats(chips, 108, found, 'en-US', null, slots)).toEqual(cleanStats({ ...game, achievements: null }, found, 'en-US', null, slots, { status: 'found', tier: 'gold' }));
+    });
+});

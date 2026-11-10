@@ -6,6 +6,8 @@ import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
+import { useProton } from '../data/useProton';
+import { usesStat } from '../logic/infoSlots';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
@@ -193,6 +195,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const [openedFrom] = useState(() => openPending(game.appId));
 
     const settings = useSettings();
+    const proton = useProton(game.appId, usesStat(settings.infoSlots, 'protondb') && !game.isShortcut);
     const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
@@ -281,7 +284,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                         {restyle && <LibraryPill doc={pageDoc} appId={game.appId} />}
                     </GameSourcePill>
                 )}
-                {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} />}
+                {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} slots={settings.infoSlots} proton={proton} />}
                 {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
                     Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
                 {!cleanStyle && (
@@ -289,7 +292,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                         {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
                             controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
-                        <InfoCard game={game} locale={locale} description={description} size={size} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
+                        <InfoCard game={game} locale={locale} description={description} size={size} slots={settings.infoSlots} proton={proton} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
                         <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
                     </CardsRow>
                 )}

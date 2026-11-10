@@ -710,9 +710,10 @@ export function useHomeData(focusIndex = 0): HomeData {
             installed: focused.installed,
             spaceBytes: info?.isShortcut ? null : (memoSpaceRequired(focused.appId) ?? null),
             protonTier: proton?.status === 'found' ? proton.tier : null,
+            slots: infoSlots,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, proton, locale, launcher, detailsVersion]);
+    }, [focused, info, hltb, proton, locale, launcher, detailsVersion, infoSlots]);
     // The launcher knows a last played Steam does not: such a game is no longer "new to library".
     const focusedIsNew = focused?.isNew === true && !launcher?.lastPlayed;
     const lastPlayedLabel = focused
