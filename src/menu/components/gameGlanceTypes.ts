@@ -1,3 +1,4 @@
+import type { SlotIndex } from '../../logic/infoSlots';
 import type { CategoryId } from '../../data/settingsCategories';
 import type { createSettingsStore, Settings } from '../../data/settings';
 import type { VersionChoice } from '../../data/versionChoices';
@@ -53,3 +54,4 @@ export interface GgActions {
 }
 
 export interface PageProps { v: GgValues; a: GgActions }
+export interface SlotPickerProps extends PageProps { slot: SlotIndex }

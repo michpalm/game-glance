@@ -1,5 +1,6 @@
 import type { RowStyle } from '../home/recentsLayout';
 import type { SocialKeyboardMode } from '../menu/preferences';
+import { FEATURED_IDS, STAT_IDS, STAT_LABELS, type SlotIndex, type StatId } from '../logic/infoSlots';
 import type { HltbResult } from './hltb';
 import type { Settings } from './settings';
 
@@ -49,7 +50,10 @@ export interface SummaryContext {
 export function categorySummary(id: CategoryId, s: Settings, c: SummaryContext): string {
     switch (id) {
         case 'home': return s.spotlightHome ? `On · ${c.rowName} · ${ROW_STYLE_LABELS[s.homeRowStyle]} row` : 'Off';
-        case 'game-page': return s.cleanPage ? 'Clean look' : 'Full look';
+        case 'game-page': {
+            const featured = s.infoSlots.featured;
+            return `${s.cleanPage ? 'Clean look' : 'Full look'} · ${featured ? `${STAT_LABELS[featured]} featured` : 'Nothing featured'}`;
+        }
         case 'status-bar':
             if (!s.spotlightHome) return 'Needs Spotlight Home';
             return `Status bar ${s.homeStatusBar ? 'on' : 'off'}${s.homeStatusBar && s.chromeEveryPage ? ' · Every page' : ''}`;
@@ -67,4 +71,24 @@ export function matchLine(overrideId: number | null, hltb: HltbResult | undefine
     if (hltb?.status === 'found') return `Automatic: HowLongToBeat #${hltb.gameId}`;
     if (hltb?.status === 'notFound') return 'Automatic: no match';
     return 'Automatic';
+}
+
+export const GAME_INFO_NOTE = "Shown on Home and the game page. ProtonDB sends the game's Steam app id to ProtonDB.";
+
+export function slotLabel(slot: SlotIndex): string {
+    return slot === 'featured' ? 'Featured' : `Stat ${slot + 1}`;
+}
+
+/** What a slot can hold, in picker order; null is None. Featured never holds Space required. */
+export function slotChoices(slot: SlotIndex): Array<StatId | null> {
+    return [...(slot === 'featured' ? FEATURED_IDS : STAT_IDS), null];
+}
+
+/** The slot's current stat, or null. */
+export function slotValue(s: Pick<Settings, 'infoSlots'>, slot: SlotIndex): StatId | null {
+    return slot === 'featured' ? s.infoSlots.featured : s.infoSlots.stats[slot];
+}
+
+export function slotValueLabel(id: StatId | null): string {
+    return id ? STAT_LABELS[id] : 'None';
 }

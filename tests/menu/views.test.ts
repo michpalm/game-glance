@@ -21,6 +21,8 @@ describe('menu views for the Plugins section', () => {
         expect(returnFocusKey('gg:home')).toBe('gg:card:home');
         expect(returnFocusKey('gg:game-page')).toBe('gg:card:game-page');
         expect(returnFocusKey('gg:home:row')).toBe('gg:home:games');
+        expect(returnFocusKey('gg:game-page:info:2')).toBe('gg:game-page:slot:2');
+        expect(returnFocusKey('gg:game-page:info:featured')).toBe('gg:game-page:slot:featured');
         expect(returnFocusKey('gg:general:versions')).toBe('gg:general:versions');
     });
     it('leaves other views alone', () => {

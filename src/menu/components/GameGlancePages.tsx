@@ -2,13 +2,14 @@ import { PROFILE_STYLES, PROFILE_STYLE_LABELS } from '../../data/settings';
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
 import type { ReactElement } from 'react';
 import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
-import { everyPageAvailable, homeRows, ROW_STYLE_LABELS, statusRows, type CategoryId } from '../../data/settingsCategories';
+import { everyPageAvailable, GAME_INFO_NOTE, homeRows, ROW_STYLE_LABELS, slotChoices, slotLabel, slotValue, slotValueLabel, statusRows, type CategoryId } from '../../data/settingsCategories';
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
 import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
-import { HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
-import type { PageProps } from './gameGlanceTypes';
+import type { SlotIndex } from '../../logic/infoSlots';
+import { GAME_INFO_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
+import type { PageProps, SlotPickerProps } from './gameGlanceTypes';
 import { MenuAction } from './MenuAction';
 import { Crumb, SegmentRow, ToggleRow } from './SettingRows';
 
@@ -62,6 +63,19 @@ export function HomeRowPicker({ v, a }: PageProps) {
     </>;
 }
 
+const GAME_INFO_SLOTS: readonly SlotIndex[] = [0, 1, 2, 'featured'];
+
+export function GameInfoPicker({ v, a, slot }: SlotPickerProps) {
+    const current = slotValue(v.settings, slot);
+    return <>
+        <Crumb parent="Game page" title={slotLabel(slot)} />
+        <Focusable className="gg-plugin-list" flow-children="column">{slotChoices(slot).map(choice =>
+            <MenuAction key={choice ?? 'none'} id={`${GAME_INFO_VIEW}:${slot}:${choice ?? 'none'}`} className="gg-plugin-picker" selected={choice === current}
+                onAction={() => { a.run(a.store.setInfoSlot(slot, choice)); a.back(); }}>{slotValueLabel(choice)}</MenuAction>)}
+        </Focusable>
+    </>;
+}
+
 export function GamePage({ v, a }: PageProps) {
     const game = v.game;
     return <>
@@ -70,6 +84,11 @@ export function GamePage({ v, a }: PageProps) {
             <SegmentRow<'full' | 'clean'> id="gg:game-page:look" label="Look" options={['full', 'clean']} labels={{ full: 'Full', clean: 'Clean' }}
                 description="Full: description and HowLongToBeat cards. Clean: one row at the bottom over the full art."
                 value={v.settings.cleanPage ? 'clean' : 'full'} onSelect={value => a.run(a.store.setCleanPage(value === 'clean'))} />
+            <h3>Game info</h3>
+            <p className="gg-plugin-note">{GAME_INFO_NOTE}</p>
+            {GAME_INFO_SLOTS.map(slot => <MenuAction key={slot} id={`gg:game-page:slot:${slot}`} className="gg-plugin-picker" onAction={() => a.open(`${GAME_INFO_VIEW}:${slot}`)}>
+                <span>{slotLabel(slot)}</span><span className="gg-plugin-value">{slotValueLabel(slotValue(v.settings, slot))}<LuChevronRight aria-hidden="true" /></span>
+            </MenuAction>)}
             <h3>HowLongToBeat match</h3>
             {game ? <div className="gg-plugin-card">
                 <div className="gg-plugin-card-title"><span>{game.name}</span><span className="gg-plugin-dim">{game.match}</span></div>

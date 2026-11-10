@@ -1,6 +1,6 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
+import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, GameInfoPicker, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
 import type { GgActions, GgValues } from '../../src/menu/components/gameGlanceTypes';
 import { DEFAULT_SLOTS } from '../../src/logic/infoSlots';
 import type { Settings } from '../../src/data/settings';
@@ -93,13 +93,13 @@ describe('Game page', () => {
     it('shows the match card with its buttons', () => {
         const a = actions();
         const page = GamePage({ v: values(), a });
-        expect(ids(page)).toEqual(['gg:game-page:look', 'gg:game-page:change', 'gg:game-page:open']);
+        expect(ids(page)).toEqual(['gg:game-page:look', 'gg:game-page:slot:0', 'gg:game-page:slot:1', 'gg:game-page:slot:2', 'gg:game-page:slot:featured', 'gg:game-page:change', 'gg:game-page:open']);
         byId(page, 'gg:game-page:change').props.onAction();
         expect(a.changeMatch).toHaveBeenCalledTimes(1);
     });
     it('offers Remove override while one is set, and nothing to open without a match', () => {
         const v = values({ game: { name: 'X', match: 'Override: HowLongToBeat #5', matched: false, override: true } });
-        expect(ids(GamePage({ v, a: actions() }))).toEqual(['gg:game-page:look', 'gg:game-page:change', 'gg:game-page:remove']);
+        expect(ids(GamePage({ v, a: actions() }))).toEqual(['gg:game-page:look', 'gg:game-page:slot:0', 'gg:game-page:slot:1', 'gg:game-page:slot:2', 'gg:game-page:slot:featured', 'gg:game-page:change', 'gg:game-page:remove']);
     });
     it('asks for a game page first without a current game', () => {
         const nodes = tree(GamePage({ v: values({ game: null }), a: actions() }));
@@ -202,4 +202,34 @@ describe('Choose version', () => {
 
 it('maps every category to its page', () => {
     expect(Object.keys(CATEGORY_PAGES)).toEqual(['home', 'game-page', 'status-bar', 'menu', 'screensaver', 'general']);
+});
+
+describe('Game info slots', () => {
+    it('shows each slot value and opens its picker', () => {
+        const a = actions();
+        const page = GamePage({ v: values({ settings: { ...settings, infoSlots: { stats: ['played', null, 'protondb'], featured: 'hltb' } } }), a });
+        const text = (id: string) => JSON.stringify(byId(page, id).props.children);
+        expect(text('gg:game-page:slot:0')).toContain('Play time');
+        expect(text('gg:game-page:slot:1')).toContain('None');
+        expect(text('gg:game-page:slot:2')).toContain('ProtonDB');
+        expect(text('gg:game-page:slot:featured')).toContain('HowLongToBeat');
+        byId(page, 'gg:game-page:slot:featured').props.onAction();
+        expect(a.open).toHaveBeenCalledWith('gg:game-page:info:featured');
+    });
+    it('picker for Featured leaves out Space required, sets the slot and goes back', () => {
+        const a = actions();
+        const page = GameInfoPicker({ v: values(), a, slot: 'featured' });
+        expect(ids(page)).toEqual(['gg:game-page:info:featured:hltb', 'gg:game-page:info:featured:protondb', 'gg:game-page:info:featured:achievements', 'gg:game-page:info:featured:played', 'gg:game-page:info:featured:none']);
+        expect(byId(page, 'gg:game-page:info:featured:hltb').props.selected).toBe(true);
+        byId(page, 'gg:game-page:info:featured:protondb').props.onAction();
+        expect(a.store.setInfoSlot).toHaveBeenCalledWith('featured', 'protondb');
+        expect(a.back).toHaveBeenCalledTimes(1);
+    });
+    it('picker for a stat slot lists every stat and None', () => {
+        const a = actions();
+        const page = GameInfoPicker({ v: values(), a, slot: 1 });
+        expect(ids(page)).toHaveLength(6);
+        byId(page, 'gg:game-page:info:1:none').props.onAction();
+        expect(a.store.setInfoSlot).toHaveBeenCalledWith(1, null);
+    });
 });

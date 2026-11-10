@@ -49,8 +49,9 @@ describe('categorySummary', () => {
         expect(categorySummary('home', { ...on, spotlightHome: false }, context)).toBe('Off');
     });
     it('summarises the game page', () => {
-        expect(categorySummary('game-page', on, context)).toBe('Full look');
-        expect(categorySummary('game-page', { ...on, cleanPage: true }, context)).toBe('Clean look');
+        expect(categorySummary('game-page', on, context)).toBe('Full look · HowLongToBeat featured');
+        expect(categorySummary('game-page', { ...on, cleanPage: true }, context)).toBe('Clean look · HowLongToBeat featured');
+        expect(categorySummary('game-page', { ...on, cleanPage: true, infoSlots: { ...on.infoSlots, featured: null } }, context)).toBe('Clean look · Nothing featured');
     });
     it('summarises the status bar and footer', () => {
         expect(categorySummary('status-bar', on, context)).toBe('Status bar on');
