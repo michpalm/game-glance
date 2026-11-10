@@ -292,7 +292,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                         {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
                             controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
-                        <InfoCard game={game} locale={locale} description={description} size={size} slots={settings.infoSlots} proton={proton} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
+                        <InfoCard game={game} hltb={hltb} locale={locale} description={description} size={size} slots={settings.infoSlots} proton={proton} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
                         <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
                     </CardsRow>
                 )}

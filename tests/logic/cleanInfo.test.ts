@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cleanStats, homeCleanStats } from '../../src/logic/cleanInfo';
+import { pageInfoStats } from '../../src/logic/slotStats';
 
 const game = { playedMinutes: 108, achievements: { achieved: 4, total: 31 } };
 const found = { status: 'found' as const, gameId: 1, times: { main: 12, mainExtras: 15, completionist: 22 } };
@@ -56,5 +57,16 @@ describe('cleanStats by slots', () => {
         const slots = { stats: ['protondb', 'played', null], featured: 'hltb' } as never;
         const chips = [{ key: 'protondb', label: 'ProtonDB', value: 'Gold', tone: 'gold' }];
         expect(homeCleanStats(chips, 108, found, 'en-US', null, slots)).toEqual(cleanStats({ ...game, achievements: null }, found, 'en-US', null, slots, { status: 'found', tier: 'gold' }));
+    });
+});
+
+describe('the Full look info card with HLTB in a stat slot', () => {
+    it('the page and Home twin both show played, hltb', () => {
+        const slots = { stats: ['played', 'hltb', null], featured: null } as never;
+        const page = pageInfoStats(cleanStats(game, found, 'en-US', null, slots), slots);
+        const twin = pageInfoStats(homeCleanStats([], 108, found, 'en-US', null, slots), slots);
+        expect(page.map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(twin).toEqual(page);
+        expect(pageInfoStats(cleanStats(game, undefined, 'en-US', null, slots), slots)[1].value).toBe('…');
     });
 });

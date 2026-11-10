@@ -3,6 +3,7 @@ import { formatLastPlayed } from './recents';
 import { tr } from '../i18n/steamText';
 import type { ProtonTier } from '../logic/protonTier';
 import type { GameInfoSlots } from '../logic/infoSlots';
+import { protonStat } from '../logic/cleanInfo';
 import { orderBySlots } from '../logic/slotStats';
 
 export interface Chip {
@@ -58,8 +59,7 @@ export function gameChips(i: GameChipInput & { slots: GameInfoSlots }, now: numb
     } else {
         chips.push({ key: 'hltb', label: 'HLTB main', value: '—' });
     }
-    // ProtonDB's own names for its ratings (Platinum ... Borked), as its site writes them: not translated.
-    if (i.protonTier) chips.push({ key: 'protondb', label: 'ProtonDB', value: i.protonTier[0].toUpperCase() + i.protonTier.slice(1), tone: i.protonTier });
+        if (i.protonTier) chips.push(protonStat(i.protonTier));
     return orderBySlots(chips, i.slots);
 }
 

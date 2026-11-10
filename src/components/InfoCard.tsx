@@ -1,8 +1,8 @@
 import { GameInfo } from '../data/steam';
-import { formatAchievements, formatHours, minutesToHours } from '../logic/format';
+import type { HltbResult } from '../data/hltb';
+import { cleanStats } from '../logic/cleanInfo';
 import { descriptionState } from '../logic/infoCard';
 import type { SizeStat } from '../logic/sizeStat';
-import { tr } from '../i18n/steamText';
 import { CardShell } from './CardShell';
 import type { GameInfoSlots } from '../logic/infoSlots';
 import type { ProtonResult } from '../data/protondb';
@@ -11,6 +11,7 @@ import { ProtonMark } from '../home/ProtonMark';
 
 interface Props {
     game: GameInfo;
+    hltb: HltbResult | undefined;
     locale: string;
     description: string | null | undefined;
     /** A Unifideck game's install or download size (its own row's is hidden); absent for other games. */
@@ -21,15 +22,10 @@ interface Props {
     onPress?(card: HTMLElement): void;
 }
 
-export function InfoCard({ game, locale, description, size = null, slots, proton, onPress }: Props) {
-    const tier = proton?.status === 'found' ? proton.tier : null;
-    const stats = [
-        { key: 'played', label: tr('played'), value: formatHours(minutesToHours(game.playedMinutes), locale) },
-        ...(size ? [size] : []),
-        ...(game.achievements ? [{ key: 'achievements', label: tr('achievements'), value: formatAchievements(game.achievements) }] : []),
-        ...(tier ? [{ key: 'protondb', label: 'ProtonDB', value: tier[0].toUpperCase() + tier.slice(1), tone: tier }] : []),
-    ];
-    return <InfoCardPanel stats={pageInfoStats(stats, slots)} description={description} onPress={onPress} />;
+export function InfoCard({ game, hltb, locale, description, size = null, slots, proton, onPress }: Props) {
+    // The same stats as the Clean look (one builder), the three stat slots only: the featured stat has its own card.
+    const stats = pageInfoStats(cleanStats(game, hltb, locale, size, slots, proton), slots);
+    return <InfoCardPanel stats={stats} description={description} onPress={onPress} />;
 }
 
 export function InfoCardPanel({ stats, description, prefix = 'gg', onPress }: { stats: { key: string; label: string; value: string; tone?: string }[]; description: string | null | undefined; prefix?: string; onPress?(card: HTMLElement): void }) {

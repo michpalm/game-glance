@@ -399,6 +399,12 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
           .gg-caption { margin-top: calc(5 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
+          .gg-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }
+          .gg-mark[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-mark[data-tone="gold"] { color: #cfb53b; }
+          .gg-mark[data-tone="silver"] { color: #a6a6a6; }
+          .gg-mark[data-tone="bronze"] { color: #cd7f32; }
+          .gg-mark[data-tone="borked"] { color: #ff0000; }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -497,6 +503,12 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
           .gg-caption { margin-top: calc(5 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
+          .gg-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }
+          .gg-mark[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-mark[data-tone="gold"] { color: #cfb53b; }
+          .gg-mark[data-tone="silver"] { color: #a6a6a6; }
+          .gg-mark[data-tone="bronze"] { color: #cd7f32; }
+          .gg-mark[data-tone="borked"] { color: #ff0000; }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }

@@ -571,6 +571,7 @@ export function cardBaseCss(prefix: string, unit: (n: number) => string): string
         `.gg-bar { margin-top: ${unit(8)}; height: ${unit(4)}; border-radius: ${unit(2)}; background: rgba(255, 255, 255, 0.14); overflow: hidden; }`,
         `.gg-bar > div { height: 100%; border-radius: ${unit(2)}; background: var(--gg-accent); }`,
         `.gg-caption { margin-top: ${unit(5)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
+        protonMarkCss('gg'),
         `.gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: ${unit(4)}; background: rgba(255, 255, 255, 0.12); }`,
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
@@ -601,7 +602,6 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
         `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
         `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
-        protonMarkCss('gg'),
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
 

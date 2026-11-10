@@ -27,7 +27,7 @@ export function cleanStats(
     locale: string,
     size: SizeStat | null = null,
     slots: GameInfoSlots = DEFAULT_SLOTS,
-    proton: ProtonResult | undefined = undefined,
+    proton?: ProtonResult,
 ): CleanStat[] {
     const played = minutesToHours(game.playedMinutes);
     const stats: CleanStat[] = [];
@@ -45,13 +45,12 @@ export function cleanStats(
             ? { key: 'hltb', label: 'HLTB main', value: formatHours(main, locale), progress: Math.min(1, played / main) }
             : { key: 'hltb', label: 'HLTB main', value: '—' });
     }
-    const tone = proton?.status === 'found' ? proton.tier : null;
-    if (tone) stats.push(protonStat(tone));
+    if (proton?.status === 'found') stats.push(protonStat(proton.tier));
     return orderBySlots(stats, slots);
 }
 
-/** ProtonDB's own names for its ratings (Platinum ... Borked): not translated. */
-function protonStat(tier: string): CleanStat {
+/** The ProtonDB stat, by ProtonDB's own names for its ratings (Platinum ... Borked): not translated. Home's chip, the Clean row and the info card all build it here. */
+export function protonStat(tier: string): CleanStat & { tone: string } {
     return { key: 'protondb', label: 'ProtonDB', value: tier[0].toUpperCase() + tier.slice(1), tone: tier };
 }
 
