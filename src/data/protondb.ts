@@ -7,8 +7,16 @@ import { parseTier, ProtonTier } from '../logic/protonTier';
 export { parseTier, PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 export type { ProtonTier } from '../logic/protonTier';
 
+/** What ProtonDB's summary says besides the rating: how many reports, how sure, and the trending and best tiers. */
+export interface ProtonDetails {
+    total: number;
+    confidence: string;
+    trending: ProtonTier | null;
+    best: ProtonTier | null;
+}
+
 export type ProtonResult =
-    | { status: 'found'; tier: ProtonTier }
+    | { status: 'found'; tier: ProtonTier; details?: ProtonDetails } // no details: an entry cached before they were kept
     | { status: 'none' } // ProtonDB has no rating for the game (no reports, or still pending)
     | { status: 'unavailable' };
 
@@ -53,9 +61,14 @@ export function createProtonLookup(deps: ProtonDeps) {
             const response = await deps.fetcher(protonUrl(appId));
             if (response.status === 404) return { status: 'none' }; // ProtonDB's answer for a game with no reports
             if (response.status !== 200) return { status: 'unavailable' };
-            const body = (await response.json()) as { tier?: unknown } | null;
+            const body = (await response.json()) as { tier?: unknown; total?: unknown; confidence?: unknown; trendingTier?: unknown; bestReportedTier?: unknown } | null;
             const tier = parseTier(body?.tier);
-            return tier ? { status: 'found', tier } : { status: 'none' };
+            if (!tier) return { status: 'none' };
+            const details: ProtonDetails | undefined =
+                typeof body?.total === 'number' && typeof body.confidence === 'string'
+                    ? { total: body.total, confidence: body.confidence, trending: parseTier(body.trendingTier), best: parseTier(body.bestReportedTier) }
+                    : undefined;
+            return details ? { status: 'found', tier, details } : { status: 'found', tier };
         } catch {
             return { status: 'unavailable' };
         }
@@ -81,7 +94,9 @@ export function createProtonLookup(deps: ProtonDeps) {
         if (!cached || (cached.status !== 'found' && cached.status !== 'none')) return refresh(appId, null);
         const known = strip(cached);
         const age = now() - (cached.fetchedAt ?? 0);
-        if (age >= (cached.status === 'found' ? PROTON_REFRESH_MS : PROTON_RECHECK_MS)) refresh(appId, known).catch(() => undefined);
+        const outdated = age >= (cached.status === 'found' ? PROTON_REFRESH_MS : PROTON_RECHECK_MS);
+        const lacksDetails = cached.status === 'found' && !cached.details; // cached before the details were kept: fetch them behind
+        if (outdated || lacksDetails) refresh(appId, known).catch(() => undefined);
         return known;
     };
 }

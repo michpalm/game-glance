@@ -4,7 +4,7 @@ import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, overrides, TTL } from '../data/cache';
 import { hltbCacheKey, HltbResult, lookupHltb } from '../data/hltb';
-import { lookupProton, ProtonResult } from '../data/protondb';
+import { useProton } from '../data/useProton';
 import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
@@ -282,8 +282,6 @@ function readSteamId(): string | null {
 let recommendedMemo: RecommendedCard[] = [];
 /** The last wishlist deal cards, for an instant second row on the next Home open. */
 let dealsMemo: DealCard[] = [];
-/** ProtonDB ratings looked up this session, by app id (a failed lookup is not kept: it is asked again). */
-const protonMemo = new Map<number, ProtonResult>();
 
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
@@ -660,13 +658,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     // the session, so coming back to a game shows its chip at once.
     // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
     const protonOn = usesStat(infoSlots, 'protondb');
-    const knownProton = focused && protonOn ? protonMemo.get(focused.appId) : undefined;
-    const liveProton = useAsync(protonOn && focused && info && !info.isShortcut && resting !== null && !knownProton ? `protondb:${focused.appId}` : null, async () => {
-        const result = await lookupProton(focused?.appId ?? 0);
-        if (focused && result.status !== 'unavailable') protonMemo.set(focused.appId, result);
-        return result;
-    });
-    const proton = protonOn ? knownProton ?? liveProton : undefined;
+    const proton = useProton(focused?.appId ?? null, protonOn && !!info && !info.isShortcut && resting !== null);
     // The selected game's description once it rests, for the open transition (Home draws it as it turns into the page's
     // Spotlight look; the Clean look has none). Kept in the session memo, which the page reads on its first frame.
     const warmedDescription = focused && lang ? peekDescription(focused.appId, lang) : undefined;
