@@ -17,6 +17,8 @@ export const UNIFIDECK_CLOUD_BUTTON = '.unifideck-icon-btn:first-child:has(~ .un
  */
 export function unifideckCloudCss(tone: CloudTone): string {
     const both = `${UNIFIDECK_CLOUD_BUTTON},.gg-uni-cloud`;
+    // The page's unit (themeCss --gg-d), as Home's and Steam's page dots are sized; plain px where the page is not restyled.
+    const u = (n: number) => `calc(${n} * var(--gg-d, 1px))`;
     // The page's focus rule resets Unifideck buttons' whole background (themeCss): the cloud image outranks it, focused too.
     const page = `${UNIFIDECK_PAGE} ${UNIFIDECK_CLOUD_BUTTON}`;
     return [
@@ -24,6 +26,6 @@ export function unifideckCloudCss(tone: CloudTone): string {
         `${both}{position:relative!important;box-shadow:none!important;opacity:1!important;animation:none!important;--unifideck-btn-bg:${TOKENS.glass}!important;--unifideck-btn-shadow:none!important}`,
         `${page},${page}:is(.gpfocus, :focus),.gg-uni-cloud{background-image:${CLOUD_GLYPH_URL}!important;background-position:center!important;background-size:44%!important;background-repeat:no-repeat!important}`,
         `${UNIFIDECK_CLOUD_BUTTON} > *,.gg-uni-cloud > *{visibility:hidden!important}`,
-        `${UNIFIDECK_CLOUD_BUTTON}::after,.gg-uni-cloud::after{content:"";position:absolute;top:${CLOUD_DOT.inset}px;right:${CLOUD_DOT.inset}px;width:${CLOUD_DOT.size}px;height:${CLOUD_DOT.size}px;border-radius:50%;background:${CLOUD_COLOURS[tone]};box-shadow:0 0 0 ${CLOUD_DOT.ring}px ${CLOUD_DOT.ringColour};pointer-events:none}`,
+        `${UNIFIDECK_CLOUD_BUTTON}::after,.gg-uni-cloud::after{content:"";position:absolute;top:${u(CLOUD_DOT.inset)};right:${u(CLOUD_DOT.inset)};width:${u(CLOUD_DOT.size)};height:${u(CLOUD_DOT.size)};border-radius:50%;background:${CLOUD_COLOURS[tone]};box-shadow:0 0 0 ${u(CLOUD_DOT.ring)} ${CLOUD_DOT.ringColour};pointer-events:none}`,
     ].join('\n');
 }

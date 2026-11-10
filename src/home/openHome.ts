@@ -266,6 +266,14 @@ export function applyOpening(root: HTMLElement, variant: OpenVariant, vars: Moti
             console.warn(`${LOG_PREFIX} Home: could not rest the text twins on the extras`, error);
         }
     }
+    // The start frame must be styled before the motion is set: a frame callback runs before that frame's style pass, so
+    // both would land in one pass, and a layer that first exists while opening (the Play pill's fill, the crisp rings, the
+    // panels) has nothing to move from and is drawn at its end at once. Reading a box makes the browser style it now.
+    try {
+        root.getBoundingClientRect?.();
+    } catch {
+        // without it those layers skip their motion; the rest still moves
+    }
     let live = true;
     const start = () => {
         if (live) root.setAttribute('data-gh-phase', 'to');

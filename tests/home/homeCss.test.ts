@@ -84,7 +84,7 @@ describe('action row (VDL Section 7)', () => {
     it('the opening Play layers keep the soft corner and the ring, never the glow', () => {
         const layers = rulesMatching(css, /data-action="play"\]::(before|after)$/).join(' ');
         expect(layers).not.toContain('999px'); expect(layers).not.toMatch(/14px 40px -8px/);
-        expect(css).toContain('background: var(--gho-play-ring-image, none)');
+        expect(css).not.toContain('--gho-play-ring-image');
         // The page's corner (22 of its 60) at the growing layer's height.
         expect(layers).toContain('border-radius: var(--gho-play-page-radius)');
     });
@@ -575,9 +575,12 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-btn-cloud\s*\{[^}]*position:\s*relative/);
         expect(css).toMatch(
             new RegExp(
-                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*box-shadow:\\s*0 0 0 ${CLOUD_DOT.ring}px ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
             ),
         );
+        // The dark ring hangs outside the dot (a shadow, taking no room), so the dot itself sits on the circle's corner: the
+        // look of Unifideck's page, Michael's pick on the Ally (2026-11-10). A border pushed the dot 2 units in.
+        expect(ruleFor(css, '.gh-btn-cloud::after')).not.toMatch(/border:\s*[\d.]+px solid/);
     });
     it('feed rows: card height from the row (inline variable), rows and their header placed inline, compact wide cards', () => {
         const css = homeCss();
@@ -913,7 +916,7 @@ describe('homeCss Play pill while opening', () => {
         const css = homeCss();
         const after = /\.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
         expect(after).not.toContain('outline:');
-        expect(css).toContain('background: var(--gho-play-ring-image, none)');
+        expect(css).not.toContain('--gho-play-ring-image');
         expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; transform-origin: 0 0; transform: var(--gho-play-settle-from, none); }');
         // The page's focused Play keeps its accent fill, as Home's (no lighter overlay any more).
         expect(after).toContain('background: var(--glance-accent)');
@@ -1057,7 +1060,7 @@ describe('homeCss mouse hover', () => {
         expect(css).toMatch(new RegExp(`\\.gh-cap\\.gh-cap-hover[^{]*\\{[^}]*box-shadow: ${ring.replace(/[().]/g, '\\$&')}`));
     });
     it("opened with a mouse, the growing Play pill has no focus ring (the page shows none then)", () => {
-        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\] > \.gh-open-play-ring \{[^}]*display: none !important/);
+        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-open-play-ring \{[^}]*display: none !important/);
     });
     it('no hover look without mouse mode: every :hover rule is under html[data-gg-mouse]', () => {
         for (const sel of css.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');
@@ -1217,6 +1220,46 @@ describe('the cards\' crisp ring in the open transition', () => {
     it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
         expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(182,199,224,\.40\)/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
+    });
+});
+
+describe("the page's own Play ring and circle edges in the open transition", () => {
+    const css = homeCss();
+    const M = '\\.gh-root\\[data-gh-opening="morph"\\]';
+    const MT = `${M}\\[data-gh-phase="to"\\]`;
+    it("draws Play's ring with the page's own outline, outside the canvas, so the browser rounds it as it rounds the page's", () => {
+        const ring = ruleFor(css, '.gh-open-play-ring');
+        expect(ring).toContain('display: none');
+        expect(ring).toContain('outline: calc(var(--gho-pring-on, 0) * 2px * var(--gho-x-d)) solid #fff');
+        expect(ring).toContain('outline-offset: calc(2px * var(--gho-x-d))');
+        expect(ring).toContain('border-radius: var(--gho-pring-r, 0px)');
+        expect(ring).not.toContain('background: var(');
+    });
+    it("starts it on Home's pill and lets it settle in as the pill comes to rest", () => {
+        expect(css).toMatch(new RegExp(`${M} \\.gh-open-play-ring \\{[^}]*display: block[^}]*left: calc\\(var\\(--gho-pring-x, 0\\) \\* 1px\\)[^}]*transform: var\\(--gho-pring-from, none\\)[^}]*opacity: 0`));
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-open-play-ring \\{[^}]*animation: gh-open-settle[^}]*transform: none[^}]*transition: transform`));
+        expect(css).toMatch(/\.gh-root\.gh-bridge\[data-gh-opening\]\[data-gh-phase\] \.gh-open-play-ring \{[^}]*opacity: 1[^}]*animation: none/);
+    });
+    it("draws each circle's edge as the page's: its width in device px and the shared edge colour", () => {
+        const ring = ruleFor(css, '.gh-open-cring');
+        expect(ring).toContain('display: none');
+        expect(ring).toContain('border: var(--gho-ring-w, 1px) solid rgba(182,199,224,.40)');
+        expect(ring).toContain('border-radius: var(--gho-cring-r, 0px)');
+    });
+    it("crossfades it in over the morph as the canvas circle's soft edge fades out", () => {
+        for (const i of [0, 1, 2]) {
+            expect(css).toMatch(new RegExp(`${M} \\.gh-open-cring\\[data-i="${i}"\\] \\{[^}]*display: block[^}]*left: calc\\(var\\(--gho-cring-${i}-x, 0\\) \\* 1px\\)[^}]*height: calc\\(var\\(--gho-cring-${i}-h, 0\\) \\* 1px\\)[^}]*transform: var\\(--gho-cring-${i}-from, none\\)[^}]*opacity: 0`));
+            expect(css).toMatch(new RegExp(`${MT} \\.gh-open-cring\\[data-i="${i}"\\] \\{[^}]*transform: none[^}]*opacity: var\\(--gho-cring-${i}-o, 0\\)[^}]*transition: transform`));
+        }
+        // The soft edge is a layer on the circle that fades by opacity (a border colour is never animated while opening).
+        expect(css).toMatch(new RegExp(`${M} \\.gh-actions > \\.gh-btn-circle \\{[^}]*border-color: transparent[^}]*transition: none`));
+        expect(css).toMatch(new RegExp(`${M} \\.gh-actions > \\.gh-btn-circle::before \\{[^}]*inset: -1px[^}]*border: 1px solid rgba\\(182,199,224,\\.40\\)[^}]*opacity: 1`));
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-actions > \\.gh-btn-circle::before \\{[^}]*opacity: 0[^}]*transition: opacity`));
+    });
+    it("the Unifideck circle's ring fades in late with its circle, which draws no edge of its own", () => {
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-open-cring\\[data-i="3"\\] \\{[^}]*animation: gh-open-extras-in`));
+        expect(css).toMatch(/\.gh-open-circle \{[^}]*border: 1px solid transparent/);
+        expect(css).toMatch(/\.gh-root\.gh-bridge\[data-gh-opening\]\[data-gh-phase\] \.gh-open-cring\[data-i="3"\] \{[^}]*opacity: 1[^}]*animation: none/);
     });
 });
 

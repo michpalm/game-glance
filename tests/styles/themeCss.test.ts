@@ -686,8 +686,11 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         const dot = rulesFor(restyled, '.ps_Cloud::after');
         expect(dot).toContain('content: "" !important;');
         expect(dot).toContain('background: var(--gg-cloud-dot, var(--gg-ok)) !important;');
-        expect(dot).toContain('width: calc(12 * var(--gg-d)) !important;');
-        expect(dot).toContain('border: calc(2 * var(--gg-d)) solid rgba(0, 0, 0, 0.75) !important;');
+        // Unifideck's page dot as measured on the Ally (12 px with a 2 px ring at d 1.13), in the page's unit; the ring is a
+        // shadow outside the dot, so the dot sits on the circle's corner.
+        expect(dot).toContain('width: calc(10.5 * var(--gg-d)) !important;');
+        expect(dot).toContain('box-shadow: 0 0 0 calc(1.75 * var(--gg-d)) rgba(0, 0, 0, 0.75) !important;');
+        expect(dot).toContain('border: none !important;');
         expect(dot).toContain('border-radius: 50% !important;');
         // Steam's own ::after rule on this element sets left: 8px and a negative margin; ours replaces them.
         expect(dot).toContain('left: auto !important; bottom: auto !important; margin: 0 !important;');

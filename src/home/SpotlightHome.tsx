@@ -641,6 +641,12 @@ export function SpotlightHome() {
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
             <div className="gh-open-ring" data-i="0" />
             <div className="gh-open-ring" data-i="1" />
+            {/* Likewise the page's focus ring on Play and the page circles' edges (homeCss .gh-open-play-ring, .gh-open-cring); the fourth is the Unifideck circle's. */}
+            <div className="gh-open-play-ring" />
+            <div className="gh-open-cring" data-i="0" />
+            <div className="gh-open-cring" data-i="1" />
+            <div className="gh-open-cring" data-i="2" />
+            {!onLibrary && uniInstalled === true && <div className="gh-open-cring" data-i="3" />}
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
             {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
         </div>

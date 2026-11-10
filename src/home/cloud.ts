@@ -120,9 +120,12 @@ export const CLOUD_GLYPH_URL = `url("data:image/svg+xml,${encodeURIComponent(`<s
 
 /**
  * The state badge at the cloud circle's top right (#64), in Home canvas px (the page's d units): a dot in the state's
- * colour (CLOUD_COLOURS) with a dark ring so it reads over bright art, its outer edge on the circle's bounding box.
+ * colour (CLOUD_COLOURS) with a dark ring so it reads over bright art. The dot itself sits on the circle's corner and the
+ * ring hangs outside it (a shadow, taking no room): the look of Unifideck's page, Michael's pick on the Ally (2026-11-10),
+ * where it measured 12 px with a 2 px ring at d 1.13. One size on Home, Steam's page and Unifideck's, so nothing shifts
+ * at the hand-over.
  */
-export const CLOUD_DOT = { size: 12, ring: 2, inset: 0, ringColour: 'rgba(0, 0, 0, 0.75)' } as const;
+export const CLOUD_DOT = { size: 10.5, ring: 1.75, inset: 0, ringColour: 'rgba(0, 0, 0, 0.75)' } as const;
 
 /** The icon on a focused (white) cloud circle on the game page, which only takes focus on a sync problem: 6.6:1 on white. */
 export const CLOUD_FOCUS_BAD = '#b3261e';

@@ -1,7 +1,7 @@
 import { actionRadius } from '../styles/tokens';
 import { PAGE_LAYOUT, pillFocusScale } from '../styles/themeCss';
 import { HOME_PILL, TITLE_BLOCK } from './homeCss';
-import { cardAround, cardBorder } from './openTargets';
+import { cardAround } from './openTargets';
 import type { Box, PageLook, PageTargets, StatKey } from './openTargets';
 
 /**
@@ -65,6 +65,17 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // page's own when the targets have it (the measured s is a float: 1.04165954 on the Ally docked, for 1500 / 1440).
     const d = page.d ?? s;
     const out: Record<string, string> = {};
+    // The root's origin: the rings and extras outside the scaled canvas are placed in its px.
+    const rx = home.root?.x ?? 0;
+    const ry = home.root?.y ?? 0;
+    // A page box where Chromium draws it, on whole device px (as openTargets snaps the cards): a ring placed there, outside
+    // the canvas and styled as the page styles it, is rounded by the browser exactly as the page's is.
+    const snap = (v: number) => (page.dpr && page.dpr > 0 ? Math.round(v * page.dpr) / page.dpr : v);
+    const pageBox = (b: Box): Box => {
+        const x = snap(b.x);
+        const y = snap(b.y);
+        return { x, y, w: snap(b.x + b.w) - x, h: snap(b.y + b.h) - y };
+    };
 
     // From the top-left origin, scaled by k: the title's bottom ends at y + h * k, which must be the page's bottom.
     const tk = home.titleText ? PAGE_LAYOUT.titleBlock.title / TITLE_BLOCK.titleSize : 1;
@@ -91,15 +102,18 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     const radius = actionRadius(PAGE_LAYOUT.icon, 'action') * to.h / PAGE_LAYOUT.icon / s;
     out['--gho-play-page-radius'] = px(radius);
     if (focused) {
-        // Chromium rounds CSS outlines before the Home canvas transform. Draw the
-        // ring as a vector stroke using the page's already rounded screen width.
-        const stroke = cardBorder(page.dpr, 2 * d) / s;
-        const gap = 2 * d / s;
-        const pad = gap + stroke;
-        const w = to.w / s + 2 * pad, h = to.h / s + 2 * pad;
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><rect x="${stroke / 2}" y="${stroke / 2}" width="${w - stroke}" height="${h - stroke}" rx="${radius + gap + stroke / 2}" fill="none" stroke="white" stroke-width="${stroke}"/></svg>`;
-        out['--gho-play-ring-image'] = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-        out['--gho-play-ring-pad'] = px(pad);
+        // The page's focus ring (.gh-open-play-ring): the page's own outline on the page pill's box, outside the canvas.
+        // Drawn inside the canvas (a picture, or an outline scaled with it) it kept the unrounded 2 d gap, where the page's
+        // is rounded down to whole device px, and sat on fractional px: 1.5 device px further out, top and left (Ally).
+        const ring = pageBox(to);
+        out['--gho-pring-x'] = k(ring.x - rx);
+        out['--gho-pring-y'] = k(ring.y - ry);
+        out['--gho-pring-w'] = k(ring.w);
+        out['--gho-pring-h'] = k(ring.h);
+        out['--gho-pring-from'] = mapBox(ring, home.play, 1);
+        // The page's corner (themeCss R_PLAY: this share of --gg-icon), at the focused pill's size.
+        out['--gho-pring-r'] = px(+(actionRadius(PAGE_LAYOUT.icon, 'action') / PAGE_LAYOUT.icon).toFixed(4) * PAGE_LAYOUT.icon * d * pf.y);
+        out['--gho-pring-on'] = '1';
     }
     out['--gho-play-dy'] = px((home.play.h - to.h) / 2 / s);
     // The exact-shape settle layer starts at Home's size and grows on the same timeline.
@@ -115,11 +129,27 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // A game on more than one device: Home's "Play from" segment, at the pill's right end (origin: its right edge and
     // centre line), moves with the pill's growth and grows onto the page's segment (its width, the page pill's height).
     out['--gho-play-arrow'] = `${translate((to.w - home.play.w) / s, 0)} scale(${k((PAGE_LAYOUT.playArrow.w * pf.x) / HOME_PILL.arrow)}, ${k(to.h / home.play.h)})`;
+    /**
+     * The crisp edge of page circle `slot` (.gh-open-cring), outside the canvas in the root's px: Home's circle draws its
+     * 1 canvas px edge scaled (1.26 device px, soft, on the Ally), the page's is 1 whole device px. `source`: Home's circle
+     * it grows from, or null when Home has none (the Unifideck circle: it stays at its place).
+     */
+    const circleRing = (slot: number, target: Box, source: Box | null) => {
+        const ring = pageBox(target);
+        out[`--gho-cring-${slot}-x`] = k(ring.x - rx);
+        out[`--gho-cring-${slot}-y`] = k(ring.y - ry);
+        out[`--gho-cring-${slot}-w`] = k(ring.w);
+        out[`--gho-cring-${slot}-h`] = k(ring.h);
+        out[`--gho-cring-${slot}-from`] = source ? mapBox(ring, source, 1) : `${translate(0, 0)} scale(1, 1)`;
+        out[`--gho-cring-${slot}-o`] = '1';
+    };
     let slot = 0;
     home.circles.forEach((circle, i) => {
         if (i === home.infoCircle) return;
-        const to = page.circles[slot++];
+        const pageSlot = slot++;
+        const to = page.circles[pageSlot];
         if (!to) return;
+        circleRing(pageSlot, to, circle);
         out[`--gho-circle-${i}`] = mapBox(circle, to, s, true);
         // Its icon is already the page's size (homeCss): it shrinks as the circle grows, to stay that size.
         out[`--gho-circle-icon-${i}`] = `scale(${k(circle.w / to.w)})`;
@@ -131,7 +161,10 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         out['--gho-circle-extra-x'] = k((extra.x - home.canvas.x) / s);
         out['--gho-circle-extra-y'] = k((extra.y - home.canvas.y) / s);
         out['--gho-circle-extra-w'] = k(extra.w / s);
+        circleRing(3, extra, null);
     }
+    // The page circles' corner (themeCss R_TILE), in the page's unit.
+    out['--gho-cring-r'] = px(+(actionRadius(PAGE_LAYOUT.icon, 'icon') / PAGE_LAYOUT.icon).toFixed(4) * PAGE_LAYOUT.icon * d);
     if (home.store) out['--gho-store'] = translate((page.store.x - home.store.x) / s, (page.store.y - home.store.y) / s);
 
     const labelScale = PAGE_LAYOUT.stats.label / HOME_CHIP_FONTS.label;
@@ -176,8 +209,6 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // The cards' crisp ring (.gh-open-ring), outside the scaled canvas in the root's px: it crossfades in over the morph as
     // the panel's soft canvas ring fades out, so the page's ring (whole device px, brightened by --gg-ring) is already
     // there at the hand-over. Width and brightness are the page's (openTargets border, ring), unrounded so it snaps alike.
-    const rx = home.root?.x ?? 0;
-    const ry = home.root?.y ?? 0;
     page.shells.forEach((shell, i) => {
         out[`--gho-ring-${i}-x`] = k(shell.x - rx);
         out[`--gho-ring-${i}-y`] = k(shell.y - ry);

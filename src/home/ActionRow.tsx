@@ -336,7 +336,6 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             >
                 <span className="gh-btn-icon">{unifideck && !download ? (unifideck.installed ? <FaPlay /> : <FaDownload />) : steamPill ? steamPill.icon : play.label === 'Pause' ? <IoPause /> : play.label === 'Download' || play.label === 'Update' ? <IoDownload /> : <IoPlay />}</span>
                 <span className="gh-btn-label">{playWord}</span>
-                <span className="gh-open-play-ring" aria-hidden="true" />
                 {playFrom && <span className="gh-play-arrow"><PlayFromGlyph /></span>}
             </ActionButton>
             {playFrom && (

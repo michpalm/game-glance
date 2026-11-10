@@ -131,6 +131,18 @@ describe('applyOpening', () => {
         f.frames.splice(0).forEach((cb) => cb());
         expect(f.attrs.get('data-gh-phase')).toBe('to');
     });
+    it('has the browser work out the start frame before the motion starts, so parts that first appear in it move too', () => {
+        // A layer that only exists while opening (the Play pill's fill, the crisp rings, the panels) has no earlier style to
+        // move from: with the start and the motion set in one style pass it was drawn at its end at once (Ally: the pill at
+        // full width under the buttons still on their way).
+        const f = fakeRoot();
+        const read: Array<string | undefined> = [];
+        (f.root as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () => { read.push(f.attrs.get('data-gh-phase')); return { left: 0, top: 0, width: 0, height: 0 }; };
+        applyOpening(f.root, 'morph', [], null);
+        expect(read).toEqual(['from']);
+        f.frames.splice(0).forEach((cb) => cb());
+        expect(f.attrs.get('data-gh-phase')).toBe('to');
+    });
     it('twins that cannot be drawn: the morph still starts, without them (Home\'s own text morphs)', () => {
         const f = fakeRoot();
         const twin: TwinSpec = { name: 'title', role: 'title', text: 'X', x: 0, y: 0, origin: 'base', from: 'none', to: 'none', accent: false };

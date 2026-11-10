@@ -2,6 +2,10 @@ import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 
 /** Approved VDL, 20 October / 25 October review. Sizes use the consuming surface's design unit. */
 export const CONTROL_EDGE = 'rgba(182,199,224,.40)';
+/** The contrast lift (approved live on the Ally, 4 November): a floating surface's rim (the menu's bar, panel and bell; the search panel). */
+export const SURFACE_RIM = { border: '1.5px solid rgba(182,199,224,.49)', shadow: '0 0 0 1px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08)' } as const;
+/** And an idle tile inside one (a menu tile, a search match): a quieter edge and a light tint, for separation over dark scenes. */
+export const IDLE_TILE = { edge: 'rgba(182,199,224,.24)', tint: 'rgba(124,151,191,.075)' } as const;
 
 export const TOKENS = {
     glass: 'rgba(12,16,22,.40)', strong: 'rgba(12,16,22,.55)', solid: 'rgba(12,16,22,.75)',

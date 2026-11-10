@@ -1,11 +1,11 @@
 import { radialStyles } from './radialStyles';
-import { CONTROL_EDGE, TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
+import { CONTROL_EDGE, IDLE_TILE, SURFACE_RIM, TOKENS, focusRing, ghost, selectedSlice } from '../styles/tokens';
 
 // Active navigation tabs stay legible after focus moves into the panel; other option slices retain their quieter role.
 const selectedTab = `${selectedSlice()};--gg-selected:rgba(255,255,255,.24);--gg-selected-edge:inset 0 -3px 0 color-mix(in srgb,var(--gg-accent-text,var(--gg-accent)) 65%,#fff)`;
 
-const menuSurfaceRim = 'border:1.5px solid rgba(182,199,224,.49);box-shadow:0 0 0 1px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08)';
-const idleTileTint = 'rgba(124,151,191,.075)';
+const menuSurfaceRim = `border:${SURFACE_RIM.border};box-shadow:${SURFACE_RIM.shadow}`;
+const idleTileTint = IDLE_TILE.tint;
 
 // The approved outer 60vw × 84vh canvas stays unchanged. One local design unit
 // retains its tested scale in Steam's separate Home/game overlay viewports.
@@ -42,7 +42,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-grid.gg-menu-grid-navigate{grid-template-columns:repeat(4,minmax(0,1fr))}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton{min-height:112px;height:112px;flex-direction:column;gap:8px;border-radius:var(--gg-r-card);border-color:var(--gg-menu-detail-edge);background:var(--gg-glass)}
 .gg-menu-native-host .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton:not(:is(.gpfocus,:focus-visible,:hover,[aria-pressed=true])){
-    border-color:rgba(182,199,224,.24);
+    border-color:${IDLE_TILE.edge};
     background-image:linear-gradient(${idleTileTint},${idleTileTint});
 }
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}

@@ -329,16 +329,15 @@ describe('openMotion', () => {
         const a = parse(v['--gho-play-arrow']);
         expect(a.sx).toBeCloseTo(PAGE_LAYOUT.playArrow.w / HOME_PILL.arrow, 3);
     });
-    it('uses the rounded page outline width in screen pixels for the Play ring', () => {
+    it("keeps Home's measured border as the Play layers' inset", () => {
         const page = { ...spotlight(), d: 1.1316, dpr: 1.28 };
         const home = { ...homeRects(), playBorder: { left: 0.78125, top: 0.78125 } };
         const v = vars(openMotion(home, page, 'spotlight', 1.1316));
         expect(parseFloat(v['--gho-play-inset-x'])).toBeCloseTo(-0.78125, 4);
         expect(parseFloat(v['--gho-play-inset-y'])).toBeCloseTo(-0.78125, 4);
-        const svg = decodeURIComponent(v['--gho-play-ring-image']);
-        const stroke = Number(svg.match(/stroke-width="([^"]+)"/)?.[1]);
-        expect(stroke * 1.1316).toBeCloseTo(2 / 1.28, 5);
-        expect(vars(openMotion(homeRects(), page, 'spotlight', 1.1316, false))['--gho-play-ring-image']).toBeUndefined();
+        // The ring is no longer a picture inside the scaled canvas (it landed up to 1.5 device px off the page's, Ally).
+        expect(v['--gho-play-ring-image']).toBeUndefined();
+        expect(v['--gho-play-ring-pad']).toBeUndefined();
     });
     it("the page's focused pill's exact box (round ends, unlike the stretched layer), relative to Home's pill", () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
@@ -428,5 +427,69 @@ describe('the cards\' crisp ring crossfades in over the morph (soft canvas ring 
         const none = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         expect(none['--gho-ring-w']).toBe('1px');
         expect(none['--gho-ring-boost']).toBe('1');
+    });
+});
+
+describe("the page's own rings at the hand-over: Play's focus ring and the circles' edges, outside the scaled canvas", () => {
+    const dpr = 1.28;
+    const page = { ...spotlight(), d: 1.1316, dpr, border: 0.78125 };
+    const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+    const v = vars(openMotion(home, page, 'spotlight', s));
+    const snap = (n: number) => Math.round(n * dpr) / dpr;
+    const pf = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
+    const to = { x: 25 - (354.2 * (pf.x - 1)) / 2, y: 493.1 - (62.5 * (pf.y - 1)) / 2, w: 354.2 * pf.x, h: 62.5 * pf.y };
+
+    it("puts Play's ring on the page pill's box, on whole device px, in the root's px", () => {
+        expect(Number(v['--gho-pring-x'])).toBeCloseTo(snap(to.x) - 10, 4);
+        expect(Number(v['--gho-pring-y'])).toBeCloseTo(snap(to.y) - 20, 4);
+        expect(Number(v['--gho-pring-w'])).toBeCloseTo(snap(to.x + to.w) - snap(to.x), 4);
+        expect(Number(v['--gho-pring-h'])).toBeCloseTo(snap(to.y + to.h) - snap(to.y), 4);
+        expect((Number(v['--gho-pring-x']) + 10) * dpr).toBeCloseTo(Math.round(to.x * dpr), 3);
+        expect(v['--gho-pring-on']).toBe('1');
+    });
+    it("gives it the page pill's corner, in the page's unit", () => {
+        expect(parseFloat(v['--gho-pring-r'])).toBeCloseTo((22 / 60) * PAGE_LAYOUT.icon * 1.1316 * pf.y, 2);
+    });
+    it("starts it on Home's pill, so it grows with the pill", () => {
+        const from = parse(v['--gho-pring-from']);
+        expect(from.tx).toBeCloseTo(r.pill.x - snap(to.x), 2);
+        expect(from.ty).toBeCloseTo(r.pill.y - snap(to.y), 2);
+        expect(from.sx).toBeCloseTo(r.pill.w / Number(v['--gho-pring-w']), 3);
+        expect(from.sy).toBeCloseTo(r.pill.h / Number(v['--gho-pring-h']), 3);
+    });
+    it('draws no Play ring when opened with a mouse (the page shows none)', () => {
+        const mouse = vars(openMotion(home, page, 'spotlight', s, false));
+        expect(mouse['--gho-pring-on']).toBeUndefined();
+        expect(mouse['--gho-cring-0-o']).toBe('1');
+    });
+    it('puts a ring on each page circle a Home circle moves to (the info circle has none), on whole device px', () => {
+        const slots: Array<[number, Box, Box]> = [[0, page.circles[0], r.circle0], [1, page.circles[1], r.circle1], [2, page.circles[2], r.circle3]];
+        for (const [slot, target, source] of slots) {
+            const w = snap(target.x + target.w) - snap(target.x);
+            expect(Number(v[`--gho-cring-${slot}-x`])).toBeCloseTo(snap(target.x) - 10, 4);
+            expect(Number(v[`--gho-cring-${slot}-y`])).toBeCloseTo(snap(target.y) - 20, 4);
+            expect(Number(v[`--gho-cring-${slot}-w`])).toBeCloseTo(w, 4);
+            // Its own height: a circle's box is not always square in device px (86 x 87 on the Ally).
+            expect(Number(v[`--gho-cring-${slot}-h`])).toBeCloseTo(snap(target.y + target.h) - snap(target.y), 4);
+            expect(v[`--gho-cring-${slot}-o`]).toBe('1');
+            const from = parse(v[`--gho-cring-${slot}-from`]);
+            expect(from.tx).toBeCloseTo(source.x - snap(target.x), 2);
+            expect(from.ty).toBeCloseTo(source.y - snap(target.y), 2);
+            expect(from.sx).toBeCloseTo(source.w / w, 3);
+        }
+    });
+    it("leaves the Unifideck circle's ring at its place: Home has no circle it could grow from", () => {
+        expect(Number(v['--gho-cring-3-x'])).toBeCloseTo(snap(625) - 10, 4);
+        expect(v['--gho-cring-3-o']).toBe('1');
+        const from = parse(v['--gho-cring-3-from']);
+        expect([from.tx, from.ty, from.sx]).toEqual([0, 0, 1]);
+    });
+    it('has no ring for a page circle no Home circle moves to', () => {
+        const two = vars(openMotion({ ...home, circles: [r.circle0, r.circle1], infoCircle: null }, page, 'spotlight', s));
+        expect(two['--gho-cring-1-o']).toBe('1');
+        expect(two['--gho-cring-2-o']).toBeUndefined();
+    });
+    it("gives them the page circles' corner, in the page's unit", () => {
+        expect(parseFloat(v['--gho-cring-r'])).toBeCloseTo(0.3 * PAGE_LAYOUT.icon * 1.1316, 3);
     });
 });

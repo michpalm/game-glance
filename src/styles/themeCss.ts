@@ -839,7 +839,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rule(cloud && `${cloud}::after`, ` content: "" !important; position: absolute !important; top: ${d(CLOUD_DOT.inset)} !important; right: ${d(CLOUD_DOT.inset)} !important;
             left: auto !important; bottom: auto !important; margin: 0 !important;
             width: ${d(CLOUD_DOT.size)} !important; height: ${d(CLOUD_DOT.size)} !important; box-sizing: content-box !important; border-radius: 50% !important;
-            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: ${d(CLOUD_DOT.ring)} solid ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
+            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: none !important; box-shadow: 0 0 0 ${d(CLOUD_DOT.ring)} ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
         rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
         rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
 
