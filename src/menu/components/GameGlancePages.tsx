@@ -2,7 +2,7 @@ import { PROFILE_STYLES, PROFILE_STYLE_LABELS } from '../../data/settings';
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
 import type { ReactElement } from 'react';
 import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
-import { everyPageAvailable, homeRows, ROW_STYLE_LABELS, statusRows, type CategoryId } from '../../data/settingsCategories';
+import { everyPageAvailable, homeRows, PROTONDB_SWITCH_TEXT, ROW_STYLE_LABELS, statusRows, type CategoryId } from '../../data/settingsCategories';
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
 import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
@@ -47,6 +47,9 @@ export function HomePage({ v, a }: PageProps) {
             {has('wishlistDeals') && <ToggleRow id="gg:home:wishlistDeals" label="Show wishlist deals"
                 description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
                 checked={s.wishlistDeals} onChange={value => a.run(a.store.setWishlistDeals(value))} />}
+            {has('protondb') && <h3>Info chips</h3>}
+            {has('protondb') && <ToggleRow id="gg:home:protondb" label="ProtonDB rating" description={PROTONDB_SWITCH_TEXT}
+                checked={s.homeChips.protondb} onChange={value => a.run(a.store.setHomeChip('protondb', value))} />}
         </>)}
         {error(v.error)}
     </>;

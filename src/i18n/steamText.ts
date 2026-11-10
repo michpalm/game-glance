@@ -38,7 +38,6 @@ export const PHRASES = {
     playFrom: p('GameAction_PlayFrom', 'Play from'),
     thisDevice: p('StreamingClient_Menu_UnknownHardware', 'This device'),
     streamFrom: p('StreamingClient_StreamFrom', 'Stream from: %1$s'),
-    gameDetails: p('AppDetails_GameInfo', 'Game details'),
     viewLibrary: p('GamepadHome_GoToLibrary', 'View more in your Library'),
     recentGames: p('LibraryHome_RecentGames', 'Recent games'),
     noPlayTime: p('AppBox_NoPlayTimeYet', 'No playtime yet'),

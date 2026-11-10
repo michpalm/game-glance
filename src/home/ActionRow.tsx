@@ -1,7 +1,7 @@
 import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ComponentType, CSSProperties, ReactNode, useRef, useState } from 'react';
-import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
+import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { markLaunch } from '../data/launchIntent';
@@ -12,7 +12,7 @@ import { pressCloud } from './steamCloud';
 import { steamCheckIcon, steamControllerIcon, steamGearIcon, steamStreamMenuClasses } from './steamIcons';
 import { readSteamPill } from './steamPill';
 import { StreamChoice, streamChoices, StreamOverview } from './streaming';
-import { openGame, openLibrary, openPage } from './homeNav';
+import { openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
 import { playNavSound, skipSteamSound } from './navSound';
@@ -131,7 +131,7 @@ function toggleDownload(action: 'pause' | 'resume', appId: number) {
 
 function ActionButton({ className, label, onPress, preferredFocus, fill, setRef, action, style, children }: {
     className: string;
-    /** What the button is (play, controller, menu, info, cloud, library): the open transition finds the buttons by it. */
+    /** What the button is (play, controller, menu, cloud, library): the open transition finds the buttons by it. */
     action?: string;
     /** Receives the button element (the gear: the game menu's anchor for View/Select). */
     setRef?(el: HTMLElement | null): void;
@@ -229,15 +229,14 @@ export function LibraryActionRow({ preferred, buttons }: { preferred?: boolean; 
 }
 
 /**
- * The action row, where Home's focus rests (bumper navigation). With a game selected: the Play pill plus controller,
- * settings and info circles. With the Library card selected (`game` null): a single 280-wide "Open Library" pill. The
+ * The action row, where Home's focus rests (bumper navigation). With a game selected: the Play pill plus controller
+ * and settings circles. With the Library card selected (`game` null): a single 280-wide "Open Library" pill. The
  * pill is the same element either way (the first child), so L1/R1 never drop its focus while the selection moves.
  * The cloud circle (last, only when the game page shows a cloud status) shows the selected game's Steam Cloud state
  * in Steam's own icon and, on a sync problem, A opens Steam's conflict or retry dialog, as the page's status does.
  * The gear (and View/Select or Menu anywhere on the row) opens Steam's game context menu for the selected game, as
  * the game page's gear does (gameMenu; Properties if Steam's menu is unavailable).
- * The info circle opens the game page with the open transition (homeNav.openGame: Home morphs into the page). The
- * Play pill's page fallbacks (Resume,
+ * The game page opens from the game's card (the row has no button for it). The Play pill's page fallbacks (Resume,
  * Install, missing Steam calls) open it directly. For the running game the pill reads Resume and opens its page
  * rather than launching it again. While Steam installs, updates or downloads the game the pill fills left to right
  * with the progress and reads the state and percent (downloadProgress).
@@ -363,14 +362,6 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             </ActionButton>
             <ActionButton className="gh-btn-circle" label={tr('manage')} action="menu" setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
                 <SteamIcon steam={steamGearIcon()} fallback={<IoSettingsOutline />} />
-            </ActionButton>
-            <ActionButton
-                className="gh-btn-circle"
-                label={tr('gameDetails')}
-                action="info"
-                onPress={(el) => openGame(appId, el)}
-            >
-                <span className="gh-btn-icon"><IoInformationCircleOutline /></span>
             </ActionButton>
             {cloud && (
                 <ActionButton

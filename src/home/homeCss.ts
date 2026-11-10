@@ -6,6 +6,7 @@ import { withDomFocus } from './focusCss';
 import { DEFAULT_ACCENT } from './accent';
 import { SOURCE_PILL, sourcePillIcon, sourcePillLook } from '../styles/sourcePill';
 import { CLOUD_COLOURS, CLOUD_DOT, CloudTone } from './cloud';
+import { PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 import { ART_FILL_FILTER } from './heroFit';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
@@ -340,10 +341,13 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             object-fit: contain; object-position: left bottom; align-self: flex-start; filter: drop-shadow(0 4px 24px rgba(0,0,0,.45))`),
         // One row of fixed height, present even with no chips yet, so the actions never move.
         rule('.gh-chips', `height: ${t.chipRow}px; display: flex; gap: 10px; flex-wrap: nowrap; align-items: stretch; margin: 0; padding: 0`),
-        rule('.gh-chip', `display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),
-        rule('.gh-chip-label', `font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: 1.2; ${labelText()}`),
+        rule('.gh-chip', `display: flex; flex-direction: column; flex-shrink: 0; gap: 4px; padding: 10px 14px; min-width: 104px; border-radius: var(--gh-r-card); ${GLASS}`),
+        rule('.gh-chip-label', `font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; line-height: 1.2; white-space: nowrap; ${labelText()}`),
         rule('.gh-chip-value', 'font-size: 20px; font-weight: 700; line-height: 1.2; color: #fff; white-space: nowrap'),
         rule('.gh-chip-bar', 'height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden'),
+        // A value's mark (the ProtonDB chip: ProtonDB's logo in the rating's own colour), before the words.
+        rule('.gh-chip-mark', 'display: inline-flex; vertical-align: -0.1em; margin-right: 6px; font-size: 17px; line-height: 1'),
+        ...PROTON_TIERS.map((tier) => rule(`.gh-chip[data-tone="${tier}"] .gh-chip-mark`, `color: ${PROTON_COLOURS[tier]}`)),
         rule('.gh-chip-fill', `height: 100%; background: var(--glance-accent); transition: width ${ACCENT_MS}ms`),
 
         // Store pill (icon + name) at the right edge, centred on the action row: the game page's pill (styles/sourcePill.ts).
@@ -815,14 +819,14 @@ export function openingRules(): string[] {
         // An accent copy of a value's words (data-text) over it, for a value the page draws in the accent (openMotion).
         rule(`${M} .gh-chip-value`, 'position: relative'),
         rule(`${M} .gh-chip-value::after`, 'content: attr(data-text); position: absolute; left: 0; top: 0; color: var(--glance-accent-text); opacity: 0; pointer-events: none'),
-        ...[0, 1, 2, 3].flatMap((i) => [
+        ...[0, 1, 2, 3, 4].flatMap((i) => [
             rule(`${MT} .gh-chip:nth-child(${i + 1}) .gh-chip-label`, `transform: var(--gho-chip-${i}-label, none); opacity: var(--gho-chip-${i}-label-o, var(--gho-chip-${i}-o, 0)); transition: ${move}, opacity ${T.infoFade}ms ease`),
             rule(`${MT} .gh-chip:nth-child(${i + 1}) .gh-chip-value`, `transform: var(--gho-chip-${i}-value, none); opacity: var(--gho-chip-${i}-o, 0); transition: ${move}, opacity ${T.infoFade}ms ease`),
             rule(`${MT} .gh-chip:nth-child(${i + 1}) .gh-chip-value::after`, `opacity: var(--gho-chip-${i}-accent, 0); transition: opacity ${T.morph}ms ease`),
         ]),
         // A bar moves onto the page's (Clean's panel) when the morph gives it a place (openMotion), and fades otherwise.
         rule(`${M} .gh-chip-bar`, 'transform-origin: 0 0'),
-        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-chip:nth-child(${i + 1}) .gh-chip-bar`, `transform: var(--gho-chip-${i}-bar, none); opacity: var(--gho-chip-${i}-bar-o, 0); transition: ${move}, opacity ${T.infoFade}ms ease`)),
+        ...[0, 1, 2, 3, 4].map((i) => rule(`${MT} .gh-chip:nth-child(${i + 1}) .gh-chip-bar`, `transform: var(--gho-chip-${i}-bar, none); opacity: var(--gho-chip-${i}-bar-o, 0); transition: ${move}, opacity ${T.infoFade}ms ease`)),
         ...shell(0),
         ...shell(1),
 

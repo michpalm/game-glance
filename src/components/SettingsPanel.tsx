@@ -9,7 +9,7 @@ import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { PROFILE_STYLES, PROFILE_STYLE_LABELS, settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
-import { everyPageAvailable, homeRows, HomeRow, matchLine, StatusRow, statusRows } from '../data/settingsCategories';
+import { everyPageAvailable, homeRows, HomeRow, matchLine, PROTONDB_SWITCH_TEXT, StatusRow, statusRows } from '../data/settingsCategories';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
@@ -18,7 +18,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, homeChips, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -131,6 +131,14 @@ export function SettingsPanel() {
                 description="Games from your library to play next."
                 checked={feedTabs.recommended}
                 onChange={(value) => settings.setFeedTab('recommended', value)}
+            />
+        ),
+        protondb: (
+            <ToggleField
+                label="ProtonDB rating"
+                description={PROTONDB_SWITCH_TEXT}
+                checked={homeChips.protondb}
+                onChange={(value) => settings.setHomeChip('protondb', value)}
             />
         ),
     };

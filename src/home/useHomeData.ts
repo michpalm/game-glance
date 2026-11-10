@@ -4,6 +4,7 @@ import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, overrides, TTL } from '../data/cache';
 import { hltbCacheKey, HltbResult, lookupHltb } from '../data/hltb';
+import { lookupProton, ProtonResult } from '../data/protondb';
 import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
@@ -280,6 +281,9 @@ function readSteamId(): string | null {
 let recommendedMemo: RecommendedCard[] = [];
 /** The last wishlist deal cards, for an instant second row on the next Home open. */
 let dealsMemo: DealCard[] = [];
+/** ProtonDB ratings looked up this session, by app id (a failed lookup is not kept: it is asked again). */
+const protonMemo = new Map<number, ProtonResult>();
+
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
 
@@ -599,7 +603,7 @@ function useFriendLastGames(raw: RawFriend[], enabled: boolean): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs } = useSettings();
+    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, homeChips } = useSettings();
     const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -651,6 +655,17 @@ export function useHomeData(focusIndex = 0): HomeData {
         return result;
     });
     const hltb = warmedHltb ?? liveHltb;
+    // The game's ProtonDB rating, once the selection rests (Steam games only: ProtonDB goes by Steam's app id). Kept for
+    // the session, so coming back to a game shows its chip at once.
+    // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
+    const protonOn = homeChips.protondb;
+    const knownProton = focused && protonOn ? protonMemo.get(focused.appId) : undefined;
+    const liveProton = useAsync(protonOn && focused && info && !info.isShortcut && resting !== null && !knownProton ? `protondb:${focused.appId}` : null, async () => {
+        const result = await lookupProton(focused?.appId ?? 0);
+        if (focused && result.status !== 'unavailable') protonMemo.set(focused.appId, result);
+        return result;
+    });
+    const proton = protonOn ? knownProton ?? liveProton : undefined;
     // The selected game's description once it rests, for the open transition (Home draws it as it turns into the page's
     // Spotlight look; the Clean look has none). Kept in the session memo, which the page reads on its first frame.
     const warmedDescription = focused && lang ? peekDescription(focused.appId, lang) : undefined;
@@ -701,9 +716,10 @@ export function useHomeData(focusIndex = 0): HomeData {
             addedAt: isNew ? focused.addedAt : undefined,
             installed: focused.installed,
             spaceBytes: info?.isShortcut ? null : (memoSpaceRequired(focused.appId) ?? null),
+            protonTier: proton?.status === 'found' ? proton.tier : null,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, locale, launcher, detailsVersion]);
+    }, [focused, info, hltb, proton, locale, launcher, detailsVersion]);
     // The launcher knows a last played Steam does not: such a game is no longer "new to library".
     const focusedIsNew = focused?.isNew === true && !launcher?.lastPlayed;
     const lastPlayedLabel = focused

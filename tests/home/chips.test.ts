@@ -68,3 +68,16 @@ describe('gameChips: the space a Steam game that is not installed needs', () => 
         expect(gameChips(base, NOW, 'en-US').map((c) => c.label)).not.toContain('Space Required');
     });
 });
+
+describe('gameChips: ProtonDB', () => {
+    it("comes last, with the rating's name and its tone", () => {
+        const chips = gameChips({ ...base, protonTier: 'gold' }, NOW, 'en-US');
+        expect(chips.map((c) => c.key)).toEqual(['played', 'achievements', 'hltb', 'protondb']);
+        expect(chips[3]).toEqual({ key: 'protondb', label: 'ProtonDB', value: 'Gold', tone: 'gold' });
+        expect(gameChips({ ...base, protonTier: 'borked' }, NOW, 'en-US')[3].value).toBe('Borked');
+    });
+    it('is left out when the rating is unknown', () => {
+        expect(gameChips({ ...base, protonTier: null }, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
+        expect(gameChips(base, NOW, 'en-US').map((c) => c.key)).not.toContain('protondb');
+    });
+});

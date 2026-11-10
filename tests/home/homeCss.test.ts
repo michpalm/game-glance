@@ -1384,3 +1384,25 @@ describe('shared status cell geometry',()=>{
         expect(avatar).toContain('min-width: 24px');expect(avatar).toContain('min-height: 24px');
     });
 });
+
+describe('ProtonDB chip', () => {
+    const css = homeCss();
+    const all = rules(css);
+    it("the chip's mark wears the rating's colour, ProtonDB's own", () => {
+        const colours = { platinum: '#b4c7dc', gold: '#cfb53b', silver: '#a6a6a6', bronze: '#cd7f32', borked: '#ff0000' };
+        for (const [tier, colour] of Object.entries(colours)) {
+            const mark = all.find(([sel]) => sel.some((s) => s.endsWith(`.gh-chip[data-tone="${tier}"] .gh-chip-mark`)));
+            expect(mark?.[1], tier).toContain(`color: ${colour}`);
+        }
+    });
+    it('five chips are wider than the title block: each keeps its own width and its label on one line (seen squeezed on the Deck)', () => {
+        expect(ruleFor(css, '.gh-chip')).toContain('flex-shrink: 0');
+        expect(ruleFor(css, '.gh-chip-label')).toContain('white-space: nowrap');
+    });
+    it('a fifth chip (Played, Space, Achievements, HLTB, ProtonDB) fades with the others while opening', () => {
+        const label = all.find(([sel]) => sel.some((s) => s.includes('data-gh-phase="to"') && s.endsWith('.gh-chip:nth-child(5) .gh-chip-label')));
+        const value = all.find(([sel]) => sel.some((s) => s.includes('data-gh-phase="to"') && s.endsWith('.gh-chip:nth-child(5) .gh-chip-value')));
+        expect(label?.[1]).toContain('var(--gho-chip-4-o, 0)');
+        expect(value?.[1]).toContain('opacity: var(--gho-chip-4-o, 0)');
+    });
+});

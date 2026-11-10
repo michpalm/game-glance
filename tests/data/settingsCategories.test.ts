@@ -7,6 +7,7 @@ const on: Settings = {
     homeExpandedControls: true, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent',
     homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom',
     feedTabs: { news: true, friends: true, recommended: true },
+    homeChips: { protondb: false },
     screensaver: { enabled: false, logo: true, statusBar: true, stats: true } as Settings['screensaver'],
 };
 const context: SummaryContext = { rowName: 'Recent games', screensaverAvailable: true, menuEnabled: true, socialKeyboard: 'compact' };
@@ -20,13 +21,20 @@ describe('categories', () => {
 
 describe('homeRows (a row shows while the row it depends on is on)', () => {
     it('lists every row in order with everything on and a collection row', () =>
-        expect(homeRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended', 'wishlistDeals']));
+        expect(homeRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended', 'wishlistDeals', 'protondb']));
     it('has no sort for the recent games row', () => expect(homeRows(on, false)).not.toContain('rowSort'));
     it('shows only the main toggle with Spotlight Home off', () => expect(homeRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome']));
     it('hides wishlist deals with Recommended off', () =>
         expect(homeRows({ ...on, feedTabs: { ...on.feedTabs, recommended: false } }, false)).not.toContain('wishlistDeals'));
     it('keeps the tab switches with all tabs off', () =>
         expect(homeRows({ ...on, feedTabs: { news: false, friends: false, recommended: false } }, false)).toEqual(expect.arrayContaining(['news', 'friends', 'recommended'])));
+});
+
+describe('homeRows: info chips', () => {
+    it('lists the ProtonDB switch last, with every feed tab off too', () => {
+        expect(homeRows({ ...on, feedTabs: { news: false, friends: false, recommended: false } }, false).at(-1)).toBe('protondb');
+    });
+    it('hides it with Spotlight Home off', () => expect(homeRows({ ...on, spotlightHome: false }, false)).not.toContain('protondb'));
 });
 
 describe('statusRows', () => {

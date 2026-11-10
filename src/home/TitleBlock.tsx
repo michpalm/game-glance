@@ -1,13 +1,17 @@
 import { GameTitle } from '../components/GameTitle';
 import type { Chip } from './chips';
+import { ProtonMark } from './ProtonMark';
 
 function ChipView({ chip }: { chip: Chip }) {
     const progress = chip.progress;
     return (
-        <div className="gh-chip" data-chip={chip.key}>
+        <div className="gh-chip" data-chip={chip.key} data-tone={chip.tone}>
             <div className="gh-chip-label">{chip.label}</div>
             {/* data-text: the open transition can draw an accent copy of the words over them (homeCss.openingRules) */}
-            <div className="gh-chip-value" data-text={chip.value}>{chip.value}</div>
+            <div className="gh-chip-value" data-text={chip.value}>
+                {chip.tone && <span className="gh-chip-mark" aria-hidden="true"><ProtonMark /></span>}
+                {chip.value}
+            </div>
             {progress !== undefined && Number.isFinite(progress) && (
                 <div className="gh-chip-bar">
                     <div className="gh-chip-fill" style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }} />

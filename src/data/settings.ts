@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { RECENT_ROW, RowSort, rowSortOf } from '../home/collections';
 import { FEED_TABS_DEFAULT, FeedTabs, feedTabsOf } from '../home/feedTabs';
+import { ChipSwitch, HOME_CHIPS_DEFAULT, HomeChips, homeChipsOf } from '../home/chipSwitches';
 import type { FeedTab } from '../home/feedLayout';
 import { HeroFit, heroFitOf } from '../home/heroFit';
 import { PageShading, pageShadingOf } from '../home/pageShading';
@@ -31,11 +32,12 @@ export interface Settings {
     heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
     pageShading: PageShading; // the shading over the art on Home and the game page: 'bottom' (the bottom half) or 'none'
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
+    homeChips: HomeChips; // Home's info chips that can be switched (ProtonDB); a chip that is off looks nothing up
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, homeChips: HOME_CHIPS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -75,6 +77,7 @@ export function createSettingsStore(kv: KvBackend) {
                 heroFit: heroFitOf(raw?.heroFit),
                 pageShading: pageShadingOf(raw?.pageShading),
                 feedTabs: feedTabsOf(raw?.feedTabs),
+                homeChips: homeChipsOf(raw?.homeChips),
                 screensaver: readScreensaverOptions(raw?.screensaver),
             };
             emit();
@@ -143,6 +146,13 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             // Keep tabs a newer version stored (as setScreensaver keeps unknown screensaver keys).
             await persist({ feedTabs: { ...feedTabs, ...object(retained.feedTabs), [tab]: on } as FeedTabs });
+        },
+        async setHomeChip(chip: ChipSwitch, on: boolean): Promise<void> {
+            const homeChips = { ...current.homeChips, [chip]: on };
+            current = { ...current, homeChips };
+            emit();
+            // Keep switches a newer version stored (as setFeedTab does).
+            await persist({ homeChips: { ...homeChips, ...object(retained.homeChips), [chip]: on } as HomeChips });
         },
         async setCleanPage(cleanPage: boolean): Promise<void> {
             current = { ...current, cleanPage };

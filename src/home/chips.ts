@@ -1,6 +1,7 @@
 import { formatAchievements, formatBytes, formatHours, minutesToHours } from '../logic/format';
 import { formatLastPlayed } from './recents';
 import { tr } from '../i18n/steamText';
+import type { ProtonTier } from '../logic/protonTier';
 
 export interface Chip {
     key: string;
@@ -8,6 +9,8 @@ export interface Chip {
     value: string;
     /** 0..1; drawn as a thin bar under the value. */
     progress?: number;
+    /** A coloured mark before the value, by name (the ProtonDB chip: its rating; homeCss colours it). */
+    tone?: string;
 }
 
 export interface GameChipInput {
@@ -21,6 +24,8 @@ export interface GameChipInput {
     /** A Steam game not installed: its installed flag, and the space Steam says it needs (the chip right of Played). */
     installed?: boolean;
     spaceBytes?: number | null;
+    /** The game's ProtonDB rating; null or missing (not a Steam game, no rating, not known yet) leaves the chip out. */
+    protonTier?: ProtonTier | null;
 }
 
 export function gameChips(i: GameChipInput, now: number, locale: string): Chip[] {
@@ -50,6 +55,8 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
     } else {
         chips.push({ key: 'hltb', label: 'HLTB main', value: '—' });
     }
+    // ProtonDB's own names for its ratings (Platinum ... Borked), as its site writes them: not translated.
+    if (i.protonTier) chips.push({ key: 'protondb', label: 'ProtonDB', value: i.protonTier[0].toUpperCase() + i.protonTier.slice(1), tone: i.protonTier });
     return chips;
 }
 
