@@ -95,7 +95,9 @@ export function achievementsView(a: AchievementFacts | undefined, now: number, l
     const latest = a.unlocked[0];
     const known = a.unlocked.filter((u) => u.globalPct > 0);
     const rarest = known.reduce<AchievementFacts['unlocked'][number] | null>((best, u) => (best === null || u.globalPct < best.globalPct ? u : best), null);
-    const caption = `${a.achieved} of ${a.total} unlocked` + (rarest ? ` · rarest: ${rarest.name} (${rarest.globalPct.toFixed(1)}% have it)` : '');
+    // Below a tenth of a percent it would print "0.0%".
+    const share = (pct: number) => (pct < 0.1 ? '<0.1' : pct.toFixed(1));
+    const caption = `${a.achieved} of ${a.total} unlocked` + (rarest ? ` · rarest: ${rarest.name} (${share(rarest.globalPct)}% have it)` : '');
     if (!latest) return { title, columns: [], bar, caption };
     const when = latest.unlockedAt > 0 ? ` · ${formatLastPlayed(latest.unlockedAt, now, locale)}` : '';
     return { title, columns: [], bar, caption, icon: { src: latest.image, label: `Latest${when}`, value: latest.name } };

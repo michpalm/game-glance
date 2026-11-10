@@ -59,7 +59,7 @@ export function gameChips(i: GameChipInput & { slots: GameInfoSlots }, now: numb
     } else {
         chips.push({ key: 'hltb', label: 'HLTB main', value: '—' });
     }
-        if (i.protonTier) chips.push(protonStat(i.protonTier));
+    if (i.protonTier) chips.push(protonStat(i.protonTier));
     return orderBySlots(chips, i.slots);
 }
 

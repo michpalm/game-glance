@@ -662,7 +662,9 @@ export function useHomeData(focusIndex = 0): HomeData {
     );
     // Known already (the warm-up, or an earlier visit this session): shown at once, without waiting for the selection to rest.
     const warmedHltb = focused ? peekHltb(focused.appId) : undefined;
-    const liveHltb = useAsync(focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
+    // Only with HowLongToBeat in a slot, as the page asks (its chip is dropped otherwise).
+    const hltbOn = usesStat(infoSlots, 'hltb');
+    const liveHltb = useAsync(hltbOn && focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
         const result = await lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false });
         if (focused) rememberHltb(focused.appId, result);
         return result;

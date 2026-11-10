@@ -47,6 +47,14 @@ export function viewportSize(win: {
 }
 
 /** The page's stat columns (Play time, Achievements, HowLongToBeat Main) Home showed no chip for, by Home's chip keys. Pure. */
+/**
+ * Whether Home draws the page's Play time column as it opens (OpenExtras `playedMissing`): Play time is in a stat slot and
+ * Home showed no chip for it (a new game's Added chip). Not when Play time is the featured card: its card says "Total". Pure.
+ */
+export function openPlayedMissing(slots: GameInfoSlots, chipKeys: string[]): boolean {
+    return slots.stats.includes('played') && !chipKeys.includes('played');
+}
+
 export function missingStats(chipKeys: string[], drawn = ''): string[] {
     const extras = drawn.split(/\s+/);
     return ['played', 'achievements', 'hltb'].filter((key) => !chipKeys.includes(key) && !extras.includes(key));

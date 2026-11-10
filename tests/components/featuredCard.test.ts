@@ -34,7 +34,7 @@ describe('FeaturedCard', () => {
     });
     it('draws the ProtonDB mark with its tone', () => {
         const html = render({ proton: { status: 'found', tier: 'platinum' } });
-        expect(html).toContain('<span class="gg-mark" data-tone="platinum">');
+        expect(html).toContain('<span class="gg-mark" data-tone="platinum" aria-hidden="true">');
         expect(html).toContain('Platinum');
     });
     it('draws the achievements icon row', () => {

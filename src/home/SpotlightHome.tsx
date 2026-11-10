@@ -1,6 +1,6 @@
 import { InfoCardPanel } from '../components/InfoCard';
 import { FeaturedCard } from '../components/FeaturedCard';
-import { usesStat } from '../logic/infoSlots';
+import { openPlayedMissing } from './openHome';
 import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
 import { pageInfoStats } from '../logic/slotStats';
@@ -662,7 +662,7 @@ export function SpotlightHome() {
             <div className="gh-open-cring" data-i="2" />
             {!onLibrary && uniInstalled === true && <div className="gh-open-cring" data-i="3" />}
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
-            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={usesStat(slots, 'played') && !data.chips.some((c) => c.key === 'played')} size={slots.stats.includes('size') ? sizeColumn : null} featured={slots.featured} />}
+            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={openPlayedMissing(slots, data.chips.map((c) => c.key))} size={slots.stats.includes('size') ? sizeColumn : null} featured={slots.featured} />}
         </div>
     );
 }

@@ -72,6 +72,12 @@ describe('achievementsView', () => {
         const f = { ...facts, unlocked: [facts.unlocked[0], { ...facts.unlocked[1], globalPct: 0 }] };
         expect(achievementsView(f, NOW, 'en-US').caption).toBe('6 of 170 unlocked · rarest: Wood Riddance (91.3% have it)');
     });
+    it('a rarest one fewer than 0.1% have says "<0.1%", not "0.0%"', () => {
+        const f = { ...facts, unlocked: [facts.unlocked[0], { ...facts.unlocked[1], globalPct: 0.04 }] };
+        expect(achievementsView(f, NOW, 'en-US').caption).toBe('6 of 170 unlocked · rarest: Beijing Tourist (<0.1% have it)');
+        const tenth = { ...facts, unlocked: [facts.unlocked[0], { ...facts.unlocked[1], globalPct: 0.1 }] };
+        expect(achievementsView(tenth, NOW, 'en-US').caption).toBe('6 of 170 unlocked · rarest: Beijing Tourist (0.1% have it)');
+    });
     it('has no empty-total card', () => {
         expect(achievementsView({ achieved: 0, total: 0, unlocked: [] }, NOW, 'en-US').empty).toBe('No achievements');
     });

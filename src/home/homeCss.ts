@@ -752,9 +752,9 @@ export function openingRules(): string[] {
         rule(`${MT} .gh-scrim-dim`, `opacity: 0; transition: opacity ${T.morph}ms ease`),
         rule(FADES.map((f) => `${f} .gh-scrim-dim`).join(', '), `opacity: 0; transition: opacity ${T.feedHero}ms ease`),
 
-        // Leave: the game cards row and the tabs drop and fade; the info button fades.
+        // Leave: the game cards row and the tabs drop and fade; the stream arrow fades.
         rule([`${MT} .gh-recents`, `${MT} .gh-tabs`].join(', '), `transform: translateY(${T.leaveDrop}px); opacity: 0; transition: transform ${T.leave}ms cubic-bezier(.4,0,1,1), opacity ${T.leave}ms cubic-bezier(.4,0,1,1)`),
-        rule([`${MT} .gh-actions > .gh-btn[data-action="info"]`, `${MT} .gh-actions > .gh-btn-stream`].join(', '), `opacity: 0; transition: opacity ${T.infoFade}ms ease`),
+        rule(`${MT} .gh-actions > .gh-btn-stream`, `opacity: 0; transition: opacity ${T.infoFade}ms ease`),
 
         // Morph: the movers, from their own place (origin top-left, as openMotion computes).
         rule([`${M} .gh-title-slot`, `${M} .gh-eyebrow`, `${M} .gh-source`, `${M} .gh-actions > .gh-btn`, `${M} .gh-chip-label`, `${M} .gh-chip-value`].join(', '), 'transform-origin: 0 0'),

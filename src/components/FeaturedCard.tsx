@@ -56,7 +56,7 @@ export function FeaturedCard(p: Props) {
                         <div key={c.key} className={c.accent ? `${prefix}-goal` : undefined} data-stat={c.key}>
                             <div className={`${prefix}-label`}>{c.label}</div>
                             <div className={`${prefix}-value`}>
-                                {c.tone && <span className={`${prefix}-mark`} data-tone={c.tone}><ProtonMark /></span>}
+                                {c.tone && <span className={`${prefix}-mark`} data-tone={c.tone} aria-hidden="true"><ProtonMark /></span>}
                                 {c.value}
                             </div>
                         </div>

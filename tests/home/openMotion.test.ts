@@ -541,12 +541,16 @@ describe('openMotion follows the Game info slots (Spotlight)', () => {
         expect(v['--gho-chip-2-accent']).toBeUndefined();
     });
     it('nothing featured: one shell, no variables for a second', () => {
+        // HowLongToBeat in a stat slot: its chip grows into the info card (the one shell) as the others do, without the accent.
         const home = homeRects();
-        home.chips = home.chips.slice(0, 2);
-        const page: PageTargets = { ...spotlight(), featured: null, shells: [box(25, 593.1, 1450, 185.4)], stats: { played: spotlight().stats.played, achievements: spotlight().stats.achievements } };
+        const page: PageTargets = { ...spotlight(), featured: null, shells: [box(25, 593.1, 1450, 185.4)], stats: { played: spotlight().stats.played, achievements: spotlight().stats.achievements, hltb: { label: box(289, 614.7, 77.5, 17.2), value: box(289, 636.1, 77.5, 37.5) } } };
         const v = vars(openMotion(home, page, 'spotlight', s));
         expect(Object.keys(v).filter((name) => name.startsWith('--gho-shell-1-') || name.startsWith('--gho-ring-1-'))).toEqual([]);
         expect(v['--gho-shell-count']).toBe('1');
         expect(v['--gho-shell-0-o0']).toBe('1');
+        const union = r['chip:chip2'].x + r['chip:chip2'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 1450, 3);
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+        expect(v['--gho-chip-2-label-o']).toBeUndefined();
     });
 });

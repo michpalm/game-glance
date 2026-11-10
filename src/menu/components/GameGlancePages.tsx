@@ -80,7 +80,7 @@ export function GamePage({ v, a }: PageProps) {
         <Crumb parent="Game Glance" title="Game page" />
         {rows(<>
             <SegmentRow<'full' | 'clean'> id="gg:game-page:look" label="Look" options={['full', 'clean']} labels={{ full: 'Full', clean: 'Clean' }}
-                description="Full: description and HowLongToBeat cards. Clean: one row at the bottom over the full art."
+                description="Full: description and featured cards. Clean: one row at the bottom over the full art."
                 value={v.settings.cleanPage ? 'clean' : 'full'} onSelect={value => a.run(a.store.setCleanPage(value === 'clean'))} />
             <h3>Game info</h3>
             <p className="gg-plugin-note">{GAME_INFO_NOTE}</p>

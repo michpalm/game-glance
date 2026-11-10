@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
-import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
+import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, openPlayedMissing, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
 import type { TwinSpec } from '../../src/home/openTwins';
 import { BRIDGE_FADE_EASE, mountOpenBridge } from '../../src/home/openBridge';
 
@@ -199,6 +199,20 @@ describe('missingStats', () => {
         expect(missingStats(['played'])).toEqual(['achievements', 'hltb']);
         // A column Home drew in its extras layer is there at the hand-over: it does not arrive.
         expect(missingStats(['added', 'achievements', 'hltb'], 'desc played')).toEqual([]);
+    });
+});
+
+describe('openPlayedMissing', () => {
+    const slots = (stats: Array<'played' | 'size' | 'achievements' | 'hltb' | 'protondb' | null>, featured: 'played' | 'hltb' | null) => ({ stats, featured }) as never;
+    it("draws the page's Play time column when it is a stat Home had no chip for (a new game's Added chip)", () => {
+        expect(openPlayedMissing(slots(['played', 'size', 'achievements'], 'hltb'), ['added', 'size', 'achievements'])).toBe(true);
+        expect(openPlayedMissing(slots(['played', 'size', 'achievements'], 'hltb'), ['played', 'size', 'achievements'])).toBe(false);
+    });
+    it('not when Play time is the featured card: its card says Total, not a "Play time" column', () => {
+        expect(openPlayedMissing(slots(['size', 'achievements', 'hltb'], 'played'), ['added', 'size', 'achievements', 'hltb'])).toBe(false);
+    });
+    it('not when Play time is in no slot', () => {
+        expect(openPlayedMissing(slots(['size', 'achievements', 'hltb'], null), ['size'])).toBe(false);
     });
 });
 
