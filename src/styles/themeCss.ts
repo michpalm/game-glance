@@ -612,6 +612,8 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
         `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
         `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
+        // Play time's Total too, in the same legible accent (the open's accent copy draws it so; .gg-goal's is the raw accent).
+        `.gg-featured-played .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
 
@@ -1057,9 +1059,10 @@ export function buildArrivingCss(
     const uninstall = buttons && !extra.uninstall ? [`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :nth-child(n+4)`] : [];
     const shared = [...(extra.size ? [] : ['[data-stat="size"]']), ...uninstall, ...missing, ...(extra.family ? [] : ['.gg-family']), ...(cloud ? [cloud] : []), ':has(> .DialogDropDown_CurrentDisplay)'];
     // Spotlight: the description and the HowLongToBeat card's rest, unless Home drew them as it opened (`extra.desc`,
-    // `extra.hltb`: home/OpenExtras), when the page's are there at once under Home's copy.
+    // `extra.hltb`: home/OpenExtras), when the page's are there at once under Home's copy. Another featured card's caption
+    // and empty line are there at once: Home's normal copy draws that whole card.
     const desc = extra.desc ? [] : ['.gg-desc'];
-    const hltb = extra.hltb ? [] : ['.gg-hltb > .gg-label', '.gg-hltb [data-stat="hltb"] > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-caption', '.gg-hltb .gg-bar', '.gg-muted'];
+    const hltb = extra.hltb ? [] : ['.gg-hltb > .gg-label', '.gg-hltb [data-stat="hltb"] > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-hltb .gg-caption', '.gg-hltb .gg-bar', '.gg-hltb .gg-muted'];
     const parts = look === 'spotlight'
         ? [...desc, ...hltb, ...shared]
         : [...shared, cleanBarsArriving(extra.bars)];

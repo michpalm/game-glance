@@ -4,7 +4,7 @@ import { useAsync } from '../hooks/useAsync';
 /** ProtonDB results looked up this session, by app id. */
 const memo = new Map<number, ProtonResult>();
 
-/** Whether a result is kept for the session: not an unavailable one, nor a found one without details (an old cache entry, asked again once its refresh has written them). */
+/** Whether a result is kept for the session: not an unavailable one, nor a found one without details (only an old cache entry: a fetch always writes them; asked again once its refresh has). */
 export function rememberProton(result: ProtonResult): boolean {
     return result.status === 'none' || (result.status === 'found' && !!result.details);
 }

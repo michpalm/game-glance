@@ -26,8 +26,9 @@ export function protonView(r: ProtonResult | undefined): FeaturedView {
     const columns: FeaturedView['columns'] = [{ key: 'rating', label: 'Rating', value: rating.value, tone: r.tier }];
     let caption: string | null = null;
     if (r.details) {
-        columns.push({ key: 'reports', label: 'Reports', value: String(r.details.total) });
-        columns.push({ key: 'confidence', label: 'Confidence', value: capitalise(r.details.confidence) });
+        // A value the summary did not have leaves its column out.
+        if (r.details.total !== null) columns.push({ key: 'reports', label: 'Reports', value: String(r.details.total) });
+        if (r.details.confidence !== null) columns.push({ key: 'confidence', label: 'Confidence', value: capitalise(r.details.confidence) });
         const parts = [
             r.details.trending && `Trending ${capitalise(r.details.trending)}`,
             r.details.best && `best reported ${capitalise(r.details.best)}`,

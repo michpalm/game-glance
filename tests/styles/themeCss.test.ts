@@ -971,6 +971,11 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div .gg-value')).toContain('color: inherit');
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div:first-child .gg-value')).toContain('color: var(--glance-accent-text, var(--gg-accent))');
     });
+    it("restyled Play time card: its Total is HowLongToBeat Main's accent (the legible one the open's accent copy draws)", () => {
+        const body = (sel: string) => rulesFor(restyled, sel).slice(rulesFor(restyled, sel).indexOf('{'));
+        expect(body('.gg-featured-played .gg-stats > div:first-child .gg-value')).toBe(body('.gg-hltb .gg-stats > div:first-child .gg-value'));
+        expect(rulesFor(restyled, '.gg-featured-played .gg-stats > div:first-child .gg-value')).toContain('color: var(--glance-accent-text, var(--gg-accent)); transition: color');
+    });
     it('restyled layout hides the chevron hint and keeps the source pill, expanded, beside the Play row', () => {
         expect(rulesFor(restyled, '.gg-more')).toContain('display: none');
         expect(buildThemeCss(steam)).not.toContain('.gg-more { display: none');
@@ -1240,6 +1245,15 @@ describe('the page arriving after the open transition', () => {
         expect(desc).toContain('.gg-muted');
         // The other new parts still arrive.
         for (const sel of ['.gg-family', '[data-stat="size"]']) expect(buildArrivingCss(full, 'spotlight', 'parts', false, { desc: true, hltb: true }), sel).toContain(sel);
+    });
+    it("another featured card's caption and empty line are there at once (Home's copy drew the whole card); HowLongToBeat's still arrive", () => {
+        const css = buildArrivingCss(full, 'spotlight', 'parts');
+        const arriving = css.split('\n').find((line) => line.includes('opacity: 0 !important'))!;
+        const selectors = arriving.slice(0, arriving.indexOf('{')).split(',').map((sel) => sel.trim());
+        expect(selectors).not.toContain('.gg-caption');
+        expect(selectors).not.toContain('.gg-muted');
+        expect(selectors).toContain('.gg-hltb .gg-caption');
+        expect(selectors).toContain('.gg-hltb .gg-muted');
     });
     it("a stat column Home did not show arrives with the new parts (a new game's Play time: Home had its Added chip)", () => {
         for (const look of ['spotlight', 'clean'] as const) {

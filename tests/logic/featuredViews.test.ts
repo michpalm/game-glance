@@ -28,6 +28,13 @@ describe('protonView', () => {
         expect(v.columns.map((c) => c.key)).toEqual(['rating']);
         expect(v.caption).toBeNull();
     });
+    it('leaves out a column ProtonDB gave no value for (a summary without a report count or confidence)', () => {
+        expect(protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: 'good', trending: null, best: null } }).columns.map((c) => c.key)).toEqual(['rating', 'confidence']);
+        expect(protonView({ status: 'found', tier: 'gold', details: { total: 12, confidence: null, trending: null, best: null } }).columns.map((c) => c.key)).toEqual(['rating', 'reports']);
+        const bare = protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: null, trending: 'gold', best: null } });
+        expect(bare.columns.map((c) => c.key)).toEqual(['rating']);
+        expect(bare.caption).toBe('Trending Gold');
+    });
     it('says there is no rating', () => {
         expect(protonView({ status: 'none' }).empty).toBe('No ProtonDB rating yet');
         expect(protonView({ status: 'unavailable' }).empty).toBe('No ProtonDB rating yet');

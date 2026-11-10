@@ -41,7 +41,7 @@ export function prepareNormalOpen(root: HTMLElement, home: HomeRects, page: Page
             if(!(from.w>0&&from.h>0)){undo();return null;}
             panel.style.setProperty('--normal-from',transform({x:from.x-p.x,y:from.y-p.y,sx:from.w/p.w,sy:from.h/p.h}));
             if(!sources.length)panel.setAttribute('data-normal-empty','');
-            for(const el of panel.querySelectorAll<HTMLElement>('.gh-normal-label,.gh-normal-value,.gh-normal-desc,.gh-normal-bar,.gh-normal-caption,.gh-normal-muted')){
+            for(const el of panel.querySelectorAll<HTMLElement>('.gh-normal-label,.gh-normal-value,.gh-normal-desc,.gh-normal-bar,.gh-normal-caption,.gh-normal-muted,.gh-normal-featured-icon')){
                 save(el);el.style.setProperty('--normal-from','none');el.setAttribute('data-normal-move','extra');
             }
             for(const chip of sources){

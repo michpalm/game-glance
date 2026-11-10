@@ -6,6 +6,9 @@ describe('rememberProton', () => {
         expect(rememberProton({ status: 'found', tier: 'gold', details: { total: 1, confidence: 'low', trending: null, best: null } })).toBe(true);
         expect(rememberProton({ status: 'none' })).toBe(true);
     });
+    it('keeps a found result whose details ProtonDB left partly empty (a fresh fetch always writes details)', () => {
+        expect(rememberProton({ status: 'found', tier: 'gold', details: { total: null, confidence: null, trending: null, best: null } })).toBe(true);
+    });
     it('does not keep an unavailable result or a found one without details (asked again)', () => {
         expect(rememberProton({ status: 'unavailable' })).toBe(false);
         expect(rememberProton({ status: 'found', tier: 'gold' })).toBe(false);

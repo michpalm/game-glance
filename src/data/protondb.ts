@@ -7,16 +7,16 @@ import { parseTier, ProtonTier } from '../logic/protonTier';
 export { parseTier, PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 export type { ProtonTier } from '../logic/protonTier';
 
-/** What ProtonDB's summary says besides the rating: how many reports, how sure, and the trending and best tiers. */
+/** What ProtonDB's summary says besides the rating: how many reports, how sure, and the trending and best tiers (null: not in the summary). */
 export interface ProtonDetails {
-    total: number;
-    confidence: string;
+    total: number | null;
+    confidence: string | null;
     trending: ProtonTier | null;
     best: ProtonTier | null;
 }
 
 export type ProtonResult =
-    | { status: 'found'; tier: ProtonTier; details?: ProtonDetails } // no details: an entry cached before they were kept
+    | { status: 'found'; tier: ProtonTier; details?: ProtonDetails } // no details: an entry cached before they were kept (a fetch always writes them)
     | { status: 'none' } // ProtonDB has no rating for the game (no reports, or still pending)
     | { status: 'unavailable' };
 
@@ -64,11 +64,14 @@ export function createProtonLookup(deps: ProtonDeps) {
             const body = (await response.json()) as { tier?: unknown; total?: unknown; confidence?: unknown; trendingTier?: unknown; bestReportedTier?: unknown } | null;
             const tier = parseTier(body?.tier);
             if (!tier) return { status: 'none' };
-            const details: ProtonDetails | undefined =
-                typeof body?.total === 'number' && typeof body.confidence === 'string'
-                    ? { total: body.total, confidence: body.confidence, trending: parseTier(body.trendingTier), best: parseTier(body.bestReportedTier) }
-                    : undefined;
-            return details ? { status: 'found', tier, details } : { status: 'found', tier };
+            // Always kept, with what the summary has: a found result without details is fetched again (lacksDetails).
+            const details: ProtonDetails = {
+                total: typeof body?.total === 'number' ? body.total : null,
+                confidence: typeof body?.confidence === 'string' ? body.confidence : null,
+                trending: parseTier(body?.trendingTier),
+                best: parseTier(body?.bestReportedTier),
+            };
+            return { status: 'found', tier, details };
         } catch {
             return { status: 'unavailable' };
         }

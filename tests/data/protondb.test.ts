@@ -35,6 +35,15 @@ describe('createProtonLookup', () => {
         const { lookup } = setup(fetcher);
         expect(await lookup(10)).toEqual({ status: 'found', tier: 'platinum', details: { total: 237, confidence: 'strong', trending: 'platinum', best: 'platinum' } });
     });
+    it('a summary with a tier but no report count or confidence keeps details with nulls, so it is not asked again', async () => {
+        const fetcher = vi.fn(async () => answer(200, { tier: 'gold', trendingTier: 'silver' }));
+        const { lookup, clock } = setup(fetcher);
+        expect(await lookup(12)).toEqual({ status: 'found', tier: 'gold', details: { total: null, confidence: null, trending: 'silver', best: null } });
+        clock.now += PROTON_REFRESH_MS - 1;
+        expect(await lookup(12)).toMatchObject({ details: { total: null, confidence: null } });
+        await Promise.resolve();
+        expect(fetcher).toHaveBeenCalledTimes(1);
+    });
     it('a cached rating from before the details existed is returned as found and refreshed behind', async () => {
         const fetcher = vi.fn(async () => answer(200, SUMMARY));
         const { lookup, cache } = setup(fetcher);
