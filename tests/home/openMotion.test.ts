@@ -493,3 +493,60 @@ describe("the page's own rings at the hand-over: Play's focus ring and the circl
         expect(parseFloat(v['--gho-cring-r'])).toBeCloseTo(0.3 * PAGE_LAYOUT.icon * 1.1316, 3);
     });
 });
+
+describe('openMotion follows the Game info slots (Spotlight)', () => {
+    /** Home's chips with the third one's key changed (its stat), and the page with that stat featured. */
+    const withFeatured = (key: 'protondb' | 'played' | 'achievements', featured: PageTargets['featured']) => {
+        const home = homeRects();
+        home.chips[2] = { ...home.chips[2], key };
+        const page: PageTargets = { ...spotlight(), featured, stats: { ...spotlight().stats, [key]: spotlight().stats.hltb } };
+        return { home, page };
+    };
+    it('a featured ProtonDB chip grows into the right-hand card, keeps its own colour (no accent copy) and its label', () => {
+        const home = homeRects();
+        home.chips = [home.chips[0], home.chips[1], { ...home.chips[2], key: 'protondb' }];
+        const { hltb, ...rest } = spotlight().stats;
+        const page: PageTargets = { ...spotlight(), featured: 'protondb', stats: { ...rest, protondb: hltb } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+        expect(v['--gho-chip-2-label-o']).toBeUndefined();
+        expect(v['--gho-chip-2-o']).toBe('1');
+        // Shell 1 starts on the ProtonDB chip alone; shell 0 on the other two.
+        expect(parse(v['--gho-shell-1-from']).sx).toBeCloseTo(r['chip:chip2'].w / 681.6, 3);
+        expect(v['--gho-shell-1-o0']).toBe('1');
+        const union = r['chip:chip1'].x + r['chip:chip1'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 749.7, 3);
+    });
+    it('a featured Play time chip swaps to the accent, as HowLongToBeat does (its Total is in the accent)', () => {
+        const home = homeRects();
+        home.chips = [{ ...home.chips[1] }, { ...home.chips[0] }];
+        const page: PageTargets = { ...spotlight(), featured: 'played', stats: { achievements: spotlight().stats.achievements, played: spotlight().stats.hltb } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-1-label-o']).toBe('0');
+        expect(v['--gho-chip-1-accent']).toBe('1');
+        expect(v['--gho-chip-0-accent']).toBeUndefined();
+        expect(v['--gho-shell-1-o0']).toBe('1');
+    });
+    it('HowLongToBeat in a stat slot goes to the info card, without the accent', () => {
+        const { home, page } = withFeatured('achievements', 'achievements');
+        home.chips[1] = { ...home.chips[1], key: 'hltb' };
+        page.stats = { played: spotlight().stats.played, hltb: spotlight().stats.achievements, achievements: spotlight().stats.hltb };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-1-accent']).toBeUndefined();
+        expect(v['--gho-chip-1-label-o']).toBeUndefined();
+        // The info card's shell starts on the played and HLTB chips; the featured one on the achievements chip.
+        const union = r['chip:chip1'].x + r['chip:chip1'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 749.7, 3);
+        expect(parse(v['--gho-shell-1-from']).sx).toBeCloseTo(r['chip:chip2'].w / 681.6, 3);
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+    });
+    it('nothing featured: one shell, no variables for a second', () => {
+        const home = homeRects();
+        home.chips = home.chips.slice(0, 2);
+        const page: PageTargets = { ...spotlight(), featured: null, shells: [box(25, 593.1, 1450, 185.4)], stats: { played: spotlight().stats.played, achievements: spotlight().stats.achievements } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(Object.keys(v).filter((name) => name.startsWith('--gho-shell-1-') || name.startsWith('--gho-ring-1-'))).toEqual([]);
+        expect(v['--gho-shell-count']).toBe('1');
+        expect(v['--gho-shell-0-o0']).toBe('1');
+    });
+});

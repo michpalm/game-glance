@@ -684,7 +684,7 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
     const playButton = cls(root, 'ActionButtonAndStatusPanel');
     if (playButton) out.play = `${playButton} [role="button"] > div`;
     const scope = look === 'clean' ? '.gg-clean-info' : '.gg-hero';
-    for (const k of ['size', 'played', 'achievements', 'hltb']) {
+    for (const k of ['size', 'played', 'achievements', 'protondb', 'hltb']) {
         out[`label-${k}`] = `${scope} [data-stat="${k}"] .gg-label`;
         out[`value-${k}`] = `${scope} [data-stat="${k}"] .gg-value`;
         out[SETTLE.statLabel(k)] = `${scope} [data-stat="${k}"] .gg-label`;

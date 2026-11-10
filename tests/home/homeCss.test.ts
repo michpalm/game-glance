@@ -1158,6 +1158,13 @@ describe('homeCss open transition: text twins', () => {
             expect(body(`${MT}[data-gh-twins~="value-${k}"] .gh-chip[data-chip="${k}"] .gh-chip-value`), k).toContain(out);
         }
     });
+    it("ProtonDB's chip text fades out under its twins too (a ProtonDB slot)", () => {
+        const out = `animation: gh-twin-out ${OPEN_TIMINGS.morph}ms linear both`;
+        const B = '.gh-root.gh-bridge[data-gh-opening][data-gh-phase]';
+        expect(body(`${MT}[data-gh-twins~="label-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-label`)).toContain(out);
+        expect(body(`${MT}[data-gh-twins~="value-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-value`)).toContain(out);
+        expect(body(`${B}[data-gh-twins~="label-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-label`)).toContain('opacity: 0');
+    });
     it("title twin keeps the page's max width (and wraps as the page's does)", () => {
         const t = body('.gh-twin[data-role="title"]');
         expect(t).toContain(`max-width: ${dd(640)}`);

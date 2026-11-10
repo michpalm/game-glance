@@ -1,5 +1,6 @@
 import { InfoCardPanel } from '../components/InfoCard';
-import { HltbCard } from '../components/HltbCard';
+import { FeaturedCard } from '../components/FeaturedCard';
+import { usesStat } from '../logic/infoSlots';
 import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
 import { pageInfoStats } from '../logic/slotStats';
@@ -634,9 +635,21 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
-            {game && !cycle.holding && <div className="gh-normal-cards">
+            {/* The page's cards as the page draws them (its featured card too, from what Home knows; nothing featured: the info card alone). */}
+            {game && !cycle.holding && <div className={slots.featured === null ? 'gh-normal-cards gh-normal-cards-single' : 'gh-normal-cards'}>
                 <InfoCardPanel prefix="gh-normal" stats={pageInfoStats(homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots), slots)} description={data.description} />
-                <HltbCard prefix="gh-normal" result={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} restyle />
+                <FeaturedCard
+                    prefix="gh-normal"
+                    featured={slots.featured}
+                    hltb={data.hltb}
+                    playedMinutes={data.playedMinutes}
+                    locale={data.locale}
+                    restyle
+                    proton={data.featuredFacts?.proton}
+                    achievements={data.featuredFacts?.achievements}
+                    playTime={data.featuredFacts?.playTime ?? { minutes: data.playedMinutes, twoWeeks: 0, lastPlayed: 0 }}
+                    now={Math.floor(Date.now() / 1000)}
+                />
             </div>}
             {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots)} />}
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
@@ -649,7 +662,7 @@ export function SpotlightHome() {
             <div className="gh-open-cring" data-i="2" />
             {!onLibrary && uniInstalled === true && <div className="gh-open-cring" data-i="3" />}
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
-            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
+            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={usesStat(slots, 'played') && !data.chips.some((c) => c.key === 'played')} size={slots.stats.includes('size') ? sizeColumn : null} featured={slots.featured} />}
         </div>
     );
 }

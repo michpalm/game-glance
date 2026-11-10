@@ -276,3 +276,45 @@ describe('the page cards\' ring for the open transition', () => {
         expect(t.ring).toBe(ringBoost(1.28, 1500, 844));
     });
 });
+
+describe('pageTargets follows the Game info slots (Spotlight)', () => {
+    const screen = { width: 1500, height: 844, dpr: 1.28, grow: 1 };
+    const measure: Measure = (text) => text.length * 10;
+    const store = { w: 100, h: 34 };
+    const inside = (b: Box, card: Box) => b.x >= card.x - 1 && b.y >= card.y - 1 && b.x + b.w <= card.x + card.w + 1 && b.y + b.h <= card.y + card.h + 1;
+    const stats: PageStat[] = [
+        { key: 'played', label: 'Play Time', value: '1 h' },
+        { key: 'achievements', label: 'Achievements', value: '3 / 40' },
+        { key: 'protondb', label: 'Rating', value: 'Gold' },
+    ];
+    it('a featured ProtonDB stat lands in the right-hand card, the others in the info card', () => {
+        const t = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, 'protondb');
+        expect(t.featured).toBe('protondb');
+        expect(t.shells).toHaveLength(2);
+        expect(inside(t.stats.protondb!.value, t.shells[1])).toBe(true);
+        expect(inside(t.stats.played!.value, t.shells[0])).toBe(true);
+        expect(inside(t.stats.achievements!.value, t.shells[0])).toBe(true);
+        // As HowLongToBeat's Main: the card's first column, under its title.
+        const main = pageTargets('spotlight', screen, [{ key: 'hltb', label: 'Main', value: '1 h' }], measure, store).stats.hltb!;
+        expect(t.stats.protondb!.label.x).toBeCloseTo(main.label.x, 6);
+        expect(t.stats.protondb!.label.y).toBeCloseTo(main.label.y, 6);
+    });
+    it('HowLongToBeat in a stat slot is an info card column', () => {
+        const t = pageTargets('spotlight', screen, [{ key: 'hltb', label: 'HLTB main', value: '9 h' }, ...stats.slice(0, 2)], measure, store, undefined, undefined, 'achievements');
+        expect(inside(t.stats.hltb!.value, t.shells[0])).toBe(true);
+        expect(t.stats.hltb!.label.x).toBeLessThan(t.stats.played!.label.x);
+    });
+    it('nothing featured: one card spanning the row', () => {
+        const t = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, null);
+        const d = 1500 / 1440;
+        const side = PAGE_LAYOUT.side.tv * d;
+        expect(t.featured).toBeNull();
+        expect(t.shells).toHaveLength(1);
+        expect(Math.abs(t.shells[0].w - (1500 - 2 * side))).toBeLessThanOrEqual(1);
+        expect(t.shells[0].x).toBeCloseTo(side, 0);
+        for (const key of ['played', 'achievements', 'protondb'] as const) expect(inside(t.stats[key]!.value, t.shells[0]), key).toBe(true);
+    });
+    it('the default is HowLongToBeat featured', () => {
+        expect(pageTargets('spotlight', screen, stats, measure, store).featured).toBe('hltb');
+    });
+});

@@ -5,6 +5,8 @@ import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
 import { tr } from '../i18n/steamText';
 import { LOG_PREFIX } from '../constants';
+import { DEFAULT_SLOTS, FeaturedId, GameInfoSlots } from '../logic/infoSlots';
+import { orderBySlots } from '../logic/slotStats';
 
 /**
  * Spotlight Home's side of the open transition: which variant runs (openVariant), Home's boxes (measureHome), the
@@ -351,14 +353,22 @@ export function lineMeasure(root: Element): LineMeasure {
 export interface ChipText { key: string; label: string; value: string; bar: boolean }
 
 /**
- * The page's stat columns, as Home can know them from its chips (the same Steam words and numbers): Spotlight calls
- * HowLongToBeat's column "Main"; Clean keeps Home's texts and bars. A new
- * game's Added chip stands for the page's Play time of 0 h. Only these three; a Unifideck size column is not known
- * here (its column then makes the page's others sit a little further right, which the hand-over's fade covers). Pure.
+ * The words a Spotlight featured card puts over its first value (components/FeaturedCard: logic/hltbCardView, featuredViews),
+ * which the featured chip's label becomes. Achievements' first row is its latest unlock, which Home does not know: the
+ * chip keeps its own words.
  */
-/** `size`: a Unifideck game's size column as Home draws it (OpenExtras), right after Played as on the page. */
-export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { label: string; value: string } | null): PageStat[] {
+const FEATURED_FIRST_LABEL: Partial<Record<FeaturedId, string>> = { hltb: 'Main', played: 'Total', protondb: 'Rating' };
+
+/**
+ * The page's stat columns, as Home can know them from its chips (the same Steam words and numbers), in the order of the
+ * user's Game info slots (`slots`), as the page shows them. Spotlight names the featured stat as its card names its
+ * first column (HowLongToBeat's "Main", Play time's "Total", ProtonDB's "Rating"); Clean keeps Home's texts and bars. A
+ * new game's Added chip stands for the page's Play time of 0 h. `size`: a Unifideck game's size column as Home draws it
+ * (OpenExtras), in the size slot as on the page. Pure.
+ */
+export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { label: string; value: string } | null, slots: GameInfoSlots = DEFAULT_SLOTS): PageStat[] {
     const byKey = new Map(chips.map((c) => [c.key, c]));
+    const featured = look === 'spotlight' ? slots.featured : null;
     const out: PageStat[] = [];
     const played = byKey.get('played');
     if (played) out.push({ key: 'played', label: played.label, value: played.value, bar: look === 'clean' && played.bar });
@@ -369,10 +379,14 @@ export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { l
     const add = (key: StatKey, label: string, value: string, bar: boolean) => out.push({ key, label, value, bar: look === 'clean' && bar });
     const ach = byKey.get('achievements');
     if (ach) add('achievements', ach.label, ach.value, ach.bar);
+    const proton = byKey.get('protondb');
+    if (proton) add('protondb', proton.label, proton.value, proton.bar);
     const hltb = byKey.get('hltb');
-    // Spotlight's card has no Main column without a time (no match: Home's chip says '—'), so the chip has no target there.
-    if (hltb && (look !== 'spotlight' || /\d/.test(hltb.value))) add('hltb', look === 'spotlight' ? 'Main' : hltb.label, hltb.value, hltb.bar);
-    return out;
+    // HowLongToBeat's card has no Main column without a time (no match: Home's chip says '—'), so the chip has no target
+    // there; in the info card (a stat slot) the page shows the '—' too.
+    if (hltb && (featured !== 'hltb' || /\d/.test(hltb.value))) add('hltb', hltb.label, hltb.value, hltb.bar);
+    const named = out.map((s) => (featured !== null && s.key === featured && FEATURED_FIRST_LABEL[featured] ? { ...s, label: FEATURED_FIRST_LABEL[featured]! } : s));
+    return orderBySlots(named, slots);
 }
 
 /** The Unifideck size column Home drew in its extras layer (OpenExtras), or null. */
@@ -406,16 +420,20 @@ export function readChipTexts(root: Element): ChipText[] {
 
 /**
  * The page's parts Home can draw as it turns into the page's Spotlight look (SpotlightHome's .gh-open-extras), as
- * data-gh-extras words: `desc` when it has the description's text, `hltb` when HowLongToBeat found the game with a Main
+ * data-gh-extras words: `desc` when it has the description's text, `hltb` when HowLongToBeat is the `featured` card and found the game with a Main
  * time (without one the page writes "—" there, which Home's chip would not cover), `pills` when it knows the store (the
  * page's own store pill, and family pill, drawn at the page's size: Home's scaled one is a little narrower), `played` when
  * Home shows no Play time chip (a new game's Added chip): the page's Play time column, so it is there at the hand-over. Pure.
  */
-export function extrasParts(description: string | null | undefined, hltb: HltbResult | undefined, source?: string | null, playedMissing = false, size = false): string {
+export function extrasParts(
+    description: string | null | undefined, hltb: HltbResult | undefined, source?: string | null, playedMissing = false, size = false, featured: FeaturedId | null = 'hltb',
+): string {
     const parts: string[] = [];
     if (description && description.trim()) parts.push('desc');
     // The card's inside: its times, or (no match) its "No Matches Found" lines, which otherwise arrived after the hand-over.
-    if ((hltb?.status === 'found' && hltb.times.main !== null) || hltb?.status === 'notFound') parts.push('hltb');
+    // Only when HowLongToBeat is the featured card: another featured card's parts arrive with the page.
+    const hltbCard = featured === 'hltb' && ((hltb?.status === 'found' && hltb.times.main !== null) || hltb?.status === 'notFound');
+    if (hltbCard) parts.push('hltb');
     if (source) parts.push('pills');
     if (playedMissing) parts.push('played');
     if (size) parts.push('size');

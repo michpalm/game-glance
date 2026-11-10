@@ -31,6 +31,26 @@ describe('shared normal cards lifecycle', () => {
         undo!();expect(root.hasAttribute('data-gh-normal')).toBe(false);expect(grid.getAttribute('style')).toBe(before);
         expect(grid.querySelectorAll('[data-normal-move],[data-normal-empty]')).toHaveLength(0);
     });
+    it("a featured card other than HowLongToBeat's: the featured chip grows into it, onto its first column", () => {
+        const { document, window } = parseHTML('<div id="root"><div class="gh-chip" data-chip="protondb"><div class="gh-chip-label">ProtonDB</div><div class="gh-chip-value">Gold</div></div><div class="gh-normal-cards"><div class="gh-normal-card"><p class="gh-normal-desc">Description</p></div><div class="gh-normal-card gh-normal-featured gh-normal-featured-protondb"><div class="gh-normal-label">ProtonDB</div><div class="gh-normal-stats"><div data-stat="rating"><div class="gh-normal-label">Rating</div><div class="gh-normal-value">Gold</div></div><div data-stat="reports"><div class="gh-normal-label">Reports</div><div class="gh-normal-value">120</div></div></div></div></div></div>');
+        const root=document.querySelector('#root') as unknown as HTMLElement;
+        const grid=root.querySelector('.gh-normal-cards') as HTMLElement;
+        const rect=(x:number,y:number,width:number,height:number)=>({x,y,left:x,top:y,right:x+width,bottom:y+height,width,height}) as DOMRect;
+        root.getBoundingClientRect=()=>rect(0,0,1500,644);
+        const panels=[...grid.querySelectorAll<HTMLElement>('.gh-normal-card')];
+        panels.forEach((e,i)=>e.getBoundingClientRect=()=>rect(i?1046:48,393,406,154));
+        for(const e of grid.querySelectorAll<HTMLElement>('.gh-normal-label,.gh-normal-value'))e.getBoundingClientRect=()=>rect(1070,414,85,30);
+        Object.defineProperty(window,'getComputedStyle',{configurable:true,value:(e:Element)=>({fontSize:e.className.startsWith('gh-chip')?'20px':'26px'})});
+        const home={chips:[{key:'protondb',shell:{x:48,y:250,w:104,h:72},label:{x:64,y:262,w:75,h:12},value:{x:64,y:280,w:75,h:24},bar:null}]} as never;
+        const page={d:.86,cards:[{x:48,y:393,w:406,h:154}]} as never;
+        expect(prepareNormalOpen(root,home,page,.86)).not.toBeNull();
+        expect(panels[1].hasAttribute('data-normal-empty')).toBe(false);
+        expect(panels[0].hasAttribute('data-normal-empty')).toBe(true);
+        const rating=panels[1].querySelector('[data-stat="rating"]')!;
+        expect(rating.querySelector('.gh-normal-label')!.getAttribute('data-normal-move')).toBe('source');
+        expect(rating.querySelector('.gh-normal-value')!.getAttribute('data-normal-move')).toBe('source');
+        expect(panels[1].querySelector('[data-stat="reports"] .gh-normal-value')!.getAttribute('data-normal-move')).toBe('extra');
+    });
     it('keeps the old path available without a measurable shared grid',()=>{
         const { document }=parseHTML('<div id="root"></div>');
         expect(prepareNormalOpen(document.querySelector('#root') as never,{} as never,{} as never,1)).toBeNull();

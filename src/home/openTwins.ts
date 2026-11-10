@@ -2,7 +2,7 @@ import { PAGE_LAYOUT, PAGE_TYPE, pillFocusScale, TypeRole } from '../styles/them
 
 export { SETTLE } from '../styles/themeCss';
 import { HOME_PILL, TITLE_BLOCK } from './homeCss';
-import { HOME_CHIP_FONTS, HomeRects } from './openMotion';
+import { accentFirst, featuredOf, HOME_CHIP_FONTS, HomeRects } from './openMotion';
 import { cardAround } from './openTargets';
 import type { Box, PageLook, PageStat, PageTargets, StatKey } from './openTargets';
 
@@ -65,8 +65,9 @@ export function twinFrom(home: Box, at: { x: number; y: number }, scale: number,
 
 /**
  * The twins for an open: the title (null `texts.title`: a logo, none), the eyebrow, the Play label, and each chip that
- * becomes a page column, its label and value in the page's own words (`stats`). Spotlight's HowLongToBeat column has no
- * label twin (the page names it in its card) and its value is in the accent. `focused`: the page will show Play focused.
+ * becomes a page column, its label and value in the page's own words (`stats`). Spotlight's featured column whose value
+ * is in the accent (HowLongToBeat's Main, Play time's Total) has no label twin (the page names it in its card); ProtonDB's
+ * value has none (Home's own moves, with its mark and colour). `focused`: the page will show Play focused.
  * `canvasScale`: Home's canvas scale, which is also the page's d unit.
  */
 export function twinSpecs(home: HomeRects, page: PageTargets, texts: { title: string | null; eyebrow: string; play: string }, stats: PageStat[], look: PageLook, focused: boolean, canvasScale: number): TwinSpec[] {
@@ -119,9 +120,12 @@ export function twinSpecs(home: HomeRects, page: PageTargets, texts: { title: st
         const to = Object.prototype.hasOwnProperty.call(page.stats, key) ? page.stats[key] : undefined;
         const st = words.get(key);
         if (!to || !st) continue;
-        const spotlightHltb = look === 'spotlight' && key === 'hltb';
-        if (!spotlightHltb) add(`label-${key}`, 'label', st.label, chip.label, anchor(to.label, 'midline'), 'midline', HOME_CHIP_FONTS.label, { lift: to.label.h / 2 });
-        add(`value-${key}`, look === 'clean' ? 'cleanValue' : 'value', st.value, chip.value, anchor(to.value, 'midline'), 'midline', HOME_CHIP_FONTS.value, { accent: spotlightHltb, lift: to.value.h / 2 });
+        // The featured card's first value in the accent (HowLongToBeat's Main, Play time's Total): the card names it.
+        const accent = look === 'spotlight' && key === featuredOf(page) && accentFirst(key);
+        if (!accent) add(`label-${key}`, 'label', st.label, chip.label, anchor(to.label, 'midline'), 'midline', HOME_CHIP_FONTS.label, { lift: to.label.h / 2 });
+        // ProtonDB's rating has its mark and the rating's colour, which a text twin has not: Home's own value moves.
+        if (key === 'protondb') continue;
+        add(`value-${key}`, look === 'clean' ? 'cleanValue' : 'value', st.value, chip.value, anchor(to.value, 'midline'), 'midline', HOME_CHIP_FONTS.value, { accent, lift: to.value.h / 2 });
     }
     return out;
 }

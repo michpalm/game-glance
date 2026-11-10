@@ -2,6 +2,13 @@ import type { Box, PageTargets } from './openTargets';
 import type { HomeRects } from './openMotion';
 const box = (e: Element): Box => { const r = e.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
 const transform = (t: {x:number;y:number;sx:number;sy:number}) => `translate(${t.x}px, ${t.y}px) scale(${t.sx}, ${t.sy})`;
+/**
+ * The column in `panel` that shows stat `key`: its own (data-stat: the info card's, HowLongToBeat's Main), or, in another
+ * featured card (FeaturedCard: gh-normal-featured-KEY), its first column (the latest unlock's text for achievements).
+ */
+const columnOf = (panel: Element, key: string): Element | null =>
+    panel.querySelector(`[data-stat="${key}"]`)
+    ?? (panel.classList.contains(`gh-normal-featured-${key}`) ? panel.querySelector('.gh-normal-featured-text, .gh-normal-stats > [data-stat]') : null);
 
 /** The normal page's actual card components, moving from Home's chips and ending in their native flex/grid layout. */
 export function prepareNormalOpen(root: HTMLElement, home: HomeRects, page: PageTargets, canvasScale: number): (() => void) | null {
@@ -28,7 +35,7 @@ export function prepareNormalOpen(root: HTMLElement, home: HomeRects, page: Page
                 if (value) panel.style.setProperty(`--normal-${name}`, value);
             }
             if(!(p.w>0&&p.h>0)){undo();return null;}
-            const sources=home.chips.filter(c=>panel.querySelector(`[data-stat="${c.key}"]`));
+            const sources=home.chips.filter(c=>columnOf(panel,c.key));
             const from=sources.length ? {x:Math.min(...sources.map(c=>c.shell.x)),y:Math.min(...sources.map(c=>c.shell.y)),w:0,h:0}:p;
             if(sources.length){from.w=Math.max(...sources.map(c=>c.shell.x+c.shell.w))-from.x;from.h=Math.max(...sources.map(c=>c.shell.y+c.shell.h))-from.y;}
             if(!(from.w>0&&from.h>0)){undo();return null;}
@@ -38,7 +45,7 @@ export function prepareNormalOpen(root: HTMLElement, home: HomeRects, page: Page
                 save(el);el.style.setProperty('--normal-from','none');el.setAttribute('data-normal-move','extra');
             }
             for(const chip of sources){
-                const col=panel.querySelector(`[data-stat="${chip.key}"]`)!;
+                const col=columnOf(panel,chip.key)!;
                 for(const [selector,source,originalSelector] of [['.gh-normal-label',chip.label,'.gh-chip-label'],['.gh-normal-value',chip.value,'.gh-chip-value']] as const){
                     const el=col.querySelector<HTMLElement>(selector),original=root.querySelector<HTMLElement>(`.gh-chip[data-chip="${chip.key}"] ${originalSelector}`);
                     if(!el||!original)continue;

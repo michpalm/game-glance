@@ -20,6 +20,8 @@ import { FAST_CYCLE_MS, SETTLE_WIDEN_MS } from './fastCycle';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { usesStat } from '../logic/infoSlots';
+import { AchievementFacts, featuredProton, pageAchievementFacts } from '../logic/featuredViews';
+import type { ProtonResult } from '../data/protondb';
 import { accentFor, DEFAULT_ACCENT } from './accent';
 import { accentMemo } from './accentMemo';
 import { accentVersion, sampleAccent } from './accentSample';
@@ -54,6 +56,13 @@ export interface HomeGame extends RecentGame {
     gameId: string | undefined;
 }
 
+/** What components/FeaturedCard draws a featured card from, besides HowLongToBeat's result. */
+export interface FeaturedFacts {
+    proton: ProtonResult | undefined;
+    achievements: AchievementFacts | undefined;
+    playTime: { minutes: number; twoWeeks: number; lastPlayed: number };
+}
+
 export interface HomeData {
     games: HomeGame[];
     /** False while recents are empty and still being retried after boot; then true. */
@@ -76,6 +85,11 @@ export interface HomeData {
     hltb: HltbResult | undefined;
     /** The focused game's play time in minutes (Steam's, or Unifideck's when it knows more), as the page counts it. */
     playedMinutes: number;
+    /**
+     * The focused game's facts for the featured card (Game info slots) as the page reads them, for the copy of the page's
+     * cards Home morphs into (components/FeaturedCard); null without a focused game. Achievements' only when featured.
+     */
+    featuredFacts: FeaturedFacts | null;
     /** The focused game's description in Steam's language, once fetched (null: none, or the Clean look, which shows none). */
     description: string | null;
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
@@ -714,6 +728,19 @@ export function useHomeData(focusIndex = 0): HomeData {
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focused, info, hltb, proton, locale, launcher, detailsVersion, infoSlots]);
+    const featuredFacts = useMemo((): FeaturedFacts | null => {
+        if (!focused || !info) return null;
+        return guarded('featured facts', () => ({
+            proton: featuredProton(info.isShortcut, proton),
+            achievements: infoSlots.featured === 'achievements' ? pageAchievementFacts(steam.appDetailsStore?.GetAppDetails?.(focused.appId), info.isShortcut) : undefined,
+            playTime: {
+                minutes: playedMinutes,
+                twoWeeks: Number(overview(focused.appId)?.minutes_playtime_last_two_weeks ?? 0) || 0,
+                lastPlayed: mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, launcher).lastPlayed,
+            },
+        }), null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focused, info, proton, playedMinutes, launcher, detailsVersion, infoSlots]);
     // The launcher knows a last played Steam does not: such a game is no longer "new to library".
     const focusedIsNew = focused?.isNew === true && !launcher?.lastPlayed;
     const lastPlayedLabel = focused
@@ -748,5 +775,5 @@ export function useHomeData(focusIndex = 0): HomeData {
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
 }

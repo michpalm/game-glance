@@ -285,6 +285,38 @@ describe('pageStatsFromChips', () => {
     });
 });
 
+describe('pageStatsFromChips follows the Game info slots', () => {
+    const played = { key: 'played', label: 'Play Time', value: '1.9 h', bar: false };
+    const ach = { key: 'achievements', label: 'Achievements', value: '0 / 49', bar: true };
+    const proton = { key: 'protondb', label: 'ProtonDB', value: 'Gold', bar: false };
+    const hltb = { key: 'hltb', label: 'HLTB main', value: '9.1 h', bar: true };
+    it('in slot order, ProtonDB included; the featured stat named as its card names its first column', () => {
+        const slots = { stats: ['achievements', 'played', 'hltb'], featured: 'protondb' } as const;
+        expect(pageStatsFromChips([ach, played, hltb, proton], 'spotlight', null, { stats: [...slots.stats], featured: slots.featured }).map((s) => [s.key, s.label, s.value])).toEqual([
+            ['achievements', 'Achievements', '0 / 49'], ['played', 'Play Time', '1.9 h'], ['hltb', 'HLTB main', '9.1 h'], ['protondb', 'Rating', 'Gold'],
+        ]);
+        // Play time featured: its card's Total.
+        expect(pageStatsFromChips([ach, played], 'spotlight', null, { stats: ['achievements', null, null], featured: 'played' }).map((s) => s.label)).toEqual(['Achievements', 'Total']);
+    });
+    it('HowLongToBeat in a stat slot keeps its words, even without a time (the info card shows it)', () => {
+        const none = { ...hltb, value: '—' };
+        expect(pageStatsFromChips([played, none], 'spotlight', null, { stats: ['played', 'hltb', null], featured: null }).map((s) => [s.key, s.label])).toEqual([['played', 'Play Time'], ['hltb', 'HLTB main']]);
+    });
+    it("Clean: Home's words in slot order", () => {
+        expect(pageStatsFromChips([proton, played], 'clean', null, { stats: ['protondb', 'played', null], featured: null }).map((s) => [s.key, s.label])).toEqual([['protondb', 'ProtonDB'], ['played', 'Play Time']]);
+    });
+});
+
+describe('extrasParts follows the featured stat', () => {
+    const found = { status: 'found' as const, gameId: 1, times: { main: 9, mainExtras: 12, completionist: 24 } };
+    it("draws HowLongToBeat's card only when it is the featured card", () => {
+        expect(extrasParts('Text', found, 'Steam', false, false, 'hltb')).toBe('desc hltb pills');
+        expect(extrasParts('Text', found, 'Steam', false, false, 'protondb')).toBe('desc pills');
+        expect(extrasParts('Text', found, 'Steam', false, false, null)).toBe('desc pills');
+        expect(extrasFlags(extrasParts(null, found, null, false, false, 'played'))).toEqual({});
+    });
+});
+
 describe('mountOpenBridge', () => {
     function fakeDom() {
         const appended: Array<{ style: Record<string, string>; children: unknown[]; remove(): void }> = [];

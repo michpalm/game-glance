@@ -18,6 +18,7 @@ import { mountOpenBridge, topBarCopy, withSteamBarBack } from './openBridge';
 import { heroArtFor, heroShownApp } from './HeroBackground';
 import { homeMode } from './mode';
 import { settings } from '../data/settings';
+import type { GameInfoSlots } from '../logic/infoSlots';
 import { clearOpen, markOpen, onOpenReady, OpenIntent } from '../data/openIntent';
 import { pageArrivalSelectors, pageTwinTargets, steamEnterOffCss, steamFooter } from '../styles/theme';
 import { MOUSE_ATTR } from './mouseMode';
@@ -162,8 +163,11 @@ function urls(read: () => string[]): string[] {
 }
 
 /** The open being started (set by openGame); the controller's hooks take a copy when Home starts moving. */
-/** `extras`: the page's parts Home draws as it turns into the page (openHome.extrasParts words; '' for none). */
-interface OpenContext { root: HTMLElement | null; appId: number; variant: OpenVariant; look: PageLook; intent: OpenIntent; heroUrl: string | null; extras: string }
+/**
+ * `extras`: the page's parts Home draws as it turns into the page (openHome.extrasParts words; '' for none). `slots`: the
+ * Game info slots, which order the page's stats and pick its featured card.
+ */
+interface OpenContext { root: HTMLElement | null; appId: number; variant: OpenVariant; look: PageLook; intent: OpenIntent; heroUrl: string | null; extras: string; slots: GameInfoSlots }
 let next: OpenContext | null = null;
 let active: OpenContext | null = null;
 /** One controller for the session: it must outlive Home, which Steam unmounts once the game page opens. */
@@ -182,9 +186,9 @@ function startHome(c: OpenContext): (() => void) | null {
             if (home && scale > 0 && screen.width > 0 && screen.height > 0) {
                 // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
                 const size = c.extras.split(' ').includes('size') ? readExtrasSize(root) : null;
-                const stats = pageStatsFromChips(readChipTexts(root), c.look, size);
+                const stats = pageStatsFromChips(readChipTexts(root), c.look, size, c.slots);
                 const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
-                const page = pageTargets(c.look, screen, stats, canvasMeasure(root), { w: store.w, h: store.h }, c.extras ? readExtrasAsked(root) : undefined, lineMeasure(root));
+                const page = pageTargets(c.look, screen, stats, canvasMeasure(root), { w: store.w, h: store.h }, c.extras ? readExtrasAsked(root) : undefined, lineMeasure(root), c.slots.featured);
                 const focused = !root.ownerDocument?.documentElement?.hasAttribute(MOUSE_ATTR);
                 // The moving text as page-sized twins (openTwins); without them (any failure) Home's own text morphs as before.
                 let twins: TwinSpec[] = [];
@@ -297,7 +301,8 @@ export function openGame(appId: number, source?: HTMLElement | null) {
     markLeaving();
     try {
         const root = (source?.closest?.('.gh-root') as HTMLElement | null) ?? null;
-        const mode = homeMode(settings.get());
+        const current = settings.get();
+        const mode = homeMode(current);
         const look: PageLook = mode.cleanDetails ? 'clean' : 'spotlight';
         const art = heroArtFor(appId);
         const pageRestyled = mode.gamePage && mode.restyleDetails;
@@ -321,7 +326,7 @@ export function openGame(appId: number, source?: HTMLElement | null) {
         // A Unifideck game's Uninstall circle Home draws as it opens (.gh-open-circle): the page's must not arrive again.
         const homeUninstall = variant === 'morph' && root ? root.querySelector('.gh-open-circle') !== null : undefined;
         const intent: OpenIntent = { look: pageRestyled ? look : 'steam', mode: variant === 'morph' ? 'parts' : 'all', eyebrow, homeCloud, homeBars, homeFamily, homeMissing, homeUninstall, ...extrasFlags(extras, homeChipKeys) };
-        next = { root, appId, variant, look, heroUrl, intent, extras };
+        next = { root, appId, variant, look, heroUrl, intent, extras, slots: current.infoSlots };
         controller().open(appId, variant);
     } catch (error) {
         // Not reached in practice (the controller never throws); the page must open regardless.

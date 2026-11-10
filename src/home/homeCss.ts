@@ -696,7 +696,7 @@ export function openingRules(): string[] {
         ['title', '.gh-title-slot'],
         ['eyebrow', '.gh-eyebrow'],
         ['play', `.gh-btn[data-action="play"] .gh-btn-label`],
-        ...(['size', 'played', 'achievements', 'hltb'] as const).flatMap((k): Array<[string, string]> => [
+        ...(['size', 'played', 'achievements', 'protondb', 'hltb'] as const).flatMap((k): Array<[string, string]> => [
             [`label-${k}`, `.gh-chip[data-chip="${k}"] .gh-chip-label`],
             [`value-${k}`, `.gh-chip[data-chip="${k}"] .gh-chip-value`],
         ]),

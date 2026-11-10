@@ -59,6 +59,11 @@ const union = (boxes: Box[]): Box => {
 
 const isStat = (key: string, page: PageTargets): key is StatKey => Object.prototype.hasOwnProperty.call(page.stats, key);
 
+/** The Spotlight page's featured stat (PageTargets.featured; absent: HowLongToBeat, the default slots). */
+export const featuredOf = (page: PageTargets): StatKey | null => (page.featured === undefined ? 'hltb' : page.featured);
+/** The featured cards that draw their first value in the accent: HowLongToBeat's Main and Play time's Total. */
+export const accentFirst = (key: StatKey | null): boolean => key === 'hltb' || key === 'played';
+
 export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, canvasScale: number, focused = true): MotionVar[] {
     const s = canvasScale;
     // Home's canvas and the page share one scale rule (home/scale.ts, themeCss --gg-d), so the page's d unit is s; the
@@ -171,7 +176,9 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     const valueScale = (look === 'clean' ? PAGE_LAYOUT.cleanInfo.value : PAGE_LAYOUT.stats.value) / HOME_CHIP_FONTS.value;
     // The page's labels have more leading: their glyphs sit this much lower in their box than Home's do in theirs.
     const labelLead = ((PAGE_LABEL_LINE - HOME_LABEL_LINE) / 2) * PAGE_LAYOUT.stats.label * d;
-    const shellOf = (key: StatKey) => (look === 'spotlight' && key === 'hltb' ? 1 : 0);
+    // Spotlight: the featured stat's chip grows into the right-hand card (shell 1), the others into the info card.
+    const featured = look === 'spotlight' ? featuredOf(page) : null;
+    const shellOf = (key: StatKey) => (key === featured ? 1 : 0);
     const sources: Box[][] = page.shells.map(() => []);
     home.chips.forEach((chip, i) => {
         if (!isStat(chip.key, page)) {
@@ -180,9 +187,10 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         }
         const to = page.stats[chip.key]!;
         out[`--gho-chip-${i}-o`] = '1';
-        // Spotlight's HowLongToBeat card names its column "Main" under its own title (it arrives with the card) and draws
-        // the time in the accent: Home's "HLTB main" fades as it moves, and an accent copy of the time fades in.
-        if (look === 'spotlight' && chip.key === 'hltb') {
+        // A featured card whose first value is in the accent (HowLongToBeat's Main, Play time's Total) names it under its
+        // own title (it arrives with the card): Home's label ("HLTB main") fades as it moves, and an accent copy of the
+        // value fades in. Any other chip (ProtonDB keeps its rating's colour) moves as it is.
+        if (chip.key === featured && accentFirst(featured)) {
             out[`--gho-chip-${i}-label-o`] = '0';
             out[`--gho-chip-${i}-accent`] = '1';
         }
@@ -263,8 +271,11 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
             out[`--gho-x-${name}-w`] = px(b.w);
         };
         at('desc', page.extras.desc);
-        at('hltb', page.extras.hltbTitle);
-        inCard('hltb', page.extras.hltbTitle);
+        // HowLongToBeat's card inside, when it is the featured card (Home draws no other card's parts).
+        if (page.extras.hltbTitle) {
+            at('hltb', page.extras.hltbTitle);
+            inCard('hltb', page.extras.hltbTitle);
+        }
     }
 
     return Object.keys(out).sort().map((name) => ({ name, value: out[name] }));
