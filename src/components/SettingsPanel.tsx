@@ -10,15 +10,13 @@ import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { PROFILE_STYLES, PROFILE_STYLE_LABELS, settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
 import { everyPageAvailable, GAME_INFO_NOTE, homeRows, HomeRow, matchLine, slotChoices, slotLabel, slotValue, slotValueLabel, StatusRow, statusRows } from '../data/settingsCategories';
-import type { SlotIndex, StatId } from '../logic/infoSlots';
+import { SLOT_INDEXES, type StatId } from '../logic/infoSlots';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
 import { RowStyle } from '../home/recentsLayout';
 import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
-
-const GAME_INFO_SLOTS: readonly SlotIndex[] = [0, 1, 2, 'featured'];
 
 export function SettingsPanel() {
     const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
@@ -192,7 +190,7 @@ export function SettingsPanel() {
                             <div style={{ fontWeight: 'bold' }}>Game info</div>
                             <div style={{ opacity: 0.7, fontSize: '12px' }}>{GAME_INFO_NOTE}</div>
                         </PanelSectionRow>
-                        {GAME_INFO_SLOTS.map((slot) => (
+                        {SLOT_INDEXES.map((slot) => (
                             <PanelSectionRow key={slot}>
                                 <DropdownItem
                                     label={slotLabel(slot)}

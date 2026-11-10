@@ -7,7 +7,7 @@ import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/c
 import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
-import type { SlotIndex } from '../../logic/infoSlots';
+import { SLOT_INDEXES } from '../../logic/infoSlots';
 import { GAME_INFO_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
 import type { PageProps, SlotPickerProps } from './gameGlanceTypes';
 import { MenuAction } from './MenuAction';
@@ -63,8 +63,6 @@ export function HomeRowPicker({ v, a }: PageProps) {
     </>;
 }
 
-const GAME_INFO_SLOTS: readonly SlotIndex[] = [0, 1, 2, 'featured'];
-
 export function GameInfoPicker({ v, a, slot }: SlotPickerProps) {
     const current = slotValue(v.settings, slot);
     return <>
@@ -86,7 +84,7 @@ export function GamePage({ v, a }: PageProps) {
                 value={v.settings.cleanPage ? 'clean' : 'full'} onSelect={value => a.run(a.store.setCleanPage(value === 'clean'))} />
             <h3>Game info</h3>
             <p className="gg-plugin-note">{GAME_INFO_NOTE}</p>
-            {GAME_INFO_SLOTS.map(slot => <MenuAction key={slot} id={`gg:game-page:slot:${slot}`} className="gg-plugin-picker" onAction={() => a.open(`${GAME_INFO_VIEW}:${slot}`)}>
+            {SLOT_INDEXES.map(slot => <MenuAction key={slot} id={`gg:game-page:slot:${slot}`} className="gg-plugin-picker" onAction={() => a.open(`${GAME_INFO_VIEW}:${slot}`)}>
                 <span>{slotLabel(slot)}</span><span className="gg-plugin-value">{slotValueLabel(slotValue(v.settings, slot))}<LuChevronRight aria-hidden="true" /></span>
             </MenuAction>)}
             <h3>HowLongToBeat match</h3>

@@ -15,6 +15,9 @@ export interface GameInfoSlots {
     featured: FeaturedId | null;
 }
 
+/** The slots in settings order. */
+export const SLOT_INDEXES: readonly SlotIndex[] = [0, 1, 2, 'featured'];
+
 /** The stats in their settings order. */
 export const STAT_IDS: readonly StatId[] = ['played', 'size', 'achievements', 'protondb', 'hltb'];
 

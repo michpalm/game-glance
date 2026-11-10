@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryView, GAME_GLANCE_VIEW, HOME_ROW_VIEW, pluginFocusKey, returnFocusKey, VERSIONS_VIEW } from '../../src/menu/views';
+import { categoryView, parseInfoView, GAME_GLANCE_VIEW, HOME_ROW_VIEW, pluginFocusKey, returnFocusKey, VERSIONS_VIEW } from '../../src/menu/views';
 import { defaultMenuState, reduceMenu, type MenuState } from '../../src/menu/model';
 
 function openOnPlugins(): MenuState {
@@ -29,6 +29,16 @@ describe('menu views for the Plugins section', () => {
         expect(returnFocusKey('configure-menu')).toBeNull();
         expect(returnFocusKey('notifications')).toBeNull();
         expect(returnFocusKey(undefined)).toBeNull();
+    });
+});
+
+describe('parseInfoView', () => {
+    it('reads the slot of a game info picker view', () => {
+        expect(['0', '1', '2', 'featured'].map(s => parseInfoView(`gg:game-page:info:${s}`))).toEqual([0, 1, 2, 'featured']);
+    });
+    it('rejects anything else', () => {
+        for (const id of ['gg:game-page:info:', 'gg:game-page:info:3', 'gg:game-page:info:x', 'gg:game-page:info', 'gg:game-page:info:0:none', 'gg:home:row']) expect(parseInfoView(id)).toBeNull();
+        expect(returnFocusKey('gg:game-page:info:x')).toBeNull();
     });
 });
 
