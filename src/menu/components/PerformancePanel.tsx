@@ -58,12 +58,12 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
         const index = (value: number) => values?.reduce((best, v, i) =>
             Math.abs(v - value) < Math.abs(values[best] - value) ? i : best, 0) ?? value;
         const value = draft ?? s.value as number;
-        const display = OPTIONS[id]?.[String(s.value)] ?? `${Number((s.value as number).toFixed(3))}${SUFFIX[id] ?? ''}`;
+        const display = OPTIONS[id]?.[String(value)] ?? `${Number(value.toFixed(3))}${SUFFIX[id] ?? ''}`;
         field = <SliderField highlightOnFocus={false}
             label={<span className="gg-menu-slider-label">{label}<output>{display}</output></span>}
             value={values?.length ? index(value) : value} min={values?.length ? 0 : s.min}
-            max={values?.length ? values.length - 1 : s.max} step={values?.length ? 1 : s.step ?? 1}
-            disabled={s.disabled} showValue={false}
+            max={values?.length ? Math.max(1, values.length - 1) : s.max} step={values?.length ? 1 : s.step ?? 1}
+            disabled={s.disabled || s.min === s.max && s.min !== undefined} showValue={false}
             onChange={next => {
                 const nextValue = values?.length ? values[Math.round(next)] : next;
                 if (nextValue !== undefined) { setDraft(nextValue); set(nextValue); }
@@ -79,9 +79,8 @@ function Control({ id, adapter }: { id: string; adapter: SettingAdapter<Performa
 function FrameControl({ performance }: { performance: Performance }) {
     const { controls: c } = performance;
     const limit = useSyncExternalStore(c.disableLimit.subscribe, c.disableLimit.get);
-    const refresh = useSyncExternalStore(c.refreshRate.subscribe, c.refreshRate.get);
     // Steam replaces this one slot with the native Hz control when the FPS cap is disabled.
-    const id = limit.value === true && refresh.available ? 'refreshRate' : 'frameLimit';
+    const id = limit.value === true ? 'refreshRate' : 'frameLimit';
     return <Control key={id} id={id} adapter={c[id]} />;
 }
 
