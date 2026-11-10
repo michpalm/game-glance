@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
 import type { GgActions, GgValues } from '../../src/menu/components/gameGlanceTypes';
+import { DEFAULT_SLOTS } from '../../src/logic/infoSlots';
 import type { Settings } from '../../src/data/settings';
 
 vi.mock('@decky/ui', () => ({ Focusable: 'div', DialogButton: 'button', ToggleField: 'toggle-field', NavEntryPositionPreferences: {} }));
@@ -17,7 +18,7 @@ const settings: Settings = {
     homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent',
     homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom',
     feedTabs: { news: true, friends: true, recommended: true },
-    homeChips: { protondb: false },
+    infoSlots: DEFAULT_SLOTS,
     screensaver: { enabled: true, logo: true, statusBar: true, stats: false } as Settings['screensaver'],
 };
 function values(change: Partial<GgValues> = {}): GgValues {
@@ -45,7 +46,7 @@ const byId = (node: ReactNode, id: string) => tree(node).find(n => n.props.id ==
 
 describe('Home', () => {
     it('shows every row with Spotlight Home on, in order', () => {
-        expect(ids(HomePage({ v: values(), a: actions() }))).toEqual(['gg:home:spotlightHome', 'gg:home:games', 'gg:home:rowStyle', 'gg:home:grayUninstalled', 'gg:home:news', 'gg:home:friends', 'gg:home:recommended', 'gg:home:wishlistDeals', 'gg:home:protondb']);
+        expect(ids(HomePage({ v: values(), a: actions() }))).toEqual(['gg:home:spotlightHome', 'gg:home:games', 'gg:home:rowStyle', 'gg:home:grayUninstalled', 'gg:home:news', 'gg:home:friends', 'gg:home:recommended', 'gg:home:wishlistDeals']);
     });
     it('adds the sort for a collection row', () => {
         expect(ids(HomePage({ v: values({ collectionRow: true }), a: actions() }))).toContain('gg:home:sort');

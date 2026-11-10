@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { memoryKv } from '../../src/data/kv';
 import { createSettingsStore } from '../../src/data/settings';
+import { DEFAULT_SLOTS } from '../../src/logic/infoSlots';
 import { SCREENSAVER_DEFAULTS } from '../../src/screensaver/options';
 
 describe('settings', () => {
@@ -8,7 +9,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -23,7 +24,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -35,16 +36,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -80,7 +81,7 @@ describe('settings: the removed Home switches', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, homeChips: { protondb: false }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS });
     });
 });
 
@@ -369,33 +370,29 @@ describe('On every page opt-in', () => {
     });
 });
 
-describe('settings: info chips', () => {
-    it('ProtonDB is off by default (it asks a website about each game) and a switch is remembered', async () => {
+describe('settings: game info slots', () => {
+    it('defaults to the default slots and a change is remembered', async () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get().homeChips).toEqual({ protondb: false });
-        await store.setHomeChip('protondb', true);
-        expect(store.get().homeChips).toEqual({ protondb: true });
+        expect(store.get().infoSlots).toEqual(DEFAULT_SLOTS);
+        await store.setInfoSlot(1, 'protondb');
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get().homeChips).toEqual({ protondb: true });
+        expect(reloaded.get().infoSlots).toEqual({ stats: ['played', 'protondb', 'achievements'], featured: 'hltb' });
     });
-    it('reads a stored value field by field: junk is the default', async () => {
-        for (const stored of [{ protondb: 'yes' }, 'on', null, [true]]) {
-            const kv = memoryKv();
-            await kv.set('settings', { homeChips: stored });
-            const store = createSettingsStore(kv);
-            await store.load();
-            expect(store.get().homeChips).toEqual({ protondb: false });
-        }
+    it('swaps with the slot that holds the stat', async () => {
+        const store = createSettingsStore(memoryKv());
+        await store.load();
+        await store.setInfoSlot(0, 'hltb');
+        expect(store.get().infoSlots).toEqual({ stats: ['hltb', 'size', 'achievements'], featured: 'played' });
     });
-    it("keeps a newer version's chip switches when one changes", async () => {
+    it("keeps a newer version's keys when a slot changes", async () => {
         const kv = memoryKv();
-        await kv.set('settings', { homeChips: { protondb: false, hltb: false } });
+        await kv.set('settings', { infoSlots: { stats: ['played', 'size', 'achievements'], featured: 'hltb', later: 1 } });
         const store = createSettingsStore(kv);
         await store.load();
-        await store.setHomeChip('protondb', true);
-        expect(await kv.get('settings')).toMatchObject({ homeChips: { protondb: true, hltb: false } });
+        await store.setInfoSlot(1, 'protondb');
+        expect(await kv.get('settings')).toMatchObject({ infoSlots: { stats: ['played', 'protondb', 'achievements'], featured: 'hltb', later: 1 } });
     });
 });

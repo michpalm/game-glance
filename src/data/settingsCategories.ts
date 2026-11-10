@@ -10,7 +10,7 @@ export const CATEGORY_LABELS: Record<CategoryId, string> = {
     home: 'Home', 'game-page': 'Game page', 'status-bar': 'Status bar & footer', menu: 'Menu', screensaver: 'Screensaver', general: 'General',
 };
 
-export type HomeRow = 'spotlightHome' | 'gamesRow' | 'rowSort' | 'rowStyle' | 'grayUninstalled' | 'news' | 'friends' | 'recommended' | 'wishlistDeals' | 'protondb';
+export type HomeRow = 'spotlightHome' | 'gamesRow' | 'rowSort' | 'rowStyle' | 'grayUninstalled' | 'news' | 'friends' | 'recommended' | 'wishlistDeals';
 
 /** Home's rows in display order; with Spotlight Home off only its toggle. A collection row has a sort order; wishlist deals depend on Recommended. */
 export function homeRows(s: Pick<Settings, 'spotlightHome' | 'feedTabs'>, collectionRow: boolean): HomeRow[] {
@@ -20,12 +20,8 @@ export function homeRows(s: Pick<Settings, 'spotlightHome' | 'feedTabs'>, collec
     if (collectionRow) rows.push('rowSort');
     rows.push('rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended');
     if (s.feedTabs.recommended) rows.push('wishlistDeals');
-    rows.push('protondb');
     return rows;
 }
-
-/** The ProtonDB switch's description, in our menu and Decky's panel. */
-export const PROTONDB_SWITCH_TEXT = "How well the game runs through Proton, from ProtonDB's reports. Sends the game's Steam app id to ProtonDB. Off by default.";
 
 export type StatusRow = 'statusBar' | 'statusAvatar' | 'expandedControls' | 'everyPage';
 

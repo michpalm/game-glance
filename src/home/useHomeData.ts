@@ -19,6 +19,7 @@ import { BUMPER_REPEAT_MS } from './focusZones';
 import { FAST_CYCLE_MS, SETTLE_WIDEN_MS } from './fastCycle';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
+import { usesStat } from '../logic/infoSlots';
 import { accentFor, DEFAULT_ACCENT } from './accent';
 import { accentMemo } from './accentMemo';
 import { accentVersion, sampleAccent } from './accentSample';
@@ -603,7 +604,7 @@ function useFriendLastGames(raw: RawFriend[], enabled: boolean): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, homeChips } = useSettings();
+    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, infoSlots } = useSettings();
     const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -658,7 +659,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     // The game's ProtonDB rating, once the selection rests (Steam games only: ProtonDB goes by Steam's app id). Kept for
     // the session, so coming back to a game shows its chip at once.
     // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
-    const protonOn = homeChips.protondb;
+    const protonOn = usesStat(infoSlots, 'protondb');
     const knownProton = focused && protonOn ? protonMemo.get(focused.appId) : undefined;
     const liveProton = useAsync(protonOn && focused && info && !info.isShortcut && resting !== null && !knownProton ? `protondb:${focused.appId}` : null, async () => {
         const result = await lookupProton(focused?.appId ?? 0);
