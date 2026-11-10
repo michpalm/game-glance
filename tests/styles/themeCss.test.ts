@@ -388,7 +388,7 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-cards { display: flex; gap: calc(14 * var(--gg-u)); align-items: stretch; }
           .gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
                       border-radius: calc(10 * var(--gg-u)); padding: calc(9 * var(--gg-u)) calc(12 * var(--gg-u)); backdrop-filter: blur(calc(10 * var(--gg-u))); }
-          .gg-card.gg-hltb { flex: 0.95 1 0; }
+          .gg-card.gg-featured { flex: 0.95 1 0; }
           .gg-label { font-size: calc(8.5 * var(--gg-u)); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }
           .gg-value { font-size: calc(17 * var(--gg-u)); font-weight: 700; white-space: nowrap; }
           .gg-stats { display: flex; gap: calc(18 * var(--gg-u)); margin-top: calc(2 * var(--gg-u)); }
@@ -405,6 +405,9 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-mark[data-tone="silver"] { color: #a6a6a6; }
           .gg-mark[data-tone="bronze"] { color: #cd7f32; }
           .gg-mark[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
+          .gg-featured-text { min-width: 0; }
+          .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -492,7 +495,7 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-cards { display: flex; gap: calc(14 * var(--gg-u)); align-items: stretch; }
           .gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
                       border-radius: calc(10 * var(--gg-u)); padding: calc(9 * var(--gg-u)) calc(12 * var(--gg-u)); backdrop-filter: blur(calc(10 * var(--gg-u))); }
-          .gg-card.gg-hltb { flex: 0.95 1 0; }
+          .gg-card.gg-featured { flex: 0.95 1 0; }
           .gg-label { font-size: calc(8.5 * var(--gg-u)); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }
           .gg-value { font-size: calc(17 * var(--gg-u)); font-weight: 700; white-space: nowrap; }
           .gg-stats { display: flex; gap: calc(18 * var(--gg-u)); margin-top: calc(2 * var(--gg-u)); }
@@ -509,6 +512,9 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-mark[data-tone="silver"] { color: #a6a6a6; }
           .gg-mark[data-tone="bronze"] { color: #cd7f32; }
           .gg-mark[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
+          .gg-featured-text { min-width: 0; }
+          .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -910,7 +916,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // The cards are content-box: the cap is the outer width less the padding (2 x padX) and the 1 px borders.
         const content = (outer: number) => `max-width: calc(${outer - 2 * padX - 2} * var(--gg-d))`;
         expect(rulesFor(restyled, '.gg-card')).toContain(content(infoW));
-        const hltbRules = rulesFor(restyled, '.gg-card.gg-hltb');
+        // The right-hand card's shell is the featured card's (HowLongToBeat's card carries gg-featured too).
+        const hltbRules = rulesFor(restyled, '.gg-card.gg-featured');
+        expect(restyled).not.toContain('.gg-card.gg-hltb {');
         expect(hltbRules).toContain(content(hltbW));
         // Wider than 9:5 (21:9, 32:9) the description card is as wide as HowLongToBeat.
         expect(PAGE_LAYOUT.cards.equalFromAspect).toBe(1.8);
@@ -947,6 +955,17 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.rt_PlayBtn [role="button"] svg')).toContain('width: calc(20 * var(--gg-d)) !important');
         expect(rulesFor(restyled, '.ps_Menu svg')).toContain('width: calc(24 * var(--gg-d)) !important');
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('top: 0 !important');
+    });
+    it('featured None: the cards row has one column and the info card loses its width cap', () => {
+        expect(rulesFor(restyled, '.gg-cards.gg-cards-single')).toContain('grid-template-columns: minmax(0, 1fr)');
+        expect(rulesFor(restyled, '.gg-cards.gg-cards-single > .gg-card')).toContain('max-width: none');
+        // The featured cards share HowLongToBeat's column gap; the new ones end long text in an ellipsis.
+        expect(rulesFor(restyled, '.gg-featured .gg-stats')).toContain(`gap: calc(${PAGE_LAYOUT.stats.colGapHltb} * var(--gg-d))`);
+        expect(rulesFor(restyled, '.gg-featured:not(.gg-hltb) .gg-caption, .gg-featured:not(.gg-hltb) .gg-muted')).toContain('text-overflow: ellipsis');
+    });
+    it('the achievements icon row is styled by classes', () => {
+        expect(rulesFor(restyled, '.gg-featured-icon')).toContain('object-fit: cover');
+        expect(rulesFor(restyled, '.gg-featured-text > .gg-value')).toContain('text-overflow: ellipsis');
     });
     it('restyled HLTB card: MAIN is always the accent, no goal-tier highlight', () => {
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div .gg-value')).toContain('color: inherit');

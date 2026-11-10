@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { achievementsView, playTimeView, protonView, readAchievementFacts } from '../../src/logic/featuredViews';
+import { achievementsView, featuredProton, playTimeView, protonView, readAchievementFacts } from '../../src/logic/featuredViews';
 import { formatLastPlayed } from '../../src/home/recents';
 
 const DAY = 86400;
@@ -104,5 +104,16 @@ describe('playTimeView', () => {
     });
     it('has no caption otherwise', () => {
         expect(playTimeView({ minutes: 600, twoWeeks: 60, lastPlayed: NOW - DAY }, NOW, 'en-US').caption).toBeNull();
+    });
+});
+
+describe('featuredProton', () => {
+    it('a non-Steam game has no rating to look up', () => {
+        expect(featuredProton(true, undefined)).toEqual({ status: 'none' });
+        expect(featuredProton(true, { status: 'found', tier: 'gold' })).toEqual({ status: 'none' });
+    });
+    it('a Steam game shows what was looked up, undefined while loading', () => {
+        expect(featuredProton(false, undefined)).toBeUndefined();
+        expect(featuredProton(false, { status: 'found', tier: 'gold' })).toEqual({ status: 'found', tier: 'gold' });
     });
 });

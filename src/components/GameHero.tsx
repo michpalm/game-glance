@@ -8,6 +8,7 @@ import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { useProton } from '../data/useProton';
 import { usesStat } from '../logic/infoSlots';
+import { AchievementFacts, featuredProton, readAchievementFacts } from '../logic/featuredViews';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
@@ -47,7 +48,7 @@ import { GameStatusBar } from './GameStatusBar';
 import { UnifideckRowNav } from './UnifideckRowNav';
 import { PlayRowNav } from './PlayRowNav';
 import { UnifideckCloud } from './UnifideckCloud';
-import { HltbCard } from './HltbCard';
+import { FeaturedCard } from './FeaturedCard';
 import { InfoCard } from './InfoCard';
 import { GameSourcePill } from './GameSourcePill';
 import { LibraryPill } from './LibraryPill';
@@ -142,11 +143,24 @@ function useGameAccent(appId: number, active: boolean): string | undefined {
     return active ? knownAccent(loaded, appId) : undefined;
 }
 
+/** A non-Steam game has no Steam achievements: its featured card says so rather than loading forever. */
+const NO_ACHIEVEMENTS: AchievementFacts = { achieved: 0, total: 0, unlocked: [] };
+
+/** A number field of Steam's overview; 0 when missing or unreadable. */
+function overviewNumber(overview: unknown, key: string): number {
+    const n = Number((overview as Record<string, unknown> | null | undefined)?.[key] ?? 0);
+    return Number.isFinite(n) ? n : 0;
+}
+
+/** When the game was last played (Unix seconds, 0 never): Steam's overview merged with the launcher's, as on Home. */
+function lastPlayedSeconds(overview: unknown, launcherLastPlayed: number | null): number {
+    return mergePlaytime({ minutes: 0, lastPlayed: overviewNumber(overview, 'rt_last_time_played') }, { playedSeconds: null, lastPlayed: launcherLastPlayed }).lastPlayed;
+}
+
 /** "Last played · Today" from Steam's overview (Unix seconds); null if never played or unreadable. */
 function lastPlayedEyebrow(overview: unknown, locale: string, unifideckLastPlayed: number | null = null): string | null {
     try {
-        const steamSeconds = Number((overview as { rt_last_time_played?: unknown } | null)?.rt_last_time_played ?? 0);
-        const seconds = mergePlaytime({ minutes: 0, lastPlayed: Number.isFinite(steamSeconds) ? steamSeconds : 0 }, { playedSeconds: null, lastPlayed: unifideckLastPlayed }).lastPlayed;
+        const seconds = lastPlayedSeconds(overview, unifideckLastPlayed);
         if (!Number.isFinite(seconds) || seconds <= 0) return null;
         return `${tr('lastPlayed')} · ${formatLastPlayed(seconds, Math.floor(Date.now() / 1000), locale)}`;
     } catch (error) {
@@ -182,19 +196,21 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => {
         if (lang !== undefined && fetchedDescription) rememberDescription(game.appId, lang, fetchedDescription);
     }, [game.appId, lang, fetchedDescription]);
-    const looked = useAsync(`hltb:${game.appId}:${overrideVersion}`, () =>
+    const settings = useSettings();
+    // HowLongToBeat only while a slot shows it (the Game info setting); otherwise no lookup and nothing shows it.
+    const wantsHltb = usesStat(settings.infoSlots, 'hltb');
+    const looked = useAsync(wantsHltb ? `hltb:${game.appId}:${overrideVersion}` : null, () =>
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
     // Until the lookup answers, the times Spotlight Home already knows (its session memo, home/warmup), so the first frame
     // is complete (the Clean panel no longer narrows for a moment at the open transition's hand-over).
-    const hltb = looked ?? peekHltb(game.appId);
+    const hltb = wantsHltb ? looked ?? peekHltb(game.appId) : undefined;
     useEffect(() => {
         if (looked) rememberHltb(game.appId, looked);
     }, [game.appId, looked]);
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const settings = useSettings();
     const proton = useProton(game.appId, usesStat(settings.infoSlots, 'protondb') && !game.isShortcut);
     const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const accent = useGameAccent(game.appId, restyle);
@@ -252,6 +268,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // The Clean look, only where its layout applies (Steam's classes found); otherwise the page keeps its cards.
     const cleanStyle = clean ? cleanCss() : '';
     const ringStyle = pageDoc?.defaultView ? ringCss(pageDoc.defaultView) : '';
+    const featured = settings.infoSlots.featured;
+    const now = Math.floor(Date.now() / 1000);
     const eyebrow = restyle ? openedFrom?.eyebrow ?? lastPlayedEyebrow(overview, locale, launcher?.lastPlayed ?? null) : null;
     return (
         <>
@@ -288,12 +306,24 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
                     Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
                 {!cleanStyle && (
-                    <CardsRow selectable={restyle}>
+                    <CardsRow selectable={restyle} single={featured === null}>
                         {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
                             controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
                         <InfoCard game={game} hltb={hltb} locale={locale} description={description} size={size} slots={settings.infoSlots} proton={proton} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
-                        <HltbCard result={hltb} playedMinutes={game.playedMinutes} locale={locale} restyle={restyle} onPress={restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined} />
+                        {/* The featured stat's card (Game info setting); HowLongToBeat's keeps its press, the others have none yet. */}
+                        <FeaturedCard
+                            featured={featured}
+                            hltb={hltb}
+                            playedMinutes={game.playedMinutes}
+                            locale={locale}
+                            restyle={restyle}
+                            onPress={featured === 'hltb' && restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined}
+                            proton={featuredProton(game.isShortcut, proton)}
+                            achievements={game.isShortcut ? NO_ACHIEVEMENTS : readAchievementFacts(details)}
+                            playTime={{ minutes: game.playedMinutes, twoWeeks: overviewNumber(overview, 'minutes_playtime_last_two_weeks'), lastPlayed: lastPlayedSeconds(overview, launcher?.lastPlayed ?? null) }}
+                            now={now}
+                        />
                     </CardsRow>
                 )}
                 <div className="gg-more" aria-hidden="true">⌄</div>
@@ -315,11 +345,12 @@ export function GameHero(props: Props) {
     );
 }
 
-/** The cards' row: in the restyled look a Focusable row (Left/Right between the cards the controller can select). */
-function CardsRow({ selectable, children }: { selectable: boolean; children: ReactNode }) {
-    if (!selectable) return <div className="gg-cards">{children}</div>;
+/** The cards' row: in the restyled look a Focusable row (Left/Right between the cards the controller can select). `single`: no featured card, the info card spans the row. */
+function CardsRow({ selectable, single, children }: { selectable: boolean; single: boolean; children: ReactNode }) {
+    const className = single ? 'gg-cards gg-cards-single' : 'gg-cards';
+    if (!selectable) return <div className={className}>{children}</div>;
     return (
-        <Focusable className="gg-cards" flow-children="row">
+        <Focusable className={className} flow-children="row">
             {children}
         </Focusable>
     );

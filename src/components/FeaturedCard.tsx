@@ -43,10 +43,10 @@ export function FeaturedCard(p: Props) {
             )}
             {view.icon && (
                 <div className={`${prefix}-stats`}>
-                    {view.icon.src && <img src={view.icon.src} alt="" style={{ height: '2.6em', aspectRatio: '1', borderRadius: '0.3em', objectFit: 'cover' }} />}
-                    <div style={{ minWidth: 0 }}>
+                    {view.icon.src && <img src={view.icon.src} className={`${prefix}-featured-icon`} alt="" />}
+                    <div className={`${prefix}-featured-text`}>
                         <div className={`${prefix}-label`}>{view.icon.label}</div>
-                        <div className={`${prefix}-value`} style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{view.icon.value}</div>
+                        <div className={`${prefix}-value`}>{view.icon.value}</div>
                     </div>
                 </div>
             )}

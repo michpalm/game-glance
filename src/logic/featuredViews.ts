@@ -37,6 +37,11 @@ export function protonView(r: ProtonResult | undefined): FeaturedView {
     return { title, columns, bar: null, caption };
 }
 
+/** The featured ProtonDB card's result: a non-Steam game is never looked up (no Steam app id), so it has no rating rather than loading forever. Pure. */
+export function featuredProton(isShortcut: boolean, looked: ProtonResult | undefined): ProtonResult | undefined {
+    return isShortcut ? { status: 'none' } : looked;
+}
+
 export interface AchievementFacts {
     achieved: number;
     total: number;

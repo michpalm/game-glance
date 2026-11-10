@@ -560,7 +560,7 @@ export function cardBaseCss(prefix: string, unit: (n: number) => string): string
         `.gg-cards { display: flex; gap: ${unit(14)}; align-items: stretch; }`,
         `.gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
             border-radius: ${unit(10)}; padding: ${unit(9)} ${unit(12)}; backdrop-filter: blur(${unit(10)}); }`,
-        `.gg-card.gg-hltb { flex: 0.95 1 0; }`,
+        `.gg-card.gg-featured { flex: 0.95 1 0; }`,
         `.gg-label { font-size: ${unit(8.5)}; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }`,
         `.gg-value { font-size: ${unit(17)}; font-weight: 700; white-space: nowrap; }`,
         `.gg-stats { display: flex; gap: ${unit(18)}; margin-top: ${unit(2)}; }`,
@@ -572,6 +572,10 @@ export function cardBaseCss(prefix: string, unit: (n: number) => string): string
         `.gg-bar > div { height: 100%; border-radius: ${unit(2)}; background: var(--gg-accent); }`,
         `.gg-caption { margin-top: ${unit(5)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
         protonMarkCss('gg'),
+        // The achievements card's latest unlock: its icon, then its name ending in an ellipsis.
+        `.gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }`,
+        `.gg-featured-text { min-width: 0; }`,
+        `.gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`,
         `.gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: ${unit(4)}; background: rgba(255, 255, 255, 0.12); }`,
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
@@ -587,13 +591,19 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
         // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
         // them shorter, which the open transition's panels (openTargets, the same height) then shrank to after the hand-over.)
-        `.gg-card.gg-hltb { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
+        // The right-hand card (the featured stat: HowLongToBeat's card or another, components/FeaturedCard) in HowLongToBeat's shell.
+        `.gg-card.gg-featured { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
         // (9/5: cards.equalFromAspect as a media query ratio.)
         `@media (min-aspect-ratio: 9/5) { .gg-card { max-width: ${cardContentMax(cardMaxWidths(PAGE_LAYOUT.cards.equalFromAspect)[0])}; } }`,
+        // Featured None: the info card alone, spanning the row.
+        `.gg-cards.gg-cards-single { grid-template-columns: minmax(0, 1fr); }`,
+        `.gg-cards.gg-cards-single > .gg-card { max-width: none; }`,
         `.gg-label { ${pageType('label', unit)} ${labelText(unit)}; }`,
         `.gg-value { ${pageType('value', unit)} }`,
         `.gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapInfo)}; margin-top: 0; }`,
-        `.gg-hltb .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
+        `.gg-featured .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
+        // The new featured cards keep one line each, so they stay HowLongToBeat's height (HowLongToBeat's own text is unchanged).
+        `.gg-featured:not(.gg-hltb) .gg-caption, .gg-featured:not(.gg-hltb) .gg-muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }`,
         `.gg-stats > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }`,
         `.gg-desc { margin: 0; font-size: ${unit(PAGE_LAYOUT.cardText.desc)}; line-height: ${PAGE_LAYOUT.cardText.descLine}; color: rgba(255, 255, 255, 0.84); }`,
         `.gg-bar { margin-top: 0; height: ${unit(PAGE_LAYOUT.cardText.bar)}; border-radius: ${unit(3)}; }`,

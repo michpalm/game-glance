@@ -13,6 +13,19 @@ describe('FeaturedCard', () => {
     it('renders nothing for null', () => {
         expect(render({ featured: null })).toBe('');
     });
+    it("HowLongToBeat's card carries both its own class and the featured shell's", () => {
+        expect(render({ featured: 'hltb' })).toContain('class="gg-card gg-hltb gg-featured"');
+        expect(render({ featured: 'hltb', hltb: { status: 'unavailable' } })).toContain('class="gg-card gg-hltb gg-featured"');
+    });
+    it('the achievements icon row uses classes, not inline styles', () => {
+        const html = render({
+            featured: 'achievements',
+            achievements: { achieved: 1, total: 2, unlocked: [{ id: 'a', name: 'A', image: 'https://x.test/a.jpg', unlockedAt: 0, globalPct: 9 }] },
+        });
+        expect(html).toContain('class="gg-featured-icon"');
+        expect(html).toContain('class="gg-featured-text"');
+        expect(html).not.toContain('style="height');
+    });
     it('shows the title and a skeleton while loading', () => {
         const html = render({});
         expect(html).toContain('ProtonDB');

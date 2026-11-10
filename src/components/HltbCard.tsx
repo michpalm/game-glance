@@ -15,11 +15,13 @@ interface Props {
 }
 
 export function HltbCard({ result, playedMinutes, locale, restyle = false, onPress, prefix = 'gg' }: Props) {
+    // gg-featured: the right-hand card's shell (themeCss), shared with the other featured cards; gg-hltb for its own rules.
+    const shell = `${prefix}-card ${prefix}-hltb ${prefix}-featured`;
     const header = <div className={`${prefix}-label`}>{HLTB_TITLE}</div>;
 
     if (result === undefined) {
         return (
-            <CardShell className={`${prefix}-card ${prefix}-hltb`} onPress={onPress}>
+            <CardShell className={shell} onPress={onPress}>
                 {header}
                 <div className={`${prefix}-stats`}>
                     {HLTB_COLUMNS.map((c) => (
@@ -35,7 +37,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false, onPre
     if (result.status === 'notFound') {
         const none = hltbNotFoundView(result.overrideId);
         return (
-            <CardShell className={`${prefix}-card ${prefix}-hltb`} onPress={onPress}>
+            <CardShell className={shell} onPress={onPress}>
                 {header}
                 <div className={`${prefix}-muted`}>{none.muted}</div>
                 <div className={`${prefix}-caption`}>{none.caption}</div>
@@ -44,7 +46,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false, onPre
     }
     if (result.status === 'unavailable') {
         return (
-            <CardShell className={`${prefix}-card ${prefix}-hltb`} onPress={onPress}>
+            <CardShell className={shell} onPress={onPress}>
                 {header}
                 <div className={`${prefix}-muted`}>{tr('unavailable')}</div>
             </CardShell>
@@ -53,7 +55,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false, onPre
 
     const view = hltbFoundView(result.times, playedMinutes, locale, restyle);
     return (
-        <CardShell className={`${prefix}-card ${prefix}-hltb`} onPress={onPress}>
+        <CardShell className={shell} onPress={onPress}>
             {header}
             <div className={`${prefix}-stats`}>
                 {view.columns.map((c) => (
