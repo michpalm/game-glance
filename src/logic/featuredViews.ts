@@ -73,6 +73,18 @@ export function readAchievementFacts(details: unknown): AchievementFacts | undef
     return { achieved: a.nAchieved, total: a.nTotal, unlocked };
 }
 
+const NO_ACHIEVEMENTS: AchievementFacts = { achieved: 0, total: 0, unlocked: [] };
+
+/**
+ * The game page's achievements facts: loading (undefined) only until Steam has the details; a non-Steam game, or details
+ * without a readable achievements record (Steam leaves it out for a game with none), have none, so the card says so. Pure.
+ */
+export function pageAchievementFacts(details: unknown, isShortcut: boolean): AchievementFacts | undefined {
+    if (isShortcut) return NO_ACHIEVEMENTS;
+    if (details === undefined || details === null) return undefined;
+    return readAchievementFacts(details) ?? NO_ACHIEVEMENTS;
+}
+
 export function achievementsView(a: AchievementFacts | undefined, now: number, locale: string): FeaturedView {
     const title = 'Achievements';
     if (a === undefined) return loadingView(title);

@@ -7,8 +7,8 @@ import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { useProton } from '../data/useProton';
-import { usesStat } from '../logic/infoSlots';
-import { AchievementFacts, featuredProton, readAchievementFacts } from '../logic/featuredViews';
+import { FeaturedId, GameInfoSlots, usesStat } from '../logic/infoSlots';
+import { featuredProton, pageAchievementFacts } from '../logic/featuredViews';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
@@ -143,8 +143,15 @@ function useGameAccent(appId: number, active: boolean): string | undefined {
     return active ? knownAccent(loaded, appId) : undefined;
 }
 
-/** A non-Steam game has no Steam achievements: its featured card says so rather than loading forever. */
-const NO_ACHIEVEMENTS: AchievementFacts = { achieved: 0, total: 0, unlocked: [] };
+/** The page's HowLongToBeat lookup key: null (no lookup) unless a Game info slot shows HowLongToBeat. Pure. */
+export function hltbLookupKey(slots: GameInfoSlots, appId: number, overrideVersion: number): string | null {
+    return usesStat(slots, 'hltb') ? `hltb:${appId}:${overrideVersion}` : null;
+}
+
+/** The cards row's classes: with nothing featured the info card is alone and spans the row (themeCss). Pure. */
+export function cardsRowClass(featured: FeaturedId | null): string {
+    return featured === null ? 'gg-cards gg-cards-single' : 'gg-cards';
+}
 
 /** A number field of Steam's overview; 0 when missing or unreadable. */
 function overviewNumber(overview: unknown, key: string): number {
@@ -198,13 +205,13 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     }, [game.appId, lang, fetchedDescription]);
     const settings = useSettings();
     // HowLongToBeat only while a slot shows it (the Game info setting); otherwise no lookup and nothing shows it.
-    const wantsHltb = usesStat(settings.infoSlots, 'hltb');
-    const looked = useAsync(wantsHltb ? `hltb:${game.appId}:${overrideVersion}` : null, () =>
+    const hltbKey = hltbLookupKey(settings.infoSlots, game.appId, overrideVersion);
+    const looked = useAsync(hltbKey, () =>
         lookupHltb({ appId: game.appId, name: game.name, isShortcut: game.isShortcut }),
     );
     // Until the lookup answers, the times Spotlight Home already knows (its session memo, home/warmup), so the first frame
     // is complete (the Clean panel no longer narrows for a moment at the open transition's hand-over).
-    const hltb = wantsHltb ? looked ?? peekHltb(game.appId) : undefined;
+    const hltb = hltbKey !== null ? looked ?? peekHltb(game.appId) : undefined;
     useEffect(() => {
         if (looked) rememberHltb(game.appId, looked);
     }, [game.appId, looked]);
@@ -306,7 +313,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 {/* Clean hides these two cards and shows .gg-clean-info instead. Leaving them mounted kept them in
                     Steam's focus tree at 0×0, so Up from Play landed there. Unmount them in that look. */}
                 {!cleanStyle && (
-                    <CardsRow selectable={restyle} single={featured === null}>
+                    <CardsRow selectable={restyle} className={cardsRowClass(featured)}>
                         {/* A tap, a click or the controller's A opens what each card summarises (#24, cardActions), in the
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
                             controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
@@ -320,7 +327,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                             restyle={restyle}
                             onPress={featured === 'hltb' && restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined}
                             proton={featuredProton(game.isShortcut, proton)}
-                            achievements={game.isShortcut ? NO_ACHIEVEMENTS : readAchievementFacts(details)}
+                            achievements={pageAchievementFacts(details, game.isShortcut)}
                             playTime={{ minutes: game.playedMinutes, twoWeeks: overviewNumber(overview, 'minutes_playtime_last_two_weeks'), lastPlayed: lastPlayedSeconds(overview, launcher?.lastPlayed ?? null) }}
                             now={now}
                         />
@@ -345,9 +352,8 @@ export function GameHero(props: Props) {
     );
 }
 
-/** The cards' row: in the restyled look a Focusable row (Left/Right between the cards the controller can select). `single`: no featured card, the info card spans the row. */
-function CardsRow({ selectable, single, children }: { selectable: boolean; single: boolean; children: ReactNode }) {
-    const className = single ? 'gg-cards gg-cards-single' : 'gg-cards';
+/** The cards' row (classes from cardsRowClass): in the restyled look a Focusable row (Left/Right between the cards the controller can select). */
+function CardsRow({ selectable, className, children }: { selectable: boolean; className: string; children: ReactNode }) {
     if (!selectable) return <div className={className}>{children}</div>;
     return (
         <Focusable className={className} flow-children="row">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { achievementsView, featuredProton, playTimeView, protonView, readAchievementFacts } from '../../src/logic/featuredViews';
+import { achievementsView, featuredProton, pageAchievementFacts, playTimeView, protonView, readAchievementFacts } from '../../src/logic/featuredViews';
 import { formatLastPlayed } from '../../src/home/recents';
 
 const DAY = 86400;
@@ -115,5 +115,26 @@ describe('featuredProton', () => {
     it('a Steam game shows what was looked up, undefined while loading', () => {
         expect(featuredProton(false, undefined)).toBeUndefined();
         expect(featuredProton(false, { status: 'found', tier: 'gold' })).toEqual({ status: 'found', tier: 'gold' });
+    });
+});
+
+describe('pageAchievementFacts', () => {
+    const none = { achieved: 0, total: 0, unlocked: [] };
+    it('loading until Steam has the details', () => {
+        expect(pageAchievementFacts(undefined, false)).toBeUndefined();
+        expect(pageAchievementFacts(null, false)).toBeUndefined();
+    });
+    it('details without achievements: none, so the card says "No achievements" instead of loading forever', () => {
+        expect(pageAchievementFacts({ strDescription: 'x' }, false)).toEqual(none);
+        expect(achievementsView(pageAchievementFacts({}, false), NOW, 'en-US').empty).toBe('No achievements');
+    });
+    it('a non-Steam game has none, details or not', () => {
+        expect(pageAchievementFacts(undefined, true)).toEqual(none);
+        expect(pageAchievementFacts({ achievements: { nAchieved: 1, nTotal: 2, vecHighlight: [WOOD] } }, true)).toEqual(none);
+    });
+    it("a Steam game's details: its facts", () => {
+        const details = { achievements: { nAchieved: 1, nTotal: 2, vecHighlight: [WOOD] } };
+        expect(pageAchievementFacts(details, false)).toEqual(readAchievementFacts(details));
+        expect(pageAchievementFacts(details, false)?.achieved).toBe(1);
     });
 });
