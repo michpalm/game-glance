@@ -81,7 +81,7 @@ describe('createProtonLookup', () => {
         await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
         fetcher.mockResolvedValueOnce(answer(200, { ...SUMMARY, tier: 'silver' }));
         expect(await lookup(9)).toMatchObject({ status: 'found', tier: 'gold' });
-        await vi.waitFor(async () => expect(await lookup(9)).toMatchObject({ status: 'found', tier: 'silver' }));
+        await vi.waitFor(async () => expect(await lookup(9)).toEqual({ status: 'found', tier: 'silver', details: { total: 289, confidence: 'strong', trending: 'platinum', best: 'platinum' } }));
         expect(PROTON_REFRESH_MS).toBe(7 * DAY_MS);
     });
     it('one request per game at a time', async () => {

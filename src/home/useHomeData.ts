@@ -658,7 +658,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     // the session, so coming back to a game shows its chip at once.
     // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
     const protonOn = usesStat(infoSlots, 'protondb');
-    const proton = useProton(focused?.appId ?? null, protonOn && !!info && !info.isShortcut && resting !== null);
+    const proton = useProton(focused?.appId ?? null, protonOn && !info?.isShortcut, !!info && resting !== null);
     // The selected game's description once it rests, for the open transition (Home draws it as it turns into the page's
     // Spotlight look; the Clean look has none). Kept in the session memo, which the page reads on its first frame.
     const warmedDescription = focused && lang ? peekDescription(focused.appId, lang) : undefined;
