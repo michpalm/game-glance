@@ -74,6 +74,16 @@ describe('achievementsView', () => {
         expect(v.caption).toBe('170 to unlock');
         expect(v.bar).toBe(0);
     });
+    it('keeps the count when Steam lists none of the unlocked ones', () => {
+        const v = achievementsView({ achieved: 6, total: 170, unlocked: [] }, NOW, 'en-US');
+        expect(v.icon).toBeUndefined();
+        expect(v.caption).toBe('6 of 170 unlocked');
+        expect(v.bar).toBe(4);
+    });
+    it('drops the time when the unlock time is unknown', () => {
+        const f = { achieved: 1, total: 2, unlocked: [{ id: 'a', name: 'A', image: '', unlockedAt: 0, globalPct: 5 }] };
+        expect(achievementsView(f, NOW, 'en-US').icon!.label).toBe('Latest');
+    });
     it('is loading while unknown', () => {
         expect(achievementsView(undefined, NOW, 'en-US').loading).toBe(true);
     });

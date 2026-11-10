@@ -73,15 +73,14 @@ export function achievementsView(a: AchievementFacts | undefined, now: number, l
     if (a === undefined) return loadingView(title);
     if (a.total <= 0) return emptyView(title, 'No achievements');
     const bar = Math.round((a.achieved / a.total) * 100);
+    if (a.achieved <= 0) return { title, columns: [], bar, caption: `${a.total} to unlock` };
     const latest = a.unlocked[0];
-    if (!latest) return { title, columns: [], bar, caption: `${a.total} to unlock` };
     const known = a.unlocked.filter((u) => u.globalPct > 0);
     const rarest = known.reduce<AchievementFacts['unlocked'][number] | null>((best, u) => (best === null || u.globalPct < best.globalPct ? u : best), null);
     const caption = `${a.achieved} of ${a.total} unlocked` + (rarest ? ` · rarest: ${rarest.name} (${rarest.globalPct.toFixed(1)}% have it)` : '');
-    return {
-        title, columns: [], bar, caption,
-        icon: { src: latest.image, label: `Latest · ${formatLastPlayed(latest.unlockedAt, now, locale)}`, value: latest.name },
-    };
+    if (!latest) return { title, columns: [], bar, caption };
+    const when = latest.unlockedAt > 0 ? ` · ${formatLastPlayed(latest.unlockedAt, now, locale)}` : '';
+    return { title, columns: [], bar, caption, icon: { src: latest.image, label: `Latest${when}`, value: latest.name } };
 }
 
 export function playTimeView(p: { minutes: number; twoWeeks: number; lastPlayed: number }, now: number, locale: string): FeaturedView {
