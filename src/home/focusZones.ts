@@ -22,10 +22,9 @@ export function nextZone(zone: Zone, direction: 'up' | 'down', feedUp: boolean):
 }
 
 /**
- * Where B goes: feed -> tabs -> the game cards, and the action row -> the game cards. On the cards (where Home starts)
- * Home does not handle B at all ('stock'), so Steam's own handling applies and the user is never trapped.
+ * Where B goes: feed -> tabs -> the game cards, and the action row -> the game cards. B at the root stays there.
  */
-export function onBack(zone: Zone): Zone | 'stock' {
+export function onBack(zone: Zone): Zone {
     switch (zone) {
         case 'feed':
             return 'tabs';
@@ -33,7 +32,7 @@ export function onBack(zone: Zone): Zone | 'stock' {
         case 'actions':
             return 'recents';
         default:
-            return 'stock';
+            return 'recents';
     }
 }
 

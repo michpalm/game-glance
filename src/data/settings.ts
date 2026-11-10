@@ -8,6 +8,10 @@ import { RowStyle, rowStyleOf } from '../home/recentsLayout';
 import { backendKv, KvBackend } from './kv';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
 
+export const PROFILE_STYLES = ['dot', 'circle', 'square'] as const;
+export type ProfileStyle = typeof PROFILE_STYLES[number];
+export const PROFILE_STYLE_LABELS: Record<ProfileStyle, string> = { dot: 'Dot', circle: 'Circle', square: 'Square' };
+
 export interface Settings {
     enabled: boolean;
     autoPreload: boolean; // pre-load game data for installed games in the background
@@ -17,7 +21,8 @@ export interface Settings {
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
     homeExpandedControls: boolean; // opt-in Home footer styling and focus-only status items
     chromeEveryPage: boolean; // opt-in: the status bar and footer on every Steam page, not only Home
-    statusAvatar: boolean; // your avatar, round and ringed in your status colour, in the status bar instead of the dot
+    statusAvatar: boolean; // Kept for older builds.
+    profileStyle?: ProfileStyle;
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
@@ -60,6 +65,8 @@ export function createSettingsStore(kv: KvBackend) {
                 homeExpandedControls: pick('homeExpandedControls'),
                 chromeEveryPage: pick('chromeEveryPage'),
                 statusAvatar: pick('statusAvatar'),
+                profileStyle: raw.profileStyle && PROFILE_STYLES.includes(raw.profileStyle)
+                    ? raw.profileStyle : pick('statusAvatar') ? 'square' : 'dot',
                 gameLogo: pick('gameLogo'),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
@@ -78,10 +85,12 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             await persist({ enabled });
         },
-        async setStatusAvatar(statusAvatar: boolean): Promise<void> {
-            current = { ...current, statusAvatar };
+        async setProfileStyle(profileStyle: ProfileStyle): Promise<void> {
+            if (!PROFILE_STYLES.includes(profileStyle)) return;
+            const statusAvatar = profileStyle !== 'dot';
+            current = { ...current, profileStyle, statusAvatar };
             emit();
-            await persist({ statusAvatar });
+            await persist({ profileStyle, statusAvatar });
         },
         async setAutoPreload(autoPreload: boolean): Promise<void> {
             current = { ...current, autoPreload };

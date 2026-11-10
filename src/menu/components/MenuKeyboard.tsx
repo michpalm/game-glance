@@ -1,5 +1,6 @@
+import { menuScale } from '../menuScale';
 import { hideKeyboardNavigation } from '../keyboard/navigationVisibility';
-import { Focusable, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
+import { Focusable, GamepadButton as B, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { LuMove } from 'react-icons/lu';
@@ -7,7 +8,7 @@ import { backendKv } from '../../data/kv';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { findSteamLayoutSource, readLayouts, type KeyboardLayout, type KeyDef } from '../keyboard/layouts';
 import { dragPosition, followUnderKeyboard, loadPosition, movePanel, normaliseAxis, savePosition, stickStep, stickVelocity, settle, spotPosition, SPOTS, type Rect, type Spot } from '../keyboard/placement';
-import { createStripPress, finishPadDrop, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
+import { createStripPress, dpadStep, finishPadDrop, installDragGamepad, installHoldWatch, type StripPress } from '../keyboard/stripPress';
 import type { KeyboardSession } from '../keyboard/session';
 import { clearHeld, cursorOf, moveCursor, press, typeText, type CursorMove, type TypingState } from '../keyboard/typing';
 import { installKeyboardOutsideTap } from '../navigation';
@@ -19,6 +20,7 @@ type Page = 'letters' | 'symbols';
 type Point = { x: number; y: number };
 /** The panel in the menu's own (unscaled) units, as on the canvas. */
 const SIZE = { width: 409, height: 210 };
+type PointSize = typeof SIZE;
 const HOLD_MS = 400;
 const DRAG_SLOP = 4;
 
@@ -157,7 +159,7 @@ const MAINTAIN_X = 2 as NavEntryPositionPreferences;
 
 export interface KeyboardPanelProps {
     completionLabel?:string;frost?:boolean;layout: KeyboardLayout; page: Page; typing: TypingState; canSend: boolean;
-    position: Point | null; dragging: boolean; panelRef?: Ref<HTMLDivElement>;
+    position: Point | null; dragging: boolean; scale?: number; panelRef?: Ref<HTMLDivElement>;
     onKey(row: number, col: number): void; onMove(): void;
     hold: { start(row: number, col: number): void; stop(): void; over(target: EventTarget | null): void };
     strip: StripHandlers;
@@ -166,11 +168,11 @@ export interface KeyboardPanelProps {
 }
 
 /** Stateless drawing of the panel: keys as menu buttons in a Focusable grid, the move strip below. */
-export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, typing, canSend, position, dragging, panelRef, onKey, onMove, hold, strip, pad }: KeyboardPanelProps) {
+export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, typing, canSend, position, dragging, scale = 1, panelRef, onKey, onMove, hold, strip, pad }: KeyboardPanelProps) {
     const rows = page === 'letters' ? layout.letters : layout.symbols;
     const startHold = (target: EventTarget | null) => { const at = keyAt(target); if (at) hold.start(at[0], at[1]); };
     return <div ref={panelRef} className={`gg-keyboard${dragging ? ' gg-keyboard-dragging' : ''}`} data-gg-frost-region={frost?'keyboard':undefined} role="group" aria-label="Keyboard"
-        style={{ left: position?.x ?? 0, top: position?.y ?? 0, visibility: position ? undefined : 'hidden' }}>
+        style={{ left: position?.x ?? 0, top: position?.y ?? 0, visibility: position ? undefined : 'hidden', transform: scale === 1 ? undefined : `scale(${scale})`, transformOrigin: 'top left' }}>
         <Focusable flow-children="column">
         <Focusable className="gg-keyboard-keys" flow-children="column"
             onPointerDown={(e: ReactPointerEvent) => startHold(e.target)} onPointerUp={hold.stop} onPointerCancel={hold.stop} onPointerLeave={hold.stop}
@@ -208,6 +210,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     const [index, setIndex] = useState(layouts.current);
     const [position, setPosition] = useState<Point | null>(null);
     const [dragging, setDragging] = useState(false);
+    const [searchScale, setSearchScale] = useState(1);
     // Lifted by holding A: the stick feed and the drag's gamepad listeners live exactly as long as this.
     const [padDrag, setPadDrag] = useState(false);
     const [feedFailed, setFeedFailed] = useState(false);
@@ -222,9 +225,9 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     const lastTyped = useRef<{ id: string; before: TypingState; at: number } | null>(null);
     // A hold that typed its hint swallows the click that ends the same press (touch release, or A if Steam acts on release).
     const skipAction = useRef<{ id: string; stopped: number | null } | null>(null);
-    const drag = useRef<{ pointer: number; x: number; y: number; from: Point; scale: number; view: Rect; moved: boolean } | null>(null);
+    const drag = useRef<{ pointer: number; x: number; y: number; from: Point; scale: number; view: Rect; size: PointSize; moved: boolean } | null>(null);
     const dragEnded = useRef(0);
-    const padFrame = useRef<{ scale: number; view: Rect } | null>(null);
+    const padFrame = useRef<{ scale: number; view: Rect; size: PointSize } | null>(null);
     const stickBusy = useRef(false);
     const padActions = useRef({ cycle: () => {}, lift: () => {}, drop: () => {}, held: (_pending: boolean) => {} });
     // Document listeners of the controller press: while a hold is pending, and from the lift until the drop.
@@ -248,7 +251,9 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!session.get().open || !contextRef.current.ownsInput() || !element?.isConnected || !root?.isConnected || root!==openedHost.current || !view) return null;
         const box = root.getBoundingClientRect(), scale = box.width / root.offsetWidth || 1;
         const menuRect = (r: { left: number; top: number; width: number; height: number }) => toMenuRect(r, box, scale);
-        return { scale, view: menuRect(keyboardViewport(contextRef.current,{ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight })),
+        const boardScale = context ? menuScale(view.innerWidth) : 1;
+        const size = { width: SIZE.width * boardScale, height: SIZE.height * boardScale };
+        return { scale, size, view: menuRect(keyboardViewport(contextRef.current,{ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight })),
             menu: menuRect((element.closest<HTMLElement>('.gg-menu-panel') ?? root).getBoundingClientRect()), field: menuRect(element.getBoundingClientRect()) };
     };
     const place = (p: Point) => { live.current.position = p; setPosition(p); };
@@ -258,12 +263,13 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!open) return;
         setTyping(t => ({ ...clearHeld(t), shift: 'off' })); setPage('letters'); setIndex(live.current.layouts.current); setPosition(null); setDragging(false);
         const element=field();openedHost.current=element?contextRef.current.host(element):null;setHost(openedHost.current);
+        if (context && element?.ownerDocument.defaultView) setSearchScale(menuScale(element.ownerDocument.defaultView.innerWidth));
         let alive = true;
         void loadPosition(backendKv).then(saved => {
             const g = alive && geometry();
             if (!g) return;
             spot.current = saved && 'spot' in saved ? saved.spot : saved ? null : 'left';
-            place(spot.current ? spotPosition(spot.current, g.view, g.menu, g.field, SIZE) : settle(saved as Point, g.view, g.field, SIZE));
+            place(spot.current ? spotPosition(spot.current, g.view, g.menu, g.field, g.size) : settle(saved as Point, g.view, g.field, g.size));
         });
         return () => {
             alive = false;openedHost.current=null;
@@ -295,7 +301,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     // Resizing cancels an in-flight drag, then keeps the current/anchored position inside the live viewport.
     useEffect(()=>{
         const view=host?.ownerDocument.defaultView;if(!open||!host||!view)return;
-        const resize=()=>{const g=geometry();if(!g||!live.current.position)return;stripPress.current?.dispose();stopListening('hold');stopListening('drag');drag.current=null;padFrame.current=null;moving.current=false;setPadDrag(false);setDragging(false);place(spot.current?spotPosition(spot.current,g.view,g.menu,g.field,SIZE):settle(live.current.position,g.view,g.field,SIZE));};
+        const resize=()=>{if(context)setSearchScale(menuScale(view.innerWidth));const g=geometry();if(!g||!live.current.position)return;stripPress.current?.dispose();stopListening('hold');stopListening('drag');drag.current=null;padFrame.current=null;moving.current=false;setPadDrag(false);setDragging(false);place(spot.current?spotPosition(spot.current,g.view,g.menu,g.field,g.size):settle(live.current.position,g.view,g.field,g.size));};
         view.addEventListener('resize',resize);view.visualViewport?.addEventListener('resize',resize);
         const observer=view.ResizeObserver?new view.ResizeObserver(resize):null;const element=field();if(element)observer?.observe(element);
         return()=>{view.removeEventListener('resize',resize);view.visualViewport?.removeEventListener('resize',resize);observer?.disconnect();};
@@ -370,7 +376,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!g) return;
         const next = SPOTS[(SPOTS.indexOf(spot.current ?? SPOTS[SPOTS.length - 1]) + 1) % SPOTS.length];
         spot.current = next;
-        place(spotPosition(next, g.view, g.menu, g.field, SIZE));
+        place(spotPosition(next, g.view, g.menu, g.field, g.size));
         void savePosition(backendKv, { spot: next });
     };
     /** Where a drag lets go, by finger or by A: clamped, clear of the field, remembered. */
@@ -380,7 +386,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         const g = geometry(), at = live.current.position;
         moving.current = false;
         if (!at) return;
-        const p = g ? settle(at, g.view, g.field, SIZE) : at;
+        const p = g ? settle(at, g.view, g.field, g.size) : at;
         movePanel(panel.current, live.current, p); reportBounds(); place(p);
         if (!g) return;
         spot.current = null;
@@ -388,7 +394,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     };
     const padMove = (delta: Point) => {
         const f = padFrame.current, at = live.current.position;
-        if (f && at) {movePanel(panel.current, live.current, dragPosition(at, delta, f.scale, f.view, SIZE));reportBounds();}
+        if (f && at) {movePanel(panel.current, live.current, dragPosition(at, delta, f.scale, f.view, f.size));reportBounds();}
     };
     padActions.current = {
         cycle: onMove,
@@ -399,7 +405,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         },
         lift() {
             const g = geometry();
-            padFrame.current = g && { scale: g.scale, view: g.view };
+            padFrame.current = g && { scale: g.scale, view: g.view, size: g.size };
             // Installed now, not after a render, so the A up that ends the drag is never missed.
             const doc = host?.ownerDocument;
             stopListening('drag');
@@ -420,7 +426,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
             const g = geometry(), from = live.current.position;
             if (!g || !from) return;
             e.currentTarget.setPointerCapture?.(e.pointerId);
-            drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, from, scale: g.scale, view: g.view, moved: false };
+            drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, from, scale: g.scale, view: g.view, size: g.size, moved: false };
         },
         onPointerMove(e) {
             const d = drag.current;
@@ -429,7 +435,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
             if (!d.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
             if (!d.moved) { d.moved = true; moving.current = true; setDragging(true); }
             // Kept inside the view while dragging (an area past the edge would cost the menu its frost); the release clears the field.
-            movePanel(panel.current, live.current, dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, SIZE));reportBounds();
+            movePanel(panel.current, live.current, dragPosition(d.from, { x: dx, y: dy }, d.scale, d.view, d.size));reportBounds();
         },
         onPointerUp(e) {
             const d = drag.current;
@@ -440,10 +446,81 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         onPointerCancel(e) { strip.onPointerUp?.(e); },
     };
 
+    // Search uses a portal into Steam's page. On some clients the keys receive raw
+    // button events but Steam never dispatches directional or activation events.
+    useLayoutEffect(() => {
+        const board = panel.current, doc = board?.ownerDocument, view = doc?.defaultView;
+        if (!placed || !board || !doc || !view) return;
+        const consume = (e: Event) => { e.preventDefault(); e.stopImmediatePropagation(); };
+        const handle = (event: Event) => {
+            const e = event as GamepadEvent;
+            const focused = doc.activeElement;
+            if (!ctx.ownsInput() || !focused || !board.contains(focused)) return;
+            const button = e.detail?.button;
+            const down = e.type === 'vgp_onbuttondown';
+            const key = context ? keyAt(focused) : null;
+            if (key && (button === B.OK || e.type === 'vgp_onok')) {
+                consume(e);
+                if (down && !e.detail.is_repeat) {
+                    hold.start(...key);
+                    onKey(...key);
+                } else if (e.type === 'vgp_onbuttonup') hold.stop();
+                return;
+            }
+            if (button === B.BUMPER_LEFT || button === B.BUMPER_RIGHT) {
+                consume(e);
+                if (down && !moving.current) apply(moveCursor(live.current.typing, button === B.BUMPER_LEFT ? 'left' : 'right'));
+                return;
+            }
+            if (button === B.SECONDARY || button === B.OPTIONS || button === B.TRIGGER_LEFT || button === B.TRIGGER_RIGHT) {
+                consume(e);
+                if (button === B.TRIGGER_RIGHT) {
+                    if (!down && live.current.canSend) live.current.send();
+                } else if (down && (button !== B.TRIGGER_LEFT || !e.detail.is_repeat)) {
+                    const typing = live.current.typing;
+                    if (button === B.SECONDARY) apply(press(typing, { kind: 'backspace', char: '' }));
+                    else if (button === B.OPTIONS) apply(typeText(typing, ' '));
+                    else apply(press(typing, { kind: 'shift', char: '' }));
+                }
+                return;
+            }
+            if (!context || !down) return;
+            const step = dpadStep(button);
+            if (moving.current && step) {
+                // Search can receive raw D-pad presses without a corresponding Steam direction event.
+                consume(e);
+                if (!stickBusy.current) padMove(step);
+                return;
+            }
+            if (moving.current) return;
+            const horizontal = button === B.DIR_LEFT || button === B.DIR_RIGHT;
+            if (!horizontal && button !== B.DIR_UP && button !== B.DIR_DOWN) return;
+            consume(e);
+            const from = focused.getBoundingClientRect();
+            const sign = button === B.DIR_LEFT || button === B.DIR_UP ? -1 : 1;
+            const row = focused.closest('.gg-keyboard-row');
+            const candidates = horizontal ? row : board;
+            let best: HTMLElement | undefined, bestScore = Infinity;
+            for (const target of candidates?.querySelectorAll<HTMLElement>('button:not([disabled])') ?? []) {
+                const rect = target.getBoundingClientRect();
+                const dx = rect.left + rect.width / 2 - from.left - from.width / 2;
+                const dy = rect.top + rect.height / 2 - from.top - from.height / 2;
+                const along = (horizontal ? dx : dy) * sign;
+                if (along <= 1) continue;
+                const score = horizontal ? along : along * 5 + Math.abs(dx);
+                if (score < bestScore) { best = target; bestScore = score; }
+            }
+            if (best) { hold.stop(); best.focus({ preventScroll: true }); takeSteamFocus(best); }
+        };
+        const events = ['vgp_onbuttondown', 'vgp_onbuttonup', 'vgp_onok'];
+        events.forEach(type => view.addEventListener(type, handle, true));
+        return () => events.forEach(type => view.removeEventListener(type, handle, true));
+    });
+
     if (!open || !host || !layout) return null;
     const feed = padDrag && !feedFailed ? axesFeed : null, view = host.ownerDocument.defaultView;
     return createPortal(<>
-        <KeyboardPanel completionLabel={ctx.completionLabel} frost={!context} layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} panelRef={panel}
+        <KeyboardPanel completionLabel={ctx.completionLabel} frost={!context} layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} scale={context ? searchScale : 1} panelRef={panel}
             onKey={onKey} onMove={stripPress.current.action} hold={hold} strip={strip} pad={{ down: stripPress.current.buttonDown, up: stripPress.current.buttonUp, abort: stripPress.current.abort }} />
         {feed && view && <FeedGuard failed={() => setFeedFailed(true)}><StickFeed feed={feed} view={view} move={padMove} busy={on => { stickBusy.current = on; }} /></FeedGuard>}
     </>, host);

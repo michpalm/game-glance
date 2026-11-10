@@ -236,8 +236,7 @@ export function SpotlightHome() {
     });
     const actionsRef = useRef<HTMLElement>(null);
     const actionButtons = () => [...(rootRef.current?.querySelectorAll<HTMLElement>('.gh-actions .gh-btn, .gh-copy-choice, .gh-store-choice') ?? [])];
-    // The game card row (one focusable, RecentsRow). B from the tabs and from the action row returns to it; on the cards
-    // Home leaves B to Steam (focusZones.onBack).
+    // B from the tabs and action row returns to the game cards. B on the cards stays there.
     const recentsRef = useRef<HTMLDivElement | null>(null);
     const focusGames = () => focusElement(recentsRef.current, 'the game cards');
     // The last tab was turned off (Quick Access over Home) while the feed was up: lower the page; focus moves to the

@@ -161,8 +161,8 @@ export function StatusBar({ away: topBarFocus, scale, controls }: { away: boolea
     const clock = useClock();
     const self = useSelfPersona();
     const dot = personaDot(self);
-    const { statusAvatar } = useSettings();
-    const avatar = avatarView(self, statusAvatar);
+    const { statusAvatar, profileStyle = statusAvatar ? 'square' : 'dot' } = useSettings();
+    const avatar = avatarView(self, profileStyle !== 'dot');
     // Steam's own top bar is held hidden under ours (Steam hides it on Home itself, but forgets after sleep); the document is the one this bar is drawn in.
     const [doc, setDoc] = useState<Document | null>(null);
     // Quick Access takes the window's focus while it is open (its window blurs, and focus returns when it closes), so
@@ -192,14 +192,14 @@ export function StatusBar({ away: topBarFocus, scale, controls }: { away: boolea
         <span ref={marker} style={{ display: 'none' }} />
         <style>{COVER_CSS}</style>
         <div className={`gh-status${away ? ' gh-status-away' : ''}`} aria-hidden={away} style={style}>
-            <StatusItems percent={percent} connection={connection} controllers={controllers} battery={battery} clock={clock} avatar={avatar} dot={dot} controls={controls} />
+            <StatusItems percent={percent} connection={connection} controllers={controllers} battery={battery} clock={clock} avatar={avatar} circleAvatar={profileStyle === 'circle'} dot={dot} controls={controls} />
         </div>
         </>
     );
 }
 
 /** Hook-free cells share the same data and appearance across read-only and interactive bars. */
-export function StatusItems({percent,connection,controllers,battery,clock,avatar,dot,controls}:{percent:number|null;connection:ConnectionKind|null;controllers:ControllerBatteryView[];battery:BatteryView|null;clock:string;avatar:ReturnType<typeof avatarView>;dot:PersonaDot|null;controls?:HomeStatusControls}) {
+export function StatusItems({percent,connection,controllers,battery,clock,avatar,circleAvatar,dot,controls}:{percent:number|null;connection:ConnectionKind|null;controllers:ControllerBatteryView[];battery:BatteryView|null;clock:string;avatar:ReturnType<typeof avatarView>;circleAvatar?:boolean;dot:PersonaDot|null;controls?:HomeStatusControls}) {
     const conn=connection?CONNECTION[connection]:null;
     return <>
             <div className="gh-status-pill">
@@ -215,9 +215,9 @@ export function StatusItems({percent,connection,controllers,battery,clock,avatar
                 )}
                 {StatusCell({id:'clock',controls,className:'gh-status-item',children:clock})}
                 {avatar && dot && (
-                    StatusCell({id:'profile',controls,className:'gh-status-avatar',role:'img','aria-label':DOT_LABEL[dot](),style:{backgroundImage:`url(${avatar.url})`,'--gh-avatar-ring':avatar.ring} as CSSProperties})
+                    StatusCell({id:'profile',controls,className:circleAvatar?'gh-status-avatar gh-status-avatar-circle':'gh-status-avatar',role:'img','aria-label':DOT_LABEL[dot](),style:{backgroundImage:`url(${avatar.url})`,'--gh-avatar-ring':avatar.ring} as CSSProperties})
                 )}
+                {dot && !avatar && StatusCell({id:'profile',controls,className:`gh-status-dot gh-status-dot-${dot}${controls?' gh-status-dot-control':''}`,role:'img','aria-label':DOT_LABEL[dot]()})}
             </div>
-            {dot && !avatar && StatusCell({id:'profile',controls,className:`gh-status-dot gh-status-dot-${dot}${controls?' gh-status-dot-control':''}`,role:'img','aria-label':DOT_LABEL[dot]()})}
     </>;
 }

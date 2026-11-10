@@ -26,7 +26,8 @@ export function readFrostContext(owner:Window, viewportId:string, environment?:N
     const auto=scaler===1&&typeof maxScale==='number'&&Number.isFinite(maxScale)&&maxScale>0&&maxScale<=16384;
     const fit = overlay ? auto?'auto':FIT[scaler??0] : 'fit';
     const {innerWidth:width,innerHeight:height,devicePixelRatio:dpr} = owner;
-    if (typeof overlay !== 'boolean' || typeof hdr !== 'boolean' || !fit || !viewportId ||
+    // Steam's CSS blur uses viewport geometry and can run without native HDR metadata.
+    if (typeof overlay !== 'boolean' || (overlay && typeof hdr !== 'boolean') || !fit || !viewportId ||
         ![width,height,dpr].every(n=>Number.isFinite(n)&&n>0) || width*dpr>16384 || height*dpr>16384) return null;
     return {viewportId,background:overlay?'game':'steam',outputWidth:Math.round(width*dpr),outputHeight:Math.round(height*dpr),
         dpr,fit,...(fit==='auto'?{maxScale:maxScale!}:{}),colorMode:hdr?'hdr':'sdr'};

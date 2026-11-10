@@ -27,11 +27,10 @@ describe('native Performance controls',()=>{
         expect(h.perf.controls.frameLimit.get().scope).toEqual({kind:'unknown'});
         h.state.activeProfileId='';h.emit();expect(h.perf.getProfile()).toMatchObject({isGameSpecific:false,label:'Profile unavailable'});h.perf.dispose();
     });
-    it('preserves fractional native frame choices and waits700ms plus authoritative readback',async()=>{
+    it('writes fractional frame choices immediately and waits for authoritative readback',async()=>{
         const h=fixture(),c=h.perf.controls.frameLimit;
         expect(c.get().options).toEqual([23.976,29.97,59.94]);const p=c.set(29.97);
-        await vi.advanceTimersByTimeAsync(699);expect(h.writeClient).not.toHaveBeenCalled();
-        await vi.advanceTimersByTimeAsync(1);expect(h.writeClient).toHaveBeenCalledWith('gamescope_app_target_framerate',29.97);
+        await vi.advanceTimersByTimeAsync(0);expect(h.writeClient).toHaveBeenCalledWith('gamescope_app_target_framerate',29.97);
         expect(c.get()).toMatchObject({value:59.94,pending:true});h.state.client.gamescope_app_target_framerate=29.97;h.emit();await p;
         expect(c.get()).toMatchObject({value:29.97,pending:false});h.perf.dispose();
     });

@@ -113,7 +113,8 @@ export function createPerformance(bindings:PerformanceBindings) {
             return JSON.stringify([s.accountId,s.currentGameId,clientKey?'client':s.activeProfileId,s.gamescope?.active_display_info?.connector_name,meta.available,meta.disabled,meta.min,meta.max,meta.options]);
         };
         controls[id]=createSettingAdapter<PerformanceValue>({read:()=>describe(id,bindings.read()),subscribe:bindings.subscribe,contextKey,validate,
-            coalesceMs:['frameLimit','refreshRate'].includes(id)?700:id==='gpuClock'?200:['tdp','sharpness','overlayLevel'].includes(id)?100:0,
+            liveIntervalMs:id==='frameLimit'?100:undefined,
+            coalesceMs:id==='refreshRate'?700:id==='gpuClock'?200:['tdp','sharpness','overlayLevel'].includes(id)?100:0,
             async write(value,key){
                 if(contextKey()!==key)throw Error('Performance context changed');
                 if(clientKey)await bindings.writeClient(clientKey,value);

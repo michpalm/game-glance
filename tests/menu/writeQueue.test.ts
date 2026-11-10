@@ -3,6 +3,25 @@ import { createWriteQueue } from '../../src/menu/steam/writeQueue';
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
 afterEach(() => vi.useRealTimers());
 describe('native setting write queue', () => {
+    it('writes during continuous slider movement and flushes the latest value', async () => {
+        vi.useFakeTimers();
+        try {
+            const write = vi.fn(async (_value: number) => {});
+            const q = createWriteQueue({ write, contextKey: () => 'display:A', liveIntervalMs: 50 });
+            const push = (value: number) => { void q.enqueue(value).catch(() => {}); };
+            push(10);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(write.mock.calls.map(([value]) => value)).toEqual([10]);
+            for (const value of [20, 30, 40, 50, 60, 70]) {
+                await vi.advanceTimersByTimeAsync(10);
+                push(value);
+            }
+            expect(write.mock.calls.map(([value]) => value)).toEqual([10, 50]);
+            await vi.advanceTimersByTimeAsync(40);
+            expect(write.mock.calls.map(([value]) => value)).toEqual([10, 50, 70]);
+            q.dispose();
+        } finally { vi.useRealTimers(); }
+    });
     it('coalesces unsent slider values and serializes issued writes', async () => {
         vi.useFakeTimers(); let finish!: () => void;
         const write = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));

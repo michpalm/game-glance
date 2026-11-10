@@ -22,7 +22,7 @@ describe('focusZones', () => {
         expect(onBack('feed')).toBe('tabs');
         expect(onBack('tabs')).toBe('recents');
         expect(onBack('actions')).toBe('recents');
-        expect(onBack('recents')).toBe('stock');
+        expect(onBack('recents')).toBe('recents');
     });
 
     describe('recentsButton (the game card row)', () => {

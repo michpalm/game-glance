@@ -2,13 +2,17 @@ import {describe,it,expect} from 'vitest';
 import {reduceHomeSearch,homeSearchBounds,initialHomeSearch,type HomeSearchState} from '../../src/home/homeSearch';
 const initial:HomeSearchState=initialHomeSearch('one');
 describe('Home search preview',()=>{
- it('reveals only on top entry, opens editing there, completes without submission and retains the draft until account changes',()=>{
+ it('reveals only on top entry, opens editing there, completes without submission and clears the draft when Search closes',()=>{
   expect(reduceHomeSearch(initial,{type:'edit'})).toBe(initial);
   let state=reduceHomeSearch(initial,{type:'enter'});expect(state.phase).toBe('top');
   state=reduceHomeSearch(state,{type:'edit'});expect(state.phase).toBe('editing');
   state=reduceHomeSearch(state,{type:'draft',text:'Example'});
   expect(reduceHomeSearch(state,{type:'complete'})).toEqual({...state,phase:'field',focusedAppId:null});
-  for(const type of ['content','suspend'] as const)expect(reduceHomeSearch(state,{type})).toEqual({...state,phase:'hidden',epoch:state.epoch+1});
+  for(const type of ['content','suspend','dismiss','back'] as const){
+   const field=reduceHomeSearch(state,{type:'keyboard-close'});
+   const closed=reduceHomeSearch({...field,focusedAppId:7,scrollTop:20,openError:true},{type});
+   expect(closed).toMatchObject({phase:'hidden',epoch:state.epoch+1,draft:'',matches:[],focusedAppId:null,scrollTop:0,openError:false});
+  }
   expect(reduceHomeSearch(state,{type:'account',account:'two'})).toEqual(initialHomeSearch('two',state.epoch+1));
   expect(reduceHomeSearch(state,{type:'account',account:'one'})).toBe(state);
  });

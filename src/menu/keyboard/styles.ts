@@ -1,7 +1,8 @@
-import {focusRing,labelText,TOKENS} from '../../styles/tokens';
+import {focusRing,frostSurface,labelText,TOKENS} from '../../styles/tokens';
 const KEY=':is(.gg-menu-native-host .gg-menu,.gh-keyboard-surface) .gg-keyboard .gg-keyboard-row button.gg-keyboard-key.DialogButton';
 export const keyboardStyles=`
 :is(.gg-menu,.gh-keyboard-surface) .gg-keyboard{position:absolute;z-index:2;box-sizing:border-box;width:409px;height:210px;padding:8px 11px 0;display:flex;flex-direction:column;background:${TOKENS.solid};backdrop-filter:none;border:1px solid var(--gg-edge);border-radius:var(--gg-r-panel);transition:box-shadow var(--gg-fast),border-color var(--gg-fast)}
+.gh-keyboard-surface .gg-keyboard:not(.gg-keyboard-dragging){${frostSurface('16px')}}
 :is(.gg-menu,.gh-keyboard-surface) .gg-keyboard.gg-keyboard-dragging{box-shadow:0 18px 40px -12px rgba(0,0,0,.75);border-color:var(--gg-edge-active)}
 .gg-social-friend-list.gg-keyboard-under,.gg-social-timeline.gg-keyboard-under{filter:blur(16px)}
 .gg-keyboard-keys{display:flex;flex-direction:column;gap:5px;flex:none}

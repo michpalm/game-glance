@@ -197,6 +197,10 @@ export function RecentsRow({ games, selected, geometry, nav, rowStyle = 'spotlig
             onGamepadFocus={nav.onFocus}
             onButtonDown={nav.onButtonDown}
             onButtonUp={nav.onButtonUp}
+            onCancel={event => {
+                event.preventDefault();
+                event.stopPropagation();
+            }}
             onActivate={nav.onActivate}
             {...handlers}
             role="listbox"
