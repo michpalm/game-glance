@@ -557,6 +557,8 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // The end tabs take the strip's corners: its overflow clips to them, so a square tab's inset ring lost its corners.
         rule('.gh-tab:first-child', 'border-radius: 12px 0 0 12px'),
         rule('.gh-tab:last-child', 'border-radius: 0 12px 12px 0'),
+        // One tab enabled: it is the whole strip, so it takes all four corners (after the end tabs' rules, which both match it).
+        rule('.gh-tab:only-child', 'border-radius: 12px'),
         // Friends tab: people icon and the number of friends online, after the label.
         rule('.gh-tab-count', `display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 8px; font-size: 11px; letter-spacing: .04em; line-height: 1;
             vertical-align: 1px; color: ${FRIEND_COLOURS.none}; transition: color 200ms`),

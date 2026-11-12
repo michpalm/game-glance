@@ -160,6 +160,10 @@ describe('final review fixes (VDL Section 7)', () => {
     it("the end tabs follow the strip's corners, so their focus ring is not clipped", () => {
         expect(ruleFor(css, '.gh-tab:first-child')).toContain('border-radius: 12px 0 0 12px');
         expect(ruleFor(css, '.gh-tab:last-child')).toContain('border-radius: 0 12px 12px 0');
+        // One tab enabled (What's New, Friends or Recommended alone): it is first and last, and takes all four corners,
+        // after the end tabs' rules, so its focus ring is not square on one side (Michael, Ally).
+        expect(ruleFor(css, '.gh-tab:only-child')).toContain('border-radius: 12px');
+        expect(css.indexOf('.gh-tab:only-child')).toBeGreaterThan(css.indexOf('.gh-tab:last-child'));
     });
 });
 
