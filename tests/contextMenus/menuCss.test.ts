@@ -25,9 +25,16 @@ describe('contextMenuCss', () => {
         expect(ruleFor(contextMenuCss(C), '.BasicUIContextMenu')!.body).toContain('background:transparent');
     });
     it('dims the screen with the shared menu dim', () => {
-        const dim = ruleFor(contextMenuCss(C), '.FullModalOverlay:has(.BasicUIContextMenu)')!.body;
+        const css = contextMenuCss(C);
+        const dim = ruleFor(css, '.FullModalOverlay:has(.BasicUIContextMenu)')!.body;
         expect(dim).toContain(`background:${menuDimColor()}`);
-        expect(dim).toContain(`backdrop-filter:blur(${u(MENU_DIM.blur)})`);
+        // A backdrop-filter on the overlay makes it a backdrop root: the box inside could then frost only the overlay,
+        // not the page (Deck, 2026-11-12: the box showed the dim's 4 px blur, not its own 16 px). The dim's blur is a
+        // layer inside the overlay, behind the menu, so the box frosts the dimmed page.
+        expect(dim).not.toContain('backdrop-filter');
+        const layer = ruleFor(css, '.FullModalOverlay:has(.BasicUIContextMenu)::before')!.body;
+        expect(layer).toContain(`backdrop-filter:blur(${u(MENU_DIM.blur)})`);
+        for (const d of ['content:""', 'position:fixed', 'inset:0', 'z-index:-1', 'pointer-events:none']) expect(layer).toContain(d);
     });
     it('clears Steam\'s own 85% black layer under the dim', () => {
         const bg = ruleFor(contextMenuCss(C), '.FullModalOverlay:has(.BasicUIContextMenu) > .ModalOverlayBackground')!.body;
@@ -91,6 +98,24 @@ describe('the game menu panel', () => {
         expect(ruleFor(css(), `${D} .gg-gm-art`)!.body).toContain('background-size:cover');
         expect(ruleFor(css(), `${D} .gg-gm-art::after`)!.body).toContain('linear-gradient(transparent 30%,rgba(8,10,14,.85))');
         expect(ruleFor(css(), `${D} .gg-gm-name`)!.body).toContain(`font-size:${u(25)}`);
+    });
+    // The art fills the top of the box edge to edge (Michael, Deck 2026-11-12): the box drops its top and side padding
+    // for the panel and the list takes the 8 px side inset instead; only the art reaches past it (negative margins inside
+    // the list's own box, so nothing is clipped). Side margins on the rows would not do: Steam's rows are width:100%, the
+    // list overflowed and scrolled sideways (Deck: art short on the right, rows flush).
+    it('lets the art fill the top of the box edge to edge', () => {
+        expect(ruleFor(css(), `${D} ._k_BasicContextMenuContainer:has(.gg-gm)`)!.body).toContain(`padding:0 0 ${u(8)}`);
+        const list = ruleFor(css(), `${D} ._k_contextMenuContents:has(.gg-gm)`)!.body;
+        expect(list).toContain(`padding-left:${u(8)}`);
+        expect(list).toContain(`padding-right:${u(8)}`);
+        const hero = ruleFor(css(), `${D} .gg-gm-hero`)!.body;
+        expect(hero).toContain(`margin:0 ${u(-8)} ${u(8)}`);
+        expect(hero).toContain('border-radius:0');
+        expect(css()).not.toContain(':not(.gg-gm-hero)');
+        // The name lines up with the rows' icons: 8 inset + 20 row padding.
+        const text = ruleFor(css(), `${D} .gg-gm-hero-text`)!.body;
+        expect(text).toContain(`left:${u(28)}`);
+        expect(text).toContain(`right:${u(28)}`);
     });
     it('sizes rows, icons and checkboxes as the mock-up', () => {
         const row = ruleFor(css(), `${D} .contextMenuItem.gg-gm-row`)!.body;

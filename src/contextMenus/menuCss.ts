@@ -27,7 +27,10 @@ export function contextMenuCss(c: MenuClasses | null): string {
         rule([...(cls('Focused') ? [`${ROW}${cls('Focused')}`] : []), `${ROW}.gpfocus`, `${ROW}:focus`],
             `background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);${focusRing('slice', u)}`),
         rule([`${ROW}[aria-disabled="true"]`, `${ROW}:disabled`, `${ROW}.disabled`, `${ROW}[disabled]`], 'opacity:.45'),
-        rule([DIM], `background:${menuDimColor()};backdrop-filter:blur(${u(MENU_DIM.blur)})`),
+        // The tint on the overlay; its blur on a layer inside it, behind the menu. A backdrop-filter on the overlay itself
+        // would make it a backdrop root, and the box's own frost could then not reach the page (Deck, 2026-11-12).
+        rule([DIM], `background:${menuDimColor()}`),
+        rule([`${DIM}::before`], `content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;backdrop-filter:blur(${u(MENU_DIM.blur)})`),
         // Steam's own dim inside the overlay (85% black + 3 px blur, probed 2026-11-12): ours replaces it.
         rule([`${DIM} > .ModalOverlayBackground`], 'background:transparent;backdrop-filter:none'),
     ];
@@ -47,10 +50,12 @@ export function contextMenuCss(c: MenuClasses | null): string {
     // The game menu panel (B, the mock-up): Steam's list 540 wide, the art with the name, 58-tall rows with icons and checkboxes.
     const G = (x: string) => `${DIM} ${x}`;
     out.push(
-        rule([G('.gg-gm-hero')], `position:relative;height:${u(150)};border-radius:${u(12)};overflow:hidden;margin-bottom:${u(8)}`),
+        // The art fills the top of the box edge to edge: it reaches past the list's 8 px side padding, and the box's own rounded
+        // corners clip it. (Side margins on the rows instead overflowed the list: Steam's rows are width:100%.)
+        rule([G('.gg-gm-hero')], `position:relative;height:${u(150)};border-radius:0;overflow:hidden;margin:0 ${u(-8)} ${u(8)}`),
         rule([G('.gg-gm-art')], 'position:absolute;inset:0;background-size:cover;background-position:center'),
         rule([G('.gg-gm-art::after')], 'content:"";position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(8,10,14,.85))'),
-        rule([G('.gg-gm-hero-text')], `position:absolute;left:${u(24)};right:${u(24)};bottom:${u(16)}`),
+        rule([G('.gg-gm-hero-text')], `position:absolute;left:${u(28)};right:${u(28)};bottom:${u(16)}`),
         rule([G('.gg-gm-eyebrow')], `font-size:${u(13)};font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;opacity:.75`),
         rule([G('.gg-gm-name')], `margin-top:${u(4)};font-size:${u(25)};font-weight:700;color:#fff;text-shadow:0 ${u(1)} ${u(2)} #0009;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`),
         rule([G('.gg-gm-pagehead')], `display:flex;align-items:center;gap:${u(12)};padding:${u(8)} ${u(10)} ${u(14)};color:#fff`),
@@ -71,9 +76,12 @@ export function contextMenuCss(c: MenuClasses | null): string {
         rule([G('.gg-gm-lead .contextMenuItem')], `padding:0 ${u(20)} 0 ${u(66)};min-height:${u(58)};font-size:${u(21)};display:flex;align-items:center;box-sizing:border-box`),
         rule([G('.gg-gm-steam .contextMenuItem')], `min-height:${u(58)};font-size:${u(21)};padding:0 ${u(20)}`),
     );
-    add('contextMenuContents', (s) => G(`${s}:has(.gg-gm)`), `width:${u(540)};max-width:none`);
+    add('contextMenuContents', (s) => G(`${s}:has(.gg-gm)`), `width:${u(540)};max-width:none;padding-left:${u(8)};padding-right:${u(8)}`);
+    // The box's top and side padding goes for the panel; the list takes the side inset (above), so only the art reaches the edges.
+    add('BasicContextMenuContainer', (s) => G(`${s}:has(.gg-gm)`), `padding:0 0 ${u(8)}`);
     if (c.contextMenuContents) {
         const list = G(`.${c.contextMenuContents}:has(.gg-gm)`);
+
         // A row another plugin adds into the panel (SteamGridDB's Change Artwork…): our size, its label in line with ours.
         out.push(rule([`${list} > .contextMenuItem:not(.gg-gm-row)`], `min-height:${u(58)};font-size:${u(21)};padding:0 ${u(20)} 0 ${u(66)};display:flex;align-items:center;box-sizing:border-box`));
         // Steam's Cancel (the root adds it last, after a separator): the panel closes with B, as the mock-up.
