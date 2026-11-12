@@ -1,10 +1,11 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it } from 'vitest';
 import { createHomeFrost } from '../../../src/menu/frost/home';
+import { homeCanvas } from '../../../src/home/scale';
 import type { FrostFrame } from '../../../src/menu/frost/types';
-function fixture(){
+function fixture(innerWidth=1920,innerHeight=1080){
     const {document,window}=parseHTML('<html><body><section><div id="viewport"></div></section></body></html>');
-    Object.assign(window,{innerWidth:1920,innerHeight:1080,getComputedStyle:()=>({transform:'none',filter:'none',opacity:'1',perspective:'none',isolation:'auto'})});
+    Object.assign(window,{innerWidth,innerHeight,getComputedStyle:()=>({transform:'none',filter:'none',opacity:'1',perspective:'none',isolation:'auto'})});
     const placeholder=document.getElementById('viewport')! as unknown as HTMLElement;
     return {document,placeholder,home:createHomeFrost(document as unknown as Document,placeholder)};
 }
@@ -28,6 +29,14 @@ describe('bounded Home frost',()=>{
         expect(keyboard.style.left).toBe('1056px');expect(keyboard.style.width).toBe('576px');
         expect(f.home.apply(frame)).toBe(true);expect(ids()).toEqual(['bar','panel','notifications']);
         f.home.clear();expect(ids()).toEqual([]);f.home.dispose();
+    });
+    // The chips' and pills' glass is blur(16px) on Home's canvas: the menu's frost follows its scale, so it is as
+    // strong as theirs on a TV too (a fixed 8 CSS px was half as strong docked, at Steam's smaller display scale).
+    it.each([[1500,844],[828,466],[1920,1080]])('blurs as strongly as Home\'s glass at %ix%i',(w,h)=>{
+        const f=fixture(w,h);expect(f.home.apply(frame)).toBe(true);
+        const blur=`blur(${16*homeCanvas(w,h).scale}px)`;
+        for(const surface of f.document.querySelectorAll<HTMLElement>('[data-gg-menu-frost]'))expect(surface.style.backdropFilter).toBe(blur);
+        f.home.dispose();
     });
     it('removes surfaces when the viewport is replaced and refuses ambiguous backdrop roots',()=>{
         const f=fixture();f.home.apply(frame);f.placeholder.remove();expect(f.home.apply(frame)).toBe(false);
