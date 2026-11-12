@@ -15,6 +15,7 @@ import { patchHomePage } from './patches/homePage';
 import { ScreensaverHost } from './screensaver/ScreensaverView';
 import { ChromeHost } from './chrome/ChromeHost';
 import { NativeSettingsHost } from './nativeSettings/NativeSettingsHost';
+import { ContextMenusHost, CONTEXT_MENUS_COMPONENT } from './contextMenus/ContextMenusHost';
 import { noteLoad, remountHomeAfterReload } from './home/reloadRemount';
 
 const SCREENSAVER_COMPONENT = 'GameGlanceScreensaver';
@@ -32,6 +33,7 @@ export default definePlugin(() => {
     routerHook.addGlobalComponent(SCREENSAVER_COMPONENT, ScreensaverHost); // draws only while Steam's screensaver is on
     routerHook.addGlobalComponent(CHROME_COMPONENT, ChromeHost); // the status bar, Search and footer, for every page
     routerHook.addGlobalComponent(NATIVE_SETTINGS_COMPONENT, () => <NativeSettingsHost masterReady={masterReady}/>);
+    routerHook.addGlobalComponent(CONTEXT_MENUS_COMPONENT, () => <ContextMenusHost masterReady={masterReady}/>);
     const stopAutoPreload = startAutoPreload();
     const stopUpdateChecks = startUpdateChecks(); // quiet: once now (a day-old answer is reused), then daily
     console.log(`${LOG_PREFIX} loaded`);
@@ -52,6 +54,7 @@ export default definePlugin(() => {
                 ['screensaver remove', () => routerHook.removeGlobalComponent(SCREENSAVER_COMPONENT)],
                 ['chrome remove', () => routerHook.removeGlobalComponent(CHROME_COMPONENT)],
                 ['native Settings remove', () => routerHook.removeGlobalComponent(NATIVE_SETTINGS_COMPONENT)],
+                ['context menus remove', () => routerHook.removeGlobalComponent(CONTEXT_MENUS_COMPONENT)],
                 ['auto preload stop', stopAutoPreload],
                 ['update checks stop', stopUpdateChecks],
                 ['downloads stop', stopDownloads],

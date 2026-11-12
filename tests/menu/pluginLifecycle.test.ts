@@ -14,6 +14,7 @@ vi.mock('../../src/home/reloadRemount', () => ({ noteLoad: vi.fn(), remountHomeA
 vi.mock('../../src/screensaver/ScreensaverView', () => ({ ScreensaverHost: () => null }));
 vi.mock('../../src/chrome/ChromeHost', () => ({ ChromeHost: () => null }));
 vi.mock('../../src/nativeSettings/NativeSettingsHost', () => ({ NativeSettingsHost: () => null }));
+vi.mock('../../src/contextMenus/ContextMenusHost', () => ({ ContextMenusHost: () => null, CONTEXT_MENUS_COMPONENT: 'GameGlanceContextMenus' }));
 vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn() } }));
 vi.mock('@decky/ui', () => ({ staticClasses: {} }));
 import plugin from '../../src/index';

@@ -41,6 +41,7 @@ export const PHRASES = {
     viewLibrary: p('GamepadHome_GoToLibrary', 'View more in your Library'),
     recentGames: p('LibraryHome_RecentGames', 'Recent games'),
     noPlayTime: p('AppBox_NoPlayTimeYet', 'No playtime yet'),
+    collections: p('LibraryTab_Collections', 'Collections'),
     tabWhatsNew: p('HomeTab_WhatsNew', "What's new"),
     tabFriends: p('tab_friends', 'Friends'),
     tabRecommended: p('HomeTab_Recommended', 'Recommended'),
