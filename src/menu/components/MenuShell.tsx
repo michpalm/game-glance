@@ -17,6 +17,8 @@ import { menuStyles } from '../styles';
 import { GameStatusBar } from '../../components/GameStatusBar';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
+import { GameGlanceSection } from './GameGlanceSection';
+import { GAME_GLANCE_VIEW } from '../views';
 import { NavigatePanel } from './NavigatePanel';
 import { QuickSettingsPanel } from './QuickSettingsPanel';
 import { PerformancePanel } from './PerformancePanel';
@@ -150,13 +152,16 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
     if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
-    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
+    // Navigate's Game Glance tile opens Game Glance's settings in place: any view on Navigate's stack is one of theirs.
+    const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;
+    if (content === undefined && navigateTop !== undefined) content = <GameGlanceSection top={navigateTop} dispatch={dispatch} handoff={enterNative} close={close} />;
+    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} openGameGlance={() => dispatch({ type: 'push', viewId: GAME_GLANCE_VIEW })} />;
     if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} devices={quickSettings.devices} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
     if (content === undefined && state.section === 'social' && social) content = <SocialPanel persona={persona} social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
-    if (content === undefined && state.section === 'plugins') content = <PluginsSection state={state} dispatch={dispatch} handoff={enterNative} close={close} />;
+    if (content === undefined && state.section === 'plugins') content = <PluginsSection handoff={enterNative} />;
     if (content === undefined && state.section === 'soundtrack' && soundtrack) content = <SoundtrackSection service={soundtrack} handoff={enterNative} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {

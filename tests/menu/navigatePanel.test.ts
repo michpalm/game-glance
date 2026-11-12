@@ -11,18 +11,28 @@ function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
 }
 
 it('has no Steam menu button: the heading is the title alone', () => {
-    const nodes = tree(NavigatePanel({ handoff: vi.fn() }));
+    const nodes = tree(NavigatePanel({ handoff: vi.fn(), openGameGlance: vi.fn() }));
     const heading = nodes.find(n => n.props.className === 'gg-menu-heading')!;
     expect(tree(heading).some(n => typeof n.props.id === 'string')).toBe(false);
     expect(nodes.some(n => n.props.id === 'navigate:native')).toBe(false);
 });
 
-it('lists Media after Store, in Steam’s menu order, on a four-column grid', () => {
+it('lists Media after Store, in Steam’s menu order, with Game Glance before Power, on a four-column grid', () => {
     const handoff = vi.fn();
-    const nodes = tree(NavigatePanel({ handoff }));
+    const nodes = tree(NavigatePanel({ handoff, openGameGlance: vi.fn() }));
     expect(nodes.find(n => String(n.props.className).includes('gg-menu-grid'))?.props.className).toBe('gg-menu-grid gg-menu-grid-navigate');
     const ids = nodes.map(n => n.props.id).filter((id): id is string => typeof id === 'string');
-    expect(ids).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:power']);
+    expect(ids).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:game-glance', 'navigate:power']);
     nodes.find(n => n.props.id === 'navigate:media')!.props.onAction();
     expect(handoff).toHaveBeenCalledWith({ kind: 'navigate', destination: 'media' });
+});
+
+it('opens Game Glance’s settings inside the menu, not in Steam', () => {
+    const handoff = vi.fn(), openGameGlance = vi.fn();
+    const nodes = tree(NavigatePanel({ handoff, openGameGlance }));
+    const tile = nodes.find(n => n.props.id === 'navigate:game-glance')!;
+    expect(tree(tile).some(n => n.type === 'span' && n.props.children === 'Game Glance')).toBe(true);
+    tile.props.onAction();
+    expect(openGameGlance).toHaveBeenCalledTimes(1);
+    expect(handoff).not.toHaveBeenCalled();
 });
