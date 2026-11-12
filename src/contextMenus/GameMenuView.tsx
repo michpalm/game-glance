@@ -5,7 +5,7 @@ import { steamLanguageToLocale } from '../logic/format';
 import { tr } from '../i18n/steamText';
 import { cardModel } from './cardModel';
 import type { GameMenuModel } from './reshape';
-import { viewRows, type Page, type Row } from './viewRows';
+import { pageGroupFocus, rootChildren, rowClassName, viewRows, type Page, type Row } from './viewRows';
 import { CHEVRON_LEFT, CHEVRON_RIGHT, Icon } from './icons';
 import { Focusable } from '@decky/ui';
 import { backOnCancel } from './pageCancel';
@@ -40,6 +40,8 @@ export function GameMenuView({ model, overview }: Props) {
     const open = (row: Row) => { setOpener(row.key); setPage(row.page!); };
     const back = () => setPage('main');
     const draw = (r: Row, first: boolean): ReactNode => {
+        // Not focusable, no action: SteamGridDB's own row replaces it a frame later (menuCss hides it then).
+        if (r.kind === 'slot') return <div key={r.key} className="contextMenuItem gg-gm-sgdb-slot" aria-hidden="true">{r.label}</div>;
         if (r.kind === 'separator') return Sep ? createElement(Sep, { key: r.key }) : <div key={r.key} className="gg-gm-sep"/>;
         if (r.kind === 'check') {
             const favorite = r.key === 'favorite';
@@ -57,7 +59,7 @@ export function GameMenuView({ model, overview }: Props) {
         const el = r.element;
         if (isValidElement(el) && el.type === Kt) {
             const item = el as ReactElement<{ className?: string; children?: ReactNode; preferredFocus?: boolean }>;
-            return cloneElement(item, { key: r.key, className: `${item.props.className ?? ''} gg-gm-row`, preferredFocus: first && page !== 'main' ? true : item.props.preferredFocus },
+            return cloneElement(item, { key: r.key, className: `${item.props.className ?? ''} ${rowClassName(r)}`, preferredFocus: first && page !== 'main' ? true : item.props.preferredFocus },
                 <>{r.icon && <Icon name={r.icon}/>}<span className="gg-gm-label">{item.props.children}</span></>);
         }
         return <div key={r.key} className={r.icon ? 'gg-gm-lead' : 'gg-gm-steam'}>{r.icon && <Icon name={r.icon}/>}{el}</div>;
@@ -67,6 +69,6 @@ export function GameMenuView({ model, overview }: Props) {
     const drawn = rows.map((r, i) => draw(r, i === firstIndex));
     // On a page, B goes back: our own focus group catches it before Steam's MenuRoot (which would close the menu).
     const body = page === 'main' ? drawn
-        : [<Focusable key={`page-${page}`} className="gg-gm-page" flow-children="column" onCancel={backOnCancel(back)}>{drawn}</Focusable>];
-    return <Root label={null}>{[header, ...body]}</Root>;
+        : [<Focusable key={`page-${page}`} className="gg-gm-page" flow-children="column" {...pageGroupFocus()} onCancel={backOnCancel(back)}>{drawn}</Focusable>];
+    return <Root label={null}>{rootChildren(page, header, body)}</Root>;
 }

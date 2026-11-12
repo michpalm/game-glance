@@ -11,7 +11,7 @@ export const Dev = () => null;
 const item = (key: string | null, children: unknown, extra: object = {}) =>
     createElement(kt, { key: key ?? undefined, onSelected: () => key, children, ...extra } as Record<string, unknown>);
 
-export function steamTree(o: { fav?: boolean; collections?: { id: string; name: string; in: boolean }[]; manage?: boolean; properties?: boolean; plugin?: boolean } = {}): ReactElement {
+export function steamTree(o: { fav?: boolean; collections?: { id: string; name: string; in: boolean }[]; manage?: boolean; properties?: boolean; plugin?: boolean | string } = {}): ReactElement {
     const cols = o.collections ?? [{ id: 'a', name: 'Backlog', in: false }, { id: 'b', name: 'Playing', in: true }];
     const addItems = [...cols.map((c) => item(`add-to-${c.id}`, c.name, { disabled: c.in })), ...(cols.length ? [createElement(K5, { key: 'add-all-to-new-separator' })] : []), item('add-all-to-new', 'New collection…')];
     const removeItems = cols.filter((c) => c.in).map((c) => item(`remove-from-${c.id}`, c.name));
@@ -25,7 +25,7 @@ export function steamTree(o: { fav?: boolean; collections?: { id: string; name: 
         createElement(Family, { rgApps: [] } as Record<string, unknown>),
         o.manage === false ? false : createElement(Vs, { label: 'Manage', children: [item('Uninstall', 'Uninstall'), item(null, 'Hide this game')] } as Record<string, unknown>),
         createElement(Dev, { rgApps: [] } as Record<string, unknown>),
-        ...(o.plugin ? [item('sgdb-change-artwork', 'Change Artwork...')] : []),
+        ...(o.plugin ? [item(typeof o.plugin === 'string' ? o.plugin : 'sgdb-change-artwork', 'Change Artwork...')] : []),
         o.properties === false ? false : createElement(Fragment, null, createElement(K5), item(null, 'Properties…')),
     );
 }

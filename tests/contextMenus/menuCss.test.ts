@@ -135,6 +135,26 @@ describe('the game menu panel', () => {
         expect(ruleFor(css(), `${D} .gg-gm-chk.on`)!.body).toContain('background:#fff');
         expect(ruleFor(css(), `${D} .gg-gm-end`)!.body).toContain('rgba(255,255,255,.55)');
     });
+    // SteamGridDB's Change Artwork… is its own element, always placed right before Properties: it gets the image icon there.
+    it('draws the image icon on the plugin row right before Properties', () => {
+        const r = ruleFor(css(), `${D} ._k_contextMenuContents:has(.gg-gm) > .contextMenuItem:not(.gg-gm-row):has(+ .gg-gm-properties)::before`)!.body;
+        expect(r).toContain('content:""');
+        expect(r).toContain(`width:${u(22)}`);
+        expect(r).toContain(`left:${u(20)}`);
+        expect(r).toContain('mask-image:url("data:image/svg+xml,');
+        expect(r).toContain('polyline');
+        expect(ruleFor(css(), `${D} ._k_contextMenuContents:has(.gg-gm) > .contextMenuItem:not(.gg-gm-row)`)!.body).toContain('position:relative');
+    });
+    // Steam's rows are 20 px tall lines under a 21-canvas-px font, and our labels clip overflow (for the ellipsis): g, y, p
+    // lost their tails (Ally, 2026-11-13). The panel's rows and labels get room under the line.
+    it('gives the panel\'s text room for descenders', () => {
+        expect(ruleFor(css(), `${D} .gg-gm-label`)!.body).toContain('line-height:1.3');
+        expect(ruleFor(css(), `${D} ._k_contextMenuContents:has(.gg-gm) .contextMenuItem`)!.body).toContain('line-height:1.3');
+    });
+    it('hides the stand-in once SteamGridDB\'s own row sits before Properties', () => {
+        const list = `${D} ._k_contextMenuContents:has(.gg-gm)`;
+        expect(ruleFor(css(), `${list}:has(> .contextMenuItem:not(.gg-gm-row):not(.gg-gm-sgdb-slot) + .gg-gm-properties) > .gg-gm-sgdb-slot`)!.body).toContain('display:none');
+    });
     it('sizes rows other plugins add into the panel like ours', () => {
         const r = ruleFor(css(), `${D} ._k_contextMenuContents:has(.gg-gm) > .contextMenuItem:not(.gg-gm-row)`)!.body;
         expect(r).toContain(`min-height:${u(58)}`);

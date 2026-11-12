@@ -12,6 +12,8 @@ const rim = (css: string) => css.replace(/(\d*\.?\d+)px/g, (_, n: string) => u(N
 const RIM_ON_SCREEN_ALPHA = '.21';
 const rimBorder = () => rim(SURFACE_RIM.border).replace(/rgba\((\d+,\d+,\d+),[.\d]+\)/, `rgba($1,${RIM_ON_SCREEN_ALPHA})`);
 
+/** The panel's image icon (icons.tsx), as a mask for a row we do not draw (SteamGridDB's Change Artwork…). */
+const IMAGE_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>');
 const MENU = '.BasicUIContextMenu';
 const DIM = '.FullModalOverlay:has(.BasicUIContextMenu)';
 const ROW = `${MENU} .contextMenuItem`;
@@ -69,7 +71,8 @@ export function contextMenuCss(c: MenuClasses | null): string {
         rule([G('.gg-gm-pagehead .gg-gm-chev')], `width:${u(24)};height:${u(24)};opacity:.7`),
         rule([G('.gg-gm-title')], `font-size:${u(24)};font-weight:700`),
         rule([G('.contextMenuItem.gg-gm-row')], `display:flex;align-items:center;gap:${u(16)};min-height:${u(58)};padding:0 ${u(20)};font-size:${u(21)};box-sizing:border-box`),
-        rule([G('.gg-gm-label')], 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'),
+        // line-height: Steam's 20 px lines under our 21 px type clipped g, y, p (the label clips overflow for the ellipsis).
+        rule([G('.gg-gm-label')], 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3'),
         rule([G('.gg-gm-icon')], `width:${u(22)};height:${u(22)};flex:none;opacity:.9`),
         rule([G('.gg-gm-end')], `margin-left:auto;display:flex;align-items:center;gap:${u(8)};font-size:${u(18)};color:rgba(255,255,255,.55)`),
         rule([G('.gg-gm-end .gg-gm-chev')], `width:${u(20)};height:${u(20)}`),
@@ -88,9 +91,13 @@ export function contextMenuCss(c: MenuClasses | null): string {
     add('BasicContextMenuContainer', (s) => G(`${s}:has(.gg-gm)`), `padding:0 0 ${u(8)}`);
     if (c.contextMenuContents) {
         const list = G(`.${c.contextMenuContents}:has(.gg-gm)`);
+        out.push(rule([`${list} .contextMenuItem`], 'line-height:1.3'));
 
         // A row another plugin adds into the panel (SteamGridDB's Change Artwork…): our size, its label in line with ours.
-        out.push(rule([`${list} > .contextMenuItem:not(.gg-gm-row)`], `min-height:${u(58)};font-size:${u(21)};padding:0 ${u(20)} 0 ${u(66)};display:flex;align-items:center;box-sizing:border-box`));
+        out.push(rule([`${list} > .contextMenuItem:not(.gg-gm-row)`], `position:relative;min-height:${u(58)};font-size:${u(21)};padding:0 ${u(20)} 0 ${u(66)};display:flex;align-items:center;box-sizing:border-box`));
+        out.push(rule([`${list}:has(> .contextMenuItem:not(.gg-gm-row):not(.gg-gm-sgdb-slot) + .gg-gm-properties) > .gg-gm-sgdb-slot`], 'display:none'));
+        // SteamGridDB's Change Artwork… is its own element, always placed right before Properties: the image icon there.
+        out.push(rule([`${list} > .contextMenuItem:not(.gg-gm-row):has(+ .gg-gm-properties)::before`], `content:"";position:absolute;left:${u(20)};top:50%;width:${u(22)};height:${u(22)};transform:translateY(-50%);background:currentColor;opacity:.9;-webkit-mask-image:url("${IMAGE_ICON}");mask-image:url("${IMAGE_ICON}");-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;pointer-events:none`));
         // Steam's Cancel (the root adds it last, after a separator): the panel closes with B, as the mock-up.
         out.push(rule([`${list} > .contextMenuItem:last-child:not(.gg-gm-row)`, ...(c.ContextMenuSeparator ? [`${list} > .${c.ContextMenuSeparator}:nth-last-child(2)`] : [])], 'display:none'));
     }
