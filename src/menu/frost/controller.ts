@@ -102,7 +102,8 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             if(s.signature&&s.signature!==signature)void clear(s);
             const changed=s.signature!==signature;s.signature=signature;s.frame=frame;
             if(frame.context.background==='steam'){
-                if(s.homeActive||!s.presented)s.homeActive=home?.apply(frame)??false;
+                // A new allocation (the display scale changed) cleared it: frost this opening showed is placed again.
+                if(s.homeActive||!s.presented||s.hadFrost)s.homeActive=home?.apply(frame)??false;
                 // Home frost counts as frost this opening showed: when the game's window replaces the Steam logo (or the
                 // display scale changes) under the open menu, the in-game frost comes in, fading, without a reopen.
                 if(s.homeActive)s.hadFrost=true;

@@ -19,6 +19,27 @@ function fixture() {
 async function flush(){for(let i=0;i<8;i++)await Promise.resolve();}
 afterEach(()=>vi.useRealTimers());
 describe('frost controller',()=>{
+    it('brings Home frost back under the open menu when the display scale changes (Ally docked, Auto scale toggled)',async()=>{
+        const f=fixture();f.controller.begin(1);f.controller.frame(frame(1,'steam'));f.controller.presented(1);
+        expect(f.home.apply).toHaveBeenCalledTimes(1);
+        // The scale changes: a new allocation clears the frost, then Home's surfaces must be placed again.
+        const scaled=frame(1,'steam');scaled.context={...scaled.context,outputWidth:1500,outputHeight:844,dpr:1.28};
+        f.controller.frame(scaled);
+        expect(f.home.clear).toHaveBeenCalled();
+        expect(f.home.apply).toHaveBeenCalledTimes(2);
+        expect(f.home.apply).toHaveBeenLastCalledWith(scaled);
+        // And it keeps following the menu after that.
+        const moved=frame(1,'steam');moved.context=scaled.context;moved.regions.panel.y=.2;
+        f.controller.frame(moved);expect(f.home.apply).toHaveBeenLastCalledWith(moved);
+    });
+    it('never starts Home frost late for an opening that showed none',()=>{
+        const f=fixture();f.home.apply.mockReturnValue(false);
+        f.controller.begin(1);f.controller.frame(frame(1,'steam'));f.controller.presented(1);
+        f.home.apply.mockReturnValue(true);
+        const scaled=frame(1,'steam');scaled.context={...scaled.context,outputWidth:1500};
+        f.controller.frame(scaled);
+        expect(f.home.apply).toHaveBeenCalledTimes(1);
+    });
     it('arms frost with invisible masks before the reveal and activates it at the reveal',async()=>{
         const f=fixture();f.bridge.present=vi.fn(async()=>({status:'active',token:'combined'} as const));
         f.controller.begin(1);f.controller.frame(frame());let settled=false;void f.controller.settled(1).then(()=>{settled=true;});
