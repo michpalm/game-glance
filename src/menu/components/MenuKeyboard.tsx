@@ -1,4 +1,4 @@
-import { menuScale } from '../menuScale';
+import { menuScale, menuWindowSize } from '../menuScale';
 import { hideKeyboardNavigation } from '../keyboard/navigationVisibility';
 import { Focusable, GamepadButton as B, findModule, findModuleExport, type GamepadEvent, type NavEntryPositionPreferences } from '@decky/ui';
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
@@ -251,7 +251,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!session.get().open || !contextRef.current.ownsInput() || !element?.isConnected || !root?.isConnected || root!==openedHost.current || !view) return null;
         const box = root.getBoundingClientRect(), scale = box.width / root.offsetWidth || 1;
         const menuRect = (r: { left: number; top: number; width: number; height: number }) => toMenuRect(r, box, scale);
-        const boardScale = context ? menuScale(view.innerWidth) : 1;
+        const boardScale = context ? menuScale(view.innerWidth, menuWindowSize(view)) : 1;
         const size = { width: SIZE.width * boardScale, height: SIZE.height * boardScale };
         return { scale, size, view: menuRect(keyboardViewport(contextRef.current,{ left: 0, top: 0, width: view.innerWidth, height: view.innerHeight })),
             menu: menuRect((element.closest<HTMLElement>('.gg-menu-panel') ?? root).getBoundingClientRect()), field: menuRect(element.getBoundingClientRect()) };
@@ -263,7 +263,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
         if (!open) return;
         setTyping(t => ({ ...clearHeld(t), shift: 'off' })); setPage('letters'); setIndex(live.current.layouts.current); setPosition(null); setDragging(false);
         const element=field();openedHost.current=element?contextRef.current.host(element):null;setHost(openedHost.current);
-        if (context && element?.ownerDocument.defaultView) setSearchScale(menuScale(element.ownerDocument.defaultView.innerWidth));
+        if (context && element?.ownerDocument.defaultView) setSearchScale(menuScale(element.ownerDocument.defaultView.innerWidth, menuWindowSize(element.ownerDocument.defaultView)));
         let alive = true;
         void loadPosition(backendKv).then(saved => {
             const g = alive && geometry();
@@ -301,7 +301,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     // Resizing cancels an in-flight drag, then keeps the current/anchored position inside the live viewport.
     useEffect(()=>{
         const view=host?.ownerDocument.defaultView;if(!open||!host||!view)return;
-        const resize=()=>{if(context)setSearchScale(menuScale(view.innerWidth));const g=geometry();if(!g||!live.current.position)return;stripPress.current?.dispose();stopListening('hold');stopListening('drag');drag.current=null;padFrame.current=null;moving.current=false;setPadDrag(false);setDragging(false);place(spot.current?spotPosition(spot.current,g.view,g.menu,g.field,g.size):settle(live.current.position,g.view,g.field,g.size));};
+        const resize=()=>{if(context)setSearchScale(menuScale(view.innerWidth, menuWindowSize(view)));const g=geometry();if(!g||!live.current.position)return;stripPress.current?.dispose();stopListening('hold');stopListening('drag');drag.current=null;padFrame.current=null;moving.current=false;setPadDrag(false);setDragging(false);place(spot.current?spotPosition(spot.current,g.view,g.menu,g.field,g.size):settle(live.current.position,g.view,g.field,g.size));};
         view.addEventListener('resize',resize);view.visualViewport?.addEventListener('resize',resize);
         const observer=view.ResizeObserver?new view.ResizeObserver(resize):null;const element=field();if(element)observer?.observe(element);
         return()=>{view.removeEventListener('resize',resize);view.visualViewport?.removeEventListener('resize',resize);observer?.disconnect();};

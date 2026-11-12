@@ -1,4 +1,4 @@
-import { menuScale } from '../menuScale';
+import { menuScale, menuWindowSize } from '../menuScale';
 import { Focusable, type GamepadEvent } from '@decky/ui';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuArrowUpRight, LuBell } from 'react-icons/lu';
@@ -109,7 +109,13 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         if (!element || !view || !active) return;
         // Steam changes CSS viewport/DPR between Home and the in-game overlay.
         // Normalize against the approved 829px handheld viewport instead of switching layouts.
-        const resize = () => element.style.setProperty('--gg-menu-scale', String(menuScale(view.innerWidth)));
+        // The panel is drawn smaller by Home's size factor (menuWindowSize): the same logical canvas, a smaller scale
+        // (--gg-menu-scale) and a smaller box (--gg-menu-size, styles), kept around the same centre.
+        const resize = () => {
+            const size = menuWindowSize(view);
+            element.style.setProperty('--gg-menu-scale', String(menuScale(view.innerWidth, size)));
+            element.style.setProperty('--gg-menu-size', String(size));
+        };
         resize(); view.addEventListener('resize', resize);
         return () => view.removeEventListener('resize', resize);
     }, [active]);

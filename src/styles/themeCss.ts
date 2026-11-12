@@ -6,7 +6,7 @@ import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { ART_FILL_FILTER, EXPANDED_HEIGHT, EXPANDED_MASK, FIT_FADE, HeroFit, overFill, STANDARD_HERO_ASPECT } from '../home/heroFit';
 import type { PageShading } from '../home/pageShading';
-import { defaultGrowth, homeCanvas } from '../home/scale';
+import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../home/scale';
 import { LOGO_BOX } from './logoBox';
 import { LAUNCH_ART_CLASS } from './launchArt';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -860,8 +860,11 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The game's accent (buildAccentCss sets it on the page container) becomes the theme's accent:
         // the Play pill, the HLTB goal value and bar. Registered so it can animate, as on Home.
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
-        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)}); }`,
-        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)}); } }`,
+        // Home's size factor (home/scale sizeFactor): smaller on a TV (TV_QUERY is isTvScreen's threshold).
+        `:root { --gg-size: ${SIZE_FACTOR.handheld}; }`,
+        `${TV_QUERY} { :root { --gg-size: ${SIZE_FACTOR.tv}; } }`,
+        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)} * var(--gg-size)); }`,
+        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)} * var(--gg-size)); } }`,
         rule(inner, ` --gg-accent: var(--glance-accent); transition: --glance-accent ${ACCENT_MS}ms ease; `),
 
         // Side insets (28 handheld): Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,

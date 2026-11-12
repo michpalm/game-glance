@@ -1,7 +1,7 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
 import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildInstallSizeCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchArtHostSelector, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
-import { defaultGrowth, homeCanvas } from '../../src/home/scale';
+import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
@@ -985,8 +985,10 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ad_Inner')).toContain('transition: --glance-accent 500ms ease;');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // handoff px scaled like Home: its 1440 canvas on 16:9, its 1280 canvas on 16:10
-        expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
-        expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
+        expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)} * var(--gg-size)); }`);
+        expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)} * var(--gg-size)); } }`);
+        expect(restyled).toContain(`:root { --gg-size: ${SIZE_FACTOR.handheld}; }`);
+        expect(restyled).toContain(`@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-size: ${SIZE_FACTOR.tv}; } }`);
         // eyebrow and 64px/800 title
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: #fff');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('text-transform: uppercase');
@@ -1128,7 +1130,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).toMatch(/:root \{ --gg-side: calc\(28 \* var\(--gg-d\)\); \}/);
         expect(restyled).toMatch(/@media \(min-width: 1408px\) and \(min-height: 793px\) \{ :root \{ --gg-side: calc\(24 \* var\(--gg-d\)\); \} \}/);
         // the media query comes after the default, so on a TV it wins; the thresholds are screenScale's 1.7x the handheld's 828x466
-        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(28 * var(--gg-d))'));
+        expect(restyled.indexOf('@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-side')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(28 * var(--gg-d))'));
         expect(Math.ceil(828 * 1.7)).toBe(1408);
         expect(Math.ceil(466 * 1.7)).toBe(793);
     });
@@ -1274,13 +1276,13 @@ describe('buildDownloadCss (restyled Play pill fill)', () => {
 describe('the page layout constants', () => {
     it('pageDUnit follows --gg-d: a 1440 wide canvas on 16:9, 1280 on 16:10 and narrower', () => {
         // With Home's default growth (#55): 810 tall canvases x defaultGrowth(810), 800 tall x defaultGrowth(800).
-        expect(pageDUnit(1500, 844)).toBeCloseTo((1500 / 1440) * defaultGrowth(810));
-        expect(pageDUnit(1280, 800)).toBeCloseTo(defaultGrowth(800));
-        expect(pageDUnit(828, 466)).toBeCloseTo((828 / 1440) * defaultGrowth(810));
+        expect(pageDUnit(1500, 844)).toBeCloseTo((1500 / 1440) * defaultGrowth(810) * SIZE_FACTOR.tv);
+        expect(pageDUnit(1280, 800)).toBeCloseTo(defaultGrowth(800) * SIZE_FACTOR.handheld);
+        expect(pageDUnit(828, 466)).toBeCloseTo((828 / 1440) * defaultGrowth(810) * SIZE_FACTOR.handheld);
     });
     it('pageDUnit scales a screen wider than 16:9 by its height, as Home does (one rule keeps the open transition aligned)', () => {
-        expect(pageDUnit(1500, 643)).toBeCloseTo((643 / 810) * defaultGrowth(810));
-        expect(pageDUnit(2560, 1080)).toBeCloseTo((1080 / 810) * defaultGrowth(810));
+        expect(pageDUnit(1500, 643)).toBeCloseTo((643 / 810) * defaultGrowth(810) * SIZE_FACTOR.handheld);
+        expect(pageDUnit(2560, 1080)).toBeCloseTo((1080 / 810) * defaultGrowth(810) * SIZE_FACTOR.tv);
         for (const [w, h] of [[1920, 1080], [1280, 800], [1500, 844], [1500, 643], [2560, 1080], [3440, 1440], [1024, 768]]) {
             expect(pageDUnit(w, h)).toBeCloseTo(homeCanvas(w, h).scale, 10);
         }
@@ -1546,8 +1548,8 @@ describe('the page takes the default growth (#55)', () => {
     it('gives the page the same unit as Home', () => expect(pageDUnit(1920, 1080)).toBeCloseTo(homeCanvas(1920, 1080).scale, 10));
     it('multiplies the page unit by Home\'s growth for each canvas shape', () => {
         const css = buildThemeCss(full, { restyle: true });
-        expect(css).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
-        expect(css).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
+        expect(css).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)} * var(--gg-size)); }`);
+        expect(css).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)} * var(--gg-size)); } }`);
     });
 });
 
