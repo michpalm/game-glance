@@ -25,11 +25,14 @@ export interface Settings {
     statusAvatar: boolean; // Kept for older builds.
     profileStyle?: ProfileStyle;
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
+    storePill: boolean; // the store pill (Steam, GOG...) on Home and the game page
+    familyPill: boolean; // the Family Sharing pill on Home and the game page, for a game from the family library
+    playerCountPill: boolean; // how many people play the game now (Steam), beside the store and family pills
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     homeGrayUninstalled: boolean; // gray treatment for uninstalled Steam games in Home's row
-    heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
+    heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off), 'expanded' (covers the top 70%, over a blurred copy) or 'fit' (the whole art at the top over a blurred copy)
     pageShading: PageShading; // the shading over the art on Home and the game page: 'bottom' (the bottom half) or 'none'
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
     infoSlots: GameInfoSlots; // which stats Home's chips and the game page show, in what order; ProtonDB is asked only while it is in a slot
@@ -37,7 +40,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -70,6 +73,9 @@ export function createSettingsStore(kv: KvBackend) {
                 profileStyle: raw.profileStyle && PROFILE_STYLES.includes(raw.profileStyle)
                     ? raw.profileStyle : pick('statusAvatar') ? 'square' : 'dot',
                 gameLogo: pick('gameLogo'),
+                storePill: pick('storePill'),
+                familyPill: pick('familyPill'),
+                playerCountPill: pick('playerCountPill'),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
@@ -178,6 +184,21 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, gameLogo };
             emit();
             await persist({ gameLogo });
+        },
+        async setStorePill(storePill: boolean): Promise<void> {
+            current = { ...current, storePill };
+            emit();
+            await persist({ storePill });
+        },
+        async setFamilyPill(familyPill: boolean): Promise<void> {
+            current = { ...current, familyPill };
+            emit();
+            await persist({ familyPill });
+        },
+        async setPlayerCountPill(playerCountPill: boolean): Promise<void> {
+            current = { ...current, playerCountPill };
+            emit();
+            await persist({ playerCountPill });
         },
         /** One or more screensaver options. */
         async setScreensaver(change: Partial<ScreensaverOptions>): Promise<void> {

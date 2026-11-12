@@ -33,6 +33,7 @@ import { soundtrackStyles } from '../soundtrackStyles';
 import { SoundtrackSection } from './SoundtrackSection';
 import type { SoundtrackService } from '../steam/soundtrack';
 import type { SocialService } from '../steam/social';
+import type { PersonaService } from '../steam/persona';
 import type { NotificationReads } from '../notificationReads';
 import { unreadCount as countUnread, type TrayRow } from '../notificationsList';
 import type { NotificationActions } from '../steam/notificationActions';
@@ -52,6 +53,7 @@ export interface MenuShellProps {
     notificationActions?: NotificationActions;
     performance?: ReturnType<typeof createPerformance>;
     social?: SocialService;
+    persona?: PersonaService;
     soundtrack?: SoundtrackService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
@@ -60,7 +62,7 @@ const EMPTY_ROWS: TrayRow[] = [];
 const NO_ROWS = () => EMPTY_ROWS;
 const EMPTY_READS: ReadonlySet<string> = new Set();
 const NO_READS = () => EMPTY_READS;
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack, panels = {} }: MenuShellProps) {
+export function MenuShell({ persona, state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
@@ -143,9 +145,9 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
     if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
-    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
+    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} devices={quickSettings.devices} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
-    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
+    if (content === undefined && state.section === 'social' && social) content = <SocialPanel persona={persona} social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
     if (content === undefined && state.section === 'plugins') content = <PluginsSection state={state} dispatch={dispatch} handoff={enterNative} close={close} />;

@@ -1,9 +1,10 @@
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
 import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
-import { ART_FILL_FILTER } from '../../src/home/heroFit';
+import { ART_FILL_FILTER, EXPANDED_INSET, EXPANDED_MASK } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
+import { SOURCE_PILL } from '../../src/styles/sourcePill';
 import {
-    statusCss, HOME_GLASS, HOME_PILL,
+    statusCss, HOME_GLASS, HOME_PILL, PILL_CHIPS_GAP,
     FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
@@ -163,9 +164,28 @@ describe('final review fixes (VDL Section 7)', () => {
 });
 
 describe('status bar and chips match the menu (VDL Section 7)', () => {
+    it("the player pill: the family pill's look on Home and in the open copy, placed in the row or above, never a button", () => {
+        const css = homeCss();
+        const pill = ruleFor(css, '.gh-players');
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(pill).not.toContain('pointer-events: auto');
+        expect(HOME_GLASS).toContain('.gh-players');
+        expect(css).toMatch(/\.gh-source:has\(> \.gh-family\) > \.gh-players\s*\{[^}]*right: calc\(100% \+ var\(--gg-family-w, 0px\) \+ 20px\)/);
+        expect(css).toMatch(/\.gh-source\[data-players="above"\] > \.gh-players\s*\{[^}]*bottom: calc\(100% \+ 10px\)/);
+        expect(css).toMatch(/\.gh-x-pill\[data-players="above"\] > \.gh-x-players\s*\{[^}]*--gh-players-y: translateY\(0\)/);
+        expect(ruleFor(css, '.gh-players-dot')).toContain('#5fd38d');
+        expect(ruleFor(css, '.gh-x-players')).toContain('backdrop-filter');
+    });
+    it("the store pill's face is glass that fades with Home's glass, and is no focus target", () => {
+        const css = homeCss();
+        expect(ruleFor(css, '.gh-store-face')).toContain('backdrop-filter');
+        expect(ruleFor(css, '.gh-x-store-face')).toContain('backdrop-filter');
+        expect(HOME_GLASS).toContain('.gh-store-face');
+        expect(ruleFor(css, '.gh-store-face')).not.toContain('pointer-events: auto');
+    });
     it("the status bar, store and family chips take the cards' edge and bold text, as the menu's top bar", () => {
         const css = homeCss();
-        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+        for (const sel of ['.gh-status-pill', '.gh-family', '.gh-store-choice', '.gh-store-face']) {
             const r = ruleFor(css, sel);
             expect(r, sel).toContain('border-color: rgba(182,199,224,.40)');
             expect(r, sel).not.toMatch(/font-weight: 600/);
@@ -275,12 +295,16 @@ describe('homeCss', () => {
         // Action row 379.4..433.4 -> centre 406.4; pill 32 tall -> top 390.4.
         expect(sourcePillTop()).toBeCloseTo(390.4, 5);
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
-        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
+        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*28px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
         expect(pill).toMatch(/border-radius:\s*12px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
-        // The same look as the game page: one definition.
-        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        // The holder: the pill's size and shape, never its glass (the face beside the family pill carries it, SourcePill).
+        for (const decl of sourcePillLook((n) => `${n}px`, false).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(pill).not.toMatch(/backdrop-filter|background:/);
+        // The same look as the game page: one definition, on the face.
+        const face = ruleFor(css, '.gh-store-face');
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(face).toContain(`${decl} !important`);
         expect(css).toMatch(/\.gh-source-icon\s*\{[^}]*width:\s*16px[^}]*margin-right:\s*8px/);
         // The old icon-only chip badge is gone; the chip row keeps its fixed height.
         expect(css).not.toMatch(/\.gh-source\s*\{[^}]*var\(--gh-r-card\)/);
@@ -420,14 +444,25 @@ describe('homeCss', () => {
         expect(TITLE_BLOCK.maxTitleLines).toBe(3);
     });
     describe('title block: fixed from the eyebrow down, the title grows upward', () => {
-        it('order is title slot, eyebrow, chips, actions, each 18 apart (actions add their 8 margin)', () => {
+        it('left column: title slot, eyebrow, actions, each 18 apart (actions add their 8 margin), lower by the chip row and its gap', () => {
             const two = titleBlockLayout(2);
-            expect(two.slotTop).toBe(118);
-            expect(two.titleTop).toBe(118);
-            expect(two.eyebrowTop).toBe(118 + 116 + 18); // 252
-            expect(two.chipsTop).toBeCloseTo(252 + 14.4 + 18, 5); // 284.4
-            expect(two.actionsTop).toBeCloseTo(284.4 + 69 + 18 + 8, 5); // 379.4
+            expect(two.slotTop).toBe(118 + 69 + 18); // 205: the chip row (69) and its gap moved to the right
+            expect(two.titleTop).toBe(205);
+            expect(two.eyebrowTop).toBe(205 + 116 + 18); // 339
+            expect(two.actionsTop).toBeCloseTo(339 + 14.4 + 18 + 8, 5); // 379.4: where it always was
             expect(two.bottom).toBeCloseTo(433.4, 5);
+        });
+        it('the chips sit at the right with their bottom level with the actions', () => {
+            const two = titleBlockLayout(2);
+            expect(two.chipsTop + 69).toBeCloseTo(two.bottom, 5);
+            const css = homeCss();
+            expect(css).toMatch(/\.gh-chips\s*\{[^}]*position:\s*absolute[^}]*right:\s*0[^}]*top:\s*159\.4px/); // 433.4 - 69 - 205
+        });
+        it('the store pill sits above the chips, or on the action row when the game shows none', () => {
+            const two = titleBlockLayout(2);
+            expect(sourcePillTop(true)).toBeCloseTo(two.chipsTop - PILL_CHIPS_GAP - SOURCE_PILL.height, 5);
+            expect(sourcePillTop()).toBeCloseTo(two.actionsTop + 27 - SOURCE_PILL.height / 2, 5);
+            expect(homeCss()).toContain(`.gh-page:has(.gh-chips > .gh-chip) .gh-source {`);
         });
         it('a one-line title only moves the title down inside its slot: eyebrow, chips and actions do not move', () => {
             const one = titleBlockLayout(1);
@@ -467,7 +502,7 @@ describe('homeCss', () => {
         });
     });
     it('the tallest title block (2-line title) ends above the recents glow at both card scales', () => {
-        // 118 + eyebrow 14.4 + 18 + title 2 x 58 + 18 + chips 69 + 18 + 8 + 54 = 433.4
+        // 118 + chip row 69 + 18 (now at the right) + title 2 x 58 + 18 + eyebrow 14.4 + 18 + 8 + 54 = 433.4
         expect(titleBlockBottom()).toBeCloseTo(433.4, 5);
         // Glow top = row top - 12 x scale (blur 40 - offset 16 - spread 12) - the 1px ring.
         const hand = recentsGlowTop(recentsGeometry(CARD_SCALE_HANDHELD));
@@ -478,7 +513,7 @@ describe('homeCss', () => {
         expect(titleBlockBottom()).toBeLessThan(hand);
         // The CSS uses the same metrics.
         const css = homeCss();
-        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
+        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(205px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
         expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
         expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 14px 28px -12px rgba\(0,0,0,\.75\)/);
@@ -559,6 +594,17 @@ describe('homeCss', () => {
         const art = body('.gh-fit .gh-hero-open::after');
         for (const part of ['background-image: var(--gho-hero', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gho-hero-mask)']) expect(art).toContain(part);
         expect(body('.gh-hero-open')).toContain('background-size: cover');
+    });
+    it("hero Expanded: Home's art and another game's arriving one cover the top 70%, centred, fading into the fill", () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        for (const sel of ['.gh-hero-full.gh-hero-expanded::after', '.gh-expanded .gh-hero-open::after']) {
+            const art = body(sel);
+            for (const part of [`inset: ${EXPANDED_INSET}`, 'background-size: cover', 'background-position: center', `-webkit-mask-image: ${EXPANDED_MASK}`]) expect(art).toContain(part);
+        }
+        // After Fit's rules, so its box and fade win over Fit's (Expanded also has gh-hero-fit / gh-fit, for the fill).
+        expect(css.indexOf('.gh-hero-full.gh-hero-expanded::after')).toBeGreaterThan(css.indexOf('.gh-hero-full.gh-hero-fit::after'));
+        expect(css.indexOf('.gh-expanded .gh-hero-open::after')).toBeGreaterThan(css.indexOf('.gh-fit .gh-hero-open::after'));
     });
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
@@ -728,6 +774,18 @@ describe('homeCss open transition', () => {
         const lit = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-chip:nth-child(3) .gh-chip-value::after'));
         expect(lit?.[1]).toContain('opacity: var(--gho-chip-2-accent, 0)');
     });
+    it("an Install pill ends in the game's size, faded, at the pill's padding like the page's", () => {
+        const seg = rules(css).find(([sel]) => sel === '.gh-btn-play > .gh-btn-size');
+        expect(seg?.[1]).toContain(`right: ${HOME_PILL.padX}px`);
+        expect(seg?.[1]).toContain('opacity: 0.72');
+        expect(seg?.[1]).toContain('position: absolute');
+    });
+    it('with a "Play from" arrow too, the size ends a padding before the arrow\'s segment, and travels to the page\'s first segment', () => {
+        const all = rules(css);
+        const seg = all.find(([sel]) => sel === '.gh-btn-play:has(> .gh-play-arrow) > .gh-btn-size');
+        expect(seg?.[1]).toContain(`right: ${HOME_PILL.arrow - HOME_PILL.border + HOME_PILL.padX}px`);
+        expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith(':has(> .gh-play-arrow) > .gh-btn-size') && body.includes('transform: var(--gho-play-size-arrow)'))).toBe(true);
+    });
     it("a game that can be streamed: the Play pill ends in the page's arrow segment (Home's size), and a focusable arrow over it", () => {
         const all = rules(css);
         const seg = all.find(([sel]) => sel === '.gh-btn-play > .gh-play-arrow');
@@ -749,6 +807,11 @@ describe('homeCss open transition', () => {
         expect(tint?.[1]).toMatch(/background: rgba\(255,255,255,\.28\)/);
         // Opening: the segment moves with the pill and grows onto the page's (openMotion --gho-play-arrow), about its right end.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-play-arrow') && body.includes('transform: var(--gho-play-arrow)'))).toBe(true);
+        // An Install pill's size moves the same way (openMotion --gho-play-size), about its right end.
+        expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-size') && body.includes('transform: var(--gho-play-size)'))).toBe(true);
+        expect(all.some(([sel, body]) => sel.endsWith('.gh-btn-size') && body.includes('transform-origin: 100% 50%'))).toBe(true);
+        // Drawn at the page's font size for the open, shrunk to Home's at its start (openMotion --gho-play-size-font, -from).
+        expect(all.some(([sel, body]) => sel.endsWith('.gh-btn-size') && body.includes('font-size: var(--gho-play-size-font, 16px)') && body.includes('transform: var(--gho-play-size-from, none)'))).toBe(true);
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-play-arrow') && /transform-origin:\s*100% 50%/.test(body))).toBe(true);
         // The arrow button itself fades with the info button.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-stream') && /opacity:\s*0/.test(body))).toBe(true);

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SLOTS, type GameInfoSlots } from '../../src/logic/infoSlots';
 import { gameChips, libraryChips } from '../../src/home/chips';
-import { formatBytes } from '../../src/logic/format';
 
 const NOW = 1_700_000_000;
 const base = { slots: DEFAULT_SLOTS, playedMinutes: 600, achievements: { achieved: 5, total: 20 }, lastPlayed: NOW, hltbMainHours: 20 };
@@ -53,20 +52,9 @@ describe('libraryChips', () => {
     });
 });
 
-describe('gameChips: the space a Steam game that is not installed needs', () => {
-    it('sits right of Played when the game is not installed and its space is known', () => {
-        const chips = gameChips({ ...base, installed: false, spaceBytes: 691079517 }, NOW, 'en-US');
-        expect(chips.map((c) => c.label)).toEqual(['Played', 'Space Required', 'Achievements', 'HLTB main']);
-        expect(chips[1].value).toBe(formatBytes(691079517, 'en-US'));
-    });
-    it('right of Added to library for a new game', () => {
-        const chips = gameChips({ ...base, installed: false, spaceBytes: 691079517, addedAt: NOW }, NOW, 'en-US');
-        expect(chips.map((c) => c.label)).toEqual(['Added to library', 'Space Required', 'Achievements', 'HLTB main']);
-    });
-    it('no chip when the game is installed, or its space is not known', () => {
-        expect(gameChips({ ...base, installed: true, spaceBytes: 691079517 }, NOW, 'en-US').map((c) => c.label)).not.toContain('Space Required');
-        expect(gameChips({ ...base, installed: false, spaceBytes: null }, NOW, 'en-US').map((c) => c.label)).not.toContain('Space Required');
-        expect(gameChips(base, NOW, 'en-US').map((c) => c.label)).not.toContain('Space Required');
+describe('gameChips: Space required', () => {
+    it('is no chip (it is at the Install pill: sizeStat.installSizeText)', () => {
+        expect(gameChips(base, NOW, 'en-US').map((c) => c.key)).not.toContain('size');
     });
 });
 

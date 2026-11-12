@@ -88,3 +88,24 @@ def test_native_connection_sends_every_frost_area_uniform_the_shader_declares():
     assert sent == [s.encode() for name in ("Bar", "Panel", "Notifications", "Status", "Keyboard") for s in (name, name + "Radius")]
     with pytest.raises(ValueError):
         n.set_uniform("Foreign", b"\0" * 16)
+
+
+@pytest.mark.parametrize('focused,expected', [(769, True), (292030, False), (None, False)])
+def test_environment_says_when_gamescope_draws_steam_itself(focused, expected):
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    n.hdr_output_atom, n.focused_gfx_atom, n.max_scale = 'feedback', 'focused', None
+    n._property = lambda atom: {'feedback': 0, 'focused': focused}[atom]
+    assert n.environment() == {'hdr': False, 'maxScale': None, 'steamShown': expected}
+
+
+def test_environment_leaves_steam_shown_out_when_it_cannot_be_read():
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    n.hdr_output_atom, n.focused_gfx_atom, n.max_scale = 'feedback', 'focused', None
+    def read(atom):
+        if atom == 'focused':
+            raise OSError('Invalid Gamescope state')
+        return 0
+    n._property = read
+    assert n.environment() == {'hdr': False, 'maxScale': None}

@@ -18,13 +18,13 @@ interface CoreGlobals {
     urlStore?:{ResolveURL(key:string):string};
     g_FriendsUIApp?:{m_bReadyToRender?:boolean;m_CMInterface?:{m_bConnected?:boolean;m_bLoggedOn?:boolean};FriendStore?:{m_self?:{m_unAccountID?:number};GetUserDoNotDisturb?():boolean;SetUserDoNotDisturb?(value:boolean):void}};
 }
-const globals=()=>globalThis as unknown as CoreGlobals;
+export const globals=()=>globalThis as unknown as CoreGlobals;
 const release=(r:Registration|undefined)=>{r?.unregister?.();r?.Unregister?.();};
 let parentalPolicy: { BIsFeatureBlocked(feature:number):boolean } | null | undefined;
 function parentalAllowed(feature:number):boolean {
     try {if(parentalPolicy===undefined)parentalPolicy=findModuleExport(value=>typeof value?.BIsFeatureBlocked==='function')??null;return !!parentalPolicy&&!parentalPolicy.BIsFeatureBlocked(feature);} catch{return false;}
 }
-function friendsOnline(root:CoreGlobals):boolean {const f=root.g_FriendsUIApp;return f?.m_bReadyToRender===true&&f.m_CMInterface?.m_bConnected===true&&f.m_CMInterface?.m_bLoggedOn===true;}
+export function friendsOnline(root:CoreGlobals):boolean {const f=root.g_FriendsUIApp;return f?.m_bReadyToRender===true&&f.m_CMInterface?.m_bConnected===true&&f.m_CMInterface?.m_bLoggedOn===true;}
 let displaySource: {settings?:DisplaySettings}|null|undefined;
 function displaySettings():DisplaySettings|undefined {
     try{if(displaySource===undefined)displaySource=findModuleExport(value=>typeof value?.settings?.bDisplayIsUsingAutoScale==='boolean')??null;return displaySource?.settings;}catch{return undefined;}
@@ -117,6 +117,12 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     function stop(){alive=false;generation++;scanning=false;if(interval!==undefined)clearInterval(interval);interval=undefined;for(const r of registrations.splice(0)){try{release(r);}catch{}}}
     const bindings:QuickSettingsBindings={subscribe(listener){listeners.add(listener);if(listeners.size===1)start();return()=>{listeners.delete(listener);if(!listeners.size)stop();};},toggles};
     if(audio?.GetDevices&&audio?.SetDeviceVolume)bindings.audio={read:()=>devices,async write(id,type,value){const ticket=generation,requestedAt=Date.now();const current=await audio.GetDevices();if(!alive||ticket!==generation||Date.now()-requestedAt>=3000)throw Error('Audio device confirmation expired. Try again.');devices=current;emit();if((type===1?current.activeOutputDeviceId:current.activeInputDeviceId)!==id)throw Error('Active audio device changed. Try again.');const result=await audio.SetDeviceVolume(id,type,value);if(result&&result.result!==1)throw Error(result.message||'Steam rejected the volume change');}};
+    // Which device plays and records (spec 2026-11-12-status-and-audio-pickers): Steam's own Sound settings calls; the list
+    // is read again after each so the pills and sliders follow the new active device.
+    if(bindings.audio&&typeof audio?.SetDefaultDeviceOverride==='function'&&typeof audio.ClearDefaultDeviceOverride==='function'){
+        bindings.audio.setOverride=async(id,type)=>{await audio.SetDefaultDeviceOverride(id,type);await scan();};
+        bindings.audio.clearOverride=async type=>{await audio.ClearDefaultDeviceOverride(type);await scan();};
+    }
     // Steam creates SystemStoragStore lazily, when its own Quick Access settings first
     // draws; until then the display API alone reads (on registration) and writes.
     const settingsStore=()=>root.SystemStoragStore;

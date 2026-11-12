@@ -41,6 +41,12 @@ export async function shortcutDescriptionCached(game: { name: string }, lang: st
     return (await attempt('cache read', () => cache.get<{ text: string | null }>(`desc:${match.id}:${lang}`), null)) !== null;
 }
 
+/** The remembered Steam match for a shortcut's name, never online: its app id, null for a remembered miss, undefined when not asked yet. */
+export async function cachedSteamAppId(name: string, cache: Cache = defaultCache): Promise<number | null | undefined> {
+    const match = await attempt('cache read', () => cache.get<{ id: number | null }>(matchKey(name)), null);
+    return match ? match.id : undefined;
+}
+
 /** The Steam app whose store name is exactly this game's name (see sameTitle), or null. Misses are remembered too. */
 export async function findSteamAppId(name: string, deps: ShortcutDescriptionDeps = defaultDeps): Promise<number | null> {
     const key = matchKey(name);

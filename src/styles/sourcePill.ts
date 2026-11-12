@@ -13,16 +13,18 @@ export const SOURCE_PILL = {
     blur: 16,
     icon: 16,
     iconGap: 8,
-    /** Distance from the screen's right edge (the page's side inset). */
-    right: 56,
+    /** Distance from the screen's right edge (the handheld's side inset, home/insets.PILL_INSET). */
+    right: 28,
     /** Shared edge for glass controls over artwork. */
     border: CONTROL_EDGE,
 } as const;
 
 /** Size, type, corner and fill of the pill (the game page's restyle on top of its 1.1.1 pill: 1px border, inline-flex). Section 7, option B:
  * the corner is Play's share of the height (tokens.actionRadius), 12 on 32, not a half circle. */
-export function sourcePillLook(unit: (px: number) => string): string {
+export function sourcePillLook(unit: (px: number) => string, glass = true): string {
     const p = SOURCE_PILL;
+    // Without glass: a holder the size and shape of the pill (Home's store pill holder, which never blurs: SourcePill).
+    if (!glass) return `box-sizing: border-box; height: ${unit(p.height)}; border-radius: ${unit(actionRadius(p.height, 'action'))}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; line-height: 1;`;
     // The height includes the 1px border on both (Steam's page sizes content boxes by default: its pill was 2 px taller).
     return `box-sizing: border-box; height: ${unit(p.height)}; border-radius: ${unit(actionRadius(p.height, 'action'))}; padding: 0 ${unit(p.padX)}; font-size: ${unit(p.fontSize)}; font-weight: ${p.fontWeight}; line-height: 1; ${frostSurface(unit(p.blur))};
             border-color: ${p.border};`;

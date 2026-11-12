@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createQuickSettings, type QuickSettingsBindings } from '../../src/menu/steam/quickSettings';
+import { audioChoices, createQuickSettings, type AudioState, type QuickSettingsBindings } from '../../src/menu/steam/quickSettings';
 function harness() {
     const listeners = new Set<() => void>(); const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
     let audio = { activeOutputDeviceId: 909, activeInputDeviceId: 1148, vecDevices: [
@@ -18,6 +18,60 @@ function harness() {
         brightness(value:number){brightness=value;listeners.forEach(fn=>fn());},toggle(id:string,value:boolean){values[id]=value;listeners.forEach(fn=>fn());} };
 }
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+describe('audio device choices', () => {
+    const RADEON = { id: 46, sName: 'Radeon High Definition Audio Controller', bHasOutput: false, flOutputVolume: 0, bHasInput: false, flInputVolume: 0 };
+    const RYZEN = { id: 47, sName: 'Ryzen HD Audio Controller', bHasOutput: true, flOutputVolume: 0.5, bHasInput: true, flInputVolume: 1 };
+    const PHONES = { id: 48, sName: 'WH-1000XM4', bHasOutput: true, flOutputVolume: 0.4, bHasInput: false, flInputVolume: 0 };
+    const ally = (over: Partial<AudioState> = {}): AudioState => ({ activeOutputDeviceId: 47, activeInputDeviceId: 47, overrideOutputDeviceId: -1, overrideInputDeviceId: -1, vecDevices: [RADEON, RYZEN], ...over });
+    it("the Ally today: Automatic, following its one device, which is the only other choice", () => {
+        const out = audioChoices(ally(), 1)!;
+        expect(out.text).toBe('Automatic · Ryzen HD Audio Controller');
+        expect(out.selected).toBe('auto');
+        expect(out.options.map((o) => o.id)).toEqual(['auto', 47]);
+        expect(out.options[0]).toMatchObject({ label: 'Automatic', sub: 'Follows the connected device' });
+        expect(out.options[1]).toEqual({ id: 47, label: 'Ryzen HD Audio Controller' });
+        expect(audioChoices(null, 1)).toBeNull();
+    });
+    it('headphones chosen: their name, ticked; the input list keeps only devices with input', () => {
+        const state = ally({ vecDevices: [RADEON, RYZEN, PHONES], activeOutputDeviceId: 48, overrideOutputDeviceId: 48 });
+        expect(audioChoices(state, 1)).toMatchObject({ text: 'WH-1000XM4', selected: 48 });
+        expect(audioChoices(state, 1)!.options.map((o) => o.id)).toEqual(['auto', 47, 48]);
+        expect(audioChoices(state, 0)!.options.map((o) => o.id)).toEqual(['auto', 47]);
+    });
+    it('the chosen device unplugged: back to Automatic, never a stale name', () => {
+        const out = audioChoices(ally({ overrideOutputDeviceId: 48 }), 1)!;
+        expect(out.text).toBe('Automatic · Ryzen HD Audio Controller');
+        expect(out.selected).toBe('auto');
+    });
+    function pickers(state: AudioState) {
+        const setOverride = vi.fn(async () => {}), clearOverride = vi.fn(async () => {});
+        let current = state;
+        const settings = createQuickSettings({ subscribe: () => () => {}, audio: { read: () => current, write: vi.fn(async () => {}), setOverride, clearOverride } });
+        return { settings, setOverride, clearOverride, set: (next: AudioState) => { current = next; } };
+    }
+    it('picking a device or Automatic calls only the matching Steam function, with the right type', async () => {
+        const p = pickers(ally({ vecDevices: [RADEON, RYZEN, PHONES] }));
+        await p.settings.devices!.output.pick(48); expect(p.setOverride).toHaveBeenCalledWith(48, 1);
+        await p.settings.devices!.output.pick('auto'); expect(p.clearOverride).toHaveBeenCalledWith(1);
+        await p.settings.devices!.input.pick(47); expect(p.setOverride).toHaveBeenLastCalledWith(47, 0);
+        await p.settings.devices!.input.pick('auto'); expect(p.clearOverride).toHaveBeenLastCalledWith(0);
+        expect(p.settings.devices!.output.read()).toBe(p.settings.devices!.output.read());
+        p.settings.dispose();
+    });
+    it('a device that left while its list was open is never sent to Steam', async () => {
+        const p = pickers(ally({ vecDevices: [RADEON, RYZEN, PHONES] }));
+        p.set(ally());
+        await p.settings.devices!.output.pick(48);
+        expect(p.setOverride).not.toHaveBeenCalled();
+        p.settings.dispose();
+    });
+    it('no device pickers without the override functions', () => {
+        const settings = createQuickSettings({ subscribe: () => () => {}, audio: { read: () => ally(), write: vi.fn(async () => {}) } });
+        expect(settings.devices).toBeUndefined();
+        settings.dispose();
+    });
+});
+
 describe('native quick settings adapters',()=>{
     it('uses active output 909 with AllOutput=1, and a separate valid microphone with Input=0',async()=>{
         vi.useFakeTimers();const h=harness();expect(h.settings.controls.volume.get().value).toBe(90);expect(h.settings.controls.microphone.get().value).toBe(100);

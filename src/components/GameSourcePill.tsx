@@ -6,7 +6,7 @@ import { SourcePill } from './SourcePill';
 import { peekStoreVersions } from '../data/storeVersions';
 
 /** Unifideck's selector lives behind the Store pill; the family pill remains a separate sibling action. */
-export function GameSourcePill({ label, doc, appId, active, children }: { label: string; doc: Document | null; appId: number; active: boolean; children?: ReactNode }) {
+export function GameSourcePill({ label, doc, appId, active, children, bare = false }: { label: string; doc: Document | null; appId: number; active: boolean; children?: ReactNode; bare?: boolean }) {
     const [button, setButton] = useState<HTMLElement | null>(() => doc && active ? findStoreSwitcher(doc, appId) : null);
     const anchor = useRef<HTMLElement | null>(null);
     useEffect(() => {
@@ -37,6 +37,7 @@ export function GameSourcePill({ label, doc, appId, active, children }: { label:
             }
         };
     }, [doc, appId, active]);
+    if (bare) return <SourcePill label={label} bare>{children}</SourcePill>;
     if (!active || (!button && (peekStoreVersions(appId)?.length ?? 0) < 2)) return <SourcePill label={label}>{children}</SourcePill>;
     const open = () => {
         const native = button ?? (doc ? findStoreSwitcher(doc, appId) : null);

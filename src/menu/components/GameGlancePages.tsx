@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
 import { everyPageAvailable, GAME_INFO_NOTE, homeRows, ROW_STYLE_LABELS, slotChoices, slotLabel, slotValue, slotValueLabel, statusRows, type CategoryId } from '../../data/settingsCategories';
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
-import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
+import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
 import { SLOT_INDEXES } from '../../logic/infoSlots';
@@ -174,8 +174,14 @@ export function GeneralPage({ v, a }: PageProps) {
             <h3>Look on Home and the game page</h3>
             <ToggleRow id="gg:general:gameLogo" label="Game logo" description="The game's logo instead of its name. A game without one keeps its name."
                 checked={s.gameLogo} onChange={value => a.run(a.store.setGameLogo(value))} />
+            <ToggleRow id="gg:general:storePill" label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row. Off also hides the store version choice it opens."
+                checked={s.storePill} onChange={value => a.run(a.store.setStorePill(value))} />
+            <ToggleRow id="gg:general:familyPill" label="Family Sharing pill" description="Whose library a shared game comes from. Off also hides the choice of copy it opens."
+                checked={s.familyPill} onChange={value => a.run(a.store.setFamilyPill(value))} />
+            <ToggleRow id="gg:general:playerCountPill" label="Player count" description="How many people are playing now, from Steam."
+                checked={s.playerCountPill} onChange={value => a.run(a.store.setPlayerCountPill(value))} />
             <SegmentRow<HeroFit> id="gg:general:heroFit" label="Hero art" description={HERO_FIT_COPY[s.heroFit]} options={HERO_FITS}
-                labels={{ fill: 'Fill', fit: 'Fit' }} value={s.heroFit} onSelect={value => a.run(a.store.setHeroFit(value))} />
+                labels={HERO_FIT_LABELS} value={s.heroFit} onSelect={value => a.run(a.store.setHeroFit(value))} />
             <SegmentRow<PageShading> id="gg:general:pageShading" label="Page shading" description={PAGE_SHADING_COPY[s.pageShading].description}
                 options={PAGE_SHADINGS} labels={{ bottom: PAGE_SHADING_COPY.bottom.label, none: PAGE_SHADING_COPY.none.label }}
                 value={s.pageShading} onSelect={value => a.run(a.store.setPageShading(value))} />

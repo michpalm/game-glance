@@ -8,7 +8,8 @@ export const EMPTY_REGION: Readonly<Region> = Object.freeze({ x:0, y:0, width:0,
 /** An absent optional area (all zero, as the backend accepts it): it draws nothing on Home and masks nothing in game. */
 export const regionAbsent = (r: Region): boolean => Object.values(r).every(v=>v===0);
 export type FitMode = 'fit' | 'fill' | 'stretch' | 'auto';
-export interface NativeFrostEnvironment { hdr:boolean; maxScale:number|null }
+/** `steamShown`: Gamescope draws Steam itself, not a game (a game still loading behind the Steam logo); absent when unknown. */
+export interface NativeFrostEnvironment { hdr:boolean; maxScale:number|null; steamShown?:boolean }
 export type Region = { x:number; y:number; width:number; height:number; radiusX:number; radiusY:number };
 export type FrostContext = {
     viewportId:string; background:'game'|'steam'; outputWidth:number; outputHeight:number;

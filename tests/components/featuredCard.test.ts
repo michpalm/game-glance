@@ -5,7 +5,7 @@ import { FeaturedCard } from '../../src/components/FeaturedCard';
 
 const base = {
     featured: 'protondb' as const, hltb: undefined, playedMinutes: 0, locale: 'en-US', proton: undefined, achievements: undefined,
-    playTime: { minutes: 0, twoWeeks: 0, lastPlayed: 0 }, now: 1800000000,
+    playTime: { minutes: 0, twoWeeks: 0, lastPlayed: 0, icon: null, purchased: 0, reviews: null }, now: 1800000000,
 };
 const render = (over: object) => renderToStaticMarkup(createElement(FeaturedCard, { ...base, ...over }));
 
@@ -32,10 +32,26 @@ describe('FeaturedCard', () => {
         expect(html).toContain('gg-skeleton');
         expect(html).toContain('gg-card gg-featured gg-featured-protondb');
     });
-    it('draws the ProtonDB mark with its tone', () => {
-        const html = render({ proton: { status: 'found', tier: 'platinum' } });
-        expect(html).toContain('<span class="gg-mark" data-tone="platinum" aria-hidden="true">');
-        expect(html).toContain('Platinum');
+    it('draws the ProtonDB tile in its tone, the rating in its tone, and the ladder with the rating lit', () => {
+        const html = render({ proton: { status: 'found', tier: 'gold' }, compat: { deck: 1, tool: 'Proton 9.0' } });
+        expect(html).toContain('<div class="gg-featured-icon gg-featured-mark" data-tone="gold" aria-hidden="true">');
+        expect(html).toContain('<div class="gg-value" data-tone="gold">Gold</div>');
+        expect(html).toContain('class="gg-ladder"');
+        expect(html.match(/data-lit=""/g)).toHaveLength(1);
+        expect(html).toContain('Unsupported on Steam Deck · runs with Proton 9.0');
+    });
+    it("Play time: the icon, the hours in the accent, and the columns in the dense card", () => {
+        const html = render({ featured: 'played', playTime: { minutes: 90, twoWeeks: 0, lastPlayed: 0, icon: 'https://x.test/i.jpg', purchased: 0, reviews: 91 } });
+        expect(html).toContain('gg-card gg-featured gg-featured-played gg-featured-dense');
+        expect(html).toContain('<img src="https://x.test/i.jpg"');
+        expect(html).toContain('<div class="gg-value gg-featured-accent">1.5 h played</div>');
+        expect(html).toContain('Steam reviews');
+    });
+    it("HowLongToBeat's restyled track: one stretch per time, the fill along all of it", () => {
+        const html = render({ featured: 'hltb', restyle: true, playedMinutes: 90, hltb: { status: 'found', gameId: 1, times: { main: 31.1, mainExtras: 46.9, completionist: 121.5 }, rating: 73 } });
+        expect(html).toContain('class="gg-bar gg-track"');
+        expect(html.match(/<span style="left:/g)).toHaveLength(3);
+        expect(html).toContain('rated 73%');
     });
     it('draws the achievements icon row', () => {
         const html = render({

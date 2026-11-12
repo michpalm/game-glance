@@ -200,7 +200,7 @@ function startHome(c: OpenContext): (() => void) | null {
                 const undoCards = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : prepareNormalOpen(root, home, page, scale);
                 let undoPills: (() => void) | null = null;
                 try {
-                    undoPills = preparePillOpen(root, page);
+                    undoPills = preparePillOpen(root, page, c.look === 'clean' ? 'clean' : 'spotlight');
                     const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoCards ? twins.filter((t) => !t.card) : twins);
                     return () => { undoOpen(); undoPills?.(); undoCards?.(); };
                 } catch (error) { undoPills?.(); undoCards?.(); throw error; }
@@ -320,12 +320,14 @@ export function openGame(appId: number, source?: HTMLElement | null) {
         const extras = look === 'spotlight' ? drawn : drawn.split(' ').filter((p) => p === 'pills' || p === 'played' || p === 'size').join(' ');
         // The family library pill moves in with Home's store pill: the page's must not arrive again (it blinked).
         const homeFamily = variant === 'morph' && root ? root.querySelector('.gh-family') !== null : undefined;
+        // The player pill moves in the same way (styles/playersFit placement carried by pillOpen).
+        const homePlayers = variant === 'morph' && root ? root.querySelector('.gh-players') !== null : undefined;
         // The page's stat columns Home showed no chip for (a new game's Play time) arrive instead of popping in.
         const homeMissing = variant === 'morph' && root ? missingStats(readChipTexts(root).map((c) => c.key), extras) : undefined;
         const homeChipKeys = variant === 'morph' && root ? readChipTexts(root).map((c) => c.key) : [];
         // A Unifideck game's Uninstall circle Home draws as it opens (.gh-open-circle): the page's must not arrive again.
         const homeUninstall = variant === 'morph' && root ? root.querySelector('.gh-open-circle') !== null : undefined;
-        const intent: OpenIntent = { look: pageRestyled ? look : 'steam', mode: variant === 'morph' ? 'parts' : 'all', eyebrow, homeCloud, homeBars, homeFamily, homeMissing, homeUninstall, ...extrasFlags(extras, homeChipKeys) };
+        const intent: OpenIntent = { look: pageRestyled ? look : 'steam', mode: variant === 'morph' ? 'parts' : 'all', eyebrow, homeCloud, homeBars, homeFamily, homePlayers, homeMissing, homeUninstall, ...extrasFlags(extras, homeChipKeys) };
         next = { root, appId, variant, look, heroUrl, intent, extras, slots: current.infoSlots };
         controller().open(appId, variant);
     } catch (error) {

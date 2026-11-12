@@ -277,3 +277,22 @@ describe('consistent preview conversation presentation',()=>{
   }
  });
 });
+
+describe('the status pill', () => {
+    it('sits in the heading after Social and before the online count, and is absent without a status', () => {
+        const snapshot = { accountId: 'test', status: 'ready', canChat: true, friends: [], selectedId: null, enteredId: null, messages: [], more: false, loading: false, sending: false, draft: '', error: '' } as unknown as SocialSnapshot;
+        const social = { preview: vi.fn(), send: vi.fn(), retry: vi.fn(), setDraft: vi.fn(), reload: vi.fn() } as unknown as SocialService;
+        const base = { snapshot, social, entered: false, enter: vi.fn(), leave: vi.fn(), handoff: vi.fn(), loadMore: vi.fn(), latest: vi.fn() };
+        const onStatus = vi.fn();
+        const nodes = tree(SocialContents({ ...base, status: { value: 7, text: 'Invisible', dot: 'ring' }, onStatus }));
+        const heading = nodes.find((n) => n.props.className === 'gg-menu-heading')!;
+        const kids = [heading.props.children].flat().filter(Boolean) as ReactElement<Record<string, any>>[];
+        expect(kids[0].type).toBe('h2');
+        expect(kids[1].props.id).toBe('social:status');
+        expect(kids[1].props.selected).toBe(7);
+        kids[1].props.onPick(1); expect(onStatus).toHaveBeenCalledWith(1);
+        expect(kids[2].type).toBe('span');
+        const without = tree(SocialContents(base));
+        expect(without.some((n) => n.props.id === 'social:status')).toBe(false);
+    });
+});

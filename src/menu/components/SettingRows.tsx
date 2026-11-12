@@ -1,11 +1,19 @@
 import { ToggleField } from '@decky/ui';
 import type { ReactNode } from 'react';
+import { installPageScroll } from '../socialScroll';
 import { LuChevronRight } from 'react-icons/lu';
 import { SettingSegments } from './SettingSegments';
 
 /** "Parent › Title" heading of a Plugins view, with an optional item at the right. */
+/** Every Plugins view starts with its heading: it keeps the view's panel scrolled so the heading and the last notes show.
+ * A callback ref (one function, so React runs it once per heading) whose returned cleanup React 19 calls on unmount. */
+const keepPanelScroll = (heading: HTMLDivElement | null) => {
+    const panel = heading?.closest<HTMLElement>('.gg-menu-panel');
+    return panel ? installPageScroll(panel) : undefined;
+};
+
 export function Crumb({ parent, title, aside }: { parent: string; title: string; aside?: ReactNode }) {
-    return <div className="gg-menu-heading gg-plugin-crumb">
+    return <div ref={keepPanelScroll} className="gg-menu-heading gg-plugin-crumb">
         <div className="gg-plugin-crumb-path"><span>{parent}</span><LuChevronRight aria-hidden="true" /><h2>{title}</h2></div>
         {aside}
     </div>;

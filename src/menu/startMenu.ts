@@ -15,7 +15,8 @@ import { createQuickSettings } from './steam/quickSettings';
 import { createNotificationBadge, createNotificationList } from './steam/notifications';
 import { nativeNotificationActions, type NotificationActions } from './steam/notificationActions';
 import { createNotificationReads } from './notificationReads';
-import { discoverQuickSettingsBindings, nativeNotificationBindings } from './steam/nativeCore';
+import { discoverQuickSettingsBindings, friendsOnline, globals, nativeNotificationBindings } from './steam/nativeCore';
+import { createPersona } from './steam/persona';
 import { MenuShell } from './components/MenuShell';
 import { createSocial, type SocialService } from './steam/social';
 import { discoverSocialBindings } from './steam/chatNative';
@@ -57,6 +58,8 @@ export function startMenu(options?: Partial<Options>): Stop {
     let notificationActions: NotificationActions | undefined;
     let performance: ReturnType<typeof createPerformance> | undefined;
     let social: SocialService | undefined;
+    // Your own status on the Social page (steam/persona): subscribed only while the pill is on screen.
+    const persona = createPersona(() => globals().g_FriendsUIApp?.FriendStore as never, () => friendsOnline(globals()));
     let soundtrack: SoundtrackService | undefined;
     let state = defaultMenuState();
     const listeners = new Set<Stop>();
@@ -92,7 +95,7 @@ export function startMenu(options?: Partial<Options>): Stop {
             dispatch({ type: 'pins', value: [...preferences.get().pins] });
             function ConnectedShell() {
                 const snapshot = useSyncExternalStore(subscribe, () => state);
-                return createElement(MenuShell, { state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack });
+                return createElement(MenuShell, { persona, state: snapshot, preferences, dispatch, handoff: request => controller!.handoff(request), close: () => controller?.close(), inputActive, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack });
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();

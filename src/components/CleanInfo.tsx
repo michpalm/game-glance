@@ -13,6 +13,8 @@ export function CleanInfo({ game, hltb, locale, size = null, slots, proton }: { 
 
 /** Identical content/layout for the page and Home's Clean opening card. */
 export function CleanInfoPanel({ stats, className = 'gg-clean-info', prefix = 'gg' }: { stats: CleanStat[]; className?: string; prefix?: string }) {
+    // Every slot None, or none that applies to this game: no panel, rather than an empty pill.
+    if (stats.length === 0) return null;
     return (
         <div className={className}>
             {stats.map((s) => (

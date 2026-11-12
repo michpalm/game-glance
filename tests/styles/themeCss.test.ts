@@ -1,6 +1,6 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
-import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
+import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildInstallSizeCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchArtHostSelector, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
 import { defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
@@ -245,18 +245,45 @@ describe('buildLaunchCss (while a game launches)', () => {
         expect(overlay).toBe('.ln_Container');
         expect(hide).toEqual(['.gg-titleblock', '.gg-hero', '.hd_Box', '.hd_Title', '.hd_Svg', '.ad_Overview', '.rt_Tabs']);
         expect(hide).not.toContain('.hd_Top');
+        // Other plugins' badges beside Steam's header, never the header (the art) or the overlay.
+        const others = launchTargets({ ...withLaunch, details: { ...withLaunch.details, InnerContainer: 'ad_Inner', Header: 'ad_Header' } }).hide;
+        expect(others).toContain('.ad_Inner > :not(.ad_Header):not(.ln_Container):not(:has(.ln_Container))');
+        // And inside the header, all but Steam's image and Home's art.
+        const inHeader = launchTargets({ ...withLaunch, header: { ...withLaunch.header, TopCapsule: 'hd_Top', HeaderBackgroundImage: 'hd_Img' } }).hide;
+        expect(inHeader).toContain('.hd_Top > :not(.hd_Img):not(.gg-launch-art):not(.ln_Container):not(:has(.ln_Container))');
         const css = buildLaunchCss(withLaunch);
         expect(css).toContain(`${hide.join(', ')} { opacity: 0 !important; transition: opacity 200ms ease !important; }`);
     });
     it('lets more of the art through the overlay than its resting dim', () => {
         const css = buildLaunchCss(withLaunch);
-        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; }');
+        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; height: 100vh !important; padding-bottom: 40px !important; box-sizing: border-box !important; }');
+    });
+    it('keeps the dim as the overlay leaves, so the art never brightens before the game starts', () => {
+        const css = buildLaunchCss({ ...withLaunch, launch: { Container: 'ln_Container', FullscreenExitStart: 'ln_XS', FullscreenExitActive: 'ln_XA' } });
+        expect(css).toContain(':root .ln_Container.ln_XS, :root .ln_Container.ln_XA { opacity: 1 !important; transform: none !important; transition: none !important; }');
+        expect(buildLaunchCss(withLaunch)).not.toContain('opacity: 1 !important');
+    });
+    it('after Play on Home, Steam’s page-enter fade is off too, so the page is there at once', () => {
+        const classes = { ...withLaunch, transition: { TopLevelTransition: 'tl_Top', Enter: 'tl_E', EnterActive: 'tl_EA' } };
+        expect(buildLaunchCss(classes, true)).toContain(buildSteamEnterOffCss(classes));
+        // And Steam's header (the art) is shown before it has loaded, with Home's art in it.
+        const withHeader = { ...classes, details: { ...classes.details, Header: 'ad_Header' } };
+        expect(buildLaunchCss(withHeader, true)).toContain(':root .ad_Header { opacity: 1 !important; }');
+        expect(buildLaunchCss(withHeader)).not.toContain('.ad_Header { opacity');
+        expect(buildLaunchCss(classes)).not.toContain('tl_Top');
     });
     it('hides nothing when the overlay class is unknown; Steam classes that are missing are just left out', () => {
         expect(buildLaunchCss(full)).toBe('');
         expect(launchTargets({ ...full, launch: {} })).toEqual({ overlay: null, hide: [] });
         const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined, launch: { Container: 'ln_Container' } };
         expect(launchTargets(none).hide).toEqual(['.gg-titleblock', '.gg-hero']);
+    });
+});
+
+describe('launchArtHostSelector', () => {
+    it('is Steam’s header, where the art is', () => {
+        expect(launchArtHostSelector({ ...full, header: { TopCapsule: 'hd_Top' } })).toBe('.hd_Top');
+        expect(launchArtHostSelector({ ...full, header: {} })).toBeNull();
     });
 });
 
@@ -408,6 +435,27 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
           .gg-featured-text { min-width: 0; }
           .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+          .gg-featured-mark { display: flex; align-items: center; justify-content: center; }
+          .gg-featured-mark > svg { width: 1.7em; height: 1.7em; }
+          .gg-featured-mark[data-tone="platinum"] { color: #b4c7dc; background: rgba(180, 199, 220, 0.16); }
+          .gg-featured-mark[data-tone="gold"] { color: #cfb53b; background: rgba(207, 181, 59, 0.16); }
+          .gg-featured-mark[data-tone="silver"] { color: #a6a6a6; background: rgba(166, 166, 166, 0.16); }
+          .gg-featured-mark[data-tone="bronze"] { color: #cd7f32; background: rgba(205, 127, 50, 0.16); }
+          .gg-featured-mark[data-tone="borked"] { color: #ff0000; background: rgba(255, 0, 0, 0.16); }
+          .gg-featured-text > .gg-value[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-featured-text > .gg-value[data-tone="gold"] { color: #cfb53b; }
+          .gg-featured-text > .gg-value[data-tone="silver"] { color: #a6a6a6; }
+          .gg-featured-text > .gg-value[data-tone="bronze"] { color: #cd7f32; }
+          .gg-featured-text > .gg-value[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-accent { color: var(--gg-accent); }
+          .gg-ladder { display: flex; gap: calc(3 * var(--gg-u)); height: calc(4 * var(--gg-u)); margin-top: calc(8 * var(--gg-u)); }
+          .gg-ladder > span { flex: 1 1 0; border-radius: calc(3 * var(--gg-u)); opacity: 0.22; }
+          .gg-ladder > span[data-lit] { opacity: 1; }
+          .gg-bar.gg-track { position: relative; background: none; overflow: visible; }
+          .gg-track > span { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-right: calc(2 * var(--gg-u)) solid transparent; background-clip: padding-box; border-radius: calc(3 * var(--gg-u)); background-color: rgba(255, 255, 255, 0.22); }
+          .gg-track > span:nth-of-type(2) { background-color: rgba(255, 255, 255, 0.14); }
+          .gg-track > span:nth-of-type(3) { background-color: rgba(255, 255, 255, 0.08); }
+          .gg-track > div { position: absolute; left: 0; top: 0; bottom: 0; min-width: calc(4 * var(--gg-u)); }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -515,6 +563,27 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
           .gg-featured-text { min-width: 0; }
           .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+          .gg-featured-mark { display: flex; align-items: center; justify-content: center; }
+          .gg-featured-mark > svg { width: 1.7em; height: 1.7em; }
+          .gg-featured-mark[data-tone="platinum"] { color: #b4c7dc; background: rgba(180, 199, 220, 0.16); }
+          .gg-featured-mark[data-tone="gold"] { color: #cfb53b; background: rgba(207, 181, 59, 0.16); }
+          .gg-featured-mark[data-tone="silver"] { color: #a6a6a6; background: rgba(166, 166, 166, 0.16); }
+          .gg-featured-mark[data-tone="bronze"] { color: #cd7f32; background: rgba(205, 127, 50, 0.16); }
+          .gg-featured-mark[data-tone="borked"] { color: #ff0000; background: rgba(255, 0, 0, 0.16); }
+          .gg-featured-text > .gg-value[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-featured-text > .gg-value[data-tone="gold"] { color: #cfb53b; }
+          .gg-featured-text > .gg-value[data-tone="silver"] { color: #a6a6a6; }
+          .gg-featured-text > .gg-value[data-tone="bronze"] { color: #cd7f32; }
+          .gg-featured-text > .gg-value[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-accent { color: var(--gg-accent); }
+          .gg-ladder { display: flex; gap: calc(3 * var(--gg-u)); height: calc(4 * var(--gg-u)); margin-top: calc(8 * var(--gg-u)); }
+          .gg-ladder > span { flex: 1 1 0; border-radius: calc(3 * var(--gg-u)); opacity: 0.22; }
+          .gg-ladder > span[data-lit] { opacity: 1; }
+          .gg-bar.gg-track { position: relative; background: none; overflow: visible; }
+          .gg-track > span { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-right: calc(2 * var(--gg-u)) solid transparent; background-clip: padding-box; border-radius: calc(3 * var(--gg-u)); background-color: rgba(255, 255, 255, 0.22); }
+          .gg-track > span:nth-of-type(2) { background-color: rgba(255, 255, 255, 0.14); }
+          .gg-track > span:nth-of-type(3) { background-color: rgba(255, 255, 255, 0.08); }
+          .gg-track > div { position: absolute; left: 0; top: 0; bottom: 0; min-width: calc(4 * var(--gg-u)); }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -537,6 +606,29 @@ describe('game page grammar (VDL Section 7)', () => {
             const body = rulesMatching(css, new RegExp(`^\\${sel}$`)).join(' ');
             expect(body, sel).toContain('border-radius: calc(12 * var(--gg-d))'); expect(body, sel).not.toContain('999px');
         }
+    });
+    it('the store pill holder stays in Steam\'s 3D scene and unglazed; its face carries the glass, as the family pill does', () => {
+        const css = buildThemeCss(full, { restyle: true }).slice(buildThemeCss(full).length);
+        const holder = rulesMatching(css, /^\.gg-pill\.gg-store-selectable$/).join(' ');
+        expect(holder).toContain('transform-style: preserve-3d'); expect(holder).toContain('backdrop-filter: none');
+        const face = rulesMatching(css, /^\.gg-store-face$/).join(' ');
+        expect(face).toContain('backdrop-filter'); expect(face).toContain('border-radius: calc(12 * var(--gg-d))');
+        expect(face).not.toContain('pointer-events: auto');
+    });
+    it("the player count pill: the family pill's look, left of the family pill in the row, right-aligned above it when it does not fit", () => {
+        const css = buildThemeCss(full, { restyle: true }).slice(buildThemeCss(full).length);
+        const pill = rulesMatching(css, /^\.gg-players$/).join(' ');
+        expect(pill).toContain('position: absolute'); expect(pill).toContain('right: calc(100% + calc(10 * var(--gg-d)))');
+        expect(pill).toContain('border-radius: calc(12 * var(--gg-d))'); expect(pill).toContain('backdrop-filter');
+        expect(rulesMatching(css, /^\.gg-pill:has\(> \.gg-family\) > \.gg-players$/).join(' ')).toContain('right: calc(100% + var(--gg-family-w, 0px) + calc(20 * var(--gg-d)))');
+        expect(rulesMatching(css, /^\.gg-pill-bare > \.gg-players$/).join(' ')).toContain('right: 0');
+        expect(rulesMatching(css, /^\.gg-pill-bare:has\(> \.gg-family\) > \.gg-players$/).join(' ')).toContain('right: calc(var(--gg-family-w, 0px) + calc(10 * var(--gg-d)))');
+        const above = rulesMatching(css, /^\.gg-pill\[data-players="above"\] > \.gg-players$/).join(' ');
+        for (const decl of ['right: 0', 'top: auto', 'bottom: calc(100% + calc(10 * var(--gg-d)))', 'transform: none']) expect(above, decl).toContain(decl);
+        const dot = rulesMatching(css, /^\.gg-players-dot$/).join(' ');
+        expect(dot).toContain('#5fd38d'); expect(dot).toContain('0.55em');
+        expect(rulesMatching(css, /^\.gg-native-playcount$/).join(' ')).toContain('visibility: hidden !important');
+        expect(rulesMatching(css, /^\.gg-players-choice$/).join(' ')).toContain('pointer-events: auto');
     });
     it("the 1.1.1 page's Unifideck focus stays in its own units; the restyle swaps it for the menu ring", () => {
         const plain = rulesMatching(buildUnifideckCss(full), /unifideck-play-btn\.gpfocus/).join(' ');
@@ -664,6 +756,15 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         const box = rulesFor(fit, '.hd_Top');
         expect(box).toContain('isolation: isolate !important;');
         expect(box).toContain('overflow: clip !important;');
+    });
+    it("hero Expanded: Steam's header image covers the header's top 70%, centred, fading into the same art fill", () => {
+        const expanded = buildThemeCss(steam, { restyle: true, heroFit: 'expanded' });
+        const img = rulesFor(expanded, '.hd_Top img:not([src*="_blur"])');
+        expect(img).toContain('height: 70% !important; object-fit: cover !important; object-position: center !important;');
+        expect(img).toContain('-webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%) !important;');
+        expect(img).not.toContain('50% 30%');
+        expect(rulesFor(expanded, '.hd_Top::before')).toContain('background: var(--gg-hero-fill, none) center / cover no-repeat !important;');
+        expect(rulesFor(expanded, '.hd_Top canvas')).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
     });
     it('Fit also gates Steam canvas blur and its reflection with the full-hero readiness state', () => {
         const selector = '.hd_Top canvas';
@@ -933,7 +1034,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.gg-card')).toContain('border-radius: calc(16 * var(--gg-d))');
         expect(rulesFor(restyled, '.gg-value')).toContain('font-size: calc(30 * var(--gg-d))');
         expect(rulesFor(restyled, '.gg-bar')).toContain('height: calc(6 * var(--gg-d))');
-        expect(restyled).toContain(':root { --gg-side: calc(56 * var(--gg-d)); }');
+        expect(restyled).toContain(':root { --gg-side: calc(28 * var(--gg-d)); }');
         expect(rulesFor(restyled, '.rt_Play')).toContain('padding-left: var(--gg-side) !important');
     });
     it('restyled Play row matches the handoff: pill 340x60 at H-386, cards at H-290, circles 60, gap 14', () => {
@@ -956,9 +1057,8 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_Menu svg')).toContain('width: calc(24 * var(--gg-d)) !important');
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('top: 0 !important');
     });
-    it('featured None: the cards row has one column and the info card loses its width cap', () => {
-        expect(rulesFor(restyled, '.gg-cards.gg-cards-single')).toContain('grid-template-columns: minmax(0, 1fr)');
-        expect(rulesFor(restyled, '.gg-cards.gg-cards-single > .gg-card')).toContain('max-width: none');
+    it('featured None keeps the two-column row: no rule widens the info card', () => {
+        expect(restyled).not.toContain('gg-cards-single');
         // The featured cards share HowLongToBeat's column gap; the new ones end long text in an ellipsis.
         expect(rulesFor(restyled, '.gg-featured .gg-stats')).toContain(`gap: calc(${PAGE_LAYOUT.stats.colGapHltb} * var(--gg-d))`);
         expect(rulesFor(restyled, '.gg-featured:not(.gg-hltb) .gg-caption, .gg-featured:not(.gg-hltb) .gg-muted')).toContain('text-overflow: ellipsis');
@@ -971,17 +1071,32 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div .gg-value')).toContain('color: inherit');
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div:first-child .gg-value')).toContain('color: var(--glance-accent-text, var(--gg-accent))');
     });
-    it("restyled Play time card: its Total is HowLongToBeat Main's accent (the legible one the open's accent copy draws)", () => {
-        const body = (sel: string) => rulesFor(restyled, sel).slice(rulesFor(restyled, sel).indexOf('{'));
-        expect(body('.gg-featured-played .gg-stats > div:first-child .gg-value')).toBe(body('.gg-hltb .gg-stats > div:first-child .gg-value'));
-        expect(rulesFor(restyled, '.gg-featured-played .gg-stats > div:first-child .gg-value')).toContain('color: var(--glance-accent-text, var(--gg-accent)); transition: color');
+    it("restyled Play time card: its hours are HowLongToBeat Main's accent (the legible one the open's accent copy draws), no column is", () => {
+        expect(rulesFor(restyled, '.gg-featured-accent')).toContain('color: var(--glance-accent-text, var(--gg-accent)); transition: color');
+        expect(restyled).not.toContain('.gg-featured-played .gg-stats > div:first-child');
+    });
+    it('the dense card (tile row and columns) shrinks the tile and the column values to keep the card height', () => {
+        expect(rulesFor(restyled, '.gg-featured-dense .gg-featured-icon')).toContain('height: 2.2em');
+        expect(rulesFor(restyled, '.gg-featured-dense .gg-stats > [data-stat] .gg-value')).toContain('font-size: calc(18 * var(--gg-d))');
+    });
+    it("ProtonDB's tile, headline and ladder take the rating's colour; the ladder lights one step", () => {
+        expect(rulesFor(restyled, '.gg-featured-mark[data-tone="gold"]')).toContain('color: #cfb53b; background: rgba(207, 181, 59, 0.16)');
+        expect(rulesFor(restyled, '.gg-featured-text > .gg-value[data-tone="gold"]')).toContain('color: #cfb53b');
+        expect(rulesFor(restyled, '.gg-ladder > span[data-lit]')).toContain('opacity: 1');
+        expect(rulesFor(restyled, '.gg-ladder, .gg-track > div')).toContain(`height: calc(${PAGE_LAYOUT.cardText.bar} * var(--gg-d))`);
+    });
+    it("HowLongToBeat's track: stretches fainter the further, the fill on top", () => {
+        expect(rulesFor(restyled, '.gg-bar.gg-track')).toContain('background: none');
+        expect(rulesFor(restyled, '.gg-track > span:nth-of-type(3)')).toContain('rgba(255, 255, 255, 0.08)');
+        expect(rulesFor(restyled, '.gg-track > div')).toContain('position: absolute');
     });
     it('restyled layout hides the chevron hint and keeps the source pill, expanded, beside the Play row', () => {
         expect(rulesFor(restyled, '.gg-more')).toContain('display: none');
         expect(buildThemeCss(steam)).not.toContain('.gg-more { display: none');
         const pill = rulesFor(restyled, '.gg-pill');
         expect(pill).toContain('font-size: calc(15 * var(--gg-d))');
-        expect(pill).toContain('top: calc(-1 * calc(82 * var(--gg-d)))');
+        // Its bottom on the Play row's bottom line: 36 (the row's gap to the cards) + 32 (the pill's height).
+        expect(pill).toContain('top: calc(-1 * calc(68 * var(--gg-d)))');
         expect(pill).not.toContain('display: none');
         // One definition shared with Spotlight Home's pill.
         expect(pill).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
@@ -1009,26 +1124,27 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).not.toContain('top: calc(120 * var(--gg-d))');
         expect(restyled).not.toMatch(/@media[^{]*\{ \.\w+ > \.gg-titleblock/);
     });
-    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck keep 56', () => {
-        expect(restyled).toMatch(/:root \{ --gg-side: calc\(56 \* var\(--gg-d\)\); \}/);
+    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck get 28, on the status bar\'s end', () => {
+        expect(restyled).toMatch(/:root \{ --gg-side: calc\(28 \* var\(--gg-d\)\); \}/);
         expect(restyled).toMatch(/@media \(min-width: 1408px\) and \(min-height: 793px\) \{ :root \{ --gg-side: calc\(24 \* var\(--gg-d\)\); \} \}/);
         // the media query comes after the default, so on a TV it wins; the thresholds are screenScale's 1.7x the handheld's 828x466
-        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(56 * var(--gg-d))'));
+        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(28 * var(--gg-d))'));
         expect(Math.ceil(828 * 1.7)).toBe(1408);
         expect(Math.ceil(466 * 1.7)).toBe(793);
     });
     it('restyle rules do nothing when their Steam classes are missing and never touch layout', () => {
-        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length).replace(/\.gg-native-store-switcher \{[^}]*\}/, '');
+        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length).replace(/\.gg-native-store-switcher \{[^}]*\}/, '').replace(/\.gg-native-playcount \{[^}]*\}/, '');
 
         // No Steam classes at all: only our own elements and variables, no broken selectors.
         const none = extra({ header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined });
         expect(none).not.toContain('undefined');
         expect(none).not.toMatch(/(^|[\s,])\.(\s|\{|,)/m);
-        expect(none.replace(/\.gg-native-store-switcher \{[^}]*\}/, '')).not.toContain('visibility: hidden');
+        // (other plugins' controls our pills stand in for are kept in the page but hidden: Unifideck's switch, PlayCount's badge)
+        expect(none.replace(/\.gg-native-store-switcher \{[^}]*\}/, '').replace(/\.gg-native-playcount \{[^}]*\}/, '')).not.toContain('visibility: hidden');
         expect(none).not.toContain('::after');
         expect(none).not.toContain('--gg-side:');
         // (our own family pill is positioned inside our own store pill; nothing of Steam's is)
-        expect(none.replace(/\.gg-family \{[^}]*\}/, '')).not.toContain('position: absolute');
+        expect(none.replace(/\.gg-family \{[^}]*\}/g, '').replace(/\.gg-players \{[^}]*\}/g, '')).not.toContain('position: absolute');
         expect(none).toContain('.gg-title {');
         expect(none).toContain('.gg-eyebrow {');
 
@@ -1106,6 +1222,26 @@ describe('buildAccentCss', () => {
         expect(buildAccentCss(full, 'red; } body { display: none')).toBe('');
         expect(buildAccentCss(full, '')).toBe('');
         expect(buildAccentCss({ ...full, details: undefined }, '#f39ac0')).toBe('');
+    });
+});
+
+describe('buildInstallSizeCss (Space required at the Install pill)', () => {
+    it("shows the size at the main button's right end, faded, as a style (no element in Steam's button)", () => {
+        const css = buildInstallSizeCss(full, '2.3 GB');
+        expect(css).toContain('.rt_PlayBtn [role="button"]:first-child { position: relative !important; }');
+        // The label's ::after: the button's own is Steam's.
+        expect(css).toContain('.rt_PlayBtn [role="button"]:first-child > div::after {');
+        expect(css).toContain('content: "2.3 GB"');
+        expect(css).toContain(`right: calc(${PAGE_LAYOUT.pill.padX} * var(--gg-d))`);
+        expect(css).toContain('opacity: 0.72');
+    });
+    it('is empty without a size or without the pill class', () => {
+        expect(buildInstallSizeCss(full, null)).toBe('');
+        expect(buildInstallSizeCss(full, '  ')).toBe('');
+        expect(buildInstallSizeCss({ ...full, root: undefined }, '2.3 GB')).toBe('');
+    });
+    it('cannot end the CSS string early', () => {
+        expect(buildInstallSizeCss(full, '2 GB"; } x { color: red')).toContain('content: "2 GB; } x { color: red"');
     });
 });
 
@@ -1194,6 +1330,10 @@ describe('page shading (spec 2026-10-30-page-shading)', () => {
 
 describe('the page arriving after the open transition', () => {
     const play = full.play as Record<string, string>;
+    it("the player pill arrives unless Home's moved in (extra.players)", () => {
+        expect(buildArrivingCss(full, 'spotlight', 'parts')).toContain('.gg-players');
+        expect(buildArrivingCss(full, 'spotlight', 'parts', false, { players: true })).not.toContain('.gg-players');
+    });
     it("'parts' hides only what Home had no counterpart for (Spotlight)", () => {
         const css = buildArrivingCss(full, 'spotlight', 'parts');
         for (const sel of ['.gg-desc', '.gg-hltb > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-caption', '.gg-muted', '.gg-hltb .gg-bar', '.gg-family', '[data-stat="size"]']) {

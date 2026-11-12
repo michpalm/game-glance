@@ -16,6 +16,6 @@ describe('orderBySlots', () => {
 
 describe('pageInfoStats', () => {
     it('only the three stat slots', () => {
-        expect(pageInfoStats(k(['played', 'size', 'achievements', 'hltb']), DEFAULT_SLOTS).map((i) => i.key)).toEqual(['played', 'size', 'achievements']);
+        expect(pageInfoStats(k(['played', 'size', 'achievements', 'hltb']), DEFAULT_SLOTS).map((i) => i.key)).toEqual(['played', 'achievements']);
     });
 });

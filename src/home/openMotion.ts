@@ -134,6 +134,16 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // A game on more than one device: Home's "Play from" segment, at the pill's right end (origin: its right edge and
     // centre line), moves with the pill's growth and grows onto the page's segment (its width, the page pill's height).
     out['--gho-play-arrow'] = `${translate((to.w - home.play.w) / s, 0)} scale(${k((PAGE_LAYOUT.playArrow.w * pf.x) / HOME_PILL.arrow)}, ${k(to.h / home.play.h)})`;
+    // An Install pill's size (homeCss .gh-btn-size): drawn at the page's exact font size for the whole open, starting
+    // shrunk to Home's (--gho-play-size-from) and ending at scale 1, so its last frame is text laid out at the page's size,
+    // as the page draws it. Scaled up from Home's 16 px instead, its digits landed about a device px lower than the page's
+    // and stepped up at the hand-over (Deck). Its right edge moves with the pill's right end, from Home's inset (inside its
+    // border) to the page's; with a "Play from" arrow, to just before the arrow's segment on both.
+    const sizeFont = (pill.sizeFont * pf.x * d) / s;
+    out['--gho-play-size-font'] = font(sizeFont);
+    out['--gho-play-size-from'] = `scale(${k(HOME_PILL.sizeFont / sizeFont)})`;
+    out['--gho-play-size'] = translate((to.w - home.play.w) / s - (pill.padX * pf.x - homeInset), 0);
+    out['--gho-play-size-arrow'] = translate((to.w - home.play.w) / s - ((pill.padX + PAGE_LAYOUT.playArrow.w) * pf.x - (HOME_PILL.arrow + HOME_PILL.padX)), 0);
     /**
      * The crisp edge of page circle `slot` (.gh-open-cring), outside the canvas in the root's px: Home's circle draws its
      * 1 canvas px edge scaled (1.26 device px, soft, on the Ally), the page's is 1 whole device px. `source`: Home's circle

@@ -37,6 +37,23 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu h3{font-size:var(--gg-type-label);font-weight:var(--gg-weight-heading);letter-spacing:.16em;text-transform:uppercase;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);margin:12px 0 4px}
 .gg-menu p{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font:inherit;font-size:var(--gg-type-body);line-height:1.4}
 .gg-menu-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 12px}.gg-menu-heading h2{margin:0}.gg-menu-heading>span{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
+.gg-menu-picker-anchor,.gg-menu-picker-host{position:relative;min-width:0}
+.gg-menu-heading>.gg-menu-picker-anchor{margin-right:auto}
+.gg-menu .gg-menu-picker{display:flex;align-items:center;gap:8px;min-width:0;box-sizing:border-box;padding:6px 12px;border:1px solid var(--gg-menu-detail-edge);border-radius:12px;background:var(--gg-glass);color:var(--gg-text);font-weight:600;cursor:pointer;transition:background var(--gg-fast),box-shadow var(--gg-fast)}
+:where(html:not([data-gg-mouse])) .gg-menu .gg-menu-picker:is(.gpfocus,:focus-visible){${focusRing('menu')};background:var(--gg-glass-strong)}
+.gg-menu-picker-label{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-weight:500;margin-right:auto}
+.gg-menu-picker-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gg-menu-picker-chevron{flex:none;width:.75em;height:.75em;opacity:.8}
+.gg-menu-picker-dot{flex:none;width:.6em;height:.6em;border-radius:50%}
+.gg-menu-picker-dot[data-dot=ring]{box-sizing:border-box;border:2px solid #9aa4b1;background:transparent}
+.gg-menu .gg-menu-picker-list{position:absolute;left:0;top:calc(100% + 6px);z-index:2;min-width:100%;box-sizing:border-box;padding:6px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--gg-menu-detail-edge);border-radius:var(--gg-r-card);background:rgb(24,28,36);box-shadow:0 10px 30px rgba(0,0,0,.55)}
+.gg-menu-picker-option{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;color:var(--gg-text);font-weight:600;white-space:normal;cursor:pointer}
+.gg-menu-picker-option[data-selected]{background:rgba(255,255,255,.14)}
+.gg-menu-picker-option[data-selected]::after{content:'✓';margin-left:auto}
+:where(html:not([data-gg-mouse])) .gg-menu .gg-menu-picker-option:is(.gpfocus,:focus-visible){${focusRing('menu')}}
+.gg-menu-picker-option-text{display:flex;flex-direction:column;min-width:0}
+.gg-menu-picker-sub{font-size:.8em;font-weight:500;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu-device{min-width:0}.gg-menu-device .gg-menu-picker{width:100%}.gg-menu-device .gg-menu-picker-text{margin-left:auto}
 .gg-menu .gg-notifications>.gg-menu-heading,.gg-menu .gg-social>.gg-menu-heading{flex:none;margin:0}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .gg-menu .gg-menu-grid.gg-menu-grid-navigate{grid-template-columns:repeat(4,minmax(0,1fr))}

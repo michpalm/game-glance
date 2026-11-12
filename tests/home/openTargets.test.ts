@@ -66,14 +66,17 @@ for (const look of ['spotlight', 'clean'] as const) {
             const r = f.rects;
             // The fixtures' games had a bar (captions "7.3 h left in main story", "7.2 h left in main story").
             const extras = { columns: extraColumns(f), bar: true };
-            const t = pageTargets(look, { ...f.screen, grow: 1 }, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
+            // Recorded with the handheld's old 56 side inset (a TV's 24 is unchanged).
+            const t = pageTargets(look, { ...f.screen, grow: 1, side: size === '828x466' ? 56 : undefined }, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
             nearBox(t.play, r.play, 'play');
             // The circles the page drew (three for an installed game, two before it is installed).
             const circles = Object.keys(r).filter((k) => /^circle\d$/.test(k));
             expect(circles.length).toBeGreaterThanOrEqual(2);
             for (let i = 0; i < circles.length; i++) nearBox(t.circles[i], r[`circle${i}`], `circle${i}`);
             near(t.store.x, r.store.x, 'store.x');
-            near(t.store.y, r.store.y, 'store.y');
+            // Recorded with the pill centred on the Play row (82 above the cards); it now sits on the row's bottom line (68).
+            const pillMoved = look === 'spotlight' ? (82 - PAGE_LAYOUT.storePillTop) * t.d : 0;
+            near(t.store.y, r.store.y + pillMoved, 'store.y');
             // The title block grows upward: its eyebrow sits at the bottom, the title above it.
             near(t.eyebrowBottomLeft.x, r.eyebrow.x, 'eyebrow x');
             near(t.eyebrowBottomLeft.y, r.eyebrow.y + r.eyebrow.h, 'eyebrow bottom');
@@ -204,7 +207,7 @@ describe('pageTargets at a fractional pixel ratio', () => {
     // The Ally handheld (2.32 device px per CSS px), measured on the device: Ori's page in the Spotlight look, then with a
     // 1 px ring (drawn 2 device px, 0.862 CSS px). The ring is now 1 d unit (0.575 CSS px), drawn 1 device px (0.431):
     // everything inside the cards sits 0.431 px further up and left, and each card is 0.862 px narrower and shorter.
-    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1 }; // recorded before Home's default growth
+    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1, side: 56 }; // recorded before Home's default growth and the 28 side inset
     const d = baseCanvas(screen.width, screen.height).scale;
     // Measured: rings of 2 / 2.32 inside widths that allowed 2 px for them. Now: 1 / 2.32 inside widths allowing 2 d units.
     const was = 2 / 2.32;
@@ -304,15 +307,21 @@ describe('pageTargets follows the Game info slots (Spotlight)', () => {
         expect(inside(t.stats.hltb!.value, t.shells[0])).toBe(true);
         expect(t.stats.hltb!.label.x).toBeLessThan(t.stats.played!.label.x);
     });
-    it('nothing featured: one card spanning the row', () => {
+    it('nothing featured: the info card alone, at the width it has beside a featured card', () => {
         const t = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, null);
+        const withFeatured = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, 'hltb');
         const d = 1500 / 1440;
         const side = PAGE_LAYOUT.side.tv * d;
         expect(t.featured).toBeNull();
         expect(t.shells).toHaveLength(1);
-        expect(Math.abs(t.shells[0].w - (1500 - 2 * side))).toBeLessThanOrEqual(1);
+        expect(t.shells[0]).toEqual(withFeatured.shells[0]);
         expect(t.shells[0].x).toBeCloseTo(side, 0);
         for (const key of ['played', 'achievements', 'protondb'] as const) expect(inside(t.stats[key]!.value, t.shells[0]), key).toBe(true);
+    });
+    it('Clean with no stat to show: no panel to grow into', () => {
+        const t = pageTargets('clean', screen, [], measure, store);
+        expect(t.shells).toEqual([]);
+        expect(t.cards).toEqual([]);
     });
     it('the default is HowLongToBeat featured', () => {
         expect(pageTargets('spotlight', screen, stats, measure, store).featured).toBe('hltb');

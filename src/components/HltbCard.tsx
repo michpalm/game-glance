@@ -53,7 +53,7 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false, onPre
         );
     }
 
-    const view = hltbFoundView(result.times, playedMinutes, locale, restyle);
+    const view = hltbFoundView(result.times, playedMinutes, locale, restyle, result.rating ?? null);
     return (
         <CardShell className={shell} onPress={onPress}>
             {header}
@@ -65,7 +65,18 @@ export function HltbCard({ result, playedMinutes, locale, restyle = false, onPre
                     </div>
                 ))}
             </div>
-            {view.bar !== null && <div className={`${prefix}-bar`}><div style={{ width: `${view.bar}%` }} /></div>}
+            {view.track ? (
+                // The whole game: one stretch per time (themeCss .gg-track), your hours as the fill along all of it.
+                <div className={`${prefix}-bar ${prefix}-track`}>
+                    {view.track.ends.map((end, i) => {
+                        const start = i === 0 ? 0 : view.track!.ends[i - 1];
+                        return <span key={i} style={{ left: `${start}%`, width: `${end - start}%` }} />;
+                    })}
+                    {view.bar !== null && view.bar > 0 && <div style={{ width: `${view.bar}%` }} />}
+                </div>
+            ) : (
+                view.bar !== null && <div className={`${prefix}-bar`}><div style={{ width: `${view.bar}%` }} /></div>
+            )}
             {view.caption !== null && <div className={`${prefix}-caption`}>{view.caption}</div>}
         </CardShell>
     );

@@ -1,7 +1,8 @@
 import { HltbResult } from '../data/hltb';
 import { ProtonResult } from '../data/protondb';
 import { ProtonMark } from '../home/ProtonMark';
-import { AchievementFacts, achievementsView, FeaturedView, playTimeView, protonView } from '../logic/featuredViews';
+import { AchievementFacts, achievementsView, FeaturedView, PlayFacts, playTimeView, protonView, SteamCompat } from '../logic/featuredViews';
+import { PROTON_COLOURS } from '../logic/protonTier';
 import { FeaturedId } from '../logic/infoSlots';
 import { CardShell } from './CardShell';
 import { HltbCard } from './HltbCard';
@@ -17,7 +18,9 @@ interface Props {
     onPress?(card: HTMLElement): void;
     proton: ProtonResult | undefined;
     achievements: AchievementFacts | undefined;
-    playTime: { minutes: number; twoWeeks: number; lastPlayed: number };
+    playTime: PlayFacts;
+    /** Steam's Deck rating and compatibility tool, for ProtonDB's caption. */
+    compat?: SteamCompat;
     /** Unix seconds. */
     now: number;
 }
@@ -30,12 +33,13 @@ export function FeaturedCard(p: Props) {
         return <HltbCard prefix={prefix} result={p.hltb} playedMinutes={p.playedMinutes} locale={p.locale} restyle={p.restyle} onPress={p.onPress} />;
     }
     const view: FeaturedView =
-        p.featured === 'protondb' ? protonView(p.proton)
+        p.featured === 'protondb' ? protonView(p.proton, p.compat)
         : p.featured === 'achievements' ? achievementsView(p.achievements, p.now, p.locale)
         : playTimeView(p.playTime, p.now, p.locale);
 
     return (
-        <CardShell className={`${prefix}-card ${prefix}-featured ${prefix}-featured-${p.featured}`} onPress={p.onPress}>
+        // dense: a tile row and columns together, which fit the card's height only with the smaller tile and values.
+        <CardShell className={`${prefix}-card ${prefix}-featured ${prefix}-featured-${p.featured}${view.icon && view.columns.length > 0 ? ` ${prefix}-featured-dense` : ''}`} onPress={p.onPress}>
             <div className={`${prefix}-label`}>{view.title}</div>
             {view.empty !== undefined && <div className={`${prefix}-muted`}>{view.empty}</div>}
             {view.loading && (
@@ -44,10 +48,21 @@ export function FeaturedCard(p: Props) {
             {view.icon && (
                 <div className={`${prefix}-stats`}>
                     {view.icon.src && <img src={view.icon.src} className={`${prefix}-featured-icon`} alt="" />}
+                    {view.icon.tone && (
+                        <div className={`${prefix}-featured-icon ${prefix}-featured-mark`} data-tone={view.icon.tone} aria-hidden="true"><ProtonMark /></div>
+                    )}
                     <div className={`${prefix}-featured-text`}>
                         <div className={`${prefix}-label`}>{view.icon.label}</div>
-                        <div className={`${prefix}-value`}>{view.icon.value}</div>
+                        <div className={view.icon.accent ? `${prefix}-value ${prefix}-featured-accent` : `${prefix}-value`} data-tone={view.icon.tone}>{view.icon.value}</div>
                     </div>
+                </div>
+            )}
+            {view.ladder && (
+                // ProtonDB's scale, worst first: every step in its own colour, only the rating's lit (themeCss .gg-ladder).
+                <div className={`${prefix}-ladder`} aria-hidden="true">
+                    {view.ladder.steps.map((tier, i) => (
+                        <span key={tier} style={{ background: PROTON_COLOURS[tier] }} data-lit={i === view.ladder!.at ? '' : undefined} />
+                    ))}
                 </div>
             )}
             {view.columns.length > 0 && (

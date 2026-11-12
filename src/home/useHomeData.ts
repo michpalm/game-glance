@@ -20,7 +20,7 @@ import { FAST_CYCLE_MS, SETTLE_WIDEN_MS } from './fastCycle';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { usesStat } from '../logic/infoSlots';
-import { AchievementFacts, featuredProton, pageAchievementFacts } from '../logic/featuredViews';
+import { AchievementFacts, pageAchievementFacts, PlayFacts, playFactsOf, SteamCompat, steamCompatOf } from '../logic/featuredViews';
 import type { ProtonResult } from '../data/protondb';
 import { accentFor, DEFAULT_ACCENT } from './accent';
 import { accentMemo } from './accentMemo';
@@ -40,7 +40,7 @@ import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './col
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
-import { memoPlaytime, memoSpaceRequired, noteDetails, withKnownAchievements } from './detailsMemo';
+import { knownAchievementFacts, memoPlaytime, noteDetails, spaceRequiredOf, withKnownAchievements } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
 import { useWarmup, useWarmVersion } from './useWarmup';
 import { forgetHltb, peekDescription, peekHltb, rememberDescription, rememberHltb } from './warmup';
@@ -60,7 +60,8 @@ export interface HomeGame extends RecentGame {
 export interface FeaturedFacts {
     proton: ProtonResult | undefined;
     achievements: AchievementFacts | undefined;
-    playTime: { minutes: number; twoWeeks: number; lastPlayed: number };
+    playTime: PlayFacts;
+    compat: SteamCompat;
 }
 
 export interface HomeData {
@@ -90,6 +91,8 @@ export interface HomeData {
      * cards Home morphs into (components/FeaturedCard); null without a focused game. Achievements' only when featured.
      */
     featuredFacts: FeaturedFacts | null;
+    /** The space the focused game needs to install (Steam's details, else the memo), for the Install pill; undefined when unknown. */
+    spaceRequired: number | undefined;
     /** The focused game's description in Steam's language, once fetched (null: none, or the Clean look, which shows none). */
     description: string | null;
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
@@ -670,11 +673,11 @@ export function useHomeData(focusIndex = 0): HomeData {
         return result;
     });
     const hltb = warmedHltb ?? liveHltb;
-    // The game's ProtonDB rating, once the selection rests (Steam games only: ProtonDB goes by Steam's app id). Kept for
-    // the session, so coming back to a game shows its chip at once.
+    // The game's ProtonDB rating, once the selection rests (a shortcut's by the Steam game of its name: data/protonGame).
+    // Kept for the session, so coming back to a game shows its chip at once.
     // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
     const protonOn = usesStat(infoSlots, 'protondb');
-    const proton = useProton(focused?.appId ?? null, protonOn && !info?.isShortcut, !!info && resting !== null);
+    const proton = useProton(focused ? { appId: focused.appId, name: info?.name || focused.name, isShortcut: info?.isShortcut ?? false } : null, protonOn, !!info && resting !== null);
     // The selected game's description once it rests, for the open transition (Home draws it as it turns into the page's
     // Spotlight look; the Clean look has none). Kept in the session memo, which the page reads on its first frame.
     const warmedDescription = focused && lang ? peekDescription(focused.appId, lang) : undefined;
@@ -723,8 +726,6 @@ export function useHomeData(focusIndex = 0): HomeData {
             lastPlayed: merged.lastPlayed,
             hltbMainHours: hltb?.status === 'found' ? hltb.times.main : null,
             addedAt: isNew ? focused.addedAt : undefined,
-            installed: focused.installed,
-            spaceBytes: info?.isShortcut ? null : (memoSpaceRequired(focused.appId) ?? null),
             protonTier: proton?.status === 'found' ? proton.tier : null,
             slots: infoSlots,
         }, nowSeconds, locale), []);
@@ -733,13 +734,11 @@ export function useHomeData(focusIndex = 0): HomeData {
     const featuredFacts = useMemo((): FeaturedFacts | null => {
         if (!focused || !info) return null;
         return guarded('featured facts', () => ({
-            proton: featuredProton(info.isShortcut, proton),
-            achievements: infoSlots.featured === 'achievements' ? pageAchievementFacts(steam.appDetailsStore?.GetAppDetails?.(focused.appId), info.isShortcut) : undefined,
-            playTime: {
-                minutes: playedMinutes,
-                twoWeeks: Number(overview(focused.appId)?.minutes_playtime_last_two_weeks ?? 0) || 0,
-                lastPlayed: mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, launcher).lastPlayed,
-            },
+            proton,
+            achievements: infoSlots.featured === 'achievements' ? knownAchievementFacts(focused.appId, pageAchievementFacts(steam.appDetailsStore?.GetAppDetails?.(focused.appId), info.isShortcut)) : undefined,
+            playTime: playFactsOf(focused.appId, overview(focused.appId), { minutes: playedMinutes, lastPlayed: mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, launcher).lastPlayed }, info.isShortcut),
+            // The app details only when ProtonDB is featured (its caption names Steam's compatibility tool).
+            compat: steamCompatOf(overview(focused.appId), infoSlots.featured === 'protondb' ? steam.appDetailsStore?.GetAppDetails?.(focused.appId) : undefined, info.isShortcut),
         }), null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focused, info, proton, playedMinutes, launcher, detailsVersion, infoSlots]);
@@ -777,5 +776,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    // Read on each render (detailsVersion re-renders when Steam loads the details): a shortcut has none.
+    const spaceRequired = focused && !info?.isShortcut ? guarded('space required', () => spaceRequiredOf(focused.appId, steam.appDetailsStore?.GetAppDetails?.(focused.appId)), undefined) : undefined;
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
 }

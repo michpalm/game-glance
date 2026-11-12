@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { heroFitVars, removeOwnVars } from '../../src/components/GameHero';
-import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
+import { EXPANDED_MASK, STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
 
 describe("heroFitVars (the page's art fill and fade, set on the page's document)", () => {
     const src = 'https://example/hero.jpg';
@@ -9,6 +9,9 @@ describe("heroFitVars (the page's art fill and fade, set on the page's document)
     });
     it("Fit before the image's size is known: the standard hero shape", () => {
         expect(heroFitVars('fit', src, null, 16 / 9)['--gg-hero-mask']).toBe(fitMask(STANDARD_HERO_ASPECT, 16 / 9));
+    });
+    it('Expanded: the same fill, and its fade whatever the art', () => {
+        expect(heroFitVars('expanded', src, 1.2, 16 / 9)).toEqual({ '--gg-hero-fill': `url("${src}")`, '--gg-hero-mask': EXPANDED_MASK });
     });
     it('Fill, or no header image: nothing', () => {
         expect(heroFitVars('fill', src, 3.1, 16 / 9)).toEqual({});

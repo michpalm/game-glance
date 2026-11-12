@@ -1,12 +1,14 @@
 /**
  * Which game stats show on Home and the game page (docs/superpowers/specs/2026-11-10-game-info-slots): three ordered stat
  * slots and one featured slot. Each slot holds a stat or nothing. Nothing shows twice: picking a stat another slot holds
- * swaps the two slots. Space required never goes to the featured slot. Pure.
+ * swaps the two slots. Space required is not a stat: it shows at the Install button's end (themeCss installSizeCss, Home's
+ * pill). Pure.
  */
 
-export type StatId = 'played' | 'size' | 'achievements' | 'protondb' | 'hltb';
+export type StatId = 'played' | 'achievements' | 'protondb' | 'hltb';
 
-export type FeaturedId = Exclude<StatId, 'size'>;
+/** Every stat can be featured. */
+export type FeaturedId = StatId;
 
 export type SlotIndex = 0 | 1 | 2 | 'featured';
 
@@ -19,16 +21,16 @@ export interface GameInfoSlots {
 export const SLOT_INDEXES: readonly SlotIndex[] = [0, 1, 2, 'featured'];
 
 /** The stats in their settings order. */
-export const STAT_IDS: readonly StatId[] = ['played', 'size', 'achievements', 'protondb', 'hltb'];
+export const STAT_IDS: readonly StatId[] = ['played', 'achievements', 'protondb', 'hltb'];
 
-/** The stats the featured slot can hold: every stat but Space required. */
+/** The stats in the featured slot's picker order. */
 export const FEATURED_IDS: readonly FeaturedId[] = ['hltb', 'protondb', 'achievements', 'played'];
 
-export const DEFAULT_SLOTS: GameInfoSlots = { stats: ['played', 'size', 'achievements'], featured: 'hltb' };
+/** ProtonDB stays off by default (it sends the game's app id to ProtonDB), so the third stat slot starts empty. */
+export const DEFAULT_SLOTS: GameInfoSlots = { stats: ['played', 'achievements', null], featured: 'hltb' };
 
 export const STAT_LABELS: Record<StatId, string> = {
     played: 'Play time',
-    size: 'Space required',
     achievements: 'Achievements',
     protondb: 'ProtonDB',
     hltb: 'HowLongToBeat',
@@ -38,15 +40,15 @@ const isStat = (value: unknown): value is StatId => STAT_IDS.includes(value as S
 const isFeatured = (value: unknown): value is FeaturedId => FEATURED_IDS.includes(value as FeaturedId);
 
 /**
- * A stored value read slot by slot: an explicit null stays empty, an invalid slot falls back to its own default, then
- * duplicates are resolved in the order stats[0], stats[1], stats[2], featured (the first keeps the stat, the rest go empty).
+ * A stored value read slot by slot: an explicit null stays empty, and so does Space required (a stat until it moved to the
+ * Install button), an invalid slot falls back to its own default, then duplicates are resolved in the order stats[0], stats[1], stats[2], featured (the first keeps the stat, the rest go empty).
  */
 export function infoSlotsOf(raw: unknown): GameInfoSlots {
     const value = raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
     const list = Array.isArray(value.stats) ? value.stats : [];
     const readStat = (index: 0 | 1 | 2): StatId | null => {
         const entry = list[index];
-        if (entry === null) return null;
+        if (entry === null || entry === 'size') return null;
         return isStat(entry) ? entry : DEFAULT_SLOTS.stats[index];
     };
     const readFeatured = (): FeaturedId | null => {
@@ -66,13 +68,8 @@ export function infoSlotsOf(raw: unknown): GameInfoSlots {
     return slots;
 }
 
-/**
- * Puts `id` into `slot`. A stat another slot holds moves there and takes this slot's old contents (a swap); a swap that
- * would put Space required into the featured slot empties it instead. Assigning Space required to the featured slot
- * returns the slots unchanged.
- */
+/** Puts `id` into `slot`. A stat another slot holds moves there and takes this slot's old contents (a swap). */
 export function assignSlot(slots: GameInfoSlots, slot: SlotIndex, id: StatId | null): GameInfoSlots {
-    if (slot === 'featured' && id === 'size') return slots;
     let next = slots;
     if (id !== null) {
         const other = slotHolding(slots, id);
@@ -102,7 +99,7 @@ function slotHolding(slots: GameInfoSlots, id: StatId): SlotIndex | null {
 }
 
 function withSlot(slots: GameInfoSlots, slot: SlotIndex, id: StatId | null): GameInfoSlots {
-    if (slot === 'featured') return { ...slots, featured: id === 'size' ? null : id };
+    if (slot === 'featured') return { ...slots, featured: id };
     const stats = [...slots.stats] as GameInfoSlots['stats'];
     stats[slot] = id;
     return { ...slots, stats };

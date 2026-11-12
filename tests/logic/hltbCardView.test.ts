@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatHours } from '../../src/logic/format';
 import { tr } from '../../src/i18n/steamText';
-import { HLTB_COLUMNS, hltbFoundView, hltbNotFoundView } from '../../src/logic/hltbCardView';
+import { HLTB_COLUMNS, hltbFoundView, hltbNotFoundView, hltbTrack } from '../../src/logic/hltbCardView';
 import { beyondCaption, HltbTimes, towardCaption } from '../../src/logic/progress';
 
 const W3: HltbTimes = { main: 51.7, mainExtras: 103.8, completionist: 175.3 };
@@ -23,23 +23,44 @@ describe('hltbFoundView', () => {
         expect(v.columns.map((c) => c.value)).toEqual([h(10), '—', '—']);
     });
 
-    it('restyled: the bar and caption follow the main story, and no column is the goal', () => {
+    it('restyled: the caption follows the main story, no column is the goal', () => {
         const v = hltbFoundView(W3, 40.1 * 60, 'en-US', true);
-        expect(v.bar).toBe(77);
         expect(v.caption).toBe(towardCaption(40.1, 51.7, 'main', 'en-US'));
         expect(v.columns.some((c) => c.goal)).toBe(false);
     });
 
-    it('restyled, past the main story: a full bar and "Main story complete"', () => {
-        const v = hltbFoundView(W3, 60 * 60, 'en-US', true);
-        expect(v.bar).toBe(100);
-        expect(v.caption).toBe('Main story complete');
+    it('restyled: the bar is the whole game, Main, + Extras and 100% as stretches to scale, your hours along all of it', () => {
+        const v = hltbFoundView(W3, 40.1 * 60, 'en-US', true);
+        expect(v.track?.ends.map(Math.round)).toEqual([29, 59, 100]);
+        expect(v.bar).toBe(Math.round((40.1 / 175.3) * 100));
+        expect(hltbFoundView(W3, 400 * 60, 'en-US', true).bar).toBe(100);
     });
 
-    it('not played: no bar, "Not played yet"', () => {
+    it("restyled: HowLongToBeat's rating after the caption", () => {
+        expect(hltbFoundView(W3, 60 * 60, 'en-US', true, 73).caption).toBe('Main story complete · rated 73%');
+        expect(hltbFoundView(W3, 0, 'en-US', true, 73).caption).toBe('Not played yet · rated 73%');
+        expect(hltbFoundView(W3, 0, 'en-US', true, null).caption).toBe('Not played yet');
+        expect(hltbFoundView({ main: null, mainExtras: null, completionist: null }, 0, 'en-US', true, 80).caption).toBe('rated 80%');
+    });
+
+    it('not played: the stretches alone, no fill', () => {
         const v = hltbFoundView(W3, 0, 'en-US', true);
-        expect(v.bar).toBeNull();
+        expect(v.track).not.toBeNull();
+        expect(v.bar).toBe(0);
         expect(v.caption).toBe('Not played yet');
+    });
+
+    it('only one time known, or times out of order: the plain bar', () => {
+        expect(hltbTrack({ main: 10, mainExtras: null, completionist: null })).toBeNull();
+        expect(hltbFoundView({ main: 10, mainExtras: null, completionist: null }, 60, 'en-US', true).track).toBeNull();
+        // A longer time listed before a shorter one ends no stretch.
+        expect(hltbTrack({ main: 20, mainExtras: 15, completionist: 40 })?.ends).toEqual([50, 100]);
+    });
+
+    it('not restyled: no track, no rating', () => {
+        const v = hltbFoundView(W3, 40.1 * 60, 'en-US', false, 73);
+        expect(v.track).toBeNull();
+        expect(v.caption).not.toContain('rated');
     });
 
     it('not restyled: the goal column is the tier being worked toward', () => {

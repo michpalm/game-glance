@@ -146,7 +146,10 @@ class FrostService:
 
     async def environment(self):
         result = await self._call("environment", {})
-        return result if isinstance(result, dict) and set(result) == {"hdr", "maxScale"} else None
+        if not isinstance(result, dict) or set(result) - {"steamShown"} != {"hdr", "maxScale"}:
+            return None
+        # steamShown is left out when Gamescope's focus can't be read; when present it must be a boolean.
+        return result if "steamShown" not in result or type(result["steamShown"]) is bool else None
 
     async def present(self,request_id,frame):
         return await self._call("present",{"request_id":request_id,"frame":frame})

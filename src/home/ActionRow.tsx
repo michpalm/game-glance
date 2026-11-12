@@ -5,6 +5,13 @@ import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoPause, IoPlay, 
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { markLaunch } from '../data/launchIntent';
+import { useSettings } from '../data/settings';
+import { launchArtLayers } from '../styles/launchArt';
+import { heroArtAspect, heroArtFor } from './HeroBackground';
+import { windowAspect, type HeroFit } from './heroFit';
+import { mountLaunchBridge } from './launchBridge';
+import type { PageShading } from './pageShading';
+import { pageScrims } from '../styles/themeCss';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
@@ -243,8 +250,21 @@ export function LibraryActionRow({ preferred, buttons }: { preferred?: boolean; 
  * `preferred`: the pill takes focus when focus enters the row (Home's first focus is the game cards). B goes back to
  * the game cards (`onBack`, focusZones.onBack('actions')).
  */
-export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null, onBack, unifideck = null }: {
+/** Keeps Home's hero on screen while Steam swaps Home for the game's page (launchBridge); only for a game with its own hero art. */
+function bridgeLaunch(appId: number, doc: Document | null, fit: HeroFit, shading: PageShading) {
+    try {
+        const art = heroArtFor(appId);
+        if (!doc || art?.mode !== 'full') return;
+        mountLaunchBridge(doc, launchArtLayers(art.url, fit, heroArtAspect(art.url), windowAspect(doc.defaultView)), pageScrims(shading));
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} Home: launch bridge failed`, error);
+    }
+}
+
+export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null, onBack, unifideck = null, installSize = null }: {
     game: HomeGame | null;
+    /** Space required at the Install pill's right end (sizeStat.installSizeText: null while installed or downloading). */
+    installSize?: string | null;
     /** A Unifideck game (its own install state): the pill wears Unifideck's glyphs, as its button on the game page. */
     unifideck?: { installed: boolean } | null;
     /** The selected game's Steam Cloud state (useCloud); null hides the cloud button, as the game page hides its status. */
@@ -257,6 +277,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
     /** B: back to the game cards. */
     onBack?(): void;
 }) {
+    const { heroFit, pageShading } = useSettings();
     const gear = useRef<HTMLElement | null>(null);
     // Bumped once Steam has taken a "Play from" choice, so the pill reads Steam's new action (Stream / Play).
     const [, setStreamVersion] = useState(0);
@@ -313,6 +334,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                             // Steam's Play opens the game's page for its launch screen; the page then shows only the art.
                             if (steamPill.action === 'Play') {
                                 markLaunch(appId);
+                                bridgeLaunch(appId, el?.ownerDocument ?? null, heroFit, pageShading);
                                 playNavSound('LaunchGame'); // Steam's game-start sound, as on the game page
                                 skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // Steam's handler then opens the page
                             }
@@ -327,6 +349,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                     steamOr('launch', appId, (api) => {
                         if (!api.RunGame) return false;
                         markLaunch(appId);
+                        bridgeLaunch(appId, el?.ownerDocument ?? null, heroFit, pageShading);
                         playNavSound('LaunchGame'); // Steam's own sound for starting a game
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
@@ -336,6 +359,8 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                 <span className="gh-btn-icon">{unifideck && !download ? (unifideck.installed ? <FaPlay /> : <FaDownload />) : steamPill ? steamPill.icon : play.label === 'Pause' ? <IoPause /> : play.label === 'Download' || play.label === 'Update' ? <IoDownload /> : <IoPlay />}</span>
                 <span className="gh-btn-label">{playWord}</span>
                 {playFrom && <span className="gh-play-arrow"><PlayFromGlyph /></span>}
+                {/* Before the arrow when the game also has one (its first segment's end, as the page draws it). */}
+                {installSize && <span className="gh-btn-size">{installSize}</span>}
             </ActionButton>
             {playFrom && (
                 <ActionButton

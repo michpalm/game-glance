@@ -1,9 +1,11 @@
 import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent } from '@decky/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FaUserFriends } from 'react-icons/fa';
 import { FamilyPill, StoreIcon } from '../components/SourcePill';
 import { FamilyCopyDialog } from '../components/FamilyCopyDialog';
+import { PlayersPill } from '../components/PlayersPill';
+import { placePlayersOn } from '../styles/playersFit';
 import type { StoreVersion } from '../data/storeVersions';
 import { focusVisualNeighbour } from '../logic/rowNav';
 import { takeSteamFocus } from './steamFocus';
@@ -13,8 +15,15 @@ import { tr } from '../i18n/steamText';
 const storeName = (s: string) => ({ steam: 'Steam', gog: 'GOG', epic: 'Epic Games', amazon: 'Amazon Games', microsoft: 'Xbox' }[s] ?? s);
 const Plus = () => <svg className="gh-copy-plus" aria-hidden="true" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>;
 
-export function HomePills({ appId, source, family, count, versions, onFocus, onBack, buttons }: { appId: number; source: string; family: string | null; count: number; versions: StoreVersion[]; onFocus(event: { target: EventTarget }): void; onBack(): void; buttons: { onButtonDown?(event: GamepadEvent): void; onButtonUp?(event: GamepadEvent): void } }) {
+export function HomePills({ appId, source, family, count, versions, onFocus, onBack, buttons, bare = false, players = null, locale = 'en-US', playersLimit = () => null }: { appId: number; source: string; bare?: boolean; family: string | null; players?: number | null; locale?: string; playersLimit?: (root: HTMLElement) => number | null; count: number; versions: StoreVersion[]; onFocus(event: { target: EventTarget }): void; onBack(): void; buttons: { onButtonDown?(event: GamepadEvent): void; onButtonUp?(event: GamepadEvent): void } }) {
     const host = useRef<HTMLSpanElement>(null);
+    // The player pill's placement lives with this holder element (styles/playersFit placePlayersOn): a holder rebuilt on
+    // the way back from a page is placed too (an effect in SpotlightHome kept watching the old one).
+    const showsPlayers = players !== null;
+    const place = useCallback((el: HTMLSpanElement | null) => {
+        host.current = el;
+        return placePlayersOn(showsPlayers, playersLimit)(el);
+    }, [showsPlayers, playersLimit]);
     const storeRef = useRef<HTMLDivElement | null>(null);
     const familyRef = useRef<HTMLDivElement | null>(null);
     const [open, setOpen] = useState(false);
@@ -47,9 +56,12 @@ export function HomePills({ appId, source, family, count, versions, onFocus, onB
     const chooseStore = (anchor: HTMLElement) => showContextMenu(<Menu label="Choose store version" cancelText={tr('cancel')}>
         {versions.map((v) => <MenuItem key={v.appId} onSelected={() => { if ((v.appId >>> 0) !== (appId >>> 0)) openPage(v.appId >>> 0); }}><StoreIcon label={storeName(v.store)} /> {storeName(v.store)}{v.edition ? ` · ${v.edition}` : ''}</MenuItem>)}
     </Menu>, anchor);
-    return <span ref={host} className={`gh-source${versions.length > 1 ? ' gh-source-selectable' : ''}`}>
-        {versions.length > 1 ? <Focusable {...handlers} ref={(el: HTMLDivElement | null) => { storeRef.current = el; }} className="gh-store-choice" focusClassName="gh-pill-focus" noFocusRing onActivate={() => storeRef.current && chooseStore(storeRef.current)} onClick={(e: { currentTarget: HTMLElement }) => chooseStore(e.currentTarget)} aria-label={`${source}: Choose store version`}><StoreIcon label={source} className="gh-source-icon" />{source}<Plus /></Focusable> : <><StoreIcon label={source} className="gh-source-icon" />{source}</>}
+    // bare: the store pill is off (settings.storePill) and the family pill takes its place (SourcePill's bare).
+    // The holder is never glazed (SourcePill): a blur inside a blurred element sees only it, so the family pill would show the art sharp.
+    return <span ref={place} className={`gh-source gh-source-selectable${bare ? ' gh-source-bare' : ''}`}>
+        {bare ? null : versions.length > 1 ? <Focusable {...handlers} ref={(el: HTMLDivElement | null) => { storeRef.current = el; }} className="gh-store-choice" focusClassName="gh-pill-focus" noFocusRing onActivate={() => storeRef.current && chooseStore(storeRef.current)} onClick={(e: { currentTarget: HTMLElement }) => chooseStore(e.currentTarget)} aria-label={`${source}: Choose store version`}><StoreIcon label={source} className="gh-source-icon" />{source}<Plus /></Focusable> : <span className="gh-store-face"><StoreIcon label={source} className="gh-source-icon" />{source}</span>}
         {family && (count > 1 ? <Focusable {...handlers} ref={(el: HTMLDivElement | null) => { familyRef.current = el; }} className="gh-family gh-copy-choice" focusClassName="gh-pill-focus" noFocusRing onActivate={() => setOpen(true)} onClick={() => setOpen(true)} aria-label={`${family}: Change preferred copy`}><FaUserFriends className="gh-family-icon" aria-hidden="true" />{family}<Plus /></Focusable> : <FamilyPill label={family} className="gh-family" iconClassName="gh-family-icon" />)}
+        {players !== null && <PlayersPill count={players} locale={locale} className="gh-players" dotClassName="gh-players-dot" />}
         <FamilyCopyDialog appId={appId} open={open} onClose={() => { setOpen(false); focusElement(familyRef.current, 'Home family pill'); }} />
     </span>;
 }

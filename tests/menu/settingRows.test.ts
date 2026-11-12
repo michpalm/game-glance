@@ -46,3 +46,7 @@ it('draws segments under a header, with an optional note', () => {
     expect(onSelect).toHaveBeenCalledWith('fit');
     expect(nodes.find(n => n.props.className === 'gg-plugin-note')!.props.children).toBe('Fills.');
 });
+
+it('keeps its panel scrolled through a ref', () => {
+    expect(typeof Crumb({ parent: 'Game Glance', title: 'Home' }).props.ref).toBe('function');
+});

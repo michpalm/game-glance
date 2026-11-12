@@ -1,4 +1,5 @@
 import { ProtonResult } from '../data/protondb';
+import { ProtonTier } from './protonTier';
 import { formatLastPlayed } from '../home/recents';
 import { protonStat } from './cleanInfo';
 import { formatHours, minutesToHours } from './format';
@@ -7,7 +8,13 @@ import { formatHours, minutesToHours } from './format';
 export interface FeaturedView {
     title: string;
     columns: Array<{ key: string; label: string; value: string; accent?: boolean; tone?: string }>;
-    icon?: { src: string; label: string; value: string };
+    /**
+     * The tile row: a picture (`src`: the latest unlock's, the game's icon) or ProtonDB's mark in a rating's colour
+     * (`tone`), beside a label and the headline value (`accent`: in the game's accent, as HowLongToBeat's Main).
+     */
+    icon?: { src?: string; tone?: ProtonTier; label: string; value: string; accent?: boolean };
+    /** ProtonDB's scale under the tile row, worst first, with the rating's step lit (`at`: its index). */
+    ladder?: { steps: readonly ProtonTier[]; at: number };
     bar: number | null;
     caption: string | null;
     empty?: string;
@@ -18,29 +25,32 @@ const loadingView = (title: string): FeaturedView => ({ title, columns: [], bar:
 const emptyView = (title: string, empty: string): FeaturedView => ({ title, columns: [], bar: null, caption: null, empty });
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function protonView(r: ProtonResult | undefined): FeaturedView {
+/** ProtonDB's scale as the card's ladder draws it: worst first, so the lit step sits further right the better the rating. */
+export const PROTON_LADDER: readonly ProtonTier[] = ['borked', 'bronze', 'silver', 'gold', 'platinum'];
+
+/** What Steam itself says about running the game: Valve's Steam Deck rating and the compatibility tool Steam picked. */
+export interface SteamCompat {
+    /** The app overview's steam_deck_compat_category: 3 Verified, 2 Playable, 1 Unsupported, 0 or null unknown. */
+    deck: number | null;
+    /** The app details' strCompatToolDisplayName ("Proton 11.0-2"), null when Steam names none (a native game). */
+    tool: string | null;
+}
+
+const DECK_VERDICT: Record<number, string> = { 3: 'Verified on Steam Deck', 2: 'Playable on Steam Deck', 1: 'Unsupported on Steam Deck' };
+
+export function protonView(r: ProtonResult | undefined, steam: SteamCompat = { deck: null, tool: null }): FeaturedView {
     const title = 'ProtonDB';
     if (r === undefined) return loadingView(title);
     if (r.status !== 'found') return emptyView(title, 'No ProtonDB rating yet');
-    const rating = protonStat(r.tier);
-    const columns: FeaturedView['columns'] = [{ key: 'rating', label: 'Rating', value: rating.value, tone: r.tier }];
-    let caption: string | null = null;
-    if (r.details) {
-        // A value the summary did not have leaves its column out.
-        if (r.details.total !== null) columns.push({ key: 'reports', label: 'Reports', value: String(r.details.total) });
-        if (r.details.confidence !== null) columns.push({ key: 'confidence', label: 'Confidence', value: capitalise(r.details.confidence) });
-        const parts = [
-            r.details.trending && `Trending ${capitalise(r.details.trending)}`,
-            r.details.best && `best reported ${capitalise(r.details.best)}`,
-        ].filter(Boolean);
-        caption = parts.length ? parts.join(' · ') : null;
-    }
-    return { title, columns, bar: null, caption };
-}
-
-/** The featured ProtonDB card's result: a non-Steam game is never looked up (no Steam app id), so it has no rating rather than loading forever. Pure. */
-export function featuredProton(isShortcut: boolean, looked: ProtonResult | undefined): ProtonResult | undefined {
-    return isShortcut ? { status: 'none' } : looked;
+    const d = r.details;
+    // A value the summary did not have is left out of the label.
+    const said = [d && d.total !== null && `${d.total} ${d.total === 1 ? 'report' : 'reports'}`, d && d.confidence !== null && `${d.confidence} confidence`].filter(Boolean);
+    const icon = { tone: r.tier, label: said.length ? said.join(' · ') : 'Players\' rating', value: protonStat(r.tier).value };
+    // The caption is Steam's side of the story; without it, ProtonDB's own trend.
+    const steamSays = [steam.deck !== null ? DECK_VERDICT[steam.deck] : undefined, steam.tool && `runs with ${steam.tool}`].filter(Boolean);
+    const trend = [d?.trending && `Trending ${capitalise(d.trending)}`, d?.best && `best reported ${capitalise(d.best)}`].filter(Boolean);
+    const caption = steamSays.length ? steamSays.join(' · ') : trend.length ? trend.join(' · ') : null;
+    return { title, columns: [], icon, ladder: { steps: PROTON_LADDER, at: PROTON_LADDER.indexOf(r.tier) }, bar: null, caption };
 }
 
 export interface AchievementFacts {
@@ -103,16 +113,71 @@ export function achievementsView(a: AchievementFacts | undefined, now: number, l
     return { title, columns: [], bar, caption, icon: { src: latest.image, label: `Latest${when}`, value: latest.name } };
 }
 
-export function playTimeView(p: { minutes: number; twoWeeks: number; lastPlayed: number }, now: number, locale: string): FeaturedView {
-    const caption = p.twoWeeks <= 0 ? 'None in the past two weeks' : p.twoWeeks === p.minutes ? 'All of it in the past two weeks' : null;
+export interface PlayFacts {
+    minutes: number;
+    twoWeeks: number;
+    /** Unix seconds, 0 when never played. */
+    lastPlayed: number;
+    /** The game's Steam icon, null when there is none (a non-Steam game). */
+    icon: string | null;
+    /** When it was bought or added (Unix seconds), 0 when unknown. */
+    purchased: number;
+    /** Steam's review score in percent, null when unknown. */
+    reviews: number | null;
+}
+
+/** The game's small Steam icon from the app overview's icon_hash; null without one. Pure. */
+export function steamIconUrl(appId: number, iconHash: unknown): string | null {
+    return typeof iconHash === 'string' && /^[0-9a-f]{40}$/.test(iconHash)
+        ? `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${iconHash}.jpg`
+        : null;
+}
+
+export function playTimeView(p: PlayFacts, now: number, locale: string): FeaturedView {
+    const hours = (minutes: number) => formatHours(minutesToHours(minutes), locale);
+    const columns: FeaturedView['columns'] = [{ key: 'twoWeeks', label: 'Past 2 weeks', value: hours(p.twoWeeks) }];
+    if (p.purchased > 0) columns.push({ key: 'owned', label: 'Owned since', value: new Date(p.purchased * 1000).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) });
+    if (p.reviews !== null && p.reviews > 0) columns.push({ key: 'reviews', label: 'Steam reviews', value: `${Math.round(p.reviews)}%` });
     return {
         title: 'Play time',
-        columns: [
-            { key: 'total', label: 'Total', value: formatHours(minutesToHours(p.minutes), locale), accent: true },
-            { key: 'twoWeeks', label: 'Past 2 weeks', value: formatHours(minutesToHours(p.twoWeeks), locale) },
-            { key: 'lastPlayed', label: 'Last played', value: p.lastPlayed > 0 ? formatLastPlayed(p.lastPlayed, now, locale) : '-' },
-        ],
+        icon: {
+            src: p.icon ?? undefined,
+            label: p.lastPlayed > 0 ? `Last played · ${formatLastPlayed(p.lastPlayed, now, locale)}` : 'Not played yet',
+            value: `${hours(p.minutes)} played`,
+            accent: true,
+        },
+        columns,
         bar: null,
-        caption,
+        caption: null,
     };
+}
+
+const field = (o: unknown, key: string): unknown => (o as Record<string, unknown> | null | undefined)?.[key];
+const num = (o: unknown, key: string): number => {
+    const n = Number(field(o, key) ?? 0);
+    return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * The Play time card's facts from Steam's app overview: `minutes` and `lastPlayed` as the caller merged them with a
+ * launcher's; a non-Steam game has no Steam icon or review score. Pure.
+ */
+export function playFactsOf(appId: number, overview: unknown, played: { minutes: number; lastPlayed: number }, isShortcut: boolean): PlayFacts {
+    const reviews = num(overview, 'review_percentage_with_bombs');
+    return {
+        minutes: played.minutes,
+        twoWeeks: num(overview, 'minutes_playtime_last_two_weeks'),
+        lastPlayed: played.lastPlayed,
+        icon: isShortcut ? null : steamIconUrl(appId, field(overview, 'icon_hash')),
+        purchased: num(overview, 'rt_purchased_time'),
+        reviews: !isShortcut && reviews > 0 ? reviews : null,
+    };
+}
+
+/** Steam's Deck rating (app overview) and the compatibility tool it runs the game with (app details); none for a non-Steam game. Pure. */
+export function steamCompatOf(overview: unknown, details: unknown, isShortcut: boolean): SteamCompat {
+    if (isShortcut) return { deck: null, tool: null };
+    const deck = num(overview, 'steam_deck_compat_category');
+    const tool = field(details, 'strCompatToolDisplayName');
+    return { deck: deck > 0 ? deck : null, tool: typeof tool === 'string' && tool.trim() !== '' ? tool.trim() : null };
 }

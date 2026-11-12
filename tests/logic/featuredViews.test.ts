@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { achievementsView, featuredProton, pageAchievementFacts, playTimeView, protonView, readAchievementFacts } from '../../src/logic/featuredViews';
+import { achievementsView, pageAchievementFacts, playFactsOf, playTimeView, PROTON_LADDER, protonView, readAchievementFacts, steamCompatOf, steamIconUrl } from '../../src/logic/featuredViews';
 import { formatLastPlayed } from '../../src/home/recents';
 
 const DAY = 86400;
@@ -13,27 +13,37 @@ const LOCKED = { strID: 'LOCKED', strName: 'Locked', strDescription: '', bAchiev
 const details = { achievements: { nAchieved: 6, nTotal: 170, vecHighlight: [WOOD, LOCKED], vecAchievedHidden: [WOOD, BEIJING], vecUnachieved: [] } };
 
 describe('protonView', () => {
-    it('shows rating, reports and confidence', () => {
-        const v = protonView({ status: 'found', tier: 'platinum', details: { total: 237, confidence: 'strong', trending: 'platinum', best: 'platinum' } });
+    const found = { status: 'found', tier: 'platinum', details: { total: 230, confidence: 'strong', trending: 'platinum', best: 'platinum' } } as const;
+    it('a tile row: the mark and the rating in its tone, the reports and confidence as its label', () => {
+        const v = protonView(found);
         expect(v.title).toBe('ProtonDB');
-        expect(v.columns).toEqual([
-            { key: 'rating', label: 'Rating', value: 'Platinum', tone: 'platinum' },
-            { key: 'reports', label: 'Reports', value: '237' },
-            { key: 'confidence', label: 'Confidence', value: 'Strong' },
-        ]);
-        expect(v.caption).toBe('Trending Platinum · best reported Platinum');
+        expect(v.icon).toEqual({ tone: 'platinum', label: '230 reports · strong confidence', value: 'Platinum' });
+        expect(v.columns).toEqual([]);
+        expect(v.bar).toBeNull();
     });
-    it('keeps only the rating when an old cache entry has no details', () => {
+    it("the ladder: ProtonDB's scale worst first, the rating's step lit", () => {
+        expect(protonView(found).ladder).toEqual({ steps: PROTON_LADDER, at: 4 });
+        expect(PROTON_LADDER).toEqual(['borked', 'bronze', 'silver', 'gold', 'platinum']);
+        expect(protonView({ status: 'found', tier: 'bronze' }).ladder?.at).toBe(1);
+    });
+    it("the caption is Steam's side: its Deck rating and the tool it runs the game with", () => {
+        expect(protonView(found, { deck: 1, tool: 'Proton 11.0-2' }).caption).toBe('Unsupported on Steam Deck · runs with Proton 11.0-2');
+        expect(protonView(found, { deck: 3, tool: null }).caption).toBe('Verified on Steam Deck');
+        expect(protonView(found, { deck: 2, tool: null }).caption).toBe('Playable on Steam Deck');
+        expect(protonView(found, { deck: null, tool: 'Proton Experimental' }).caption).toBe('runs with Proton Experimental');
+    });
+    it("without Steam's side, ProtonDB's own trend", () => {
+        expect(protonView(found).caption).toBe('Trending Platinum · best reported Platinum');
+        expect(protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: null, trending: 'gold', best: null } }).caption).toBe('Trending Gold');
+    });
+    it('an old cache entry without details: a plain label, no caption', () => {
         const v = protonView({ status: 'found', tier: 'gold' });
-        expect(v.columns.map((c) => c.key)).toEqual(['rating']);
+        expect(v.icon?.label).toBe("Players' rating");
         expect(v.caption).toBeNull();
     });
-    it('leaves out a column ProtonDB gave no value for (a summary without a report count or confidence)', () => {
-        expect(protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: 'good', trending: null, best: null } }).columns.map((c) => c.key)).toEqual(['rating', 'confidence']);
-        expect(protonView({ status: 'found', tier: 'gold', details: { total: 12, confidence: null, trending: null, best: null } }).columns.map((c) => c.key)).toEqual(['rating', 'reports']);
-        const bare = protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: null, trending: 'gold', best: null } });
-        expect(bare.columns.map((c) => c.key)).toEqual(['rating']);
-        expect(bare.caption).toBe('Trending Gold');
+    it('leaves out what the summary did not have; one report reads singular', () => {
+        expect(protonView({ status: 'found', tier: 'gold', details: { total: null, confidence: 'good', trending: null, best: null } }).icon?.label).toBe('good confidence');
+        expect(protonView({ status: 'found', tier: 'gold', details: { total: 1, confidence: null, trending: null, best: null } }).icon?.label).toBe('1 report');
     });
     it('says there is no rating', () => {
         expect(protonView({ status: 'none' }).empty).toBe('No ProtonDB rating yet');
@@ -41,6 +51,17 @@ describe('protonView', () => {
     });
     it('is loading while unknown', () => {
         expect(protonView(undefined).loading).toBe(true);
+    });
+});
+
+describe('steamCompatOf', () => {
+    it("reads Valve's Deck rating and Steam's compatibility tool", () => {
+        expect(steamCompatOf({ steam_deck_compat_category: 1 }, { strCompatToolDisplayName: 'Proton 11.0-2' }, false)).toEqual({ deck: 1, tool: 'Proton 11.0-2' });
+    });
+    it('unknown rating (0), no tool (a native game) or a non-Steam game: none', () => {
+        expect(steamCompatOf({ steam_deck_compat_category: 0 }, { strCompatToolDisplayName: '' }, false)).toEqual({ deck: null, tool: null });
+        expect(steamCompatOf(undefined, undefined, false)).toEqual({ deck: null, tool: null });
+        expect(steamCompatOf({ steam_deck_compat_category: 3 }, { strCompatToolDisplayName: 'Proton 9' }, true)).toEqual({ deck: null, tool: null });
     });
 });
 
@@ -103,31 +124,48 @@ describe('achievementsView', () => {
 });
 
 describe('playTimeView', () => {
-    it('shows total in the accent, two weeks and last played', () => {
-        const v = playTimeView({ minutes: 68, twoWeeks: 68, lastPlayed: NOW - 6 * DAY }, NOW, 'en-US');
-        expect(v.columns).toEqual([
-            { key: 'total', label: 'Total', value: '1.1 h', accent: true },
-            { key: 'twoWeeks', label: 'Past 2 weeks', value: '1.1 h' },
-            { key: 'lastPlayed', label: 'Last played', value: '6 days ago' },
+    const ICON = 'https://example.test/icon.jpg';
+    const facts = { minutes: 90, twoWeeks: 0, lastPlayed: NOW - 6 * DAY, icon: ICON, purchased: 1667333882, reviews: 91 };
+    it('a tile row: the icon, when it was last played, and the hours in the accent', () => {
+        const v = playTimeView(facts, NOW, 'en-US');
+        expect(v.title).toBe('Play time');
+        expect(v.icon).toEqual({ src: ICON, label: `Last played · ${formatLastPlayed(NOW - 6 * DAY, NOW, 'en-US')}`, value: '1.5 h played', accent: true });
+    });
+    it('then the past two weeks, when it was bought and its Steam reviews', () => {
+        expect(playTimeView(facts, NOW, 'en-US').columns).toEqual([
+            { key: 'twoWeeks', label: 'Past 2 weeks', value: '0 h' },
+            { key: 'owned', label: 'Owned since', value: 'Nov 2022' },
+            { key: 'reviews', label: 'Steam reviews', value: '91%' },
         ]);
-        expect(v.caption).toBe('All of it in the past two weeks');
     });
-    it('says none in the past two weeks', () => {
-        expect(playTimeView({ minutes: 600, twoWeeks: 0, lastPlayed: NOW - 30 * DAY }, NOW, 'en-US').caption).toBe('None in the past two weeks');
+    it('leaves out an unknown purchase date or review score, and a missing icon', () => {
+        const v = playTimeView({ ...facts, icon: null, purchased: 0, reviews: null }, NOW, 'en-US');
+        expect(v.columns.map((c) => c.key)).toEqual(['twoWeeks']);
+        expect(v.icon?.src).toBeUndefined();
     });
-    it('has no caption otherwise', () => {
-        expect(playTimeView({ minutes: 600, twoWeeks: 60, lastPlayed: NOW - DAY }, NOW, 'en-US').caption).toBeNull();
+    it('never played', () => {
+        expect(playTimeView({ ...facts, minutes: 0, lastPlayed: 0 }, NOW, 'en-US').icon?.label).toBe('Not played yet');
     });
 });
 
-describe('featuredProton', () => {
-    it('a non-Steam game has no rating to look up', () => {
-        expect(featuredProton(true, undefined)).toEqual({ status: 'none' });
-        expect(featuredProton(true, { status: 'found', tier: 'gold' })).toEqual({ status: 'none' });
+describe('playFactsOf', () => {
+    const overview = { minutes_playtime_last_two_weeks: 30, icon_hash: 'be3384e7936f548303c77ee2abc4c9026285f554', rt_purchased_time: 1667333882, review_percentage_with_bombs: 91 };
+    it("a Steam game's facts from its overview", () => {
+        expect(playFactsOf(475150, overview, { minutes: 90, lastPlayed: 1668282020 }, false)).toEqual({
+            minutes: 90, twoWeeks: 30, lastPlayed: 1668282020,
+            icon: 'https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/475150/be3384e7936f548303c77ee2abc4c9026285f554.jpg',
+            purchased: 1667333882, reviews: 91,
+        });
     });
-    it('a Steam game shows what was looked up, undefined while loading', () => {
-        expect(featuredProton(false, undefined)).toBeUndefined();
-        expect(featuredProton(false, { status: 'found', tier: 'gold' })).toEqual({ status: 'found', tier: 'gold' });
+    it('a non-Steam game has no Steam icon or reviews; a missing overview reads as zeros', () => {
+        const f = playFactsOf(1, overview, { minutes: 5, lastPlayed: 0 }, true);
+        expect(f.icon).toBeNull();
+        expect(f.reviews).toBeNull();
+        expect(playFactsOf(1, undefined, { minutes: 5, lastPlayed: 0 }, false)).toEqual({ minutes: 5, twoWeeks: 0, lastPlayed: 0, icon: null, purchased: 0, reviews: null });
+    });
+    it('ignores an icon hash that is not one', () => {
+        expect(steamIconUrl(1, '../x')).toBeNull();
+        expect(steamIconUrl(1, undefined)).toBeNull();
     });
 });
 

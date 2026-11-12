@@ -9,8 +9,8 @@ describe("the game page's wiring of the Game info slots", () => {
         expect(hltbLookupKey({ stats: ['played', 'size', 'achievements'], featured: 'protondb' }, 42, 0)).toBeNull();
         expect(hltbLookupKey({ stats: ['played', 'size', 'achievements'], featured: null }, 42, 0)).toBeNull();
     });
-    it('the cards row is single (the info card spans it) when nothing is featured', () => {
-        expect(cardsRowClass(null)).toBe('gg-cards gg-cards-single');
+    it('nothing featured keeps the cards row as it is: the info card at its own width, not spanning the row', () => {
+        expect(cardsRowClass(null)).toBe('gg-cards');
         expect(cardsRowClass('hltb')).toBe('gg-cards');
         expect(cardsRowClass('achievements')).toBe('gg-cards');
     });

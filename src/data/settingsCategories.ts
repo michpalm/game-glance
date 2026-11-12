@@ -79,7 +79,7 @@ export function slotLabel(slot: SlotIndex): string {
     return slot === 'featured' ? 'Featured' : `Stat ${slot + 1}`;
 }
 
-/** What a slot can hold, in picker order; null is None. Featured never holds Space required. */
+/** What a slot can hold, in picker order; null is None. */
 export function slotChoices(slot: SlotIndex): Array<StatId | null> {
     return [...(slot === 'featured' ? FEATURED_IDS : STAT_IDS), null];
 }

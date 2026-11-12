@@ -92,16 +92,41 @@ export function createProtonLookup(deps: ProtonDeps) {
         return pending;
     }
 
-    return async function lookup(appId: number): Promise<ProtonResult> {
+    /** The cached answer, and whether it is due to be asked again (old, or cached before the details were kept). */
+    async function read(appId: number): Promise<{ known: ProtonResult | null; due: boolean }> {
         const cached = await attempt('cache read', () => deps.cache.get<Stored>(protonCacheKey(appId)), null);
-        if (!cached || (cached.status !== 'found' && cached.status !== 'none')) return refresh(appId, null);
-        const known = strip(cached);
+        if (!cached || (cached.status !== 'found' && cached.status !== 'none')) return { known: null, due: true };
         const age = now() - (cached.fetchedAt ?? 0);
         const outdated = age >= (cached.status === 'found' ? PROTON_REFRESH_MS : PROTON_RECHECK_MS);
         const lacksDetails = cached.status === 'found' && !cached.details; // cached before the details were kept: fetch them behind
-        if (outdated || lacksDetails) refresh(appId, known).catch(() => undefined);
+        return { known: strip(cached), due: outdated || lacksDetails };
+    }
+
+    async function lookup(appId: number): Promise<ProtonResult> {
+        const { known, due } = await read(appId);
+        if (!known) return refresh(appId, null);
+        if (due) refresh(appId, known).catch(() => undefined);
         return known;
-    };
+    }
+
+    /** The cached answer only (however old), never online: null when nothing is cached. For Home's warm-up. */
+    async function cachedOnly(appId: number): Promise<ProtonResult | null> {
+        return (await read(appId)).known;
+    }
+
+    /**
+     * For the pre-loads: asks ProtonDB, and waits for it, only when nothing is cached or the answer is due; `fetched` says
+     * whether it went online (so a run can pause after it). An unreachable ProtonDB reads as unavailable.
+     */
+    async function prefetch(appId: number): Promise<{ status: ProtonResult['status']; fetched: boolean }> {
+        const { known, due } = await read(appId);
+        if (known && !due) return { status: known.status, fetched: false };
+        const result = await refresh(appId, known);
+        // A refresh that failed returns the known answer: it still went online, and ProtonDB did not answer.
+        return { status: result === known && known !== null ? 'unavailable' : result.status, fetched: true };
+    }
+
+    return Object.assign(lookup, { cachedOnly, prefetch });
 }
 
 export const lookupProton = createProtonLookup({ fetcher: (url) => fetchNoCors(url), cache });

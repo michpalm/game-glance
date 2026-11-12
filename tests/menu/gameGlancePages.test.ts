@@ -150,9 +150,17 @@ describe('Screensaver', () => {
 });
 
 describe('General', () => {
+    it('offers the player count pill after the Family Sharing pill, and writes it through the store', () => {
+        const a = actions();
+        const row = byId(GeneralPage({ v: values(), a }), 'gg:general:playerCountPill');
+        expect(row.props.label).toBe('Player count');
+        expect(row.props.description).toBe('How many people are playing now, from Steam.');
+        row.props.onChange(false);
+        expect(a.store.setPlayerCountPill).toHaveBeenCalledWith(false);
+    });
     it('lists Game Glance, the look, data and updates', () => {
         const page = GeneralPage({ v: values(), a: actions() });
-        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:gameLogo', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
+        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:gameLogo', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
     });
     it('offers the update when one is available', () => {
         const a = actions();
@@ -225,10 +233,10 @@ describe('Game info slots', () => {
         expect(a.store.setInfoSlot).toHaveBeenCalledWith('featured', 'protondb');
         expect(a.back).toHaveBeenCalledTimes(1);
     });
-    it('picker for a stat slot lists every stat and None', () => {
+    it('picker for a stat slot lists every stat (Space required is not one: it is at the Install button) and None', () => {
         const a = actions();
         const page = GameInfoPicker({ v: values(), a, slot: 1 });
-        expect(ids(page)).toHaveLength(6);
+        expect(ids(page)).toHaveLength(5);
         byId(page, 'gg:game-page:info:1:none').props.onAction();
         expect(a.store.setInfoSlot).toHaveBeenCalledWith(1, null);
     });

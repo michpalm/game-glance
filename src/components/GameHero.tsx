@@ -1,14 +1,19 @@
 import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Focusable } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { withKnownAchievements } from '../home/detailsMemo';
+import { knownAchievementFacts, noteDetails, spaceRequiredOf, withKnownAchievements } from '../home/detailsMemo';
 import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
 import { useProton } from '../data/useProton';
+import { PLAYERS_PAGE_MAX_AGE_MS, PLAYERS_POLL_MS } from '../data/playerCount';
+import { usePlayerCount } from '../data/usePlayerCount';
+import { observePlayersPlacement } from '../styles/playersFit';
+import { PlayersPill } from './PlayersPill';
+import { usePlayCountBadge } from './usePlayCountBadge';
 import { FeaturedId, GameInfoSlots, usesStat } from '../logic/infoSlots';
-import { featuredProton, pageAchievementFacts } from '../logic/featuredViews';
+import { pageAchievementFacts, playFactsOf, steamCompatOf } from '../logic/featuredViews';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
 import { mergePlaytime } from '../data/unifideckPlaytime';
@@ -29,15 +34,16 @@ import { useOverrideVersion } from '../hooks/useOverrideVersion';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
 import { rememberSizeLabel, sizeStat, steamSpaceStat } from '../logic/sizeStat';
-import { memoSpaceRequired } from '../home/detailsMemo';
 import { useDownload } from '../home/useDownload';
-import { useLaunchOverlay } from '../styles/launchOverlay';
+import { useLaunchArt, useLaunchFromHome, useLaunchOverlay } from '../styles/launchOverlay';
+import { launchArtLayers } from '../styles/launchArt';
+import { heroArtAspect, heroArtFor } from '../home/HeroBackground';
 import { useOpenArrival } from '../hooks/useOpenArrival';
 import { openPending } from '../data/openIntent';
 import { knownDescription, peekHltb, rememberDescription, rememberHltb } from '../home/warmup';
 import { accentMemo, knownAccent } from '../home/accentMemo';
-import { accentCss, arrivingCss, cleanCss, downloadCss, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
-import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from '../home/heroFit';
+import { accentCss, arrivingCss, cleanCss, downloadCss, installSizeCss, launchArtHost, launchCss, launchSelectors, pageHeroImage, ringCss, themeCss, unifideckCss } from '../styles/theme';
+import { EXPANDED_MASK, HeroFit, STANDARD_HERO_ASPECT, fitMask, overFill, windowAspect } from '../home/heroFit';
 import { installMouseMode } from '../home/mouseMode';
 import { installCalmFilter } from '../styles/tokens';
 import { useCardNav, usePageFocusScrolling } from '../hooks/useCardNav';
@@ -68,12 +74,13 @@ interface Props {
 
 /** The game's accent (same source and cache as Spotlight Home), only while restyled; undefined until known. */
 /**
- * The page's hero in Fit (home/heroFit, themeCss): Steam's header image (`src`, its shape `artAspect`, the standard hero
+ * The page's hero in Fit or Expanded (home/heroFit, themeCss): Steam's header image (`src`, its shape `artAspect`, the standard hero
  * shape until known) as the art fill's url and the fade for a box of `boxAspect`. Nothing in Fill or without the image. Pure.
  */
 export function heroFitVars(fit: HeroFit, src: string | null, artAspect: number | null, boxAspect: number): Record<string, string> {
-    if (fit !== 'fit' || !src) return {};
-    return { '--gg-hero-fill': `url("${src.replace(/"/g, '%22')}")`, '--gg-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) };
+    if (!overFill(fit) || !src) return {};
+    const mask = fit === 'expanded' ? EXPANDED_MASK : fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect);
+    return { '--gg-hero-fill': `url("${src.replace(/"/g, '%22')}")`, '--gg-hero-mask': mask };
 }
 
 /** Steam's low-resolution placeholder remains a fallback until the full hero has usable pixels. */
@@ -148,9 +155,9 @@ export function hltbLookupKey(slots: GameInfoSlots, appId: number, overrideVersi
     return usesStat(slots, 'hltb') ? `hltb:${appId}:${overrideVersion}` : null;
 }
 
-/** The cards row's classes: with nothing featured the info card is alone and spans the row (themeCss). Pure. */
-export function cardsRowClass(featured: FeaturedId | null): string {
-    return featured === null ? 'gg-cards gg-cards-single' : 'gg-cards';
+/** The cards row's classes: with nothing featured the info card is alone, at its own width (the row's second column stays empty). Pure. */
+export function cardsRowClass(_featured: FeaturedId | null): string {
+    return 'gg-cards';
 }
 
 /** A number field of Steam's overview; 0 when missing or unreadable. */
@@ -180,6 +187,13 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Until Steam has loaded the game's details, the achievement counts Spotlight Home already knows (home/detailsMemo), so the
     // first frame is complete (the Clean panel no longer gains its Achievements column after the open transition's hand-over).
     const steamGame = withKnownAchievements(readGameInfo(overview, details));
+    // What the page's details carry (the achievements' latest and rarest among them) is remembered and kept across restarts,
+    // so the next open, and Home's card, have it before Steam answers. On every render: Steam fills the same details object
+    // in place, so a dependency on it would miss the list arriving; noting is cheap and persists only what changed.
+    const pageAppId = steamGame.appId;
+    useEffect(() => {
+        if (details) noteDetails(pageAppId, details);
+    });
     // A Unifideck or Lutris game: the launcher's own play time and last played, as on Unifideck's Play row (Steam has none for Unifideck's; Lutris's also counts play started from Lutris).
     const launcher = useLauncherPlaytime(steamGame.appId, steamGame.isShortcut, steamGame.lutris);
     const game = launcher ? { ...steamGame, playedMinutes: mergePlaytime({ minutes: steamGame.playedMinutes, lastPlayed: 0 }, launcher).minutes } : steamGame;
@@ -218,7 +232,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     // Opened from Spotlight Home's open transition: Home's eyebrow words, kept for this visit (data/openIntent).
     const [openedFrom] = useState(() => openPending(game.appId));
 
-    const proton = useProton(game.appId, usesStat(settings.infoSlots, 'protondb') && !game.isShortcut);
+    const proton = useProton(game, usesStat(settings.infoSlots, 'protondb'));
     const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
@@ -237,6 +251,18 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useEffect(() => (pageDoc ? installCalmFilter(pageDoc) : undefined), [pageDoc]);
     // Fit's art fill and fade on the page (themeCss reads them), the restyle only: the 1.1.1 page keeps Steam's own header.
     usePageHeroFit(pageDoc, heroFit, restyle);
+    // How many people play now (spec 2026-11-12-player-count-pill): Steam games, the restyled page, while the toggle is on.
+    const playersOn = restyle && settings.playerCountPill && !game.isShortcut;
+    const players = usePlayerCount(playersOn ? game.appId : null, { maxAgeMs: PLAYERS_PAGE_MAX_AGE_MS, pollMs: PLAYERS_POLL_MS, enabled: playersOn });
+    // PlayCount's badge hides while ours stands in for it; pressing ours presses its button (its chart).
+    const playersChart = usePlayCountBadge(pageDoc, playersOn && players !== null);
+    const showPlayers = playersOn && players !== null;
+    // In the pill row, or above it when the row would reach past the right-hand stat card (styles/playersFit).
+    useLayoutEffect(() => {
+        const holder = pageDoc?.querySelector<HTMLElement>('.gg-hero .gg-pill');
+        const root = holder?.closest<HTMLElement>('.gg-hero');
+        return showPlayers && holder && root ? observePlayersPlacement(holder, root) : undefined;
+    }, [pageDoc, showPlayers, settings.storePill, settings.familyPill]);
     // The controller between the Play row, the cards and Steam's tabs, in the screen's order (#24).
     const navParts = pageNavParts(restyle, clean);
     useCardNav(pageDoc, navParts.dpad);
@@ -246,18 +272,25 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     useUnifideckGamepadFocus(pageDoc, game.isShortcut);
     const nativeSizeLabel = useUnifideckSizeLabel(pageDoc, game.appId, uniInstalled, restyle && game.isShortcut);
     // A Steam game that is not installed: its install size, from the space Steam says it needs (details, or Home's memo).
-    const spaceNeeded = (details as { lDiskSpaceRequiredBytes?: unknown } | null | undefined)?.lDiskSpaceRequiredBytes;
-    const steamSize = restyle && !game.isShortcut ? steamSpaceStat(overview, typeof spaceNeeded === 'number' ? spaceNeeded : memoSpaceRequired(game.appId), locale, tr('spaceRequired')) : null;
+    const steamSize = restyle && !game.isShortcut ? steamSpaceStat(overview, spaceRequiredOf(game.appId, details), locale, tr('spaceRequired')) : null;
     const size = (restyle && typeof uniInstalled === 'boolean' ? sizeStat(unifideckSize, uniInstalled, locale, nativeSizeLabel) : null) ?? steamSize;
     // Kept for Home's open, which draws this column before the page (OpenExtras) in Unifideck's own word.
     useEffect(() => {
         if (typeof uniInstalled === 'boolean') rememberSizeLabel(uniInstalled, nativeSizeLabel);
     }, [uniInstalled, nativeSizeLabel]);
     const fillCss = restyle ? downloadCss(download?.percent ?? null) : '';
+    // Space required at the Install pill's end: a Steam game not installed (steamSize is null otherwise) and not downloading.
+    const sizeCss = restyle && !download ? installSizeCss(steamSize?.value ?? null) : '';
     // While Steam's launch overlay is up, the page's text fades away so the overlay sits on the game's art alone; after
     // Play on Home (data/launchIntent) the page starts that way, so it never shows before the launch screen.
     const { overlay, hide } = launchSelectors();
     const launching = useLaunchOverlay(heroRef, overlay, hide, game.appId);
+    // Play on Home: Home's hero stays on screen, exactly as Home drew it, until the game takes over (styles/launchArt);
+    // without it the page showed dark for about 300 ms while Steam's page and its image arrived.
+    const fromHome = useLaunchFromHome(game.appId);
+    const homeArt = fromHome && launching && restyle ? heroArtFor(game.appId) : null;
+    const launchArt = homeArt?.mode === 'full' ? launchArtLayers(homeArt.url, heroFit, heroArtAspect(homeArt.url), windowAspect(pageDoc?.defaultView)) : null;
+    useLaunchArt(heroRef, launchArtHost(), launchArt);
     // Opened from Spotlight Home's open transition: the page's new parts (or the whole page) arrive once it is ready.
     const arrival = useOpenArrival(heroRef, game.appId);
     // The chrome host owns the bar and footer here as on Home (chrome/ChromeHost): the page claims it while rendered (not
@@ -299,14 +332,17 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                 <style>{unifideckCss({ restyle })}</style>
                 {ringStyle && <style>{ringStyle}</style>}
                 {cleanStyle && <style>{cleanStyle}</style>}
-                {launching && <style>{launchCss()}</style>}
+                {launching && <style>{launchCss(fromHome)}</style>}
                 {accent && <style>{accentCss(accent)}</style>}
                 {fillCss && <style>{fillCss}</style>}
-                {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
-                {source && (
-                    <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle}>
+                {sizeCss && <style>{sizeCss}</style>}
+                {arrival && restyle && <style>{arrivingCss(clean ? 'clean' : 'spotlight', arrival.intent.mode, arrival.revealed, { cloud: arrival.intent.homeCloud === false, bars: arrival.intent.homeBars, desc: arrival.intent.homeDesc, hltb: arrival.intent.homeHltb, family: arrival.intent.homeFamily, players: arrival.intent.homePlayers, missing: arrival.intent.homeMissing, size: arrival.intent.homeSize, uninstall: arrival.intent.homeUninstall === true })}</style>}
+                {/* Either pill can be turned off (settings.storePill, familyPill); the family pill alone takes the store pill's place. */}
+                {source && (settings.storePill || (restyle && settings.familyPill) || showPlayers) && (
+                    <GameSourcePill label={source} doc={pageDoc} appId={game.appId} active={restyle} bare={!settings.storePill}>
                         {/* A game from the family library (Steam's line under Play is hidden): with the restyled look only. */}
-                        {restyle && <LibraryPill doc={pageDoc} appId={game.appId} />}
+                        {restyle && settings.familyPill && <LibraryPill doc={pageDoc} appId={game.appId} />}
+                        {showPlayers && <PlayersPill count={players} locale={locale} className="gg-players" dotClassName="gg-players-dot" chart={playersChart} />}
                     </GameSourcePill>
                 )}
                 {cleanStyle && <CleanInfo game={game} hltb={hltb} locale={locale} size={size} slots={settings.infoSlots} proton={proton} />}
@@ -326,9 +362,10 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                             locale={locale}
                             restyle={restyle}
                             onPress={featured === 'hltb' && restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined}
-                            proton={featuredProton(game.isShortcut, proton)}
-                            achievements={pageAchievementFacts(details, game.isShortcut)}
-                            playTime={{ minutes: game.playedMinutes, twoWeeks: overviewNumber(overview, 'minutes_playtime_last_two_weeks'), lastPlayed: lastPlayedSeconds(overview, launcher?.lastPlayed ?? null) }}
+                            proton={proton}
+                            achievements={knownAchievementFacts(game.appId, pageAchievementFacts(details, game.isShortcut))}
+                            playTime={playFactsOf(game.appId, overview, { minutes: game.playedMinutes, lastPlayed: lastPlayedSeconds(overview, launcher?.lastPlayed ?? null) }, game.isShortcut)}
+                            compat={steamCompatOf(overview, details, game.isShortcut)}
                             now={now}
                         />
                     </CardsRow>

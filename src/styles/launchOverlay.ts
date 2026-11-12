@@ -1,4 +1,5 @@
-import { RefObject, useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { LAUNCH_ART_BOX, LAUNCH_ART_CLASS } from './launchArt';
 import { clearLaunch, launchPending } from '../data/launchIntent';
 
 /** How often the page looks for Steam's launch overlay while it is open (a single selector lookup). */
@@ -71,4 +72,58 @@ export function useLaunchOverlay(ref: RefObject<HTMLElement | null>, overlay: st
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ref, key]);
     return hidden;
+}
+
+/**
+ * Whether this page opened for a launch from Spotlight Home (data/launchIntent): read once per game, when the page
+ * first draws it, as the intent clears once the launch screen has come and gone.
+ */
+export function useLaunchFromHome(appId: number): boolean {
+    const [seen, setSeen] = useState(() => ({ appId, fromHome: launchPending(appId) }));
+    if (seen.appId === appId) return seen.fromHome;
+    const next = { appId, fromHome: launchPending(appId) };
+    setSeen(next);
+    return next.fromHome;
+}
+
+/**
+ * Keeps Home's art on the page while a game launched from Home starts (`art`, its styles from launchArt.launchArtLayers;
+ * null: none): a layer in Steam's header (`host`), over its image and under its scrims, so Home's hero stays exactly as it
+ * was while Steam's page and its image arrive. Waits for the header when the page draws before it; removed with `art`.
+ */
+export function useLaunchArt(ref: RefObject<HTMLElement | null>, host: string | null, art: { fill: string | null; art: string } | null): void {
+    const fill = art?.fill ?? null;
+    const image = art?.art ?? null;
+    useLayoutEffect(() => {
+        const doc = ref.current?.ownerDocument;
+        if (!doc || !host || image === null) return undefined;
+        let layer: HTMLElement | null = null;
+        const mount = (): boolean => {
+            const header = doc.querySelector<HTMLElement>(host);
+            if (!header) return false;
+            layer = doc.createElement('div');
+            layer.className = LAUNCH_ART_CLASS;
+            layer.setAttribute('style', LAUNCH_ART_BOX);
+            layer.setAttribute('aria-hidden', 'true');
+            for (const style of [fill, image]) {
+                if (style === null) continue;
+                const part = doc.createElement('div');
+                part.setAttribute('style', style);
+                layer.appendChild(part);
+            }
+            header.appendChild(layer);
+            return true;
+        };
+        let observer: MutationObserver | null = null;
+        if (!mount() && doc.defaultView?.MutationObserver) {
+            observer = new doc.defaultView.MutationObserver(() => {
+                if (mount()) observer?.disconnect();
+            });
+            observer.observe(doc.body, { childList: true, subtree: true });
+        }
+        return () => {
+            observer?.disconnect();
+            layer?.remove();
+        };
+    }, [ref, host, fill, image]);
 }

@@ -319,6 +319,27 @@ describe('openMotion', () => {
         expect(a.sy).toBeCloseTo(pageH / r.pill.h, 3);
     });
 
+    it("an Install pill's size: drawn at the page's font size, shrunk to Home's at the start, it ends at scale 1 at the page's inset", () => {
+        const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        const z = parse(v['--gho-play-size']);
+        // Origin: the size's right edge and centre line. Home's sits 22 inside the pill's 1 px border, the page's 24 in.
+        expect(z.tx).toBeCloseTo((pageW - r.pill.w) / s - (PAGE_LAYOUT.pill.padX * pf.x - (HOME_PILL.padX + HOME_PILL.border)), 1);
+        expect(z.ty).toBe(0);
+        // Its last frame is text laid out at the page's size, not Home's 16 px scaled up (its digits landed a device px low).
+        expect(z.sx).toBe(1);
+        const fontPx = parseFloat(v['--gho-play-size-font']);
+        expect(fontPx * s).toBeCloseTo(PAGE_LAYOUT.pill.sizeFont * pf.x * (spotlight().d ?? s), 6);
+        expect(v['--gho-play-size-from']).toBe(`scale(${Math.round((HOME_PILL.sizeFont / fontPx) * 10000) / 10000})`);
+    });
+
+    it("an Install pill that also has a \"Play from\" arrow: its size ends before the arrow's segment, on Home and on the page", () => {
+        const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        const z = parse(v['--gho-play-size-arrow']);
+        // Home's ends padX before its 50 wide segment; the page's padX before its 56 wide one (its first segment's end).
+        expect(z.tx).toBeCloseTo((pageW - r.pill.w) / s - ((PAGE_LAYOUT.pill.padX + PAGE_LAYOUT.playArrow.w) * pf.x - (HOME_PILL.arrow + HOME_PILL.padX)), 1);
+        expect(z.sx).toBe(1);
+    });
+
     it("opened with a mouse, it lands on the page's pill unfocused (mouse mode hides the focus look and its growth)", () => {
         const page = spotlight();
         const v = vars(openMotion(homeRects(), page, 'spotlight', s, false));

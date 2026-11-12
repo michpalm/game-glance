@@ -28,6 +28,15 @@ describe('frost context',()=>{
         expect(readFrostContext(owner(true,3,null),'v1')).toBeNull();
         const o=owner(); Object.assign(o,{innerWidth:0}); expect(readFrostContext(o,'v1')).toBeNull();
     });
+    it('frosts as on Home while Gamescope still draws Steam over a game that is loading (the Steam logo)',()=>{
+        const o=owner(true,3,null);
+        expect(readFrostContext(o,'v1',{hdr:false,maxScale:null,steamShown:true})).toMatchObject({background:'steam',fit:'fit'});
+        expect(readFrostContext(o,'v1',{hdr:false,maxScale:null,steamShown:false})).toMatchObject({background:'game',fit:'fit'});
+        // Unknown reads as the game, as before.
+        expect(readFrostContext(o,'v1',{hdr:false,maxScale:null})).toMatchObject({background:'game'});
+        // Integer scaling over a game has no native mapping, but Steam's own screen needs none.
+        expect(readFrostContext(owner(true,1,null),'v1',{hdr:false,maxScale:null,steamShown:true})).toMatchObject({background:'steam',fit:'fit'});
+    });
     it('uses verified compositor HDR and Auto cap when Steam omits those values',()=>{
         const o=owner(true,1,null);
         expect(readFrostContext(o,'v1',{hdr:false,maxScale:2})).toMatchObject({colorMode:'sdr',fit:'auto',maxScale:2});

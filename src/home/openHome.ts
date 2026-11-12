@@ -1,6 +1,7 @@
 import type { HomeRects, MotionVar } from './openMotion';
 import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
-import type { Box, ExtraColumn, ExtrasAsked, LineMeasure, Measure, PageLook, PageStat, StatKey } from './openTargets';
+import { pageTargets, type Box, type ExtraColumn, type ExtrasAsked, type LineMeasure, type Measure, type PageLook, type PageStat, type StatKey } from './openTargets';
+import { limitFromShells } from '../styles/playersFit';
 import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
 import { tr } from '../i18n/steamText';
@@ -49,7 +50,7 @@ export function viewportSize(win: {
 /** The page's stat columns (Play time, Achievements, HowLongToBeat Main) Home showed no chip for, by Home's chip keys. Pure. */
 /**
  * Whether Home draws the page's Play time column as it opens (OpenExtras `playedMissing`): Play time is in a stat slot and
- * Home showed no chip for it (a new game's Added chip). Not when Play time is the featured card: its card says "Total". Pure.
+ * Home showed no chip for it (a new game's Added chip). Not when Play time is the featured card: its card arrives with the page. Pure.
  */
 export function openPlayedMissing(slots: GameInfoSlots, chipKeys: string[]): boolean {
     return slots.stats.includes('played') && !chipKeys.includes('played');
@@ -362,10 +363,10 @@ export interface ChipText { key: string; label: string; value: string; bar: bool
 
 /**
  * The words a Spotlight featured card puts over its first value (components/FeaturedCard: logic/hltbCardView, featuredViews),
- * which the featured chip's label becomes. Achievements' first row is its latest unlock, which Home does not know: the
- * chip keeps its own words.
+ * which the featured chip's label becomes. Achievements', Play time's and ProtonDB's first row is a tile row whose label
+ * Home does not draw (the latest unlock, the last played date, the report count): the chip keeps its own words.
  */
-const FEATURED_FIRST_LABEL: Partial<Record<FeaturedId, string>> = { hltb: 'Main', played: 'Total', protondb: 'Rating' };
+const FEATURED_FIRST_LABEL: Partial<Record<FeaturedId, string>> = { hltb: 'Main' };
 
 /**
  * The page's stat columns, as Home can know them from its chips (the same Steam words and numbers), in the order of the
@@ -469,4 +470,24 @@ export function readExtrasAsked(root: Element): ExtrasAsked {
         value: column.querySelector('.gh-x-value')?.textContent?.trim() ?? '',
     }));
     return { columns, bar: root.querySelector('.gh-open-extras .gh-x-bar') !== null };
+}
+
+/**
+ * The player pill's fit line on Home (spec 2026-11-12-player-count-pill): Home's own cards are hidden at rest, so it is
+ * the page's right-hand card from the page model the open flies to (openTargets.pageTargets), in client px. Null (the
+ * row) when Home can't be measured.
+ */
+export function homePlayersLimit(root: Element, look: PageLook, slots: GameInfoSlots): number | null {
+    try {
+        const home = measureHome(root);
+        const win = root.ownerDocument?.defaultView;
+        if (!home || !win) return null;
+        const screen = viewportSize(win);
+        if (!(screen.width > 0 && screen.height > 0)) return null;
+        const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
+        const page = pageTargets(look, screen, pageStatsFromChips(readChipTexts(root), look, null, slots), canvasMeasure(root), { w: store.w, h: store.h }, undefined, lineMeasure(root), slots.featured);
+        return limitFromShells(look, page.shells, page.d ?? 1);
+    } catch {
+        return null;
+    }
 }

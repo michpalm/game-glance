@@ -304,13 +304,14 @@ describe('pageStatsFromChips follows the Game info slots', () => {
     const ach = { key: 'achievements', label: 'Achievements', value: '0 / 49', bar: true };
     const proton = { key: 'protondb', label: 'ProtonDB', value: 'Gold', bar: false };
     const hltb = { key: 'hltb', label: 'HLTB main', value: '9.1 h', bar: true };
-    it('in slot order, ProtonDB included; the featured stat named as its card names its first column', () => {
+    it("in slot order, ProtonDB included; HowLongToBeat featured is named as its card's first column, a tile-row card keeps the chip's words", () => {
         const slots = { stats: ['achievements', 'played', 'hltb'], featured: 'protondb' } as const;
         expect(pageStatsFromChips([ach, played, hltb, proton], 'spotlight', null, { stats: [...slots.stats], featured: slots.featured }).map((s) => [s.key, s.label, s.value])).toEqual([
-            ['achievements', 'Achievements', '0 / 49'], ['played', 'Play Time', '1.9 h'], ['hltb', 'HLTB main', '9.1 h'], ['protondb', 'Rating', 'Gold'],
+            ['achievements', 'Achievements', '0 / 49'], ['played', 'Play Time', '1.9 h'], ['hltb', 'HLTB main', '9.1 h'], ['protondb', proton.label, 'Gold'],
         ]);
-        // Play time featured: its card's Total.
-        expect(pageStatsFromChips([ach, played], 'spotlight', null, { stats: ['achievements', null, null], featured: 'played' }).map((s) => s.label)).toEqual(['Achievements', 'Total']);
+        // Play time featured: its card's first row is a tile row, so the chip keeps its words.
+        expect(pageStatsFromChips([ach, played], 'spotlight', null, { stats: ['achievements', null, null], featured: 'played' }).map((s) => s.label)).toEqual(['Achievements', played.label]);
+        expect(pageStatsFromChips([ach, hltb], 'spotlight', null, { stats: ['achievements', null, null], featured: 'hltb' }).map((s) => s.label)).toEqual(['Achievements', 'Main']);
     });
     it('HowLongToBeat in a stat slot keeps its words, even without a time (the info card shows it)', () => {
         const none = { ...hltb, value: '—' };
@@ -420,11 +421,10 @@ describe('mountOpenBridge', () => {
 
 describe('the Unifideck size in the open (Home draws it)', () => {
     const chips = [{ key: 'played', label: 'Play Time', value: '0 h', bar: false }, { key: 'hltb', label: 'HLTB Main', value: '12 h', bar: true }];
-    it('the page stats put it right after Played, as the page does', () => {
+    it('is no page stat (Space required is at the Install pill): left out even when passed', () => {
         const size = { label: 'Space required', value: '1.6 GB' };
-        expect(pageStatsFromChips(chips, 'spotlight', size).map((s) => s.key)).toEqual(['played', 'size', 'hltb']);
-        expect(pageStatsFromChips(chips, 'clean', size)[1]).toEqual({ key: 'size', label: 'Space required', value: '1.6 GB', bar: false });
-        expect(pageStatsFromChips(chips, 'clean').map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(pageStatsFromChips(chips, 'spotlight', size).map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(pageStatsFromChips(chips, 'clean', size).map((s) => s.key)).toEqual(['played', 'hltb']);
     });
     it("is one of the extras' parts when Home knows it", () => {
         expect(extrasParts(null, undefined, 'GOG', false, true)).toBe('pills size');
@@ -445,10 +445,9 @@ describe("a Steam game's Space Required chip (not installed): the page's size st
         { key: 'size', label: 'Space Required', value: '659 MB', bar: false },
         { key: 'hltb', label: 'HLTB main', value: '5 h', bar: true },
     ];
-    it('the page shows the same Space Required, right of Played, with no size passed in', () => {
+    it('a size chip (an older Home) is no page stat any more', () => {
         expect(pageStatsFromChips(home, 'spotlight').map((s) => [s.key, s.label, s.value])).toEqual([
             ['played', 'Played', '0 h'],
-            ['size', 'Space Required', '659 MB'],
             ['hltb', 'Main', '5 h'],
         ]);
     });

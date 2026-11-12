@@ -3,6 +3,11 @@ import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, TTL } from '../data/cache';
 import { lookupHltb } from '../data/hltb';
+import { protonGames } from '../data/protonGame';
+import { protonKnown, seedProton } from '../data/useProton';
+import { lookupPlayers, PLAYERS_HOME_MAX_AGE_MS } from '../data/playerCount';
+import { playersKnown, seedPlayers } from '../data/usePlayerCount';
+import { usesStat } from '../logic/infoSlots';
 import { settings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getDescription, getSteamLanguage } from '../data/steam';
@@ -13,8 +18,8 @@ import type { HeroicRef } from '../logic/heroic';
 import { artKnown, resolveArt } from './HeroBackground';
 import { rowShowsWideCards } from './recentsLayout';
 import { cardArtKnown, warmCardArt } from './wideCardArt';
-import { memoAchievements, noteDetails, seedAchievements, setAchievementSink } from './detailsMemo';
-import { ArtWarmDeps, DescriptionWarmDeps, DetailsWarmDeps, HltbWarmDeps, warmAchievements, warmArt, warmDescriptions, warmHltb, warmOrder } from './warmup';
+import { achievementsComplete, memoAchievements, noteDetails, seedAchievements, setAchievementSink } from './detailsMemo';
+import { warmPlayers, ArtWarmDeps, DescriptionWarmDeps, DetailsWarmDeps, HltbWarmDeps, ProtonWarmDeps, warmAchievements, warmArt, warmDescriptions, warmHltb, warmOrder, warmProton } from './warmup';
 
 /**
  * The network and Steam-details warming waits this long after Home is up, so the first paint and the selected game's own
@@ -95,7 +100,7 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
             for (const game of ordered) {
                 if (cancelled) return;
                 if (memoAchievements(game.appId)) continue;
-                const stored = await attempt('achievements cache read', () => cache.get<{ achieved: number; total: number }>(achievementKey(game.appId)), null);
+                const stored = await attempt('achievements cache read', () => cache.get<unknown>(achievementKey(game.appId)), null);
                 if (stored) {
                     seedAchievements(game.appId, stored);
                     seeded = true;
@@ -111,7 +116,8 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
                 sleep,
             };
             const detailsDeps: DetailsWarmDeps = {
-                has: (appId) => memoAchievements(appId) !== undefined,
+                // Complete: the counts, and the latest and rarest unlocked (a game cached with counts only is asked once more).
+                has: achievementsComplete,
                 register: (appId, onDetails) => steamApps()?.RegisterForAppDetails?.(appId, onDetails),
                 sleep,
             };
@@ -131,8 +137,36 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
                 const lang = await attempt('Steam language', () => getSteamLanguage(), 'english');
                 await warmDescriptions(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), lang, descriptionDeps, isCancelled, changed);
             };
+            const names = new Map(ordered.map((g) => [g.appId, g.name]));
+            const protonGameOf = (appId: number) => ({ appId, name: names.get(appId) ?? '', isShortcut: shortcut(appId) });
+            const protonDeps: ProtonWarmDeps = {
+                known: protonKnown,
+                readCached: (appId) => protonGames.cachedOnly(protonGameOf(appId)),
+                prefetch: (appId) => protonGames.prefetch(protonGameOf(appId)),
+                seed: seedProton,
+                allowNetwork: () => settings.get().autoPreload,
+                sleep,
+            };
+            // Only while ProtonDB is in a Game info slot (it sends the game's app id to ProtonDB). A shortcut goes by the
+            // Steam game of its name (data/protonGame).
+            const proton = usesStat(settings.get().infoSlots, 'protondb')
+                ? warmProton(ordered.map((g) => g.appId), protonDeps, isCancelled, changed)
+                : undefined;
+            // The player count pill (on unless turned off): Steam games only, at Home's age (5 minutes).
+            const players = settings.get().playerCountPill
+                ? warmPlayers(ordered.filter((g) => !shortcut(g.appId)).map((g) => g.appId), {
+                    known: playersKnown,
+                    readCached: (appId) => lookupPlayers.cachedOnly(appId),
+                    prefetch: (appId) => lookupPlayers.prefetch(appId, PLAYERS_HOME_MAX_AGE_MS),
+                    seed: seedPlayers,
+                    allowNetwork: () => settings.get().autoPreload,
+                    sleep,
+                }, isCancelled, changed)
+                : undefined;
             await Promise.all([
                 pills,
+                proton,
+                players,
                 descriptions(),
                 art,
                 warmHltb(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), hltbDeps, isCancelled, changed),

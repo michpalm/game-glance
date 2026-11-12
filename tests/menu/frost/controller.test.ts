@@ -48,6 +48,24 @@ describe('frost controller',()=>{
         ready.resolve({status:'ready',key:'key'});await flush();expect(f.bridge.activate).not.toHaveBeenCalled();
         await f.controller.end(1);expect(f.bridge.cancel).toHaveBeenCalled();
     });
+    it('brings in-game frost in while open when the game shows under Home frost (the Steam logo, then the game)',async()=>{
+        const f=fixture();
+        f.controller.begin(1);f.controller.frame(frame(1,'steam'));f.controller.presented(1);
+        expect(f.home.apply).toHaveBeenCalled();
+        f.controller.frame(frame(1,'game'));await flush();
+        expect(f.home.clear).toHaveBeenCalled();
+        expect(f.bridge.activate).toHaveBeenCalledWith(expect.any(String),'key',expect.any(Number),frame(1,'game'));
+        await f.controller.end(1);expect(f.bridge.release).toHaveBeenCalledWith('token');
+    });
+    it('brings frost back while open after a new shader (a display scale change)',async()=>{
+        const f=fixture();
+        f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);await flush();
+        expect(f.bridge.activate).toHaveBeenCalledTimes(1);
+        const scaled=frame();scaled.context={...scaled.context,outputWidth:2560,outputHeight:1440,dpr:1.33};
+        f.controller.frame(null);f.controller.frame(scaled);await flush();
+        expect(f.bridge.activate).toHaveBeenCalledTimes(2);expect(f.bridge.activate).toHaveBeenLastCalledWith(expect.any(String),'key',expect.any(Number),scaled);
+        await f.controller.end(1);
+    });
     it('releases activation that completes after close, without touching a new generation',async()=>{
         const f=fixture(),active=deferred<Activated>();vi.mocked(f.bridge.activate).mockReturnValueOnce(active.promise);
         f.controller.begin(1);f.controller.frame(frame());await flush();f.controller.presented(1);await f.controller.end(1);

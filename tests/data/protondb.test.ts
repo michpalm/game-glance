@@ -100,3 +100,34 @@ describe('createProtonLookup', () => {
         expect(fetcher).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('createProtonLookup: cachedOnly and prefetch (the warm-up and pre-loads)', () => {
+    it('cachedOnly never goes online: null with nothing cached, the cached answer however old', async () => {
+        const fetcher = vi.fn(async () => answer(200, SUMMARY));
+        const { lookup, clock } = setup(fetcher);
+        expect(await lookup.cachedOnly(7)).toBeNull();
+        expect(fetcher).not.toHaveBeenCalled();
+        await lookup(7);
+        clock.now += 30 * DAY_MS;
+        expect(await lookup.cachedOnly(7)).toMatchObject({ status: 'found', tier: 'gold' });
+        expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+    it('prefetch asks only when nothing is cached or the answer is due, and says whether it went online', async () => {
+        const fetcher = vi.fn(async () => answer(200, SUMMARY));
+        const { lookup, clock } = setup(fetcher);
+        expect(await lookup.prefetch(7)).toEqual({ status: 'found', fetched: true });
+        expect(await lookup.prefetch(7)).toEqual({ status: 'found', fetched: false });
+        clock.now += PROTON_REFRESH_MS;
+        expect(await lookup.prefetch(7)).toEqual({ status: 'found', fetched: true });
+        expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+    it('prefetch reads an unreachable ProtonDB as unavailable, and keeps a known rating', async () => {
+        const fetcher = vi.fn().mockResolvedValueOnce(answer(200, SUMMARY)).mockResolvedValue(answer(503));
+        const { lookup, clock } = setup(fetcher);
+        await lookup.prefetch(7);
+        clock.now += PROTON_REFRESH_MS;
+        expect(await lookup.prefetch(7)).toEqual({ status: 'unavailable', fetched: true });
+        expect(await lookup.cachedOnly(7)).toMatchObject({ status: 'found', tier: 'gold' });
+        expect(await lookup.prefetch(8)).toEqual({ status: 'unavailable', fetched: true });
+    });
+});

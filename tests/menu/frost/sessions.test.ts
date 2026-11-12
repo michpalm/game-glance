@@ -21,6 +21,12 @@ describe('native input frost sessions',()=>{
         const pending=f.sessions.clearFrost(2);expect(f.bridge.cancel).toHaveBeenCalled();expect(old.clearFrost).not.toHaveBeenCalled();
         f.sessions.attach(next);f.flush();await pending;expect(old.clearFrost).not.toHaveBeenCalled();expect(next.clearFrost).not.toHaveBeenCalled();f.sessions.dispose();
     });
+    it('starts no early in-game warmup while the menu opens over Steam itself (Home, the library)',()=>{
+        const tasks:(()=>void)[]=[],f=fixture();
+        const overHome=createFrostSessions(f.bridge,fn=>{tasks.push(fn);},()=>true);
+        overHome.remember(frame);overHome.setFrostSession({generation:2,enabled:true});
+        expect(f.bridge.prepare).not.toHaveBeenCalled();expect(overHome.takeWarmup()).toBeNull();overHome.dispose();
+    });
     it('hands a warmup to exactly one controller and cancels only the matching generation',async()=>{
         const f=fixture();f.sessions.remember(frame);f.sessions.setFrostSession({generation:2,enabled:true});
         const warmup=f.sessions.takeWarmup()!;expect(warmup.frame.generation).toBe(2);expect(f.sessions.takeWarmup()).toBeNull();

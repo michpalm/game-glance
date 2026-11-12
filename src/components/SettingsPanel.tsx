@@ -1,6 +1,6 @@
 import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
-import { HERO_FIT_COPY, HERO_FITS, HeroFit } from '../home/heroFit';
+import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, HeroFit } from '../home/heroFit';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
@@ -19,7 +19,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -301,11 +301,20 @@ export function SettingsPanel() {
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>
+                    <ToggleField label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row, on Home and the game page." checked={storePill} onChange={(value) => settings.setStorePill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Family Sharing pill" description="Whose library a shared game comes from, on Home and the game page." checked={familyPill} onChange={(value) => settings.setFamilyPill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Player count" description="How many people are playing now, from Steam." checked={playerCountPill} onChange={(value) => settings.setPlayerCountPill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
                     <DropdownItem
                         label="Hero art"
                         description={HERO_FIT_COPY[heroFit]}
                         menuLabel="Hero art"
-                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: HERO_FIT_LABELS[fit] }))}
                         selectedOption={heroFit}
                         onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
                     />

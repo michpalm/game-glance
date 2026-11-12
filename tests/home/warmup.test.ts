@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { memoAchievements, noteDetails, resetDetailsMemo, seedAchievements, setAchievementSink } from '../../src/home/detailsMemo';
 import {
     ART_WARM_GAP_MS, DESCRIPTION_MEMO_MAX, DESCRIPTION_WARM_DELAY_MS, forgetHltb, warmArt, warmDescriptions, knownDescription, HLTB_WARM_DELAY_MS, peekDescription, peekHltb, rememberDescription, rememberHltb, resetWarmup, warmAchievements,
-    warmHltb, warmOrder,
+    warmHltb, warmOrder, warmProton, PROTON_WARM_DELAY_MS, ProtonWarmDeps,
 } from '../../src/home/warmup';
+import type { ProtonResult } from '../../src/data/protondb';
+import type { PlayerCount } from '../../src/data/playerCount';
+import { warmPlayers, PLAYERS_WARM_DELAY_MS, type PlayersWarmDeps } from '../../src/home/warmup';
 
 const game = (appId: number) => ({ appId, name: `Game ${appId}`, isShortcut: false });
 const found = (main: number) => ({ status: 'found' as const, gameId: 1, times: { main, mainExtras: null, completionist: null } });
@@ -257,5 +260,105 @@ describe('achievements kept across restarts (the sink and seeding)', () => {
         setAchievementSink(() => { throw new Error('disk'); });
         expect(() => noteDetails(8, { achievements: { nTotal: 3, nAchieved: 0 } })).not.toThrow();
         expect(memoAchievements(8)).toEqual({ achieved: 0, total: 3 });
+    });
+});
+
+describe('warmProton', () => {
+    const rated: ProtonResult = { status: 'found', tier: 'gold', details: { total: 9, confidence: 'good', trending: null, best: null } };
+    function protonDeps(over: Partial<ProtonWarmDeps> = {}, disk = new Map<number, ProtonResult>()) {
+        const memo = new Map<number, ProtonResult>();
+        const d: ProtonWarmDeps & { memo: Map<number, ProtonResult> } = {
+            memo,
+            known: (id) => memo.has(id),
+            readCached: vi.fn(async (id: number) => disk.get(id) ?? null),
+            prefetch: vi.fn(async (id: number) => { disk.set(id, rated); return { status: 'found' as const, fetched: true }; }),
+            seed: (id, r) => { if (r.status === 'found' && !r.details) return false; memo.set(id, r); return true; },
+            allowNetwork: () => true,
+            sleep: vi.fn(async () => undefined),
+            ...over,
+        };
+        return d;
+    }
+    it('the disk cache first: a cached rating reaches the chip without going online', async () => {
+        const d = protonDeps({}, new Map([[1, rated]]));
+        const got: number[] = [];
+        await warmProton([1], d, () => false, (id) => got.push(id));
+        expect(d.memo.get(1)).toEqual(rated);
+        expect(d.prefetch).not.toHaveBeenCalled();
+        expect(got).toEqual([1]);
+    });
+    it('then online, one game at a time, pausing after each fetch', async () => {
+        const d = protonDeps();
+        await warmProton([1, 2], d, () => false);
+        expect(d.prefetch).toHaveBeenNthCalledWith(1, 1);
+        expect(d.prefetch).toHaveBeenNthCalledWith(2, 2);
+        expect(d.sleep).toHaveBeenCalledWith(PROTON_WARM_DELAY_MS);
+        expect([...d.memo.keys()]).toEqual([1, 2]);
+    });
+    it('an old cache entry without details is asked again online', async () => {
+        const d = protonDeps({}, new Map([[1, { status: 'found', tier: 'gold' } as ProtonResult]]));
+        await warmProton([1], d, () => false);
+        expect(d.prefetch).toHaveBeenCalledWith(1);
+        expect(d.memo.get(1)).toEqual(rated);
+    });
+    it('skips games the chip knows, stays offline when the setting says so, stops when ProtonDB is unreachable or cancelled', async () => {
+        const known = protonDeps();
+        known.memo.set(1, rated);
+        await warmProton([1], known, () => false);
+        expect(known.readCached).not.toHaveBeenCalled();
+        const offline = protonDeps({ allowNetwork: () => false });
+        await warmProton([1, 2], offline, () => false);
+        expect(offline.prefetch).not.toHaveBeenCalled();
+        const down = protonDeps({ prefetch: vi.fn(async () => ({ status: 'unavailable' as const, fetched: true })) });
+        await warmProton([1, 2], down, () => false);
+        expect(down.prefetch).toHaveBeenCalledTimes(1);
+        const cancelled = protonDeps();
+        await warmProton([1, 2], cancelled, () => true);
+        expect(cancelled.readCached).not.toHaveBeenCalled();
+    });
+});
+
+describe('warmPlayers', () => {
+    const found = (count: number): PlayerCount => ({ status: 'found', count });
+    function deps(over: Partial<PlayersWarmDeps> = {}, disk = new Map<number, PlayerCount>()) {
+        const memo = new Map<number, number>();
+        const d: PlayersWarmDeps & { memo: Map<number, number> } = {
+            memo,
+            known: (id) => memo.has(id),
+            readCached: vi.fn(async (id: number) => disk.get(id) ?? null),
+            prefetch: vi.fn(async (id: number) => { if (disk.has(id)) return { status: 'found' as const, fetched: false }; disk.set(id, found(id * 10)); return { status: 'found' as const, fetched: true }; }),
+            seed: (id, r) => { if (r.status !== 'found') return false; memo.set(id, r.count); return true; },
+            allowNetwork: () => true,
+            sleep: vi.fn(async () => undefined),
+            ...over,
+        };
+        return d;
+    }
+    it('seeds cached counts without going online, and fetches the rest one at a time with a pause', async () => {
+        const d = deps({}, new Map([[1, found(5)]]));
+        const got: number[] = [];
+        await warmPlayers([1, 2], d, () => false, (id) => got.push(id));
+        expect(d.memo.get(1)).toBe(5);
+        expect(d.memo.get(2)).toBe(20);
+        expect(d.prefetch).toHaveBeenCalledTimes(2); // a cached count is asked only when due (prefetch decides)
+        expect(d.sleep).toHaveBeenCalledTimes(1); // the pause follows only the request that went online
+        expect(d.sleep).toHaveBeenCalledWith(PLAYERS_WARM_DELAY_MS);
+        expect(got).toEqual([1, 2]);
+    });
+    it('stays offline when pre-loading is off', async () => {
+        const d = deps({ allowNetwork: () => false });
+        await warmPlayers([1], d, () => false);
+        expect(d.prefetch).not.toHaveBeenCalled();
+    });
+    it('stops the pass when Steam is unavailable (rate limit), keeping what it already seeded', async () => {
+        const d = deps({ prefetch: vi.fn(async () => ({ status: 'unavailable' as const, fetched: true })) }, new Map([[1, found(5)]]));
+        await warmPlayers([1, 2, 3], d, () => false);
+        expect(d.prefetch).toHaveBeenCalledTimes(1);
+        expect(d.memo.get(1)).toBe(5);
+    });
+    it('stops when cancelled', async () => {
+        const d = deps();
+        await warmPlayers([1, 2], d, () => true);
+        expect(d.readCached).not.toHaveBeenCalled();
     });
 });

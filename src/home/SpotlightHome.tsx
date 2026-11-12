@@ -5,7 +5,7 @@ import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
 import { pageInfoStats } from '../logic/slotStats';
 import type { GamepadEvent } from '@decky/ui';
-import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
@@ -15,7 +15,8 @@ import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, holdsFocus, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
-import { useSettings } from '../data/settings';
+import { settings, useSettings } from '../data/settings';
+import { homeMode } from './mode';
 import { recentsButton, selectionForButton, type Zone } from './focusZones';
 import { sheetSwipe } from './rowDrag';
 import { rowWheelTarget } from './mouse';
@@ -35,6 +36,9 @@ import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemor
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { HomePills } from './HomePills';
 import { useFamilyCopies } from '../hooks/useFamilyCopies';
+import { PLAYERS_HOME_MAX_AGE_MS } from '../data/playerCount';
+import { usePlayerCount } from '../data/usePlayerCount';
+import { homePlayersLimit } from './openHome';
 import { loadStoreVersions, peekStoreVersions } from '../data/storeVersions';
 import { useAsync } from '../hooks/useAsync';
 import { GameStatusBar } from '../components/GameStatusBar';
@@ -46,7 +50,7 @@ import { canvasStyle, homeCanvas } from './scale';
 import { OpenExtras } from './OpenExtras';
 import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
 import { useUnifideckSize } from '../hooks/useUnifideckSize';
-import { knownSizeLabel, sizeStat } from '../logic/sizeStat';
+import { installSizeText, knownSizeLabel, sizeStat } from '../logic/sizeStat';
 import { TitleBlock } from './TitleBlock';
 import { useBumperSelect, useDirectionSelect } from './useBumperSelect';
 import { useCloud } from './useCloud';
@@ -59,6 +63,7 @@ import { useHomeClaim } from './useHomeClaim';
 import { chromeFocus } from '../chrome/useChrome';
 import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
+import { overFill } from './heroFit';
 
 /** How often Home checks whether Quick Access has closed, and how long it then lets Steam restore focus first. */
 const MENU_POLL_MS = 250;
@@ -153,7 +158,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots } = useSettings();
+    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots, storePill, familyPill, playerCountPill } = useSettings();
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -512,7 +517,15 @@ export function SpotlightHome() {
     const game = data.focused;
     // A game from the family library: "Family Sharing · Lender" beside the store pill (data/family).
     const copies = useFamilyCopies(game?.appId ?? 0, !onLibrary && !cycle.holding);
-    const family = copies.label;
+    const family = familyPill ? copies.label : null;
+    // How many people play the focused game now (spec 2026-11-12-player-count-pill): Steam games, cached, refreshed at 5 min.
+    const playersApp = game && !game.shortcut && playerCountPill && !onLibrary && !cycle.holding ? game.appId : null;
+    const players = usePlayerCount(playersApp, { maxAgeMs: PLAYERS_HOME_MAX_AGE_MS, enabled: playersApp !== null });
+    // Any pill can be turned off (settings): nothing when all are, the family pill (or the player pill) in the store pill's place.
+    const pillSource = storePill || family || players !== null ? data.source : undefined;
+    // Home's fit line: the page's right-hand card from the page model (Home's own cards are hidden at rest), as the open's
+    // copy and the page use. HomePills attaches it to its holder element (styles/playersFit placePlayersOn).
+    const playersLimit = useCallback((root: HTMLElement) => homePlayersLimit(root, homeMode(settings.get()).cleanDetails ? 'clean' : 'spotlight', slots), [slots]);
     const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
     const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
@@ -553,7 +566,7 @@ export function SpotlightHome() {
     }, [contentUp, restore]);
 
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${overFill(heroFit) ? ' gh-fit' : ''}${heroFit === 'expanded' ? ' gh-expanded' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
@@ -605,11 +618,17 @@ export function SpotlightHome() {
                                         cloud={onLibrary ? null : cloud}
                                         onBack={focusGames}
                                         unifideck={!onLibrary && typeof uniInstalled === 'boolean' ? { installed: uniInstalled } : null}
+                                        installSize={onLibrary || !game ? null : installSizeText({
+                                            installed: data.focused?.installed === true,
+                                            downloading: data.download !== null,
+                                            steamBytes: game.shortcut ? null : data.spaceRequired,
+                                            unifideck: uniShortcut && typeof uniInstalled === 'boolean' ? { installed: uniInstalled, bytes: uniBytes } : null,
+                                        }, data.locale)}
                                     />
                                 </section>
                                 {/* The selected game's store, as the game page's pill; not on the Library card. */}
-                                {!onLibrary && data.source && (
-                                    <HomePills appId={game.appId} source={data.source} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} />
+                                {!onLibrary && pillSource && (
+                                    <HomePills appId={game.appId} source={pillSource} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} bare={!storePill} players={players} locale={data.locale} playersLimit={playersLimit} />
                                 )}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} grayUninstalled={homeGrayUninstalled} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
                                 {hasFeed && <FeedSheet
@@ -635,8 +654,8 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
-            {/* The page's cards as the page draws them (its featured card too, from what Home knows; nothing featured: the info card alone). */}
-            {game && !cycle.holding && <div className={slots.featured === null ? 'gh-normal-cards gh-normal-cards-single' : 'gh-normal-cards'}>
+            {/* The page's cards as the page draws them (its featured card too, from what Home knows; nothing featured: the info card alone, at its own width). */}
+            {game && !cycle.holding && <div className="gh-normal-cards">
                 <InfoCardPanel prefix="gh-normal" stats={pageInfoStats(homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots), slots)} description={data.description} />
                 <FeaturedCard
                     prefix="gh-normal"
@@ -647,7 +666,8 @@ export function SpotlightHome() {
                     restyle
                     proton={data.featuredFacts?.proton}
                     achievements={data.featuredFacts?.achievements}
-                    playTime={data.featuredFacts?.playTime ?? { minutes: data.playedMinutes, twoWeeks: 0, lastPlayed: 0 }}
+                    playTime={data.featuredFacts?.playTime ?? { minutes: data.playedMinutes, twoWeeks: 0, lastPlayed: 0, icon: null, purchased: 0, reviews: null }}
+                    compat={data.featuredFacts?.compat}
                     now={Math.floor(Date.now() / 1000)}
                 />
             </div>}
@@ -662,7 +682,7 @@ export function SpotlightHome() {
             <div className="gh-open-cring" data-i="2" />
             {!onLibrary && uniInstalled === true && <div className="gh-open-cring" data-i="3" />}
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
-            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={openPlayedMissing(slots, data.chips.map((c) => c.key))} size={slots.stats.includes('size') ? sizeColumn : null} featured={slots.featured} />}
+            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={pillSource} sourceBare={!storePill} family={family} familyMultiple={copies.count > 1} players={players} sourceMultiple={versions.length > 1} playedMissing={openPlayedMissing(slots, data.chips.map((c) => c.key))} size={null} featured={slots.featured} />}
         </div>
     );
 }

@@ -100,7 +100,7 @@ const CARDS_H = PAGE_LAYOUT.playTop.tvCards;
  * HowLongToBeat's Main is; the info card holds the other stats; null: no right-hand card, the info card spans the row.
  */
 export function pageTargets(
-    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
+    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number; side?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
     lines?: LineMeasure, featured: StatKey | null = 'hltb',
 ): PageTargets {
     const L = PAGE_LAYOUT;
@@ -120,7 +120,8 @@ export function pageTargets(
         return { x, y, w: snap(b.x + b.w) - x, h: snap(b.y + b.h) - y };
     };
     const tv = W >= L.tvQuery.minWidth && H >= L.tvQuery.minHeight;
-    const side = (tv ? L.side.tv : L.side.base) * d;
+    // The side inset in canvas px; `side` overrides it (pages recorded before the handheld's moved to 28: 56).
+    const side = (screen.side ?? (tv ? L.side.tv : L.side.base)) * d;
     const playTop = look === 'clean'
         ? H - L.rowH * d - Math.max(L.clean.bottom * d, L.clean.minBelowRow - (L.rowH - L.icon) * d)
         : tv
@@ -171,13 +172,13 @@ export function pageTargets(
         const top = playTop + L.rowH * d;
         // As the page's grid: the columns share the width between the sides; each card at most its cardMaxWidths,
         // the info card at the left, the featured card (HowLongToBeat's by default) at the right end, so on a wider screen
-        // the art shows between them. Nothing featured: the info card alone, spanning the row (themeCss .gg-cards-single).
+        // the art shows between them. Nothing featured: the info card alone, at its own width (the right-hand column empty).
         const inner = W - 2 * side - L.cards.gridGap * d;
         const [a, b] = L.cards.split;
         const [infoMax, hltbMax] = cardMaxWidths(W / H);
         // Their min-height is CARDS_H less 2 for the rings, in d units, and the rings as drawn come on top.
         const cardH = (CARDS_H - 2) * d + 2 * BORDER;
-        const infoW = featured === null ? W - 2 * side : Math.min((inner * a) / (a + b), infoMax * d - thinner);
+        const infoW = Math.min((inner * a) / (a + b), infoMax * d - thinner);
         const info: Box = { x: side, y: top, w: infoW, h: cardH };
         const hltbW = Math.min((inner * b) / (a + b), hltbMax * d) - thinner;
         const hltb: Box | null = featured === null ? null : { x: W - side - hltbW, y: top, w: hltbW, h: cardH };
@@ -217,6 +218,7 @@ export function pageTargets(
     } else {
         // Measure the row first (at 0, 0), then place the panel right-aligned and centred on the Play pill.
         const width = row(stats, 0, 0, L.cleanInfo.colGap * d);
+        // No stat to show: the page draws no panel (CleanInfoPanel), so nothing grows into one.
         const barH = stats.some((s) => s.bar) ? (L.stats.rowGap + L.cleanInfo.barTop + L.cleanInfo.barH) * d : 0;
         const columnH = labelH + L.stats.rowGap * d + valueH + barH;
         const panel: Box = { x: 0, y: 0, w: width + 2 * (L.cleanInfo.padX * d + BORDER), h: columnH + 2 * (L.cleanInfo.padY * d + BORDER) };
@@ -230,7 +232,7 @@ export function pageTargets(
             s.value = { ...s.value, x: s.value.x + ox, y: s.value.y + oy };
             if (s.bar) s.bar = { ...s.bar, x: s.bar.x + ox, y: s.bar.y + oy };
         }
-        cards = [panel];
+        cards = stats.length > 0 ? [panel] : [];
         shells = cards.map(snapBox);
         store = { x: W - side - storeSize.w, y: playTop - L.clean.storeGap * d - storeSize.h, w: storeSize.w, h: storeSize.h };
     }
