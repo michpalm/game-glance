@@ -1,6 +1,6 @@
 import type { HomeRects, MotionVar } from './openMotion';
 import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
-import { pageTargets, type Box, type ExtraColumn, type ExtrasAsked, type LineMeasure, type Measure, type PageLook, type PageStat, type StatKey } from './openTargets';
+import { pageTargets, type Box, type ExtraColumn, type ExtrasAsked, type LineMeasure, type Measure, type PageLook, type PageStat, type PageTargets, type StatKey } from './openTargets';
 import { limitFromShells } from '../styles/playersFit';
 import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
@@ -8,6 +8,7 @@ import { tr } from '../i18n/steamText';
 import { LOG_PREFIX } from '../constants';
 import { DEFAULT_SLOTS, FeaturedId, GameInfoSlots } from '../logic/infoSlots';
 import { orderBySlots } from '../logic/slotStats';
+import { MOUSE_ATTR } from './mouseMode';
 
 /**
  * Spotlight Home's side of the open transition: which variant runs (openVariant), Home's boxes (measureHome), the
@@ -490,4 +491,27 @@ export function homePlayersLimit(root: Element, look: PageLook, slots: GameInfoS
     } catch {
         return null;
     }
+}
+
+/** Home measured and the page's targets for the morph (shared by the open and the way back's glide). */
+export interface MorphMeasure { home: HomeRects; page: PageTargets; scale: number; focused: boolean; stats: PageStat[] }
+
+/**
+ * Measures Home and aims it at `look`'s page layout (pageTargets): null when anything required is missing. `extras`: the
+ * page's parts Home draws as it turns into it (extrasParts words; '' for none). Opened with a mouse, the page shows no
+ * focus look (`focused` false).
+ */
+export function measureMorph(root: HTMLElement, look: PageLook, extras: string, slots: GameInfoSlots): MorphMeasure | null {
+    const home = measureHome(root);
+    const win = root.ownerDocument?.defaultView;
+    const scale = measureCanvasScale(root);
+    const screen = win ? viewportSize(win) : { width: 0, height: 0 };
+    if (!home || !(scale > 0) || !(screen.width > 0) || !(screen.height > 0)) return null;
+    // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
+    const size = extras.split(' ').includes('size') ? readExtrasSize(root) : null;
+    const stats = pageStatsFromChips(readChipTexts(root), look, size, slots);
+    const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
+    const page = pageTargets(look, screen, stats, canvasMeasure(root), { w: store.w, h: store.h }, extras ? readExtrasAsked(root) : undefined, lineMeasure(root), slots.featured);
+    const focused = !root.ownerDocument?.documentElement?.hasAttribute(MOUSE_ATTR);
+    return { home, page, scale, focused, stats };
 }

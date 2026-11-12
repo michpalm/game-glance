@@ -4,15 +4,15 @@ import { ART_FILL_FILTER, EXPANDED_INSET, EXPANDED_MASK } from '../../src/home/h
 import { describe, expect, it } from 'vitest';
 import { SOURCE_PILL } from '../../src/styles/sourcePill';
 import {
-    statusCss, HOME_GLASS, HOME_PILL, PILL_CHIPS_GAP,
+    closingRules, CLOSING_MOVES, openingRules, statusCss, HOME_GLASS, HOME_PILL, PILL_CHIPS_GAP,
     FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { NOT_MOUSE } from '../../src/home/mouseMode';
 import { labelText } from '../../src/styles/tokens';
 import { normalCardsCss } from '../../src/styles/themeCss';
-import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
-import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
+import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, SHADE_NONE, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
+import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
 
 /** Splits a selector list at the commas outside parentheses (`:is(a, b)` stays one selector). */
@@ -1011,11 +1011,11 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\):not\\(\\[data-gh-closing\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\):not\\(\\[data-gh-closing\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
     });
     it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
-        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\) \.gh-safe :is\(/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\):not\(\[data-gh-closing\]\) \.gh-safe :is\(/);
         expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
     it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
@@ -1474,5 +1474,60 @@ describe('ProtonDB chip', () => {
         const value = all.find(([sel]) => sel.some((s) => s.includes('data-gh-phase="to"') && s.endsWith('.gh-chip:nth-child(5) .gh-chip-value')));
         expect(label?.[1]).toContain('var(--gho-chip-4-o, 0)');
         expect(value?.[1]).toContain('opacity: var(--gho-chip-4-o, 0)');
+    });
+});
+
+describe('closingRules (the way back glide)', () => {
+    const css = () => closingRules().join('\n');
+    const F = '.gh-root[data-gh-closing="from"]';
+    const T = '.gh-root[data-gh-closing="to"]';
+
+    it("starts each shared part at the page's place, with no transition, and glides it to rest", () => {
+        for (const [selector, variable] of CLOSING_MOVES) {
+            expect(css()).toContain(`${F} ${selector} { transform: var(${variable}); transition: none !important; }`);
+            expect(css()).toContain(`${T} ${selector} { transition: transform ${RETURN_GLIDE.glide}ms ${MORPH_EASE} !important; }`);
+        }
+    });
+
+    it("'cut' stops every glide transition at once (the round buttons' own 250 ms one kept them moving after an early end)", () => {
+        for (const [selector] of CLOSING_MOVES) expect(css()).toContain(`.gh-root[data-gh-closing="cut"] ${selector} { transition: none !important; }`);
+    });
+
+    it("moves the same parts by the same variables as the open's morph", () => {
+        const opening = openingRules().join('\n');
+        for (const [selector, variable] of CLOSING_MOVES) expect(opening).toContain(`[data-gh-phase="to"] ${selector} { transform: var(${variable});`);
+    });
+
+    it('raises the game row and fades in the chips, the info button and the stream arrow', () => {
+        expect(css()).toMatch(new RegExp(`@keyframes gh-close-row \\{ from \\{ opacity: 0; transform: translateY\\(${OPEN_TIMINGS.leaveDrop}px\\); \\} \\}`));
+        expect(css()).toMatch(new RegExp(`@keyframes gh-close-chip \\{ from \\{ opacity: 0; transform: translateY\\(${RETURN_GLIDE.chipRise}px\\); \\} \\}`));
+        expect(css()).toContain(`${T} .gh-recents { animation: gh-close-row ${RETURN_GLIDE.row}ms ease-out ${RETURN_GLIDE.rowDelay}ms backwards !important; }`);
+        expect(css()).toContain(`animation: gh-close-chip ${RETURN_GLIDE.chips}ms ease ${RETURN_GLIDE.chipsDelay}ms backwards !important;`);
+        expect(css()).toContain('.gh-actions > .gh-btn-circle[data-action="info"]');
+        expect(css()).toContain('.gh-actions > .gh-btn-stream');
+    });
+
+    it('animates nothing but transform and opacity', () => {
+        for (const block of css().match(/transition: [^;]+/g) ?? []) expect(block).toMatch(/^transition: (none|transform \d+ms)/);
+    });
+
+    it("the way back's plain fade stays out of a glide", () => {
+        const rule = homeCss().split('\n').find((line) => line.includes('animation: gh-return-in'))!;
+        for (const part of topLevelCommas(rule.slice(0, rule.indexOf('{')))) expect(part).toContain(':not([data-gh-closing])');
+    });
+
+    it("once the glide is done ('done'), none of its rules apply, and the way back's fade still stays off", () => {
+        for (const sel of selectors(css())) for (const part of topLevelCommas(sel)) expect(part).not.toMatch(/\[data-gh-closing\](?!=)/);
+        // Only Play takes its own fill back at once (Home's buttons fade their fill over ACCENT_MS: the pill dipped, Ally).
+        expect(css().match(/data-gh-closing="done"/g)).toHaveLength(1);
+        expect(css()).toContain('.gh-root[data-gh-closing="done"] .gh-actions > .gh-btn[data-action="play"] { transition: none !important; }');
+    });
+
+    it("with page shading off, Play's gliding fill is Home's own shade-none pill (it showed brighter, then settled; Ally)", () => {
+        expect(homeCss()).toContain(`.gh-shade-none:is([data-gh-closing="from"], [data-gh-closing="to"]) .gh-actions > .gh-btn[data-action="play"]::before { background: ${SHADE_NONE.pill} !important;`);
+    });
+
+    it('is part of Home\'s stylesheet', () => {
+        expect(homeCss()).toContain(css());
     });
 });

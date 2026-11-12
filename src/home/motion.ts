@@ -90,3 +90,11 @@ export const MORPH_EASE = 'cubic-bezier(.3,.55,.15,1)';
  * then Steam waited ~0.7 s, faded the page to black and Home in from black (~0.8 s).
  */
 export const RETURN_TIMINGS = { fade: 200, hold: 1500 } as const;
+
+/**
+ * The way back's glide (spec docs/superpowers/specs/2026-11-12-page-return-glide-design.md), ms unless noted: Home's
+ * shared parts (title, Play, buttons, pills) glide from the page's places to Home's over `glide` (the leaving page is
+ * hidden at once, as on the plain way back: its cards fading over Home overlapped it, Ally); the game row rises (OPEN_TIMINGS.leaveDrop) and fades in over `row` after `rowDelay`; the
+ * chips fade in, rising `chipRise` px, over `chips` after `chipsDelay`; `cap`: the latest the glide's state is cleared.
+ */
+export const RETURN_GLIDE = { glide: 300, rowDelay: 100, row: 220, chipsDelay: 120, chips: 200, chipRise: 12, cap: 500 } as const;

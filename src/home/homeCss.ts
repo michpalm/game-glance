@@ -12,7 +12,7 @@ import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
-import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
+import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
 import { EYEBROW, PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
@@ -396,6 +396,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('html[data-gg-mouse] .gh-copy-choice:hover, html[data-gg-mouse] .gh-store-choice:hover', 'box-shadow: 0 0 0 2px rgba(255,255,255,.45)'),
         ...statusRules(),
         ...openingRules(),
+        ...closingRules(),
         // Actions: Play pill 250x54 and three 54px circles, gap 12, margin-top 8.
         rule('.gh-actions', `display: flex; gap: 12px; align-items: center; margin: ${t.actionsMargin}px 0 0 0; padding: 0`),
         rule('.gh-btn', `height: ${t.button}px; min-width: 0; margin: 0; padding: 0; border-radius: ${R_ACTION}px; display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -519,7 +520,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // A cancelled open (B during the opening animation) uses the same fade. Reopening ends this ownership
         // immediately, even while the return marker is retained, so its important animation cannot override the morph.
         `@keyframes gh-return-in { from { opacity: 0; } }`,
-        rule(`.gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
+        rule(`.gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]):not([data-gh-closing]) .gh-safe :is(${HOME_GLASS.join(', ')}), .gh-root:is(.gh-back, [${RETURN_ATTR}]):not(.gh-bridge):not([data-gh-opening]):not([data-gh-closing]) :is(.gh-safe, .gh-safe :has(${HOME_GLASS.join(', ')})) > :not(:has(${HOME_GLASS.join(', ')})):not(${HOME_GLASS.join(', ')})`,
             `animation: gh-return-in ${RETURN_TIMINGS.fade}ms ease backwards`),
         rule('.gh-recents-snap .gh-cap', `transition: left ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, width ${SETTLE_WIDEN_MS}ms ${SLIDE_EASE}, opacity ${CAP_STATE_MS}ms, filter ${CAP_STATE_MS}ms`),
         // "View more in your Library" card.
@@ -675,6 +676,76 @@ function shadeNoneRules(): string[] {
         // The Play pill's accent layers while it morphs (openingRules): the moving one, and the page's pill fading in.
         rule(`${M} ${play}::before`, `background: ${S.pill}`),
         rule(`${M} ${play}::after`, `background: ${S.pill}; box-shadow: inset 0 0 0 1px ${S.pillEdge}, ${S.pillShadow(px)}`),
+        // The way back's glide (closingRules): its layer is Home's own pill, so nothing changes shade when it ends.
+        rule(`${N}:is([data-gh-closing="from"], [data-gh-closing="to"]) ${play}::before`, `background: ${S.pill}; box-shadow: inset 0 0 0 1px ${S.pillEdge}, ${S.pillShadow(px)}`),
+    ];
+}
+
+const PLAY = '.gh-actions > .gh-btn[data-action="play"]';
+const CIRCLE = (i: number) => `.gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle)`;
+
+/**
+ * The parts the open's morph moves and the way back glides (closingRules), each with openMotion's variable: the title,
+ * the eyebrow, the pills, the Play pill (its foreground, accent layer, glyph, label, arrow and size) and the round
+ * buttons (their glyphs and the cloud's badge). A test holds openingRules to the same pairs.
+ */
+export const CLOSING_MOVES: ReadonlyArray<readonly [selector: string, variable: string]> = [
+    ['.gh-title-slot', '--gho-title'],
+    ['.gh-eyebrow', '--gho-eyebrow'],
+    ['.gh-source', '--gho-store'],
+    [PLAY, '--gho-play-fg'],
+    [`${PLAY}::before`, '--gho-play-bg'],
+    [`${PLAY} > .gh-btn-icon`, '--gho-play-icon'],
+    [`${PLAY} > .gh-btn-label`, '--gho-play-label'],
+    [`${PLAY} > .gh-play-arrow`, '--gho-play-arrow'],
+    [`${PLAY} > .gh-btn-size`, '--gho-play-size'],
+    [`${PLAY}:has(> .gh-play-arrow) > .gh-btn-size`, '--gho-play-size-arrow'],
+    ...[0, 1, 2, 3].flatMap((i) => [
+        [CIRCLE(i), `--gho-circle-${i}, none`],
+        [`${CIRCLE(i)} > .gh-btn-icon`, `--gho-circle-icon-${i}, none`],
+        [`${CIRCLE(i)}.gh-btn-cloud::after`, `--gho-circle-icon-${i}, none`],
+    ] as const),
+];
+
+/**
+ * The way back's glide (spec docs/superpowers/specs/2026-11-12-page-return-glide-design.md; home/closeMotion sets the
+ * variables): `data-gh-closing="from"` puts the shared parts at the page's places (openMotion's end transforms, no
+ * transition) and hides the chips, the info button, the stream arrow and the game row; `"to"` lets the parts glide to
+ * rest and the others fade in, the row rising as the open's dropped it. Not the open's twins, rings, panels or settle.
+ */
+export function closingRules(): string[] {
+    const G = RETURN_GLIDE;
+    // Not 'done' (the glide over, home/closeMotion): that value only keeps the way back's fade off.
+    const C = '.gh-root:is([data-gh-closing="from"], [data-gh-closing="to"])';
+    const F = '.gh-root[data-gh-closing="from"]';
+    const T = '.gh-root[data-gh-closing="to"]';
+    const fades = ['.gh-chip', '.gh-actions > .gh-btn-circle[data-action="info"]', '.gh-actions > .gh-btn-stream'];
+    return [
+        `@keyframes gh-close-row { from { opacity: 0; transform: translateY(${OPEN_TIMINGS.leaveDrop}px); } }`,
+        `@keyframes gh-close-chip { from { opacity: 0; transform: translateY(${G.chipRise}px); } }`,
+        rule([`${C} .gh-title-slot`, `${C} .gh-eyebrow`, `${C} .gh-source`, `${C} .gh-actions > .gh-btn`].join(', '), 'transform-origin: 0 0'),
+        // Play: its accent fill is a layer that shrinks from the page pill's size to Home's (as the open grows it), so the
+        // label never stretches. The focus ring comes back with the pill's own fill when the glide ends.
+        rule(`${C} ${PLAY}`, 'overflow: visible; background: transparent; border-color: transparent; box-shadow: none; outline: none'),
+        rule(`${C} ${PLAY}::before`, `content: ''; position: absolute; left: var(--gho-play-inset-x); top: var(--gho-play-inset-y); width: var(--gho-play-home-w); height: var(--gho-play-home-h); border-radius: ${R_ACTION}px; background: var(--glance-accent); transform-origin: 0 0; pointer-events: none`),
+        rule([`${C} ${PLAY} > .gh-btn-icon`, `${C} ${PLAY} > .gh-btn-label`, `${C} ${PLAY} > .gh-play-arrow`, `${C} ${PLAY} > .gh-btn-size`].join(', '), 'z-index: 1'),
+        rule([`${C} ${PLAY} > .gh-play-arrow`, `${C} ${PLAY} > .gh-btn-size`].join(', '), 'transform-origin: 100% 50%'),
+        rule([`${C} ${PLAY} > .gh-btn-icon`, `${C} ${PLAY} > .gh-btn-label`].join(', '), 'transform-origin: 0 50%'),
+        rule(`${C} .gh-actions > .gh-btn-circle > .gh-btn-icon`, 'transform-origin: 50% 50%'),
+        rule(`${C} .gh-actions > .gh-btn-cloud::after`, 'transform-origin: 100% 0'),
+        ...CLOSING_MOVES.flatMap(([selector, variable]) => [
+            rule(`${F} ${selector}`, `transform: var(${variable}); transition: none`),
+            rule(`${T} ${selector}`, `transition: transform ${G.glide}ms ${MORPH_EASE}`),
+            // Ending (home/closeMotion undo): every part at rest at once, its own Home transition included.
+            rule(`.gh-root[data-gh-closing="cut"] ${selector}`, 'transition: none'),
+        ]),
+        rule(fades.map((f) => `${F} ${f}`).join(', '), 'opacity: 0'),
+        rule(fades.map((f) => `${T} ${f}`).join(', '), `animation: gh-close-chip ${G.chips}ms ease ${G.chipsDelay}ms backwards`),
+        rule(`${F} .gh-recents`, `opacity: 0; transform: translateY(${OPEN_TIMINGS.leaveDrop}px)`),
+        rule(`${T} .gh-recents`, `animation: gh-close-row ${G.row}ms ease-out ${G.rowDelay}ms backwards`),
+        // The glide over: Play's own fill and edge come back at once where its layer was (Home's buttons fade theirs over
+        // ACCENT_MS, and the pill dipped to transparent for a moment on the Ally).
+        rule(`.gh-root[data-gh-closing="done"] ${PLAY}`, 'transition: none'),
     ];
 }
 

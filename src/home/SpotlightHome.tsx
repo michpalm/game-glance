@@ -26,7 +26,12 @@ import { installCalmFilter } from '../styles/tokens';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './motion';
-import { steamEnterOffCss } from '../styles/theme';
+import { playRow, steamEnterOffCss } from '../styles/theme';
+import { takeReturn } from './returnNote';
+import { endReturnGlide, startReturnGlide } from './returnGlide';
+import { applyClosing, CLOSING_ATTR } from './closeMotion';
+import { pageAtTop } from '../logic/feedbackScroll';
+import { viewportSize } from './openHome';
 import { legibleAccent } from './accent';
 import { shownAccent } from './shownAccent';
 import { solveRaiseDelta } from './raised';
@@ -564,6 +569,47 @@ export function SpotlightHome() {
         if (!contentUp || !restore) return undefined;
         return keepSteamFocus(rootRef.current, RETURN_TIMINGS.hold);
     }, [contentUp, restore]);
+
+    // The way back's glide (spec docs/superpowers/specs/2026-11-12-page-return-glide-design.md): on the content's first
+    // frame, before it paints, Home starts at the page's places and glides to rest; any other case is the plain fade.
+    const glideFrom = useRef<{ index: number; sheet: boolean } | null>(null);
+    useLayoutEffect(() => {
+        if (!contentUp || !restore) return;
+        const root = rootRef.current;
+        const doc = root?.ownerDocument;
+        const win = doc?.defaultView;
+        try {
+            if (!root || !doc || !win) return;
+            const { way, look } = takeReturn({ appId: data.focused?.appId ?? null, zone: restore.zone, viewport: viewportSize(win), atTop: pageAtTop(doc, playRow()) });
+            if (way !== 'glide' || !look) return;
+            const started = startReturnGlide({
+                apply: () => applyClosing(root, look, slots),
+                release: () => root.setAttribute(CLOSING_ATTR, 'to'),
+                frame: (fn) => { win.requestAnimationFrame(fn); },
+                setTimer: (fn, ms) => win.setTimeout(fn, ms),
+                clearTimer: (id) => win.clearTimeout(id as number),
+                warn: (message, error) => console.warn(`${LOG_PREFIX} Home: ${message}`, error),
+            });
+            if (started) glideFrom.current = { index: recentIndex, sheet: sheetUp };
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} Home: could not start the way back's glide`, error);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contentUp]);
+    // Home used during the glide (another game selected, the feed raised): everything at rest at once.
+    useEffect(() => {
+        const from = glideFrom.current;
+        if (from && (from.index !== recentIndex || from.sheet !== sheetUp)) {
+            glideFrom.current = null;
+            endReturnGlide();
+        }
+    }, [recentIndex, sheetUp]);
+    useEffect(() => () => endReturnGlide(), []);
+    // The glide's 'done' mark only keeps the way back's fade off while Home is "just back"; after that it goes, so a later
+    // cancelled open fades in as usual.
+    useEffect(() => {
+        if (!back && rootRef.current?.getAttribute(CLOSING_ATTR) === 'done') rootRef.current.removeAttribute(CLOSING_ATTR);
+    }, [back]);
 
     return (
         <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${overFill(heroFit) ? ' gh-fit' : ''}${heroFit === 'expanded' ? ' gh-expanded' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
