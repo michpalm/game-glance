@@ -1,9 +1,16 @@
 import type { MenuClasses } from './menuClasses';
-import { focusRing, labelText, MENU_DIM, menuDimColor } from '../styles/tokens';
+import { focusRing, labelText, MENU_DIM, menuDimColor, SURFACE_RIM } from '../styles/tokens';
 
 /** Canvas px to Big Picture CSS px: the host sets it on :root to Home's canvas scale, so the menu scales as Home does. */
 export const CTX_UNIT = '--gg-ctx-u';
 const u = (n: number) => `calc(${n}px * var(${CTX_UNIT}, 1))`;
+/** The Game Glance menu's rim at the menu's size: the menu draws it inside its scale() transform, so its px scale too. */
+const rim = (css: string) => css.replace(/(\d*\.?\d+)px/g, (_, n: string) => u(Number(n)));
+/** The rim colour's alpha as the menu's rim reaches the screen: our border snaps to one whole device pixel at full alpha,
+ * the menu's scaled 1.5 px rim is antialiased over ~1.25 px. Measured on the Ally, 2026-11-13: (86,93,103) over
+ * (61,67,71), the colour rgb(182,199,224) at about .21. */
+const RIM_ON_SCREEN_ALPHA = '.21';
+const rimBorder = () => rim(SURFACE_RIM.border).replace(/rgba\((\d+,\d+,\d+),[.\d]+\)/, `rgba($1,${RIM_ON_SCREEN_ALPHA})`);
 
 const MENU = '.BasicUIContextMenu';
 const DIM = '.FullModalOverlay:has(.BasicUIContextMenu)';
@@ -38,7 +45,7 @@ export function contextMenuCss(c: MenuClasses | null): string {
         const s = cls(k);
         if (s) out.push(rule([selector(s)], body));
     };
-    add('BasicContextMenuContainer', (s) => `${MENU} ${s}`, `background:rgba(12,16,22,.40);backdrop-filter:blur(${u(16)});border:1px solid rgba(255,255,255,.12);border-radius:${u(16)};padding:${u(8)};box-shadow:none`);
+    add('BasicContextMenuContainer', (s) => `${MENU} ${s}`, `background:rgba(12,16,22,.40);backdrop-filter:blur(${u(16)});border:${rimBorder()};border-radius:${u(16)};padding:${u(8)};box-shadow:${rim(SURFACE_RIM.shadow)}`);
     // The row whose submenu is open (Steam's `active`): a quiet fill, so the cascade shows where it came from.
     add('active', (s) => `${ROW}${s}`, 'background:rgba(255,255,255,.08)');
     add('Selected', (s) => `${ROW}${s}`, 'color:rgba(255,255,255,.9)');

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { contextMenuCss, CTX_UNIT } from '../../src/contextMenus/menuCss';
 import type { MenuClasses } from '../../src/contextMenus/menuClasses';
-import { focusRing, MENU_DIM, menuDimColor } from '../../src/styles/tokens';
+import { focusRing, MENU_DIM, menuDimColor, SURFACE_RIM } from '../../src/styles/tokens';
 
 const KEYS = ['active', 'BasicContextMenuContainer', 'BasicContextMenuHeader', 'contextMenu', 'contextMenuContents', 'contextMenuItem', 'hasSubMenu', 'Selected', 'Focused', 'Destructive', 'MenuSectionHeader', 'SubMenu', 'ContextMenuSeparator', 'Label', 'Arrow'] as const;
 const C = Object.fromEntries(KEYS.map((k) => [k, `_k_${k}`])) as MenuClasses;
@@ -45,7 +45,14 @@ describe('contextMenuCss', () => {
         const box = ruleFor(contextMenuCss(C), '.BasicUIContextMenu ._k_BasicContextMenuContainer')!.body;
         expect(box).toContain('background:rgba(12,16,22,.40)');
         expect(box).toContain(`backdrop-filter:blur(${u(16)})`);
-        expect(box).toContain('border:1px solid rgba(255,255,255,.12)');
+        // The Game Glance menu's rim (the contrast lift), so the two menus match (Michael, Deck 2026-11-12). The menu draws
+        // it inside its scale() transform, so on screen it is 1.5 px times the menu scale: here it scales with the unit.
+        expect(SURFACE_RIM.border).toBe('1.5px solid rgba(182,199,224,.49)');
+        // Its border snaps to one whole device pixel at full alpha, while the menu's scaled 1.5 px rim is antialiased over
+        // ~1.25 px and reaches the screen at about .21 of the colour (Ally, 2026-11-13: (86,93,103) over (61,67,71)). So
+        // the same colour at that on-screen strength.
+        expect(box).toContain(`border:${u(1.5)} solid rgba(182,199,224,.21)`);
+        expect(box).toContain(`box-shadow:0 0 0 ${u(1)} rgba(0,0,0,.8),inset 0 ${u(1)} 0 rgba(255,255,255,.08)`);
         expect(box).toContain(`border-radius:${u(16)}`);
     });
     it('focuses a row with the menu ring, not a white bar', () => {
