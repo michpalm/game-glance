@@ -39,7 +39,7 @@ function soft(selector: string, body: string): string {
  * repainting every frame, and stalled. Nothing outside Game Glance sets them on Home's elements (probed: 441 elements),
  * and dropping !important from all of them alike keeps every rule's place against the others.
  */
-const ANIMATED = /^(transform|opacity)\s*:/;
+const ANIMATED = /^(transform|translate|opacity)\s*:/;
 
 function rule(selector: string, body: string): string {
     const decls = body
@@ -721,7 +721,11 @@ export function closingRules(): string[] {
     const T = '.gh-root[data-gh-closing="to"]';
     const fades = ['.gh-chip', '.gh-actions > .gh-btn-circle[data-action="info"]', '.gh-actions > .gh-btn-stream'];
     return [
-        `@keyframes gh-close-row { from { opacity: 0; transform: translateY(${OPEN_TIMINGS.leaveDrop}px); } }`,
+        // The row fades on its own box and rises on its track: Steam focuses the row as Home comes back, and a row box
+        // dropped below the screen made it scroll Steam's whole UI by 10 px, snapping back when the leaving page unmounted
+        // (Ally, docked). The track's own transform is its translateX (RecentsRow), so the rise is the separate translate.
+        `@keyframes gh-close-row { from { opacity: 0; } }`,
+        `@keyframes gh-close-rise { from { translate: 0 ${OPEN_TIMINGS.leaveDrop}px; } }`,
         `@keyframes gh-close-chip { from { opacity: 0; transform: translateY(${G.chipRise}px); } }`,
         rule([`${C} .gh-title-slot`, `${C} .gh-eyebrow`, `${C} .gh-source`, `${C} .gh-actions > .gh-btn`].join(', '), 'transform-origin: 0 0'),
         // Play: its accent fill is a layer that shrinks from the page pill's size to Home's (as the open grows it), so the
@@ -741,8 +745,10 @@ export function closingRules(): string[] {
         ]),
         rule(fades.map((f) => `${F} ${f}`).join(', '), 'opacity: 0'),
         rule(fades.map((f) => `${T} ${f}`).join(', '), `animation: gh-close-chip ${G.chips}ms ease ${G.chipsDelay}ms backwards`),
-        rule(`${F} .gh-recents`, `opacity: 0; transform: translateY(${OPEN_TIMINGS.leaveDrop}px)`),
+        rule(`${F} .gh-recents`, 'opacity: 0'),
+        rule(`${F} .gh-recents-track`, `translate: 0 ${OPEN_TIMINGS.leaveDrop}px`),
         rule(`${T} .gh-recents`, `animation: gh-close-row ${G.row}ms ease-out ${G.rowDelay}ms backwards`),
+        rule(`${T} .gh-recents-track`, `animation: gh-close-rise ${G.row}ms ease-out ${G.rowDelay}ms backwards`),
         // The glide over: Play's own fill and edge come back at once where its layer was (Home's buttons fade theirs over
         // ACCENT_MS, and the pill dipped to transparent for a moment on the Ally).
         rule(`.gh-root[data-gh-closing="done"] ${PLAY}`, 'transition: none'),

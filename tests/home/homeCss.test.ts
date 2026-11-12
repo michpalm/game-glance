@@ -1499,12 +1499,24 @@ describe('closingRules (the way back glide)', () => {
     });
 
     it('raises the game row and fades in the chips, the info button and the stream arrow', () => {
-        expect(css()).toMatch(new RegExp(`@keyframes gh-close-row \\{ from \\{ opacity: 0; transform: translateY\\(${OPEN_TIMINGS.leaveDrop}px\\); \\} \\}`));
+        expect(css()).toContain('@keyframes gh-close-row { from { opacity: 0; } }');
+        expect(css()).toContain(`@keyframes gh-close-rise { from { translate: 0 ${OPEN_TIMINGS.leaveDrop}px; } }`);
         expect(css()).toMatch(new RegExp(`@keyframes gh-close-chip \\{ from \\{ opacity: 0; transform: translateY\\(${RETURN_GLIDE.chipRise}px\\); \\} \\}`));
         expect(css()).toContain(`${T} .gh-recents { animation: gh-close-row ${RETURN_GLIDE.row}ms ease-out ${RETURN_GLIDE.rowDelay}ms backwards !important; }`);
+        expect(css()).toContain(`${T} .gh-recents-track { animation: gh-close-rise ${RETURN_GLIDE.row}ms ease-out ${RETURN_GLIDE.rowDelay}ms backwards !important; }`);
+        // Not !important, as transform and opacity: important animated properties left the compositor (homeCss ANIMATED).
+        expect(css()).toContain(`${F} .gh-recents-track { translate: 0 ${OPEN_TIMINGS.leaveDrop}px; }`);
         expect(css()).toContain(`animation: gh-close-chip ${RETURN_GLIDE.chips}ms ease ${RETURN_GLIDE.chipsDelay}ms backwards !important;`);
         expect(css()).toContain('.gh-actions > .gh-btn-circle[data-action="info"]');
         expect(css()).toContain('.gh-actions > .gh-btn-stream');
+    });
+
+    // Steam focuses the row as Home comes back: a row box dropped below the screen made it scroll Steam's whole UI
+    // (BasicUI, over the leaving page's overflow) by 10 px, which snapped back when the page unmounted (Ally, docked).
+    // Only the track drops (the separate translate property, beside its inline translateX); the focused box stays put.
+    it("never moves the focused row's own box", () => {
+        for (const line of css().split('\n').filter((l) => /\.gh-recents \{/.test(l))) expect(line).not.toMatch(/transform|translate/);
+        expect(css()).toContain(`${F} .gh-recents { opacity: 0; }`);
     });
 
     it('animates nothing but transform and opacity', () => {
