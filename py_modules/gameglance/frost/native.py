@@ -178,6 +178,7 @@ class NativeConnection:
         self.x.XSync(self.xdisplay,0)
         self.hdr_output_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_HDR_OUTPUT_FEEDBACK", 0)
         self.focused_gfx_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_FOCUSED_APP_GFX", 0)
+        self.supports_hdr_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_DISPLAY_SUPPORTS_HDR", 0)
         import os
         self.max_scale = read_max_scale(Path("/proc"), os.getuid())
         self._sync()
@@ -229,6 +230,16 @@ class NativeConnection:
         # flags. Treat advertised HDR as unsupported even if content-driven
         # output is currently idling in SDR; missing feedback fails closed.
         hdr = self._property(self.hdr_output_atom)
+        if hdr is None:
+            # Some Gamescope builds (the Steam Deck on Anatase) publish no output feedback. A display that cannot show
+            # HDR at all is SDR for certain; anything else (HDR possible, unknown, unreadable) still fails closed.
+            supports_hdr_atom = getattr(self, "supports_hdr_atom", None)
+            try:
+                supports = self._property(supports_hdr_atom) if supports_hdr_atom is not None else None
+            except OSError:
+                return None
+            if type(supports) is int and supports == 0:
+                hdr = 0
         if not (type(hdr) is int and hdr in (0, 1)):
             return None
         # Gamescope draws Steam itself as the picture the effect applies to until the game has a window (the Steam logo

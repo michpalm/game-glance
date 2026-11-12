@@ -274,3 +274,77 @@ def test_keyboard_blur_keeps_its_strength_in_a_tile_sized_from_the_panel():
     source, _ = build_shader(frame())
     assert "8.0 / ((Keyboard.z + 2.0 * Pad.x) * OutputSize.x)" in _function(source, "KeyboardHorizontal")
     assert "8.0 / ((Keyboard.w + 2.0 * Pad.y) * OutputSize.y)" in _function(source, "KeyboardVertical")
+
+
+def test_dim_matches_the_context_menus():
+    # One dim for both menus (spec 2026-11-12-menu-dim): the shader mirrors MENU_DIM in src/styles/tokens.ts.
+    import re
+    from gameglance.frost.shader import DIM_ALPHA, DIM_BLUR_CSS_PX, DIM_RGB
+    tokens = (Path(__file__).parents[2] / "src/styles/tokens.ts").read_text()
+    m = re.search(r"MENU_DIM = \{ rgb: \[(\d+), (\d+), (\d+)\], alpha: ([.\d]+), blur: (\d+) \}", tokens)
+    assert m, "MENU_DIM line format changed"
+    assert DIM_RGB == tuple(int(v) for v in m.groups()[:3])
+    assert DIM_ALPHA == float(m.group(4))
+    assert DIM_BLUR_CSS_PX == int(m.group(5))
+
+
+def test_dim_weight_needs_the_menu_present_not_only_the_fade():
+    # With every area empty the state's start time is 0, so the fade alone reads as fully in: the dim would stay over
+    # the game after the menu closed. The "present" flag (state .y) is read with the fade, once per vertex.
+    source, _ = build_shader(_with_dpr(2.32))
+    vs, composite = _function(source, "FadeVS"), _function(source, "Composite")
+    assert vs.count("tex2Dlod") == 1 and "present" in vs and "nointerpolation float present" in source
+    assert "StateAS" not in composite
+    assert "DimAlpha * fade * present" in composite
+    assert "#define DimAlpha 0.38" in source
+
+
+def test_dim_is_applied_after_the_areas():
+    composite = _function(build_shader(_with_dpr(2.32))[0], "Composite")
+    assert composite.index("DimAlpha * fade * present") > composite.rindex("KeyboardRightVS")
+
+
+@pytest.mark.parametrize("dpr", [1, 2.32])
+def test_full_screen_dim_blur_matches_6px_at_the_display_scale(dpr):
+    from gameglance.frost.shader import blur_taps, frost_geometry
+    geometry = frost_geometry(_with_dpr(dpr))
+    assert geometry["dimSigma"] == pytest.approx(6 * dpr)
+    assert geometry["dimTile"] == (-(-1920 // 4), -(-1080 // 4))
+    offsets, weights = blur_taps(geometry["dimSigma"] / 4)
+    variance = 2 * sum(w * o * o for o, w in zip(offsets[1:], weights[1:]))
+    assert variance == pytest.approx((geometry["dimSigma"] / 4) ** 2, rel=.08)
+
+
+def test_dim_blur_passes_run_before_output_and_sample_in_output_space():
+    source, _ = build_shader(_with_dpr(2.32))
+    for name in ("DimDown", "DimX", "DimY"):
+        assert source.index("pass " + name) < source.index("pass Output")
+    # Output-space tile (letterboxed games blur without seams): the down-pass maps through InputUV.
+    assert "InputUV" in _function(source, "DimDown")
+    for texture in ("DimD", "DimH", "DimV"):
+        assert f"texture2D {texture} {{ Width = 480; Height = 270; Format = RGBA16F; }};" in source
+    composite = _function(source, "Composite")
+    # The blurred screen goes under the areas, the dim over everything.
+    assert composite.index("DimVS") < composite.index("BarVS") < composite.index("DimAlpha * fade * present")
+
+
+def test_dim_blur_off_builds_the_dim_without_the_passes(monkeypatch):
+    import gameglance.frost.shader as shader
+    on_source, on_key = build_shader(_with_dpr(2.32))
+    monkeypatch.setattr(shader, "DIM_BLUR", False)
+    off_source, off_key = build_shader(_with_dpr(2.32))
+    assert "pass DimDown" not in off_source and "texture2D DimD" not in off_source and "DimVS" not in off_source
+    assert "DimAlpha * fade * present" in _function(off_source, "Composite")
+    assert off_key != on_key
+
+
+def test_shader_draws_the_dim_from_the_pinned_constants(monkeypatch):
+    # The values the shader renders, not only the Python constants, follow MENU_DIM: change the constants and the
+    # rendered defines change with them.
+    import gameglance.frost.shader as shader
+    source, _ = build_shader(_with_dpr(1))
+    assert "#define DimColor (float3(5.0, 7.0, 10.0) / 255.0)" in source and "#define DimAlpha 0.38" in source
+    monkeypatch.setattr(shader, "DIM_RGB", (1, 2, 3))
+    monkeypatch.setattr(shader, "DIM_ALPHA", .5)
+    source, _ = build_shader(_with_dpr(1))
+    assert "#define DimColor (float3(1.0, 2.0, 3.0) / 255.0)" in source and "#define DimAlpha 0.5" in source

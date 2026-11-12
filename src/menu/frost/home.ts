@@ -1,5 +1,6 @@
 import { homeCanvas } from '../../home/scale';
 import { OPTIONAL_REGIONS, REGION_IDS, regionAbsent, type FrostFrame } from './types';
+import { MENU_DIM, menuDimColor } from '../../styles/tokens';
 
 /** Home's glass blur on its canvas (homeCss: rgba(12,16,22,.40) + blur(16px)), the chips' and pills'. */
 const HOME_GLASS_BLUR = 16;
@@ -17,7 +18,9 @@ export function createHomeFrost(owner:Document, placeholder:HTMLElement):HomeFro
     const parent=placeholder.parentElement, view=owner.defaultView;
     let disposed=false;
     const surfaces:(HTMLElement|undefined)[]=[];
-    function clear(){for(const surface of surfaces.splice(0))surface?.remove();}
+    // The menu's dim (spec 2026-11-12-menu-dim): the whole window, before the area surfaces, so they frost a dimmed screen.
+    let dim:HTMLElement|undefined;
+    function clear(){for(const surface of surfaces.splice(0))surface?.remove();dim?.remove();dim=undefined;}
     function supported(){
         if(disposed||!view||!parent||!placeholder.isConnected||placeholder.ownerDocument!==owner||placeholder.parentElement!==parent)return false;
         for(let e:HTMLElement|null=parent;e;e=e.parentElement){
@@ -34,6 +37,13 @@ export function createHomeFrost(owner:Document, placeholder:HTMLElement):HomeFro
         apply(frame){
             if(frame.context.background!=='steam'||!supported()){clear();return false;}
             const blur=`blur(${homeFrostBlur(view!.innerWidth,view!.innerHeight)}px)`;
+            if(!dim){
+                dim=owner.createElement('div');dim.dataset.ggMenuFrost='dim';dim.setAttribute('aria-hidden','true');
+                parent!.insertBefore(dim,surfaces.find(Boolean)??placeholder);
+            }
+            const dimBlur=`blur(${MENU_DIM.blur*homeCanvas(view!.innerWidth,view!.innerHeight).scale}px)`;
+            Object.assign(dim.style,{position:'fixed',left:'0px',top:'0px',width:`${view!.innerWidth}px`,height:`${view!.innerHeight}px`,
+                pointerEvents:'none',background:menuDimColor(),backdropFilter:dimBlur,webkitBackdropFilter:dimBlur,transition:'none'});
             for(let i=0;i<HOME_REGIONS.length;i++){
                 const id=HOME_REGIONS[i],r=frame.regions[id];
                 // The keyboard closed: no surface for it, the others stay.

@@ -109,3 +109,33 @@ def test_environment_leaves_steam_shown_out_when_it_cannot_be_read():
         return 0
     n._property = read
     assert n.environment() == {'hdr': False, 'maxScale': None}
+
+
+# Some Gamescope builds (the Steam Deck on Anatase, 2026-11-12) publish no output feedback but do publish whether the
+# display can show HDR at all. A display that cannot is SDR for certain, so the frost may run; anything else stays off.
+@pytest.mark.parametrize('feedback,supports,expected', [
+    (None, 0, False),   # no feedback, display cannot do HDR: SDR
+    (None, 1, None),    # no feedback, HDR possible: stay off
+    (None, None, None), # neither: stay off
+    (None, 2, None),    # unexpected value: stay off
+    (1, 0, True),       # feedback present wins
+    (0, 1, False),
+])
+def test_environment_falls_back_to_display_hdr_support_only_when_it_rules_hdr_out(feedback, supports, expected):
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    n.hdr_output_atom, n.supports_hdr_atom, n.max_scale = 'feedback', 'supports', 2
+    n._property = lambda atom: {'feedback': feedback, 'supports': supports}[atom]
+    assert n.environment() == (None if expected is None else {'hdr': expected, 'maxScale': 2})
+
+
+def test_environment_stays_off_when_the_display_hdr_support_cannot_be_read():
+    from gameglance.frost.native import NativeConnection
+    n = object.__new__(NativeConnection)
+    n.hdr_output_atom, n.supports_hdr_atom, n.max_scale = 'feedback', 'supports', 2
+    def read(atom):
+        if atom == 'supports':
+            raise OSError('Invalid Gamescope state')
+        return None
+    n._property = read
+    assert n.environment() is None

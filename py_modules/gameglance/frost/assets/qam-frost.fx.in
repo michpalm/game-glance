@@ -37,6 +37,9 @@ uniform float Timer < source = "timer"; >;
 // above the knee, brightness rises at a third of the rate. Hue is kept.
 #define CalmKnee 0.45
 #define CalmSlope 0.35
+// The dim behind the menu (MENU_DIM in src/styles/tokens.ts): over the whole picture, under the menu's own drawing.
+#define DimColor (float3(@DIM_R@, @DIM_G@, @DIM_B@) / 255.0)
+#define DimAlpha @DIM_ALPHA@
 texture2D Scene : COLOR;
 sampler2D SceneSampler { Texture = Scene; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 texture2D BarD { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
@@ -60,6 +63,15 @@ texture2D KeyboardRightH { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_
 texture2D KeyboardV { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
 texture2D KeyboardLeftV { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
 texture2D KeyboardRightV { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
+#if DIM_BLUR
+// The dim's blur: the whole output at quarter resolution (spec 2026-11-12-menu-dim).
+texture2D DimD { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+texture2D DimH { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+texture2D DimV { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+sampler2D DimDS { Texture = DimD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D DimHS { Texture = DimH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D DimVS { Texture = DimV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+#endif // DIM_BLUR
 // Render targets keep their contents between frames: the previous state is
 // copied aside, then updated, so the fade starts on the first visible frame.
 // RGBA32F, not RG32F: Gamescope can only create formats with a DRM equivalent.
@@ -110,6 +122,22 @@ float4 Blur(sampler2D image, float2 uv, float2 texel) {
 @BLUR_TAPS@
     return c;
 }
+#if DIM_BLUR
+// Exact 4x4 output-pixel average for the dim's quarter-resolution screen.
+float4 Box4(float2 uv) {
+    float2 px = 1.0 / GameSize;
+    float4 c = 0;
+    [unroll] for (int y = -1; y <= 1; y += 2)
+        [unroll] for (int x = -1; x <= 1; x += 2)
+            c += tex2D(SceneSampler, uv + float2(x, y) * px);
+    return c / 4.0;
+}
+// Gaussian with sigma = 6 CSS px at this display scale, in quarter-resolution texels.
+float4 DimBlur(sampler2D image, float2 uv, float2 texel) {
+@DIM_BLUR_TAPS@
+    return c;
+}
+#endif // DIM_BLUR
 float Mask(float2 uv, float4 rect, float2 radiusNorm) {
     if (rect.z <= 0 || rect.w <= 0) return 0;
     float2 halfSize = rect.zw * OutputSize * 0.5;
@@ -130,6 +158,11 @@ float4 Track(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     if (previous.y > 0.5 && previous.x <= Timer) return float4(previous, 0, 0);
     return float4(Timer, 1, 0, 0);
 }
+#if DIM_BLUR
+float4 DimDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box4(InputUV(uv)); }
+float4 DimHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return DimBlur(DimDS, uv, float2(1.0 / @DIM_W@, 0.0)); }
+float4 DimVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return DimBlur(DimHS, uv, float2(0.0, 1.0 / @DIM_H@)); }
+#endif // DIM_BLUR
 float4 BarDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Bar)); }
 float4 BarHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarDS, uv, float2(1.0 / @BAR_W@, 0.0)); }
 float4 BarVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarHS, uv, float2(0.0, 1.0 / @BAR_H@)); }
@@ -163,13 +196,20 @@ float4 Calm(float4 c) {
 }
 // The fade is one value per frame: read the state in the three vertices, not in
 // every output pixel, where that read cost ~20 ms a frame in game on the Ally.
-void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1) {
+// present: an area is shown (state .y). With every area empty the start time is 0 and the fade alone reads as fully in.
+void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1, out nointerpolation float present : TEXCOORD2) {
     VS(id, pos, uv);
-    fade = saturate((Timer - tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).x) / FadeMs);
+    float2 state = tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).xy;
+    fade = saturate((Timer - state.x) / FadeMs);
+    present = state.y;
 }
-float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1) : SV_Target {
+float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1, nointerpolation float present : TEXCOORD2) : SV_Target {
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
+#if DIM_BLUR
+    // The blurred screen under everything, then the areas, then the dim.
+    color = lerp(color, tex2D(DimVS, outUV), fade * present);
+#endif // DIM_BLUR
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
     float s = Mask(outUV, Status, StatusRadius) * fade;
     float k = Mask(outUV, Keyboard, KeyboardRadius) * fade;
@@ -181,6 +221,8 @@ float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolatio
     if (k > 0) color = lerp(color, Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard))), k);
     if (kl > 0) color = lerp(color, Calm(tex2D(KeyboardLeftVS, TileUV(outUV, KeyboardLeft))), kl);
     if (kr > 0) color = lerp(color, Calm(tex2D(KeyboardRightVS, TileUV(outUV, KeyboardRight))), kr);
+    // The dim, after the areas: the menu's glass shows a dimmed game, as over Steam's context menus.
+    color.rgb = lerp(color.rgb, DimColor, DimAlpha * fade * present);
     return color;
 }
 technique QAMFrost {
@@ -207,5 +249,10 @@ technique QAMFrost {
     pass KeyboardY { VertexShader = VS; PixelShader = KeyboardVertical; RenderTarget = KeyboardV; }
     pass KeyboardLeftY { VertexShader = VS; PixelShader = KeyboardLeftVertical; RenderTarget = KeyboardLeftV; }
     pass KeyboardRightY { VertexShader = VS; PixelShader = KeyboardRightVertical; RenderTarget = KeyboardRightV; }
+#if DIM_BLUR
+    pass DimDown { VertexShader = VS; PixelShader = DimDown; RenderTarget = DimD; }
+    pass DimX { VertexShader = VS; PixelShader = DimHorizontal; RenderTarget = DimH; }
+    pass DimY { VertexShader = VS; PixelShader = DimVertical; RenderTarget = DimV; }
+#endif // DIM_BLUR
     pass Output { VertexShader = FadeVS; PixelShader = Composite; }
 }

@@ -23,6 +23,13 @@ STATUS_TILE_WIDTH = .4
 # moving the keyboard never rebuilds the shader. Same value as KEYBOARD_TILE_CSS in src/menu/frost/controller.ts.
 KEYBOARD_TILE_CSS = {"width": 409, "height": 210}
 RADIAL_TILE_CSS = {"width": 280, "height": 280}
+# The dim behind the menu: the same values as MENU_DIM in src/styles/tokens.ts (pinned by a test), so the Game Glance
+# menu over a game matches Steam's context menus. Blur in CSS px (sigma = DIM_BLUR_CSS_PX * dpr on screen).
+DIM_RGB = (5, 7, 10)
+DIM_ALPHA = .38
+DIM_BLUR_CSS_PX = 6
+DIM_BLUR = True
+DIM_DOWNSAMPLE = 4
 
 
 def frost_geometry(frame: dict) -> dict:
@@ -39,7 +46,9 @@ def frost_geometry(frame: dict) -> dict:
         width = max(r["width"], STATUS_TILE_WIDTH) if name == "status" else r["width"]
         return width * c["outputWidth"], r["height"] * c["outputHeight"]
     tiles = {name: tuple(math.ceil((size + 2 * pad) / DOWNSAMPLE) for size in span(name)) for name in REGIONS}
-    return {"sigma": sigma, "pad": pad, "tiles": tiles}
+    # The dim's blur covers the whole output, at quarter resolution.
+    dim_tile = (math.ceil(c["outputWidth"] / DIM_DOWNSAMPLE), math.ceil(c["outputHeight"] / DIM_DOWNSAMPLE))
+    return {"sigma": sigma, "pad": pad, "tiles": tiles, "dimSigma": DIM_BLUR_CSS_PX * c["dpr"], "dimTile": dim_tile}
 
 
 def blur_taps(sigma: float) -> tuple[list[float], list[float]]:
@@ -72,7 +81,10 @@ def build_shader(frame: dict) -> tuple[str, str]:
     source = (Path(__file__).parent / "assets/qam-frost.fx.in").read_text()
     geometry = frost_geometry(frame)
     values = {"OUT_W": str(c["outputWidth"]), "OUT_H": str(c["outputHeight"]), "FIT": str(("fit", "fill", "stretch", "auto").index(c["fit"])), "MAX_SCALE": str(float(c.get("maxScale", 16384))),
-              "PAD": str(geometry["pad"]), "BLUR_TAPS": _blur_body(geometry["sigma"] / DOWNSAMPLE)}
+              "PAD": str(geometry["pad"]), "BLUR_TAPS": _blur_body(geometry["sigma"] / DOWNSAMPLE),
+              "DIM_R": f"{float(DIM_RGB[0])}", "DIM_G": f"{float(DIM_RGB[1])}", "DIM_B": f"{float(DIM_RGB[2])}", "DIM_ALPHA": f"{DIM_ALPHA}",
+              "DIM_W": str(geometry["dimTile"][0]), "DIM_H": str(geometry["dimTile"][1]),
+              "DIM_BLUR_TAPS": _blur_body(geometry["dimSigma"] / DIM_DOWNSAMPLE)}
     # Output-space tiles keep sampling density and visual strength stable when
     # the game renders below the display resolution.
     for name in REGIONS:
@@ -81,6 +93,11 @@ def build_shader(frame: dict) -> tuple[str, str]:
         values[name.upper().replace("-", "_") + "_H"] = str(height)
     for name, value in values.items():
         source = source.replace("@" + name + "@", value)
+    if not DIM_BLUR:
+        # Off: strip the dim blur's blocks so the effect holds none of its textures or passes.
+        source = re.sub(r"#if DIM_BLUR\n.*?#endif // DIM_BLUR\n", "", source, flags=re.S)
+    else:
+        source = source.replace("#if DIM_BLUR\n", "").replace("#endif // DIM_BLUR\n", "")
     if "@" in source:
         raise ValueError("unexpanded shader template")
     return source, hashlib.sha256(source.encode()).hexdigest()
