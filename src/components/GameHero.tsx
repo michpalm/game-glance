@@ -62,7 +62,7 @@ import { GameSourcePill } from './GameSourcePill';
 import { LibraryPill } from './LibraryPill';
 import { GameTitle } from './GameTitle';
 import { GameMetadata } from './GameMetadata';
-import { hltbUrl, openGameInfoTab, openHltbPage } from './cardActions';
+import { featuredPress, openGameInfoTab } from './cardActions';
 
 /** A canvas length in the restyled page's scale unit (themeCss: --gg-d). */
 const pageUnit = (n: number) => `calc(${n} * var(--gg-d))`;
@@ -358,14 +358,14 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
                             restyled look (it lifts the cards over Steam's page panel; the plain look keeps 1.1.1's page). The
                             controller reaches them from the Play row (hooks/useCardNav), Left/Right between them. */}
                         <InfoCard game={game} hltb={hltb} locale={locale} description={description} size={size} slots={settings.infoSlots} proton={proton} onPress={restyle ? (card) => openGameInfoTab(card.ownerDocument) : undefined} />
-                        {/* The featured stat's card (Game info setting); HowLongToBeat's keeps its press, the others have none yet. */}
+                        {/* The featured stat's card (Game info setting): A opens what it shows (cardActions.featuredPress). */}
                         <FeaturedCard
                             featured={featured}
                             hltb={hltb}
                             playedMinutes={game.playedMinutes}
                             locale={locale}
                             restyle={restyle}
-                            onPress={featured === 'hltb' && restyle && hltbUrl(hltb) ? () => openHltbPage(hltb) : undefined}
+                            onPress={restyle ? featuredPress(featured, { appId: game.appId, isShortcut: game.isShortcut, hltb }) : undefined}
                             proton={proton}
                             achievements={knownAchievementFacts(game.appId, pageAchievementFacts(details, game.isShortcut))}
                             playTime={playFactsOf(game.appId, overview, { minutes: game.playedMinutes, lastPlayed: lastPlayedSeconds(overview, launcher?.lastPlayed ?? null) }, game.isShortcut)}
