@@ -130,7 +130,7 @@ export function MenuPage({ v, a }: PageProps) {
         {rows(<>
             <ToggleRow id="gg:menu:enabled" label="Game Glance menu" description="Replaces the Home and quick access menus. Off closes this menu and returns Steam's own."
                 checked={v.menuEnabled} disabled={!v.menuReady} onChange={value => a.run(a.setMenuEnabled(value))} />
-            <ToggleRow id="gg:menu:restyle-steam-settings" label="Restyle Steam Settings and menus" description="Apply the Game Glance theme to Steam Settings and to Steam's context menus."
+            <ToggleRow id="gg:menu:restyle-steam-settings" label="Restyle Steam's menus" description="Apply the Game Glance theme to Steam's context menus."
                 checked={v.restyleSteamSettings} disabled={!v.menuReady || !v.menuEnabled} onChange={value => a.run(a.setRestyleSteamSettings(value))} />
             <h3>Social</h3>
             <SegmentRow<'compact' | 'radial'> id="gg:menu:keyboard" label="Keyboard" description="The keyboard for the message field."

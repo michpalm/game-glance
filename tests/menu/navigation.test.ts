@@ -191,3 +191,14 @@ it('opens Soundtrack on play/pause and every other section on the control it rem
     expect(openFocusKey('quick-settings', 'quick:wifi')).toBe('quick:wifi');
     expect(openFocusKey('navigate', undefined)).toBeUndefined();
 });
+
+import { pageTakesCancel } from '../../src/menu/navigation';
+describe('a page that claims B', () => {
+    it('gets B first and keeps it when it used it', () => {
+        expect(pageTakesCancel({ button: 2 }, true, () => true)).toBe(true);
+        expect(pageTakesCancel({ button: 2 }, true, () => false)).toBe(false);
+        expect(pageTakesCancel({ button: 2 }, true, null)).toBe(false);
+        expect(pageTakesCancel({ button: 2 }, false, () => true)).toBe(false);
+        expect(pageTakesCancel({ button: 4 }, true, () => true)).toBe(false);
+    });
+});

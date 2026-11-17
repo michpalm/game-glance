@@ -21,6 +21,11 @@ describe('mapFriends', () => {
         expect(cards.map((c) => c.state)).toEqual(['ingame', 'online', 'away', 'offline']);
         expect(cards[0].appId).toBe(42);
     });
+    it('puts the offline friends seen online most recently first; unknown times last, in Steam\'s order', () => {
+        const off = (steamId: string, lastOnline?: number): RawFriend => ({ ...base[1], steamId, lastOnline });
+        const cards = mapFriends([off('a', 1788164189), off('b'), off('c', 1794510856), off('d', 0), off('e', 1418070174), base[0]], name);
+        expect(cards.map((c) => c.steamId)).toEqual([base[0].steamId, 'c', 'a', 'e', 'b', 'd']);
+    });
     it('maps every persona state as Steam does (is_online: not 0 or 7; is_awayOrSnooze: 3 or 4; busy is online)', () => {
         const st = (personaState: number, gameAppId = 0) => mapFriends([{ ...base[2], personaState, gameAppId }], name)[0].state;
         expect([0, 1, 2, 3, 4, 5, 6, 7].map((p) => st(p))).toEqual(['offline', 'online', 'online', 'away', 'away', 'online', 'online', 'offline']);
@@ -246,6 +251,10 @@ describe('readFriends', () => {
         const raw = readFriends();
         expect(raw.map((f) => f.lastPlayedAppId)).toEqual([7, 0]);
     });
+    it('reads when Steam last saw a friend online (persona.m_rtLastSeenOnline, Unix seconds), 0 when unset', () => {
+        vi.stubGlobal('friendStore', { allFriends: [{ persona: { m_ePersonaState: 0, m_rtLastSeenOnline: 1794510856 } }, { persona: { m_ePersonaState: 0 } }] });
+        expect(readFriends().map((f) => f.lastOnline)).toEqual([1794510856, 0]);
+    });
 });
 
 describe('mapFriends join fields', () => {
@@ -266,5 +275,6 @@ describe('friendsKey', () => {
         expect(friendsKey([{ ...base[0], gameAppId: 5 }, base[1], base[2]])).not.toBe(k);
         expect(friendsKey([base[0], { ...base[1], lastPlayedAppId: 9 }, base[2]])).not.toBe(k);
         expect(friendsKey([base[1], base[0], base[2]])).not.toBe(k);
+        expect(friendsKey([base[0], { ...base[1], lastOnline: 1794510856 }, base[2]])).not.toBe(k); // it moves the friend
     });
 });

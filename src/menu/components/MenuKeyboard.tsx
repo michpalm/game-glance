@@ -198,7 +198,8 @@ export function KeyboardPanel({ completionLabel='Send',frost=true,layout, page, 
 }
 
 /** The Social chat's own keyboard, floating in the menu while the session is open. */
-export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSend, send, field }: { context?:KeyboardContext;session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
+export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSend, send, field, completionLabel }: { context?:KeyboardContext;
+    /** The completion key's name in the menu ("Join" on the Wi-Fi page), without a context: a context puts the keyboard in Home's placement. */ completionLabel?:string;session: KeyboardSession; layouts: Layouts; draft: string; setDraft(text: string): void; canSend: boolean; send(): void; field: () => HTMLElement | null }) {
     const ctx=keyboardContext(context),contextRef=useRef(ctx);contextRef.current=ctx;
     const boundsReporter=useMemo(()=>createKeyboardBoundsReporter(ctx),[ctx]);
     useLayoutEffect(()=>()=>boundsReporter.dispose(),[boundsReporter]);
@@ -520,7 +521,7 @@ export function MenuKeyboard({ context,session, layouts, draft, setDraft, canSen
     if (!open || !host || !layout) return null;
     const feed = padDrag && !feedFailed ? axesFeed : null, view = host.ownerDocument.defaultView;
     return createPortal(<>
-        <KeyboardPanel completionLabel={ctx.completionLabel} frost={!context} layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} scale={context ? searchScale : 1} panelRef={panel}
+        <KeyboardPanel completionLabel={completionLabel??ctx.completionLabel} frost={!context} layout={layout} page={page} typing={typing} canSend={canSend} position={position} dragging={dragging} scale={context ? searchScale : 1} panelRef={panel}
             onKey={onKey} onMove={stripPress.current.action} hold={hold} strip={strip} pad={{ down: stripPress.current.buttonDown, up: stripPress.current.buttonUp, abort: stripPress.current.abort }} />
         {feed && view && <FeedGuard failed={() => setFeedFailed(true)}><StickFeed feed={feed} view={view} move={padMove} busy={on => { stickBusy.current = on; }} /></FeedGuard>}
     </>, host);

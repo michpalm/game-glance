@@ -12,7 +12,7 @@ import { LOOKUP_RETRY_MS } from '../home/moduleLookup';
 
 export const CONTEXT_MENUS_COMPONENT = 'GameGlanceContextMenus';
 
-/** Steam's context menus in the Game Glance look while Restyle Steam Settings is on (spec 2026-11-12-context-menus). */
+/** Steam's context menus in the Game Glance look while Restyle Steam's menus is on (spec 2026-11-12-context-menus). */
 export function ContextMenusHost({ masterReady }: { masterReady?: Promise<void> } = {}) {
     const master = useSettings(), preferences = useSyncExternalStore(menuPreferences.subscribe, menuPreferences.get),
         load = useSyncExternalStore(menuPreferences.subscribe, menuPreferences.loadState);

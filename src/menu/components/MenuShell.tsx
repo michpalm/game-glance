@@ -1,6 +1,6 @@
 import { menuScale, menuWindowSize } from '../menuScale';
 import { Focusable, type GamepadEvent } from '@decky/ui';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuArrowUpRight, LuBell } from 'react-icons/lu';
 import { pickMenuAccent, resolveMenuAccent } from '../accent';
 import { shownAccent } from '../../home/shownAccent';
@@ -10,7 +10,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
+import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, pageTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -18,7 +18,9 @@ import { GameStatusBar } from '../../components/GameStatusBar';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
 import { GameGlanceSection } from './GameGlanceSection';
-import { GAME_GLANCE_VIEW } from '../views';
+import { GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
+import { WifiNetworkPage } from './WifiNetworkPage';
+import { WifiPage } from './WifiPage';
 import { NavigatePanel } from './NavigatePanel';
 import { QuickSettingsPanel } from './QuickSettingsPanel';
 import { PerformancePanel } from './PerformancePanel';
@@ -127,6 +129,10 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         return installOutsideMenuClick(element, close, inputActive);
     }, [active, close, inputActive]);
     const keyboard = useMemo(createKeyboardSession, []);
+    // A page that uses B itself (the Wi-Fi page) claims it here, at the root: an inner onCancel would not stop this
+    // root's own cancel handler, so one press would both close the page's view and go back.
+    const pageBack = useRef<(() => boolean) | null>(null);
+    const claimBack = useCallback((claim: () => boolean) => { pageBack.current = claim; return () => { if (pageBack.current === claim) pageBack.current = null; }; }, []);
     // Only an open menu follows the chat: subscribing may start the social service.
     const enteredId = useSyncExternalStore(active && social ? social.subscribe : NO_SUBSCRIBE, () => active ? social?.get().enteredId ?? null : null);
     const keyboardFriend = keyboardHome(state, active, enteredId);
@@ -136,6 +142,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         if (inputActive() && radialOwnsButton(event.detail, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         if (event.detail.button === 2 && !cancel) return;
         if (keyboardTakesCancel(event.detail, cancel, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
+        if (pageTakesCancel(event.detail, cancel, pageBack.current)) { event.preventDefault(); event.stopPropagation(); return; }
         const next: MenuEvent[] = [];
         if (!handleMenuButton(event.detail, state, value => next.push(value), inputActive())) return;
         event.preventDefault(); event.stopPropagation();
@@ -156,7 +163,11 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;
     if (content === undefined && navigateTop !== undefined) content = <GameGlanceSection top={navigateTop} dispatch={dispatch} handoff={enterNative} close={close} />;
     if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} openGameGlance={() => dispatch({ type: 'push', viewId: GAME_GLANCE_VIEW })} />;
-    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} devices={quickSettings.devices} />;
+    const quickTop = state.section === 'quick-settings' ? state.stack[state.stack.length - 1] : undefined;
+    const wifiNetwork = parseWifiNetworkView(quickTop);
+    if (content === undefined && wifiNetwork !== null && quickSettings?.wifi) content = <WifiNetworkPage key={wifiNetwork} wifi={quickSettings.wifi} networkKey={wifiNetwork} leave={() => dispatch({ type: 'back' })} />;
+    if (content === undefined && quickTop === WIFI_VIEW && quickSettings?.wifi) content = <WifiPage wifi={quickSettings.wifi} openNetwork={key => dispatch({ type: 'push', viewId: wifiNetworkView(key) })} openSteamInternet={() => enterNative({ kind: 'navigate', destination: 'settings-internet' })} keyboard={{ session: keyboard, mode: menuPreference.socialKeyboard, ownsInput: inputActive }} claimBack={claimBack} />;
+    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} devices={quickSettings.devices} wifi={quickSettings.wifi} openWifi={() => dispatch({ type: 'push', viewId: WIFI_VIEW })} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
     if (content === undefined && state.section === 'social' && social) content = <SocialPanel persona={persona} social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}

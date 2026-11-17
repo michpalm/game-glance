@@ -77,6 +77,11 @@ export function keyboardTakesCancel(detail: { button: number }, cancel: boolean,
     return true;
 }
 
+/** A page that claims B (the Wi-Fi page: password view, open actions) gets it before the menu goes back. */
+export function pageTakesCancel(detail: { button: number }, cancel: boolean, claim: (() => boolean) | null): boolean {
+    return detail.button === 2 && cancel && !!claim && claim();
+}
+
 /** The keyboard lives only in the Social chat view. */
 export function keyboardBelongs(state: MenuState): boolean {
     return state.section === 'social' && state.stack[state.stack.length - 1] === 'social-chat';

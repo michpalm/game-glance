@@ -109,7 +109,35 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
 .gg-menu .gg-menu-setting [role=checkbox][aria-checked=true]>:first-child{background:var(--gg-accent)}
 .gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;border-radius:var(--gg-r-pill);background:var(--gg-on-accent);box-shadow:none}
-.gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;grid-auto-rows:minmax(56px,auto)}
+.gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;grid-auto-rows:minmax(56px,auto)}.gg-menu-quick-sliders+.gg-menu-switches{margin-top:12px}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-setting-step.DialogButton{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:56px;padding:8px;border:0;border-radius:var(--gg-r-card);background:transparent;text-align:left}
+.gg-menu .gg-menu-setting-step-text{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.gg-menu .gg-menu-setting-step-state{font-size:var(--gg-type-label);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gg-menu .gg-menu-wifi{display:flex;flex-direction:column;gap:4px}
+.gg-menu .gg-menu-wifi-heading{margin:12px 8px 4px;font-size:var(--gg-type-label);font-weight:var(--gg-weight-body);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-note{margin:8px;font-size:var(--gg-type-label);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-network.DialogButton{width:100%;min-height:52px;justify-content:flex-start;gap:12px;padding:8px 12px;border:0;background:transparent;text-align:left}
+.gg-menu .gg-menu-wifi-mark{width:20px;height:20px;flex:none;color:var(--gg-accent-text)}
+.gg-menu .gg-menu-wifi-text{display:flex;flex-direction:column;flex:1;min-width:0;line-height:1.3}
+.gg-menu .gg-menu-wifi-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gg-menu .gg-menu-wifi-status{font-size:var(--gg-type-label);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-lock{width:16px;height:16px;flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;flex:none}
+.gg-menu .gg-menu-wifi-bars>span{width:3px;border-radius:1px;background:var(--gg-track)}
+.gg-menu .gg-menu-wifi-bars>span:nth-child(1){height:25%}.gg-menu .gg-menu-wifi-bars>span:nth-child(2){height:50%}.gg-menu .gg-menu-wifi-bars>span:nth-child(3){height:75%}.gg-menu .gg-menu-wifi-bars>span:nth-child(4){height:100%}
+.gg-menu .gg-menu-wifi-bars>span[data-lit]{background:var(--gg-text)}
+.gg-menu .gg-menu-row-dim{opacity:.55}
+.gg-menu .gg-menu-wifi-chevron{width:20px;height:20px;flex:none;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.gg-menu .gg-menu-wifi-facts>div{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px 12px;border-radius:var(--gg-r-card);background:var(--gg-glass)}
+.gg-menu .gg-menu-wifi-facts small{font-size:var(--gg-type-label);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-facts span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-step.DialogButton{width:100%;min-height:44px;justify-content:flex-start;gap:12px;padding:8px 12px;border:0;background:transparent;text-align:left}
+.gg-menu .gg-menu-wifi-password{display:flex;flex-direction:column;gap:12px}
+.gg-menu .gg-menu-wifi-password-title{margin:0 8px;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
+.gg-menu .gg-menu-wifi-password-row{display:flex;gap:8px;align-items:stretch}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-password-field.DialogButton{flex:1;min-width:0;justify-content:flex-start;text-align:left;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
+.gg-menu .gg-menu-wifi-password-placeholder{letter-spacing:0;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
 .gg-menu-switches>div{min-width:0}.gg-menu-setting-toggle{display:flex;align-items:center}.gg-menu-setting-toggle>.Panel{width:100%;flex:1;min-width:0}
 .gg-menu-setting-header{margin:0 0 8px;font-size:var(--gg-type-body);font-weight:var(--gg-weight-body);letter-spacing:0;text-transform:none;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
 .gg-menu-segmented{display:flex;gap:0;padding:0;overflow:hidden;border-radius:var(--gg-r-card);background:var(--gg-glass);border:1px solid var(--gg-menu-detail-edge)}

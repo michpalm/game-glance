@@ -1,6 +1,6 @@
 import { ToggleField } from '@decky/ui';
 import type { ReactNode } from 'react';
-import { installPageScroll } from '../socialScroll';
+import { installPageScroll, QUICK_FOCUSABLES } from '../socialScroll';
 import { LuChevronRight } from 'react-icons/lu';
 import { SettingSegments } from './SettingSegments';
 
@@ -11,9 +11,14 @@ const keepPanelScroll = (heading: HTMLDivElement | null) => {
     const panel = heading?.closest<HTMLElement>('.gg-menu-panel');
     return panel ? installPageScroll(panel) : undefined;
 };
+/** The same for a page whose rows are not all buttons (toggles are Steam's `.Focusable`), as Quick settings. */
+const keepMixedPanelScroll = (heading: HTMLDivElement | null) => {
+    const panel = heading?.closest<HTMLElement>('.gg-menu-panel');
+    return panel ? installPageScroll(panel, QUICK_FOCUSABLES) : undefined;
+};
 
-export function Crumb({ parent, title, aside }: { parent: string; title: string; aside?: ReactNode }) {
-    return <div ref={keepPanelScroll} className="gg-menu-heading gg-plugin-crumb">
+export function Crumb({ parent, title, aside, focusables }: { parent: string; title: string; aside?: ReactNode; focusables?: typeof QUICK_FOCUSABLES }) {
+    return <div ref={focusables ? keepMixedPanelScroll : keepPanelScroll} className="gg-menu-heading gg-plugin-crumb">
         <div className="gg-plugin-crumb-path"><span>{parent}</span><LuChevronRight aria-hidden="true" /><h2>{title}</h2></div>
         {aside}
     </div>;

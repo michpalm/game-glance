@@ -53,6 +53,8 @@ export function createRoutes(bindings:RouteBindings) {
                 case 'media':bindings.navigate('/media/grid');break;
                 case 'downloads':bindings.navigate('/library/downloads');break;
                 case 'settings':bindings.navigate('/settings');break;
+                // Steam's Internet page (sp.js: Settings.Internet() → `${settings}/internet`), for networks one password cannot join.
+                case 'settings-internet':bindings.navigate('/settings/internet');break;
                 case 'power':bindings.power();return;
                 case 'profile':{
                     if(!bindings.profile.allowed())throw Error('Profile is unavailable offline or under the current parental restrictions');

@@ -1,3 +1,4 @@
+import type { WifiBindings } from './wifi';
 import type { Stop } from '../model';
 import { createSettingAdapter, type SettingAdapter, type SettingSnapshot } from './setting';
 import type { PickerOption } from '../components/MenuPicker';
@@ -9,6 +10,8 @@ export interface QuickSettingsBindings {
     audio?:{read():AudioState|null;write(deviceId:number,type:number,value:number):Promise<unknown>;setOverride?(deviceId:number,type:number):Promise<unknown>;clearOverride?(type:number):Promise<unknown>};
     brightness?:ValueBinding<number>;
     toggles?:Record<string,ValueBinding<boolean>>;
+    /** Steam's network store, for the Wi-Fi row and page. */
+    wifi?:WifiBindings;
 }
 function validatePercent(value:number|boolean,snapshot:SettingSnapshot<number|boolean>):number|null {
     if(typeof value!=='number'||!Number.isFinite(value)||!snapshot.available)return null;
@@ -78,5 +81,5 @@ export function createQuickSettings(bindings:QuickSettingsBindings) {
         };
         devices={output:picker(1),input:picker(0)};
     }
-    return {controls,devices,dispose(){Object.values(controls).forEach(control=>control.dispose());}};
+    return {controls,devices,wifi:bindings.wifi,dispose(){Object.values(controls).forEach(control=>control.dispose());}};
 }

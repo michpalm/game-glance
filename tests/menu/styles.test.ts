@@ -221,3 +221,49 @@ it('draws Social’s friends and chat dividers with the shared menu edge', () =>
     expect(line('.gg-social-friends')).toContain('border-right:1px solid var(--gg-menu-detail-edge)');
     expect(line('.gg-social-chat-heading')).toContain('border-bottom:1px solid var(--gg-menu-detail-edge)');
 });
+
+describe('Quick settings step rows', () => {
+    it('draws the Wi-Fi row as a tile the height of the toggles, label first and a chevron last', () => {
+        const step = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-setting-step.DialogButton');
+        expect(step).toContain('display:flex');
+        expect(step).toContain('justify-content:space-between');
+        expect(step).toContain('min-height:56px');
+        expect(step).toContain('background:transparent');
+        expect(rule('.gg-menu .gg-menu-setting-step-text')).toContain('flex-direction:column');
+        expect(rule('.gg-menu .gg-menu-setting-step-state')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('the Wi-Fi page', () => {
+    it('draws networks as full-width rows with lit signal bars, and dims the ones Steam must set up', () => {
+        const row = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-network.DialogButton');
+        expect(row).toContain('width:100%');
+        expect(row).toContain('justify-content:flex-start');
+        expect(row).toContain('background:transparent');
+        expect(rule('.gg-menu .gg-menu-wifi-bars>span[data-lit]')).toContain('background:var(--gg-text)');
+        expect(rule('.gg-menu .gg-menu-row-dim')).toContain('opacity:');
+        expect(rule('.gg-menu .gg-menu-wifi-heading')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('the Wi-Fi password view', () => {
+    it('draws the field as a glass line with Show beside it', () => {
+        expect(rule('.gg-menu .gg-menu-wifi-password-row')).toContain('display:flex');
+        const field = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-password-field.DialogButton');
+        expect(field).toContain('flex:1');
+        expect(field).toContain('justify-content:flex-start');
+        expect(rule('.gg-menu .gg-menu-wifi-password-placeholder')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('a network\'s page', () => {
+    it('shows its facts in three tiles and its actions as rows, not pills', () => {
+        expect(rule('.gg-menu .gg-menu-wifi-facts')).toContain('grid-template-columns:repeat(3,minmax(0,1fr))');
+        expect(rule('.gg-menu .gg-menu-wifi-chevron')).toContain('color:var(--gg-text-dim)');
+        const step = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-step.DialogButton');
+        expect(step).toContain('width:100%');
+        expect(step).toContain('border:0');
+        expect(step).toContain('background:transparent');
+        expect(step).toContain('justify-content:flex-start');
+    });
+});

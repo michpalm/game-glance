@@ -24,6 +24,8 @@ export interface RawFriend {
      * persona update, in memory only, so it is known only for friends who played since Steam started). 0 = unknown.
      */
     lastPlayedAppId?: number;
+    /** persona.m_rtLastSeenOnline: when Steam last saw the friend online, Unix seconds (probed on the Ally). 0 = unknown. */
+    lastOnline?: number;
     /** persona.m_unPersonaStateFlags (bit 2 = Steam's "has joinable game" flag). */
     stateFlags?: number;
     /** persona.m_game_lobby_id ("0" or "" when none; Steam treats any other value as a lobby). */
@@ -185,14 +187,16 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
             joinUrl: inGame ? joinUrl(f) : null,
         };
     });
-    // Array.prototype.sort is stable, so Steam's own order holds within a group.
-    cards.sort((a, b) => ORDER[a.state] - ORDER[b.state]);
+    // Offline: seen online most recently first, unknown times last. Array.prototype.sort is stable, so Steam's own order
+    // holds otherwise.
+    const seen = new Map(cards.map((c, i) => [c, c.state === 'offline' ? Number(friends[i].lastOnline) || 0 : 0]));
+    cards.sort((a, b) => ORDER[a.state] - ORDER[b.state] || seen.get(b)! - seen.get(a)!);
     return cards.slice(0, limit);
 }
 
 /** What the cards and the badge show for a list, as one string: Home re-renders only when it changes. */
 export function friendsKey(friends: RawFriend[]): string {
-    return friends.map((f) => [f.steamId, f.name, f.avatarUrl ?? '', f.personaState, f.gameAppId, f.gameName ?? '', f.lastPlayedAppId ?? 0, f.onlineStatus,
+    return friends.map((f) => [f.steamId, f.name, f.avatarUrl ?? '', f.personaState, f.gameAppId, f.gameName ?? '', f.lastPlayedAppId ?? 0, f.lastOnline ?? 0, f.onlineStatus,
         f.stateFlags ?? 0, f.lobbyId ?? '', f.serverIp ?? 0, f.connect ?? ''].join('\u0001')).join('\u0002');
 }
 
@@ -220,6 +224,7 @@ export function readFriends(): RawFriend[] {
             onlineStatus: String(f.localized_online_status ?? ''),
             gameName: currentGameName(f.persona),
             lastPlayedAppId: Number(f.m_nAppIDLastSeenPlaying) || 0,
+            lastOnline: Number(f.persona?.m_rtLastSeenOnline) || 0,
             stateFlags: Number(f.persona?.m_unPersonaStateFlags) || 0,
             lobbyId: f.persona?.m_game_lobby_id == null ? '' : String(f.persona.m_game_lobby_id),
             serverIp: Number(f.persona?.m_unGameServerIP) || 0,

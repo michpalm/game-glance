@@ -65,3 +65,22 @@ describe('back inside Game Glance\'s settings (Navigate)', () => {
         expect(state.focus.plugins).toBe('plugins:Unifideck');
     });
 });
+
+describe('the Wi-Fi page view', () => {
+    it('returns focus to Quick settings\' Wi-Fi row', async () => {
+        const { WIFI_ROW, WIFI_VIEW } = await import('../../src/menu/views');
+        expect(WIFI_VIEW).toBe('quick:wifi-page');
+        expect(WIFI_ROW).toBe('quick:wifi');
+        expect(returnFocusKey(WIFI_VIEW)).toBe(WIFI_ROW);
+    });
+});
+
+describe('a Wi-Fi network\'s page', () => {
+    it('names the view by the access point and returns focus to its row', async () => {
+        const { wifiNetworkView, parseWifiNetworkView } = await import('../../src/menu/views');
+        expect(wifiNetworkView('k/1')).toBe('quick:wifi-network:k/1');
+        expect(parseWifiNetworkView('quick:wifi-network:k/1')).toBe('k/1');
+        expect(parseWifiNetworkView('quick:wifi-page')).toBeNull();
+        expect(returnFocusKey(wifiNetworkView('k/1'))).toBe('wifi:k/1');
+    });
+});

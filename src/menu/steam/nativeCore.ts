@@ -7,6 +7,7 @@ import type { NativeOwner, NativeRequest } from './runtime';
 import { HOME_ROUTE } from '../../home/guard';
 import { markLeaving } from '../../home/homeMemory';
 import type { RouteBindings } from './routes';
+import { createWifiBindings } from './wifi';
 interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
 interface CoreGlobals {
@@ -116,6 +117,7 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     }
     function stop(){alive=false;generation++;scanning=false;if(interval!==undefined)clearInterval(interval);interval=undefined;for(const r of registrations.splice(0)){try{release(r);}catch{}}}
     const bindings:QuickSettingsBindings={subscribe(listener){listeners.add(listener);if(listeners.size===1)start();return()=>{listeners.delete(listener);if(!listeners.size)stop();};},toggles};
+    if(net)bindings.wifi=createWifiBindings(net);
     if(audio?.GetDevices&&audio?.SetDeviceVolume)bindings.audio={read:()=>devices,async write(id,type,value){const ticket=generation,requestedAt=Date.now();const current=await audio.GetDevices();if(!alive||ticket!==generation||Date.now()-requestedAt>=3000)throw Error('Audio device confirmation expired. Try again.');devices=current;emit();if((type===1?current.activeOutputDeviceId:current.activeInputDeviceId)!==id)throw Error('Active audio device changed. Try again.');const result=await audio.SetDeviceVolume(id,type,value);if(result&&result.result!==1)throw Error(result.message||'Steam rejected the volume change');}};
     // Which device plays and records (spec 2026-11-12-status-and-audio-pickers): Steam's own Sound settings calls; the list
     // is read again after each so the pills and sliders follow the new active device.

@@ -78,4 +78,5 @@ it('defaults older preferences to native Settings and remembers an explicit opt-
     const restored = createMenuPreferences(kv);
     await restored.load();
     expect(restored.get().restyleSteamSettings).toBe(true);
+    // The stored key keeps its pre-release name so a saved value carries over; it now governs Steam's context menus only.
 });
