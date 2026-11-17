@@ -1,4 +1,5 @@
 import { HOME_ROUTE } from '../../home/guard';
+import { STORAGE_ROUTE } from '../../storage/route';
 import type { NativeRequest, QamTab } from './runtime';
 export interface NativeTabs { Notifications:number; Friends:number; Settings:number; Perf:number; Help:number; Music:number; Decky:number }
 export interface RouteBindings {
@@ -55,6 +56,8 @@ export function createRoutes(bindings:RouteBindings) {
                 case 'settings':bindings.navigate('/settings');break;
                 // Steam's Internet page (sp.js: Settings.Internet() → `${settings}/internet`), for networks one password cannot join.
                 case 'settings-internet':bindings.navigate('/settings/internet');break;
+                // Game Glance's own Storage screen, a Decky route (src/storage/StoragePage).
+                case 'storage':bindings.navigate(STORAGE_ROUTE);break;
                 case 'power':bindings.power();return;
                 case 'profile':{
                     if(!bindings.profile.allowed())throw Error('Profile is unavailable offline or under the current parental restrictions');

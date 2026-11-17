@@ -10,7 +10,7 @@ function harness() {
     return { b, order, routes: createRoutes(b) };
 }
 describe('menu native destinations', () => {
-    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['settings-internet','/settings/internet'],['media','/media/grid']] as const)('maps %s to its native route', async (destination,path) => {
+    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['settings-internet','/settings/internet'],['media','/media/grid'],['storage','/game-glance/storage']] as const)('maps %s to its native route', async (destination,path) => {
         const h = harness(); await h.routes.open({kind:'navigate',destination}); expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.b.deactivate).toHaveBeenCalledTimes(1);
     });
     it('deactivates before navigation and closes the side menu after navigation', async () => {
@@ -127,6 +127,7 @@ describe('requests that close Steam\'s menu', () => {
     it('are the ones that end in finishNavigation', () => {
         expect(closesSteamMenu({ kind: 'navigate', destination: 'library' })).toBe(true);
         expect(closesSteamMenu({ kind: 'navigate', destination: 'settings' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'storage' })).toBe(true);
         expect(closesSteamMenu({ kind: 'friend-profile', steamId: '76561197960287930' })).toBe(true);
         expect(closesSteamMenu({ kind: 'app', appId: 10 })).toBe(true);
         expect(closesSteamMenu({ kind: 'media-item', item: 'screenshot', id: 'a' })).toBe(true);

@@ -36,3 +36,15 @@ it('opens Game Glance’s settings inside the menu, not in Steam', () => {
     expect(openGameGlance).toHaveBeenCalledTimes(1);
     expect(handoff).not.toHaveBeenCalled();
 });
+
+it('adds Storage after Power, starting a third row, only when Steam offers it', () => {
+    const handoff = vi.fn();
+    const ids = (storage: boolean) => tree(NavigatePanel({ handoff, openGameGlance: vi.fn(), storage })).map(n => n.props.id).filter((id): id is string => typeof id === 'string');
+    expect(ids(true)).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:game-glance', 'navigate:power', 'navigate:storage']);
+    expect(ids(false)).not.toContain('navigate:storage');
+    const nodes = tree(NavigatePanel({ handoff, openGameGlance: vi.fn(), storage: true }));
+    const tile = nodes.find(n => n.props.id === 'navigate:storage')!;
+    expect(tree(tile).some(n => n.type === 'span' && n.props.children === 'Storage')).toBe(true);
+    tile.props.onAction();
+    expect(handoff).toHaveBeenCalledWith({ kind: 'navigate', destination: 'storage' });
+});

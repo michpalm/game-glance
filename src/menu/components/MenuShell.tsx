@@ -22,6 +22,7 @@ import { GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } fr
 import { WifiNetworkPage } from './WifiNetworkPage';
 import { WifiPage } from './WifiPage';
 import { NavigatePanel } from './NavigatePanel';
+import { storageAvailable } from '../steam/storage';
 import { QuickSettingsPanel } from './QuickSettingsPanel';
 import { PerformancePanel } from './PerformancePanel';
 import type { createPerformance } from '../steam/performance';
@@ -162,7 +163,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     // Navigate's Game Glance tile opens Game Glance's settings in place: any view on Navigate's stack is one of theirs.
     const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;
     if (content === undefined && navigateTop !== undefined) content = <GameGlanceSection top={navigateTop} dispatch={dispatch} handoff={enterNative} close={close} />;
-    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} openGameGlance={() => dispatch({ type: 'push', viewId: GAME_GLANCE_VIEW })} />;
+    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} openGameGlance={() => dispatch({ type: 'push', viewId: GAME_GLANCE_VIEW })} storage={storageAvailable((globalThis as { SteamClient?: unknown }).SteamClient)} />;
     const quickTop = state.section === 'quick-settings' ? state.stack[state.stack.length - 1] : undefined;
     const wifiNetwork = parseWifiNetworkView(quickTop);
     if (content === undefined && wifiNetwork !== null && quickSettings?.wifi) content = <WifiNetworkPage key={wifiNetwork} wifi={quickSettings.wifi} networkKey={wifiNetwork} leave={() => dispatch({ type: 'back' })} />;
