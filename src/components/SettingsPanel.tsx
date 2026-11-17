@@ -67,7 +67,7 @@ export function SettingsPanel() {
         gamesRow: (
             <DropdownItem
                 label="Games row"
-                description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
+                description="Your recent games (with games new to your library, as on Steam's Home), all installed games (Steam and non-Steam together), or one of your collections."
                 menuLabel="Games row"
                 rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
                 selectedOption={rowChosen}

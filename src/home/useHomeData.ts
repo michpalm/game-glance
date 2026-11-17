@@ -32,7 +32,7 @@ import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
 import { fillMissing } from './homeView';
-import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
+import { homeCollections, INSTALLED_ROW, INSTALLED_ROW_NAME, installedRowApps, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
@@ -214,11 +214,21 @@ function withLaunchInfo(picked: RecentGame[], apps: AnyApp[]): HomeGame[] {
 
 /**
  * The games row: a collection's games (`row` is its id, collections.pickCollectionGames, sorted by `sort`) with its
- * name for the eyebrow, or Steam's recent games with those new to the library. A collection that is gone, not offered
- * or has no games left falls back to the recent games, so Home is never empty because of the setting.
+ * name for the eyebrow, all installed games, Steam's and non-Steam (collections.INSTALLED_ROW), or Steam's recent games
+ * with those new to the library. A collection that is gone, not offered or has no games left falls back to the recent
+ * games, so Home is never empty because of the setting.
  */
 export function readRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null } {
-    if (row !== RECENT_ROW) {
+    if (row === INSTALLED_ROW) {
+        const chosen = guarded('installed games row', () => {
+            const store = steam.collectionStore;
+            const apps = installedRowApps<AnyApp>(store?.localGamesCollection?.allApps, steam.appStore?.allApps);
+            const isHidden = (appId: number) => store?.BIsHidden?.(appId) === true;
+            const games = withLaunchInfo(pickCollectionGames(apps, isHidden, sort), apps);
+            return games.length > 0 ? { games, collection: INSTALLED_ROW_NAME } : null;
+        }, null);
+        if (chosen) return chosen;
+    } else if (row !== RECENT_ROW) {
         const chosen = guarded('collection', () => {
             const store = steam.collectionStore;
             const found = store?.userCollections?.find((c) => c?.id === row);

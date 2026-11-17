@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { collectionEyebrow, homeCollections, pickCollectionGames, ROW_SORTS, rowSortLabel, rowSortOf } from '../../src/home/collections';
+import { afterEach, describe, expect, it } from 'vitest';
+import { collectionEyebrow, homeCollections, INSTALLED_ROW, installedRowApps, pickCollectionGames, ROW_SORTS, rowSortLabel, rowSortOf, steamHomeCollections, withInstalledRow } from '../../src/home/collections';
 import type { RawApp } from '../../src/home/recents';
+import { readRowGames } from '../../src/home/useHomeData';
 
 const GAME = 1;
 const SHORTCUT = 1073741824;
@@ -66,6 +67,60 @@ describe('pickCollectionGames', () => {
         expect(pickCollectionGames(apps.slice(0, 2), () => {
             throw new Error('x');
         }, 'name').map((g) => g.appId)).toEqual([2, 1]);
+    });
+});
+
+describe('All installed games (Steam and non-Steam together)', () => {
+    // Steam's Locally Installed Games holds no shortcuts (steam-home-ally.json): they come from the whole library.
+    const localGames = [app(1, 'Hades', { rt_last_time_played: 100 }), app(2, 'Celeste', { rt_last_time_played: 0, rt_purchased_time: 5 }), { appid: 3, display_name: 'Proton', app_type: 4 }];
+    const library = [
+        ...localGames,
+        app(4, 'Not installed', { rt_last_time_played: 900 }),
+        app(5, 'Mario (Dolphin)', { app_type: SHORTCUT, rt_last_time_played: 300 } as never),
+        app(6, 'Zelda (Yuzu)', { app_type: SHORTCUT, rt_last_time_played: 50 } as never),
+        app(7, 'Hidden shortcut', { app_type: SHORTCUT, rt_last_time_played: 999 } as never),
+    ];
+    const g = globalThis as Record<string, unknown>;
+    afterEach(() => {
+        delete g.collectionStore;
+        delete g.appStore;
+    });
+    const stubSteam = (local: unknown[], all: unknown[], collections: unknown[] = []) => {
+        g.collectionStore = { localGamesCollection: { allApps: local }, userCollections: collections, BIsHidden: (id: number) => id === 7 };
+        g.appStore = { allApps: all };
+    };
+
+    it('takes Steam\'s installed apps and every shortcut in the library, each once, never uninstalled Steam games', () => {
+        expect(installedRowApps(localGames, library).map((a) => a.appid)).toEqual([1, 2, 3, 5, 6, 7]);
+        expect(installedRowApps(localGames, [...library, library[4]]).map((a) => a.appid)).toEqual([1, 2, 3, 5, 6, 7]);
+    });
+    it('survives junk and a missing list', () => {
+        expect(installedRowApps(undefined, [null, 7, { appid: 'x', app_type: SHORTCUT }, library[4]]).map((a) => a.appid)).toEqual([5]);
+        expect(installedRowApps(localGames, undefined).map((a) => a.appid)).toEqual([1, 2, 3]);
+    });
+    it('is offered right after Steam\'s own collections, only with games to show', () => {
+        const list = [{ id: 'favorite', name: 'Favorites', count: 1 }, { id: 'local-install', name: 'Locally Installed Games', count: 2 }, { id: 'uc-a', name: 'Backlog', count: 3 }];
+        expect(withInstalledRow(list, 4).map((c) => c.id)).toEqual(['favorite', 'local-install', INSTALLED_ROW, 'uc-a']);
+        expect(withInstalledRow(list.slice(2), 4).map((c) => c.id)).toEqual([INSTALLED_ROW, 'uc-a']);
+        expect(withInstalledRow(list, 0)).toBe(list);
+    });
+    it('the picker counts the games, demos and shortcuts it would show', () => {
+        stubSteam(localGames, library, [coll('local-install', 'Installed', localGames)]);
+        expect(steamHomeCollections()).toEqual([
+            { id: 'local-install', name: 'Locally Installed Games', count: 3 },
+            { id: INSTALLED_ROW, name: 'All installed games', count: 5 },
+        ]);
+    });
+    it('Home\'s row shows Steam and non-Steam games together, sorted, without hidden games or tools', () => {
+        stubSteam(localGames, library);
+        const row = readRowGames(INSTALLED_ROW, 'lastPlayed');
+        expect(row.collection).toBe('All installed games');
+        expect(row.games.map((x) => [x.appId, x.shortcut])).toEqual([[5, true], [1, false], [6, true], [2, false]]);
+        expect(readRowGames(INSTALLED_ROW, 'name').games.map((x) => x.name)).toEqual(['Celeste', 'Hades', 'Mario (Dolphin)', 'Zelda (Yuzu)']);
+    });
+    it('with nothing installed, Home falls back to the recent games', () => {
+        stubSteam([], []);
+        expect(readRowGames(INSTALLED_ROW, 'lastPlayed')).toEqual({ games: [], collection: null });
     });
 });
 
