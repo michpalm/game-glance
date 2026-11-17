@@ -7,6 +7,7 @@ import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
 import { ART_FILL_FILTER, EXPANDED_HEIGHT, EXPANDED_MASK, FIT_FADE, HeroFit, overFill, STANDARD_HERO_ASPECT } from '../home/heroFit';
 import type { PageShading } from '../home/pageShading';
 import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../home/scale';
+import { TITLE_SCALE_VAR } from '../home/titleSize';
 import { LOGO_BOX } from './logoBox';
 import { LAUNCH_ART_CLASS } from './launchArt';
 import { SCALE_UNIT_CSS } from './screenScale';
@@ -967,7 +968,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Keep the native fallback until the mirrored reason exists; never hide the only explanation.
         rule(layout && inner && cls(play, 'StatusAndStats') && cls(play, 'PermanentlyUnavailable') ? `${inner}:has(> .gg-titleblock .gg-availability) ${cls(play, 'StatusAndStats')}${cls(play, 'PermanentlyUnavailable')}` : null, ` display: none !important; `),
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
-        `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)}
+        `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)} font-size: calc(${d(PAGE_TYPE.title.size)} * var(${TITLE_SCALE_VAR}, 1));
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }`,
 

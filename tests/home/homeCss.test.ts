@@ -440,7 +440,7 @@ describe('homeCss', () => {
         expect(title).toMatch(/flex:\s*0 0 auto\s*!important/);
         expect(title).toMatch(/text-wrap:\s*balance/);
         expect(title).toMatch(/text-shadow:\s*0 4px 30px rgba\(0,0,0,\.4\)/);
-        expect(title).toMatch(/font-size:\s*58px/);
+        expect(title).toMatch(/font-size:\s*calc\(58px \* var\(--gg-title-scale, 1\)\)/);
         // Room for descenders and the shadow inside the clip, cancelled by equal negative margins (layout stays 116 tall).
         expect(title).toMatch(/padding:\s*16px\s*!important/);
         expect(title).toMatch(/margin:\s*-16px\s*!important/);

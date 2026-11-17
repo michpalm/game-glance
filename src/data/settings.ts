@@ -6,6 +6,7 @@ import type { FeedTab } from '../home/feedLayout';
 import { HeroFit, heroFitOf } from '../home/heroFit';
 import { PageShading, pageShadingOf } from '../home/pageShading';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
+import { TitleSize, titleSizeOf } from '../home/titleSize';
 import { backendKv, KvBackend } from './kv';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
 
@@ -28,6 +29,7 @@ export interface Settings {
     storePill: boolean; // the store pill (Steam, GOG...) on Home and the game page
     familyPill: boolean; // the Family Sharing pill on Home and the game page, for a game from the family library
     playerCountPill: boolean; // how many people play the game now (Steam), beside the store and family pills
+    titleSize: TitleSize; // the logo's or name's size on Home and the game page: 'large' (full), 'medium' or 'small' (home/titleSize)
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
@@ -40,7 +42,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -76,6 +78,7 @@ export function createSettingsStore(kv: KvBackend) {
                 storePill: pick('storePill'),
                 familyPill: pick('familyPill'),
                 playerCountPill: pick('playerCountPill'),
+                titleSize: titleSizeOf(raw?.titleSize),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
@@ -199,6 +202,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, playerCountPill };
             emit();
             await persist({ playerCountPill });
+        },
+        async setTitleSize(titleSize: TitleSize): Promise<void> {
+            current = { ...current, titleSize: titleSizeOf(titleSize) };
+            emit();
+            await persist({ titleSize: current.titleSize });
         },
         /** One or more screensaver options. */
         async setScreensaver(change: Partial<ScreensaverOptions>): Promise<void> {

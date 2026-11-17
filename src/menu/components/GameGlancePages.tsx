@@ -6,6 +6,7 @@ import { everyPageAvailable, GAME_INFO_NOTE, homeRows, ROW_STYLE_LABELS, slotCho
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
 import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, type HeroFit } from '../../home/heroFit';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
+import { TITLE_SIZE_COPY, TITLE_SIZES, type TitleSize } from '../../home/titleSize';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
 import { SLOT_INDEXES } from '../../logic/infoSlots';
 import { GAME_INFO_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
@@ -174,6 +175,9 @@ export function GeneralPage({ v, a }: PageProps) {
             <h3>Look on Home and the game page</h3>
             <ToggleRow id="gg:general:gameLogo" label="Game logo" description="The game's logo instead of its name. A game without one keeps its name."
                 checked={s.gameLogo} onChange={value => a.run(a.store.setGameLogo(value))} />
+            <SegmentRow<TitleSize> id="gg:general:titleSize" label="Title size" description={TITLE_SIZE_COPY[s.titleSize].description}
+                options={TITLE_SIZES} labels={{ small: TITLE_SIZE_COPY.small.label, medium: TITLE_SIZE_COPY.medium.label, large: TITLE_SIZE_COPY.large.label }}
+                value={s.titleSize} onSelect={value => a.run(a.store.setTitleSize(value))} />
             <ToggleRow id="gg:general:storePill" label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row. Off also hides the store version choice it opens."
                 checked={s.storePill} onChange={value => a.run(a.store.setStorePill(value))} />
             <ToggleRow id="gg:general:familyPill" label="Family Sharing pill" description="Whose library a shared game comes from. Off also hides the choice of copy it opens."

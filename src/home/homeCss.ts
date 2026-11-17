@@ -13,8 +13,9 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
-import { EYEBROW, PAGE_LAYOUT, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
+import { EYEBROW, PAGE_LAYOUT, PAGE_TYPE, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
+import { TITLE_SCALE_VAR } from './titleSize';
 import { CARD_SCALE_HANDHELD, RECENTS_BOTTOM, recentsGeometry } from './recentsLayout';
 import { PILL_INSET, ROW_OFFSET, SIDE_INSET } from './insets';
 import { RETURN_ATTR } from './openCancel';
@@ -347,7 +348,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
             white-space: nowrap; text-overflow: ellipsis; ${EYEBROW(px)}`),
         // At most two lines with an ellipsis (TITLE_BLOCK). The clip gets a bleed on every side for descenders and the
         // shadow; equal negative margins keep the layout box at exactly two 58px lines.
-        rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: ${t.titleSize}px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
+        rule('.gh-title', `margin: -${t.titleBleed}px; padding: ${t.titleBleed}px; font-size: calc(${t.titleSize}px * var(${TITLE_SCALE_VAR}, 1)); line-height: 1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
             text-shadow: 0 4px 30px rgba(0,0,0,.4); color: #fff; overflow-wrap: anywhere;
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: ${t.maxTitleLines}; overflow: hidden; flex: 0 0 auto`),
         // The logo option (GameTitle): the game's logo in the title's place, bottom-left in the slot; it rises like a longer
@@ -980,7 +981,7 @@ export function openingRules(): string[] {
         // The Play label's twin: the page pill's box with its label centred on the line at the label's inset (openTwins 'pill').
         soft('.gh-twin[data-origin="pill"]', 'transform-origin: 0 0; --t-shift: 0%; width: var(--t-w); height: var(--t-h); display: flex; align-items: center; padding: 0 0 0 var(--t-inset); box-sizing: border-box'),
         soft(`${MT} .gh-twin`, `transform: var(--t-to); transition: ${move}; animation: gh-twin-in ${T.morph}ms linear both`),
-        soft('.gh-twin[data-role="title"]', `${pageType('title', dd)} max-width: ${dd(640)}; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 ${dd(4)} ${dd(30)} rgba(0,0,0,.4)`),
+        soft('.gh-twin[data-role="title"]', `${pageType('title', dd)} font-size: calc(${dd(PAGE_TYPE.title.size)} * var(${TITLE_SCALE_VAR}, 1)); max-width: ${dd(640)}; white-space: normal; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 ${dd(4)} ${dd(30)} rgba(0,0,0,.4)`),
         soft('.gh-twin[data-role="eyebrow"]', `${pageType('eyebrow', dd)} ${EYEBROW(dd)}`),
         // Match the page's layout anchor. A percentage translate is applied after glyph rasterization and
         // placed the bridge eyebrow one device pixel above the page on the Ally, despite matching text bounds.

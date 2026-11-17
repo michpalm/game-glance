@@ -120,6 +120,7 @@ Quick Access (…) → Game Glance:
 | Spotlight Home | Off | The new Home, and its look on the game page. Off returns Steam's Home at once. |
 | Status bar | On | The clock, battery, connection and online status at the top right. |
 | Game logo | Off | The game's logo in place of its name, on Home and the game page. A game without a logo keeps its name. Each logo is cropped to its artwork and sized so that wide and compact logos look about equally big. |
+| Title size | Large | How big the game's logo or name is drawn on Home and the game page: Small (70%), Medium (85%) or Large (full size). The eyebrow, stats and buttons stay in place. |
 | Games row | Recent Games | What Home's row shows: your recent games, or one of your Steam collections (Favorites, Locally Installed Games and your own). With a collection, **Sort By** offers Last Played, Alphabetical or Date Added to Library, and the line under the title starts with the collection's name. |
 | Games row style | Steam | How the row moves. Steam: the last played game is the wide card and the selection moves to the middle of the screen, as on Steam's Home. Spotlight: the selected game widens and the row slides it to the left edge (Game Glance's row before 3.3.0). |
 | What's new, Friends, Recommended | On | Home's feed tabs. A tab that is off is not shown and loads nothing; all three off removes the feed (Down does nothing). |

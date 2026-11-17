@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { TITLE_SCALE_VAR, titleScale } from '../home/titleSize';
+import { CSSProperties, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Focusable } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import { knownAchievementFacts, noteDetails, spaceRequiredOf, withKnownAchievements } from '../home/detailsMemo';
@@ -234,6 +235,7 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
 
     const proton = useProton(game, usesStat(settings.infoSlots, 'protondb'));
     const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
+    const titleK = titleScale(settings.titleSize);
     const accent = useGameAccent(game.appId, restyle);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
@@ -321,9 +323,9 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {restyle && game.isShortcut && <UnifideckCloud appId={game.appId} installed={uniInstalled} />}
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (
-                <div className="gg-titleblock">
+                <div className="gg-titleblock" style={{ [TITLE_SCALE_VAR]: titleK } as CSSProperties}>
                     {/* As on Home: the title (or logo) first, the eyebrow under it. */}
-                    <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} />
+                    <GameTitle appId={game.appId} name={game.name} logo={gameLogo} className="gg-title" logoClassName="gg-logo" unit={pageUnit} scale={titleK} />
                     <GameMetadata key={game.appId} doc={pageDoc} eyebrow={eyebrow} />
                 </div>
             )}

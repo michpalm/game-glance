@@ -5,6 +5,7 @@ import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
+import { TITLE_SCALE_VAR } from '../../src/home/titleSize';
 import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, pageDUnit, pageScrimLayers, pageScrims, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
@@ -1614,4 +1615,11 @@ it('an arriving page inherits the final accent without replaying the eyebrow and
         const css = buildArrivingCss(full, 'spotlight', 'parts', revealed);
         expect(css).toContain('.ad_Inner { transition: none !important; }');
     }
+});
+
+describe('Title size (home/titleSize)', () => {
+    it("the page's title multiplies its type size by the title-size variable", () => {
+        const css = buildThemeCss(full, { restyle: true });
+        expect(css).toMatch(new RegExp(`\\.gg-title \\{[^}]*font-size: calc\\(calc\\(${PAGE_TYPE.title.size} \\* var\\(--gg-d\\)\\) \\* var\\(${TITLE_SCALE_VAR}, 1\\)\\)`));
+    });
 });

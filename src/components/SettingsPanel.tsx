@@ -2,6 +2,7 @@ import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
 import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, HeroFit } from '../home/heroFit';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
+import { TITLE_SIZES, TITLE_SIZE_COPY, TitleSize } from '../home/titleSize';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -19,7 +20,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -308,6 +309,16 @@ export function SettingsPanel() {
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <ToggleField label="Player count" description="How many people are playing now, from Steam." checked={playerCountPill} onChange={(value) => settings.setPlayerCountPill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Title size"
+                        description={TITLE_SIZE_COPY[titleSize].description}
+                        menuLabel="Title size"
+                        rgOptions={TITLE_SIZES.map((size) => ({ data: size, label: TITLE_SIZE_COPY[size].label }))}
+                        selectedOption={titleSize}
+                        onChange={(option) => settings.setTitleSize(option.data as TitleSize)}
+                    />
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <DropdownItem
