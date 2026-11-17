@@ -12,7 +12,8 @@ import { SLOT_INDEXES } from '../../logic/infoSlots';
 import { GAME_INFO_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
 import type { PageProps, SlotPickerProps } from './gameGlanceTypes';
 import { MenuAction } from './MenuAction';
-import { Crumb, SegmentRow, ToggleRow } from './SettingRows';
+import { Crumb, SegmentRow, ColorRow, ToggleRow } from './SettingRows';
+import { ACCENT_MODE_COPY, ACCENT_MODE_LABELS, ACCENT_SWATCHES, type AccentMode } from '../../home/accentChoice';
 
 const rows = (children: ReactElement[] | ReactElement) => <Focusable className="gg-plugin-rows" flow-children="column">{children}</Focusable>;
 const error = (text: string) => text ? <p className="gg-menu-error" role="alert">{text}</p> : null;
@@ -178,6 +179,10 @@ export function GeneralPage({ v, a }: PageProps) {
             <SegmentRow<TitleSize> id="gg:general:titleSize" label="Title size" description={TITLE_SIZE_COPY[s.titleSize].description}
                 options={TITLE_SIZES} labels={{ small: TITLE_SIZE_COPY.small.label, medium: TITLE_SIZE_COPY.medium.label, large: TITLE_SIZE_COPY.large.label }}
                 value={s.titleSize} onSelect={value => a.run(a.store.setTitleSize(value))} />
+            <SegmentRow<AccentMode> id="gg:general:accentMode" label="Accent color" description={ACCENT_MODE_COPY[s.accentMode]}
+                options={['adaptive', 'custom']} labels={ACCENT_MODE_LABELS} value={s.accentMode} onSelect={value => a.run(a.store.setAccent({ accentMode: value }))} />
+            <ColorRow id="gg:general:accentColor" label={s.accentMode === 'custom' ? 'Your color' : 'Color when the art has none'} swatches={ACCENT_SWATCHES}
+                value={s.accentColor} onSelect={color => a.run(a.store.setAccent({ accentColor: color }))} />
             <ToggleRow id="gg:general:storePill" label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row. Off also hides the store version choice it opens."
                 checked={s.storePill} onChange={value => a.run(a.store.setStorePill(value))} />
             <ToggleRow id="gg:general:familyPill" label="Family Sharing pill" description="Whose library a shared game comes from. Off also hides the choice of copy it opens."

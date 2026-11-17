@@ -53,6 +53,11 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 :where(html:not([data-gg-mouse])) .gg-menu .gg-menu-picker-option:is(.gpfocus,:focus-visible){${focusRing('menu')}}
 .gg-menu-picker-option-text{display:flex;flex-direction:column;min-width:0}
 .gg-menu-picker-sub{font-size:.8em;font-weight:500;color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow)}
+/* The accent colour row (SettingRows ColorRow): a full-width pill as tall as the segments above it; its list opens in place. */
+.gg-menu .gg-menu-setting-color .gg-menu-picker{width:100%;min-height:44px;padding:8px 14px;gap:10px;border-radius:var(--gg-r-card)}
+.gg-menu .gg-menu-setting-color .gg-menu-picker-chevron{margin-left:auto}
+.gg-menu .gg-menu-setting-color .gg-menu-picker-dot{width:14px;height:14px}
+.gg-menu .gg-menu-setting-color .gg-menu-picker-list{position:static;margin-top:6px;width:100%}
 .gg-menu-device{min-width:0}.gg-menu-device .gg-menu-picker{width:100%}.gg-menu-device .gg-menu-picker-text{margin-left:auto}
 .gg-menu .gg-notifications>.gg-menu-heading,.gg-menu .gg-social>.gg-menu-heading{flex:none;margin:0}
 .gg-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -94,7 +99,7 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-setting{padding:8px;min-height:48px;border-radius:var(--gg-r-card);font-size:var(--gg-type-body);background:transparent;transition:background var(--gg-base),box-shadow var(--gg-base),transform var(--gg-base)}
 :where(html:not([data-gg-mouse])) .gg-menu .gg-menu-setting:not(.gg-menu-setting-segments):has(.gpfocus){${focusRing('menu')};background:var(--gg-glass-strong)}
 .gg-menu .gg-menu-setting-disabled{${ghost()}}
-.gg-menu .gg-menu-setting .Panel:not(.gg-menu-segmented),.gg-menu .gg-social-input .Panel{padding:0;margin:0;border:0;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
+.gg-menu .gg-menu-setting .Panel:not(.gg-menu-segmented):not(.gg-menu-picker):not(.gg-menu-picker-list):not(.gg-menu-picker-option),.gg-menu .gg-social-input .Panel{padding:0;margin:0;border:0;background:transparent;box-shadow:none;font:inherit;min-height:0;transform:none!important;transition:none!important;animation:none!important}
 .gg-menu .gg-menu-setting [id$="_Label"]{font:inherit;color:var(--gg-text);text-shadow:var(--gg-text-shadow)}
 .gg-menu .gg-menu-setting [id$="_Description_Description"]{font-size:var(--gg-type-label);font-weight:var(--gg-weight-body);color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);line-height:1.4;margin-top:4px}
 .gg-menu .gg-menu-setting-label{display:inline-flex;align-items:center;gap:8px;min-width:0}
@@ -103,12 +108,12 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-menu-slider-label output{font-size:var(--gg-type-value);font-weight:var(--gg-weight-body);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--gg-text)}
 .gg-menu .gg-menu-setting .SliderTrack{width:calc(100% - 24px);height:4px;border-radius:var(--gg-r-pill);background:var(--gg-track);box-shadow:var(--gg-track-edge)}
 .gg-menu .gg-menu-setting .SliderTrack::before{height:100%;background:var(--gg-accent);border-radius:var(--gg-r-pill)}
-.gg-menu .gg-menu-setting .SliderHandle{width:18px;height:18px;top:3px;right:3px;left:auto;bottom:auto;margin:0;border:0;border-radius:var(--gg-r-pill);background:var(--gg-on-accent)}
+.gg-menu .gg-menu-setting .SliderHandle{width:18px;height:18px;top:3px;right:3px;left:auto;bottom:auto;margin:0;border:0;border-radius:var(--gg-r-pill);background:#fff}
 .gg-menu .gg-menu-setting [role=checkbox]::after{content:none}
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child{outline:1px solid var(--gg-menu-detail-edge);outline-offset:-1px;background:var(--gg-track);box-shadow:var(--gg-track-edge)}
 .gg-menu .gg-menu-setting [role=checkbox]>:first-child::before{background:inherit}
 .gg-menu .gg-menu-setting [role=checkbox][aria-checked=true]>:first-child{background:var(--gg-accent)}
-.gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;border-radius:var(--gg-r-pill);background:var(--gg-on-accent);box-shadow:none}
+.gg-menu .gg-menu-setting [role=checkbox]>:last-child{box-sizing:border-box;position:absolute;top:0;left:0;right:auto;bottom:auto;margin:0;width:22px;height:22px;border:0;outline:0;border-radius:var(--gg-r-pill);background:#fff;box-shadow:none}
 .gg-menu-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;grid-auto-rows:minmax(56px,auto)}.gg-menu-quick-sliders+.gg-menu-switches{margin-top:12px}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-setting-step.DialogButton{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:56px;padding:8px;border:0;border-radius:var(--gg-r-card);background:transparent;text-align:left}
 .gg-menu .gg-menu-setting-step-text{display:flex;flex-direction:column;min-width:0;line-height:1.3}

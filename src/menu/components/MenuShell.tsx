@@ -42,6 +42,8 @@ import type { PersonaService } from '../steam/persona';
 import type { NotificationReads } from '../notificationReads';
 import { unreadCount as countUnread, type TrayRow } from '../notificationsList';
 import type { NotificationActions } from '../steam/notificationActions';
+import { useSettings } from '../../data/settings';
+import { effectiveAccent, onAccentFor } from '../../home/accentChoice';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
     state: MenuState;
@@ -80,6 +82,8 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     const active = state.phase === 'custom-open';
     const appId = state.game?.appId;
     const homeAccent = useSyncExternalStore(shownAccent.subscribe, shownAccent.get);
+    const { accentMode, accentColor } = useSettings();
+    const accentChoice = { accentMode, accentColor };
     useLayoutEffect(() => {
         const document = root.current?.ownerDocument;
         return active && document ? installMouseMode(document) : undefined;
@@ -155,7 +159,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     };
     const color = appId ? accentMemo.get(appId) ?? (cachedAccent?.appId === appId ? cachedAccent.color : undefined) : undefined;
     const owner = (globalThis as unknown as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { BIsOverlayPath?(): boolean } } } }).SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance;
-    const accent = pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true);
+    const accent = effectiveAccent(pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true), accentChoice);
     const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
     let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
@@ -180,7 +184,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         const tab = NATIVE_TABS[state.section];
         content = <div className="gg-menu-heading"><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}><LuArrowUpRight aria-hidden="true" />Open in Steam</MenuAction></div>;
     }
-    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
+    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent), '--gg-on-accent': onAccentFor(accentChoice) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>

@@ -3,6 +3,7 @@ import { toaster } from '@decky/api';
 import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, HeroFit } from '../home/heroFit';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { TITLE_SIZES, TITLE_SIZE_COPY, TitleSize } from '../home/titleSize';
+import { ACCENT_MODE_COPY, ACCENT_MODE_LABELS, ACCENT_SWATCHES, AccentMode } from '../home/accentChoice';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -20,7 +21,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -318,6 +319,25 @@ export function SettingsPanel() {
                         rgOptions={TITLE_SIZES.map((size) => ({ data: size, label: TITLE_SIZE_COPY[size].label }))}
                         selectedOption={titleSize}
                         onChange={(option) => settings.setTitleSize(option.data as TitleSize)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Accent color"
+                        description={ACCENT_MODE_COPY[accentMode]}
+                        menuLabel="Accent color"
+                        rgOptions={(['adaptive', 'custom'] as const).map((mode) => ({ data: mode, label: ACCENT_MODE_LABELS[mode] }))}
+                        selectedOption={accentMode}
+                        onChange={(option) => settings.setAccent({ accentMode: option.data as AccentMode })}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label={accentMode === 'custom' ? 'Your color' : 'Color when the art has none'}
+                        menuLabel="Color"
+                        rgOptions={ACCENT_SWATCHES.map((swatch) => ({ data: swatch.color, label: swatch.name }))}
+                        selectedOption={accentColor}
+                        onChange={(option) => settings.setAccent({ accentColor: option.data as string })}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>

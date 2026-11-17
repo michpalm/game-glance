@@ -7,6 +7,8 @@ import { HeroFit, heroFitOf } from '../home/heroFit';
 import { PageShading, pageShadingOf } from '../home/pageShading';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
 import { TitleSize, titleSizeOf } from '../home/titleSize';
+import { AccentChoice, accentColorOf, AccentMode, accentModeOf } from '../home/accentChoice';
+import { DEFAULT_ACCENT } from '../home/accent';
 import { backendKv, KvBackend } from './kv';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
 
@@ -30,6 +32,8 @@ export interface Settings {
     familyPill: boolean; // the Family Sharing pill on Home and the game page, for a game from the family library
     playerCountPill: boolean; // how many people play the game now (Steam), beside the store and family pills
     titleSize: TitleSize; // the logo's or name's size on Home and the game page: 'large' (full), 'medium' or 'small' (home/titleSize)
+    accentMode: AccentMode; // 'adaptive': each game's colour from its art; 'custom': accentColor everywhere (home/accentChoice)
+    accentColor: string; // #rrggbb: the custom colour, and adaptive's colour where the art gives none
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
@@ -42,7 +46,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -79,6 +83,8 @@ export function createSettingsStore(kv: KvBackend) {
                 familyPill: pick('familyPill'),
                 playerCountPill: pick('playerCountPill'),
                 titleSize: titleSizeOf(raw?.titleSize),
+                accentMode: accentModeOf(raw?.accentMode),
+                accentColor: accentColorOf(raw?.accentColor),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
@@ -202,6 +208,13 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, playerCountPill };
             emit();
             await persist({ playerCountPill });
+        },
+        /** The accent mode, its colour, or both. */
+        async setAccent(change: Partial<AccentChoice>): Promise<void> {
+            const next = { accentMode: accentModeOf(change.accentMode ?? current.accentMode), accentColor: accentColorOf(change.accentColor ?? current.accentColor) };
+            current = { ...current, ...next };
+            emit();
+            await persist(next);
         },
         async setTitleSize(titleSize: TitleSize): Promise<void> {
             current = { ...current, titleSize: titleSizeOf(titleSize) };

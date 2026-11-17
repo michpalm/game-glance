@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { installPageScroll, QUICK_FOCUSABLES } from '../socialScroll';
 import { LuChevronRight } from 'react-icons/lu';
 import { SettingSegments } from './SettingSegments';
+import { MenuPicker } from './MenuPicker';
 
 /** "Parent › Title" heading of a Plugins view, with an optional item at the right. */
 /** Every Plugins view starts with its heading: it keeps the view's panel scrolled so the heading and the last notes show.
@@ -40,6 +41,19 @@ export function SegmentRow<T extends string>({ id, label, description, options, 
     return <div className="gg-menu-setting gg-menu-setting-segments" data-gg-focus={id}>
         <div className="gg-menu-setting-header">{label}</div>
         <SettingSegments id={id} label={label} options={options} value={value} labels={labels} onSelect={choice => onSelect(choice as T)} />
+        {description && <p className="gg-plugin-note">{description}</p>}
+    </div>;
+}
+
+/** A colour picked from one row: the current colour's dot and name; A opens the list (accent colour, home/accentChoice). */
+export function ColorRow({ id, label, description, swatches, value, onSelect }: {
+    id: string; label: string; description?: string; swatches: readonly { name: string; color: string }[]; value: string; onSelect(color: string): void;
+}) {
+    const current = swatches.find(s => s.color === value) ?? swatches[0];
+    return <div className="gg-menu-setting gg-menu-setting-segments gg-menu-setting-color" data-gg-focus={id}>
+        <div className="gg-menu-setting-header">{label}</div>
+        <MenuPicker<string> id={id} text={current.name} dot={current.color} selected={value}
+            options={swatches.map(s => ({ id: s.color, label: s.name, dot: s.color }))} onPick={color => { if (color !== value) onSelect(color); }} />
         {description && <p className="gg-plugin-note">{description}</p>}
     </div>;
 }

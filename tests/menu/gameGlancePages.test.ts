@@ -16,7 +16,7 @@ function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
 const settings: Settings = {
     enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: false, cleanPage: false, homeStatusBar: true,
     homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent',
-    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', titleSize: 'large',
+    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae',
     feedTabs: { news: true, friends: true, recommended: true },
     infoSlots: DEFAULT_SLOTS,
     screensaver: { enabled: true, logo: true, statusBar: true, stats: false } as Settings['screensaver'],
@@ -160,7 +160,7 @@ describe('General', () => {
     });
     it('lists Game Glance, the look, data and updates', () => {
         const page = GeneralPage({ v: values(), a: actions() });
-        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:gameLogo', 'gg:general:titleSize', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
+        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:gameLogo', 'gg:general:titleSize', 'gg:general:accentMode', 'gg:general:accentColor', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
     });
     it('offers the update when one is available', () => {
         const a = actions();

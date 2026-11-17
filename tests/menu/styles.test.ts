@@ -267,3 +267,20 @@ describe('a network\'s page', () => {
         expect(step).toContain('justify-content:flex-start');
     });
 });
+
+it('keeps the toggle and slider knobs white whatever the accent (text on a light accent turns dark, knobs do not)', async () => {
+    const { menuStyles } = await import('../../src/menu/styles');
+    for (const sel of ['.SliderHandle{', '[role=checkbox]>:last-child{']) {
+        const rule = menuStyles.slice(menuStyles.indexOf(sel)).split('}')[0];
+        expect(rule, sel).toContain('background:#fff');
+        expect(rule, sel).not.toContain('--gg-on-accent');
+    }
+});
+
+it('leaves the picker\'s pill, list and options their own glass inside a setting row, and opens the colour list in place', async () => {
+    const { menuStyles } = await import('../../src/menu/styles');
+    const reset = menuStyles.split('\n').find(line => line.startsWith('.gg-menu .gg-menu-setting .Panel:not('))!;
+    for (const kept of ['.gg-menu-picker', '.gg-menu-picker-list', '.gg-menu-picker-option']) expect(reset).toContain(`:not(${kept})`);
+    expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker-list\{[^}]*position:static/);
+    expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker\{[^}]*width:100%/);
+});

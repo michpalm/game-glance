@@ -17,6 +17,7 @@ import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, holdsFocus, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
 import { settings, useSettings } from '../data/settings';
+import { effectiveAccent } from './accentChoice';
 import { homeMode } from './mode';
 import { recentsButton, selectionForButton, type Zone } from './focusZones';
 import { sheetSwipe } from './rowDrag';
@@ -164,7 +165,7 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, titleSize, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots, storePill, familyPill, playerCountPill } = useSettings();
+    const { homeStatusBar, gameLogo, titleSize, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots, storePill, familyPill, playerCountPill, accentMode, accentColor } = useSettings();
     const titleK = titleScale(titleSize);
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
@@ -194,7 +195,8 @@ export function SpotlightHome() {
     const shownGame = shownAt === null ? null : data.games[shownAt] ?? null;
     const heldAccent = useRef(data.accent);
     if (!cycle.holding) heldAccent.current = data.accent;
-    const accent = heldAccent.current;
+    // The setting decides: the art's colour (adaptive) or the chosen one (home/accentChoice).
+    const accent = effectiveAccent(heldAccent.current, { accentMode, accentColor });
     useEffect(() => { shownAccent.set(accent); }, [accent]);
     useEffect(() => () => shownAccent.set(undefined), []);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.

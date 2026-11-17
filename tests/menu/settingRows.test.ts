@@ -50,3 +50,22 @@ it('draws segments under a header, with an optional note', () => {
 it('keeps its panel scrolled through a ref', () => {
     expect(typeof Crumb({ parent: 'Game Glance', title: 'Home' }).props.ref).toBe('function');
 });
+
+it('picks the colour from one row that opens a list of named colours with their dots', async () => {
+    const { ColorRow } = await import('../../src/menu/components/SettingRows');
+    const { ACCENT_SWATCHES } = await import('../../src/home/accentChoice');
+    const onSelect = vi.fn();
+    const row = ColorRow({ id: 'gg:general:accentColor', label: 'Your color', swatches: ACCENT_SWATCHES, value: '#a78bfa', onSelect });
+    expect(row.props['data-gg-focus']).toBe('gg:general:accentColor');
+    // Drawn like a segmented row: its title above, the ring on the control only.
+    expect(row.props.className).toBe('gg-menu-setting gg-menu-setting-segments gg-menu-setting-color');
+    expect(tree(row).find(n => n.props.className === 'gg-menu-setting-header')?.props.children).toBe('Your color');
+    const picker = tree(row).find(n => n.props.options)!;
+    expect(picker.props).toMatchObject({ id: 'gg:general:accentColor', text: 'Violet', dot: '#a78bfa', selected: '#a78bfa' });
+    expect(picker.props.options).toEqual(ACCENT_SWATCHES.map(s => ({ id: s.color, label: s.name, dot: s.color })));
+    expect(picker.props.label).toBeUndefined();
+    picker.props.onPick('#a78bfa');
+    expect(onSelect).not.toHaveBeenCalled();
+    picker.props.onPick('#4fb3ff');
+    expect(onSelect).toHaveBeenCalledWith('#4fb3ff');
+});

@@ -16,6 +16,8 @@ import { useRowDrag } from './useRowDrag';
 import { rowWheelTarget } from './mouse';
 import { useHover, useWheelStep } from './useMouse';
 import { tr } from '../i18n/steamText';
+import { useSettings } from '../data/settings';
+import { effectiveAccent } from './accentChoice';
 
 const PREFERRED_CHILD = PREFERRED as NavEntryPositionPreferences;
 const FIRST = NAV_FIRST as NavEntryPositionPreferences;
@@ -116,7 +118,9 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     const rows: [FeedItem[], FeedItem[]] = [items.filter((i) => i.row === 0), items.filter((i) => i.row === 1)];
     /** A card's place in `items` (row 1 first, then row 2), which also indexes cardRefs. */
     const flat = (r: 0 | 1, i: number) => (r === 0 ? i : rows[0].length + i);
-    const accentOf = useCardAccents(items.map((i) => i.accentAppId ?? 0), entered);
+    const cardAccent = useCardAccents(items.map((i) => i.accentAppId ?? 0), entered);
+    const { accentMode, accentColor } = useSettings();
+    const accentOf = (appId: number) => effectiveAccent(cardAccent(appId), { accentMode, accentColor });
     const sel: [number, number] = [0, 1].map((r) => Math.min(Math.max(0, at[r]), Math.max(0, rows[r].length - 1))) as [number, number];
     const selRow: 0 | 1 = row === 1 && rows[1].length > 0 ? 1 : 0;
     const scrolls = [0, 1].map((r) => feedScroll(sel[r], rows[r].map((i) => i.width), FEED_GAP, viewport));

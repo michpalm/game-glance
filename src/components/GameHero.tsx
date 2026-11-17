@@ -7,6 +7,7 @@ import { cache } from '../data/cache';
 import { setCurrentGame } from '../data/currentGame';
 import { lookupHltb } from '../data/hltb';
 import { useSettings } from '../data/settings';
+import { effectiveAccent } from '../home/accentChoice';
 import { useProton } from '../data/useProton';
 import { PLAYERS_PAGE_MAX_AGE_MS, PLAYERS_POLL_MS } from '../data/playerCount';
 import { usePlayerCount } from '../data/usePlayerCount';
@@ -236,7 +237,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
     const proton = useProton(game, usesStat(settings.infoSlots, 'protondb'));
     const { homeStatusBar: statusBar, gameLogo, heroFit, pageShading } = settings;
     const titleK = titleScale(settings.titleSize);
-    const accent = useGameAccent(game.appId, restyle);
+    const sampled = useGameAccent(game.appId, restyle);
+    const accent = sampled === undefined ? undefined : effectiveAccent(sampled, settings);
     // Restyled only: the Play pill fills with Steam's download progress (hooks run either way; the CSS only when restyled).
     const { download } = useDownload(restyle && game.appId !== 0 ? game.appId : null);
     // Restyled only (where Unifideck's own size item is hidden): a Unifideck game's install / download size in our card.
