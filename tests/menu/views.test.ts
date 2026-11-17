@@ -18,6 +18,7 @@ describe('menu views for the Plugins section', () => {
     });
     it('returns focus to the row, card or plugin that opened a view', () => {
         expect(returnFocusKey('game-glance')).toBe('navigate:game-glance');
+        expect(returnFocusKey('in-game:achievements-page')).toBe('in-game:achievements');
         expect(returnFocusKey('gg:home')).toBe('gg:card:home');
         expect(returnFocusKey('gg:game-page')).toBe('gg:card:game-page');
         expect(returnFocusKey('gg:home:row')).toBe('gg:home:games');

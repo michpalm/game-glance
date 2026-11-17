@@ -10,6 +10,9 @@ export const VERSIONS_VIEW = 'gg:general:versions';
 /** Quick settings' Wi-Fi page, opened from its Wi-Fi row (spec 2026-11-13-console-settings-design, Part 1). */
 export const WIFI_VIEW = 'quick:wifi-page';
 export const WIFI_ROW = 'quick:wifi';
+/** In game › Achievements (mock-up "Achievement Sets"), opened from its tile; B returns to the tile. */
+export const ACHIEVEMENTS_VIEW = 'in-game:achievements-page';
+export const ACHIEVEMENTS_TILE = 'in-game:achievements';
 /** A Wi-Fi network's own page (Disconnect, Join, Forget), by its access point key; B returns to its row. */
 const WIFI_NETWORK_PREFIX = 'quick:wifi-network:';
 export const wifiNetworkView = (key: string) => `${WIFI_NETWORK_PREFIX}${key}`;
@@ -36,6 +39,7 @@ export function parseInfoView(viewId: string): SlotIndex | null {
 export function returnFocusKey(viewId: string | undefined): string | null {
     if (viewId === GAME_GLANCE_VIEW) return GAME_GLANCE_TILE;
     if (viewId === WIFI_VIEW) return WIFI_ROW;
+    if (viewId === ACHIEVEMENTS_VIEW) return ACHIEVEMENTS_TILE;
     const network = parseWifiNetworkView(viewId);
     if (network !== null) return `wifi:${network}`;
     if (viewId === HOME_ROW_VIEW) return 'gg:home:games';

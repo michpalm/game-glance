@@ -80,6 +80,11 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 .gg-menu .gg-ingame-label{display:grid;gap:4px;justify-items:center;width:100%}
 .gg-menu .gg-ingame-label small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}
 .gg-menu .gg-ingame-bar{display:block;width:70%;height:6px;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
+.gg-menu .gg-ingame-sets{display:flex;gap:3px;width:78%;height:6px}
+.gg-menu .gg-ingame-set{display:block;flex:1 1 0;min-width:4px;height:100%;border-radius:var(--gg-r-pill);background:var(--gg-edge-raised);overflow:hidden}
+.gg-menu .gg-ingame-set>i{display:block;height:100%;border-radius:inherit;background:#e8c26a}
+.gg-menu .gg-ingame-set[data-base]>i{background:#5aa9f0}
+.gg-menu .gg-ingame-set[data-locked]{opacity:.45}
 .gg-menu .gg-ingame-progress{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
 .gg-menu .gg-notifications{display:flex;flex-direction:column;gap:16px;min-height:100%}
 .gg-menu .gg-notifications-list{display:flex;flex-direction:column;gap:12px}

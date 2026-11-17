@@ -56,10 +56,31 @@ describe('in-game page', () => {
         expect(h.nodes.find(n => n.props.className === 'gg-ingame-progress')?.props.style).toEqual({ width: '27%' });
         expect(text(harness({ stats: { sessionMinutes: null, achievements: null } }).nodes)).not.toContain('of');
     });
+    it('with Achievement Sets: the count and sets done, and one bar per set as wide as the set (mock-up 2026-11-17)', () => {
+        const bar = (id: number, size: number, unlocked: number, base: boolean, earnable = true) => ({ id, name: `Set ${id}`, size, unlocked, base, earnable, complete: unlocked === size });
+        const sets = { unlocked: 38, total: 52, done: 2, sets: 4, bars: [bar(0, 30, 30, true), bar(2, 6, 6, false), bar(3, 10, 2, false), bar(4, 6, 0, false, false)] };
+        const h = harness({ sets });
+        expect(text(h.nodes)).toContain('38 of 52 · 2 of 4 sets done');
+        expect(h.nodes.some(n => n.props.className === 'gg-ingame-progress')).toBe(false);
+        const segments = h.nodes.filter(n => n.props.className === 'gg-ingame-set');
+        expect(segments.map(n => n.props.style)).toEqual([{ flexGrow: 30 }, { flexGrow: 6 }, { flexGrow: 10 }, { flexGrow: 6 }]);
+        expect(segments.map(n => [n.props['data-base'], n.props['data-locked']])).toEqual([['', undefined], [undefined, undefined], [undefined, undefined], [undefined, '']]);
+        expect(segments.map(n => tree(n.props.children)[0]?.props.style)).toEqual([{ width: '100%' }, { width: '100%' }, { width: '20%' }, { width: '0%' }]);
+    });
     it('opens each destination for the running game', () => {
         const h = harness();
         h.action('in-game:guides').props.onAction();
         expect(h.handoff).toHaveBeenCalledWith({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'guides' });
+    });
+    it('opens Game Glance\'s Achievements page from its tile; a non-Steam game still goes to Steam\'s', () => {
+        const openAchievements = vi.fn();
+        const h = harness({ openAchievements });
+        h.action('in-game:achievements').props.onAction();
+        expect(openAchievements).toHaveBeenCalledTimes(1);
+        expect(h.handoff).not.toHaveBeenCalled();
+        const other = harness({ openAchievements, game: { ...ori, kind: 'non-steam' } });
+        other.action('in-game:achievements').props.onAction();
+        expect(other.handoff).toHaveBeenCalledWith({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'achievements' });
     });
     it('asks once before exiting the game', () => {
         const first = harness();

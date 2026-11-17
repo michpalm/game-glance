@@ -18,7 +18,7 @@ import { GameStatusBar } from '../../components/GameStatusBar';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
 import { GameGlanceSection } from './GameGlanceSection';
-import { GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
+import { ACHIEVEMENTS_VIEW, GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
 import { WifiNetworkPage } from './WifiNetworkPage';
 import { WifiPage } from './WifiPage';
 import { NavigatePanel } from './NavigatePanel';
@@ -31,10 +31,12 @@ import type { createNotificationBadge, createNotificationList } from '../steam/n
 import { MorePanel } from './MorePanel';
 import { SocialPanel } from './SocialPanel';
 import { InGamePanel } from './InGamePanel';
+import { AchievementsPage } from './AchievementsPage';
 import { NotificationsPanel } from './NotificationsPanel';
 import { PluginsSection } from './PluginsSection';
 import { pluginStyles } from '../pluginStyles';
 import { soundtrackStyles } from '../soundtrackStyles';
+import { achievementsStyles } from '../achievementsStyles';
 import { SoundtrackSection } from './SoundtrackSection';
 import type { SoundtrackService } from '../steam/soundtrack';
 import type { SocialService } from '../steam/social';
@@ -163,7 +165,9 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
     let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
-    if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
+    const inGameTop = state.section === 'in-game' ? state.stack[state.stack.length - 1] : undefined;
+    if (content === undefined && inGameTop === ACHIEVEMENTS_VIEW && state.game) content = <AchievementsPage game={state.game} handoff={enterNative} />;
+    if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} openAchievements={() => dispatch({ type: 'push', viewId: ACHIEVEMENTS_VIEW })} />;
     // Navigate's Game Glance tile opens Game Glance's settings in place: any view on Navigate's stack is one of theirs.
     const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;
     if (content === undefined && navigateTop !== undefined) content = <GameGlanceSection top={navigateTop} dispatch={dispatch} handoff={enterNative} close={close} />;
@@ -188,7 +192,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>
-        <style>{menuStyles + pluginStyles + soundtrackStyles}</style>
+        <style>{menuStyles + pluginStyles + soundtrackStyles + achievementsStyles}</style>
         <GameStatusBar menuOverlay />
         <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" ariaLabel={badgeCount > 0 ? `${badgeCount} unread notifications` : 'Notifications'} selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}><span className="gg-menu-notification-count" aria-hidden="true">{badgeCount > 99 ? '99+' : badgeCount > 0 ? badgeCount : ''}</span><LuBell aria-hidden="true" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { menuStyles } from '../../src/menu/styles';
 import { socialStyles } from '../../src/menu/socialStyles';
+import { achievementsStyles } from '../../src/menu/achievementsStyles';
 import { focusRing, labelText, TOKENS, tokenCss } from '../../src/styles/tokens';
 const rule=(selector:string)=>menuStyles.split('\n').find(line=>line.startsWith(selector+'{'))??'';
 describe('menu glass and reveal motion',()=>{
@@ -51,7 +52,7 @@ describe('menu glass and reveal motion',()=>{
         expect(rule('.gg-menu')).toMatch(/transition:[^;}]*opacity var\(--gg-fast\) linear/);
         expect(rule('.gg-menu-status-host')).toContain('transition:opacity var(--gg-fast) linear');
     });
-    const all = [...menuStyles.split('\n'), ...socialStyles.split('\n')];
+    const all = [...menuStyles.split('\n'), ...socialStyles.split('\n'), ...achievementsStyles.split('\n')];
     it('draws options in the bar and tracks as full-height slices in a card track', () => {
         expect(rule('.gg-menu-tabs')).toMatch(/padding:0[;}]/);
         expect(rule('.gg-menu-tabs')).toMatch(/gap:0[;}]/);
@@ -68,7 +69,7 @@ describe('menu glass and reveal motion',()=>{
     });
     it('uses pills only where the round shape is the control', () => {
         const pills = all.filter(line => line.includes('--gg-r-pill'));
-        for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-social-avatar|gh-status-pill/);
+        for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-ingame-set|gg-ach-bar|gg-ach-progress|gg-social-avatar|gh-status-pill/);
     });
     it('marks every selected item with a shade and edge, never an accent fill', () => {
         const selected = all.flatMap(line => line.match(/[^{}]*\[aria-pressed=true\][^{}]*\{[^}]*\}/g) ?? [])
@@ -283,4 +284,16 @@ it('leaves the picker\'s pill, list and options their own glass inside a setting
     for (const kept of ['.gg-menu-picker', '.gg-menu-picker-list', '.gg-menu-picker-option']) expect(reset).toContain(`:not(${kept})`);
     expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker-list\{[^}]*position:static/);
     expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker\{[^}]*width:100%/);
+});
+
+it('the Achievements page fills the panel and scrolls each column on its own', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-page\{height:100%/);
+    expect(achievementsStyles).toMatch(/\.gg-ach\{flex:1;min-height:0/);
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)\{overflow-y:auto/);
+});
+
+it('keeps every row of the Achievements columns at its own height (a fixed-height column would squash them)', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)>\*\{flex:none\}/);
 });
