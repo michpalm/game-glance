@@ -32,7 +32,7 @@ function displaySettings():DisplaySettings|undefined {
 }
 export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(request:NativeRequest)=>Promise<void>):RouteBindings {
     const root=globals();
-    const window=owner as NativeOwner&{Navigate?(path:string):void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
+    const window=owner as NativeOwner&{Navigate?(path:string):void;NavigateToRunningApp?():void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
     const rememberHome = () => {
         if (owner.History?.location?.pathname === HOME_ROUTE) markLeaving();
     };
@@ -46,6 +46,8 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
         libraryTab(tab){if(typeof window.Navigator?.LibraryTab==='function'){rememberHome();window.Navigator.LibraryTab(tab);}else navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
         // As Steam's own main menu: in Big Picture's window (so backing out does not bring a side menu back), with our cancel.
         power(onCancel){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');(Router.OpenPowerMenu as (element?:Element,onCancel?:()=>void)=>void)((owner as {BrowserWindow?:Window}).BrowserWindow?.document?.documentElement,onCancel);},
+        // As Resume in Steam's own menu (it calls NavigateToRunningApp, then closes the menu).
+        resumeGame(){if(typeof window.NavigateToRunningApp!=='function')throw Error('Steam cannot resume this game');window.NavigateToRunningApp();},
         joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
         // As Steam's own notification list opens invite urls and account links.
         openUrl(url){const chat=root.SteamClient?.WebChat;if(typeof chat?.OpenURLInClient!=='function')throw Error('Steam cannot open this link');chat.OpenURLInClient(url,0,false);},

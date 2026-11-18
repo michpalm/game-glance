@@ -69,13 +69,26 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 }
 .gg-menu .gg-menu-grid button.gg-menu-action.DialogButton svg{width:24px;height:24px}
 .gg-menu .gg-ingame{display:flex;flex-direction:column;gap:16px;min-height:100%}
-.gg-menu .gg-ingame-hero{position:relative;flex:none;height:176px;margin:-24px -24px 0;border-radius:var(--gg-r-panel) var(--gg-r-panel) 0 0;overflow:hidden;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:16px 24px}
+/* The art is the Resume button (mock-up B): the same size and place as before, ringed inside when focused. */
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton{position:relative;isolation:isolate;flex:none;width:auto;height:176px;min-height:0;margin:-24px -24px 0;padding:16px 24px;border:0;border-radius:var(--gg-r-panel) var(--gg-r-panel) 0 0;overflow:hidden;display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;gap:16px;background:transparent;text-align:left;transform:none}
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible){outline:none;background:transparent;transform:none}
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:not(:disabled):active{transform:none}
 .gg-menu .gg-ingame-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--gg-glass-solid))}
+/* The ring is a layer over the art: the art and its gradient are positioned, and Chromium paints them over the button's own outline. */
+.gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(*,:enabled,:active)::before{content:"";position:absolute;inset:6px;z-index:2;border:3px solid #fff;border-radius:calc(var(--gg-r-panel) - 6px);opacity:0;pointer-events:none;transition:opacity var(--gg-fast)}
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible)::before{opacity:1}
 .gg-menu .gg-ingame-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
 .gg-menu .gg-ingame-logo{position:relative;z-index:1;max-width:45%;max-height:90px;object-fit:contain;object-position:left bottom;filter:drop-shadow(var(--gg-text-shadow))}
 .gg-menu .gg-ingame-hero h2{position:relative;z-index:1;margin:0}
 .gg-menu .gg-ingame-logo-slot{position:relative;display:block;height:90px}
-.gg-menu .gg-ingame-session{position:relative;z-index:1;font-weight:var(--gg-weight-heading);white-space:nowrap}
+.gg-menu .gg-ingame-cue{position:relative;z-index:1;display:flex;align-items:center;gap:12px;flex:none}
+.gg-menu .gg-ingame-cue-text{display:flex;gap:6px;font-weight:var(--gg-weight-heading);white-space:nowrap}
+.gg-menu .gg-ingame-resume-word{display:none}
+.gg-menu .gg-ingame-resume-word:has(+ .gg-ingame-session)::after{content:"·";margin-left:6px}
+.gg-menu .gg-ingame-play{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;transition:background var(--gg-base),color var(--gg-base),transform var(--gg-base)}
+.gg-menu button.gg-menu-action.DialogButton .gg-ingame-play svg{width:18px;height:18px;margin-left:2px;fill:currentColor}
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible) .gg-ingame-resume-word{display:inline}
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible) .gg-ingame-play{background:#fff;color:#14181f;transform:scale(1.2)}
 .gg-menu .gg-ingame-grid{grid-auto-rows:112px}
 .gg-menu .gg-ingame-label{display:grid;gap:4px;justify-items:center;width:100%}
 .gg-menu .gg-ingame-label small{color:var(--gg-text-dim);text-shadow:var(--gg-text-shadow);font-size:var(--gg-type-label)}

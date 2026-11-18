@@ -5,6 +5,8 @@ export interface NativeTabs { Notifications:number; Friends:number; Settings:num
 export interface RouteBindings {
     deactivate(): void; tabs: NativeTabs; openMain(): void; openQam(tab:number): void;
     library(): void; navigate(path:string): void; finishNavigation(): void; power(onCancel?:()=>void): void;
+    /** Back into the running game, as Steam's own menu's Resume. */
+    resumeGame?(): void;
     /** A Library tab by Steam's own name ("Soundtracks"), as Steam's Soundtrack tab opens it. */
     libraryTab?(tab:string): void;
     exitGame(gameId:string): void;
@@ -25,7 +27,7 @@ const GAME_PAGES: Record<string,(appId:number)=>string> = {
 const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;
 // Notification links (Steam's account link table, invite urls): Steam pages or steam:// urls only.
 const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
-export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
+export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit', 'resume'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
 /** Power opens Steam's power menu without handing the slot back to Steam's menu; backing out runs the request's onCancel. */
 export function opensOverMenu(request:NativeRequest):boolean {
@@ -106,6 +108,7 @@ export function createRoutes(bindings:RouteBindings) {
         if(request.kind==='game-action'){
             if(!Number.isInteger(request.appId)||request.appId<=0||!/^\d{1,20}$/.test(request.gameId))throw Error('This game is unavailable');
             if(request.actionId==='exit'){bindings.exitGame(request.gameId);return;}
+            if(request.actionId==='resume'){if(!bindings.resumeGame)throw Error('Steam cannot resume this game');bindings.resumeGame();bindings.finishNavigation();return;}
             const page=GAME_PAGES[request.actionId];
             if(!page)throw Error('This game destination is unavailable');
             bindings.navigate(page(request.appId));bindings.finishNavigation();return;

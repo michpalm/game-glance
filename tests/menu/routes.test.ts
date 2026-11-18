@@ -9,6 +9,15 @@ function harness() {
     };
     return { b, order, routes: createRoutes(b) };
 }
+describe('Resume game', () => {
+    it('goes back into the running game as Steam\'s own menu does, and closes the menu', async () => {
+        const h = harness(); (h.b as Record<string, unknown>).resumeGame = vi.fn(() => { h.order.push('resume'); });
+        await h.routes.open({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'resume' });
+        expect(h.order).toEqual(['deactivate', 'resume', 'close']);
+        expect(h.b.navigate).not.toHaveBeenCalled();
+        expect(closesSteamMenu({ kind: 'game-action', appId: 1, gameId: '1', actionId: 'resume' })).toBe(true);
+    });
+});
 describe('Power from the Game Glance menu', () => {
     it('opens Steam\'s power menu with our cancel, without handing the slot back to Steam\'s menu', async () => {
         const h = harness(); const onCancel = vi.fn();

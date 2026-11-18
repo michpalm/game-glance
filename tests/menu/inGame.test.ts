@@ -42,6 +42,22 @@ describe('in-game page', () => {
         const nodes = tree(element);
         return { nodes, handoff, armExit, action: (key: string) => nodes.find(n => n.props.id === key)! };
     }
+    it('the game’s art is the Resume button: first, outside the tile grid, back into the running game (mock-up B)', () => {
+        const h = harness();
+        const resume = h.action('in-game:resume');
+        expect(resume.props.className).toContain('gg-ingame-hero');
+        const inside = tree(resume);
+        // The art, the logo and this session sit on the button itself.
+        expect(inside.some(n => n.type === 'img' && n.props.src === 'hero.jpg')).toBe(true);
+        expect(inside.some(n => n.type === 'img' && n.props.src === 'logo.png')).toBe(true);
+        expect(text(inside)).toContain('33 min this session');
+        expect(resume.props.ariaLabel).toBe('Resume game');
+        // The six tiles stay as they were: Resume is not one of them.
+        const grid = h.nodes.find(n => String(n.props.className).includes('gg-ingame-grid'))!;
+        expect(tree(grid).some(n => n.props.id === 'in-game:resume')).toBe(false);
+        resume.props.onAction();
+        expect(h.handoff).toHaveBeenCalledWith({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'resume' });
+    });
     it('leads with the game’s art and this session, and offers its six destinations as tiles', () => {
         const h = harness();
         expect(h.nodes.some(n => n.type === 'img' && n.props.src === 'hero.jpg')).toBe(true);

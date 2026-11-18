@@ -1,6 +1,6 @@
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
 import { useEffect, useState } from 'react';
-import { LuArrowUpRight, LuBookOpen, LuCamera, LuGamepad2, LuLogOut, LuTrophy } from 'react-icons/lu';
+import { LuArrowUpRight, LuBookOpen, LuCamera, LuGamepad2, LuLogOut, LuPlay, LuTrophy } from 'react-icons/lu';
 import { heroArtFor, resolveArt, type Art } from '../../home/HeroBackground';
 import { knownLogo } from '../../home/logo';
 import { logoList, resolveLogo } from '../../home/logoArt';
@@ -33,11 +33,15 @@ export function InGameContents({ game, stats, sets = null, hero, logo, exitArmed
     const open = (actionId: string) => () => handoff({ kind: 'game-action', appId: game.appId, gameId: game.gameId, actionId });
     const progress = stats.achievements && Math.round(stats.achievements.unlocked / stats.achievements.total * 100);
     return <div className="gg-ingame">
-        <div className="gg-ingame-hero">
+        {/* The game's art is the way back into it (mock-up B): first, where focus lands, so Steam then A resumes. */}
+        <MenuAction id="in-game:resume" className="gg-ingame-hero" ariaLabel="Resume game" onAction={open('resume')}>
             {hero && <img className="gg-ingame-art" src={hero} alt="" decoding="sync" />}
             {logo ? <img className="gg-ingame-logo" src={logo} alt={game.name} decoding="sync" /> : logo === null ? <h2>{game.name || 'Running game'}</h2> : <span className="gg-ingame-logo-slot" />}
-            {stats.sessionMinutes !== null && <span className="gg-ingame-session">{formatSession(stats.sessionMinutes)}</span>}
-        </div>
+            <span className="gg-ingame-cue">
+                <span className="gg-ingame-cue-text"><span className="gg-ingame-resume-word">Resume</span>{stats.sessionMinutes !== null && <span className="gg-ingame-session">{formatSession(stats.sessionMinutes)}</span>}</span>
+                <span className="gg-ingame-play"><LuPlay aria-hidden="true" /></span>
+            </span>
+        </MenuAction>
         <Focusable className="gg-menu-grid gg-ingame-grid" flow-children="grid" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>
             <MenuAction id="in-game:achievements" onAction={openAchievements && game.kind !== 'non-steam' ? openAchievements : open('achievements')}><LuTrophy aria-hidden="true" /><span className="gg-ingame-label"><strong>Achievements</strong>
                 {sets ? <><small>{setsLine(sets)}</small><span className="gg-ingame-sets" aria-hidden="true">
