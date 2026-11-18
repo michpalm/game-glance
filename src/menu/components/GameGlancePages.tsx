@@ -5,6 +5,7 @@ import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
 import { everyPageAvailable, GAME_INFO_NOTE, homeRows, ROW_STYLE_LABELS, slotChoices, slotLabel, slotValue, slotValueLabel, statusRows, type CategoryId } from '../../data/settingsCategories';
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
 import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, type HeroFit } from '../../home/heroFit';
+import { RECOMMENDED_ROW_COPY, RECOMMENDED_ROW_LABELS, RECOMMENDED_ROWS, type RecommendedRow } from '../../home/recommendedRow';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
 import { TITLE_SIZE_COPY, TITLE_SIZES, type TitleSize } from '../../home/titleSize';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
@@ -47,6 +48,9 @@ export function HomePage({ v, a }: PageProps) {
                 checked={s.feedTabs.friends} onChange={value => a.run(a.store.setFeedTab('friends', value))} />}
             {has('recommended') && <ToggleRow id="gg:home:recommended" label="Recommended" description="Games from your library to play next."
                 checked={s.feedTabs.recommended} onChange={value => a.run(a.store.setFeedTab('recommended', value))} />}
+            {has('recommendedRow') && <SegmentRow<RecommendedRow> id="gg:home:recommendedRow" label="Recommended row" options={RECOMMENDED_ROWS}
+                labels={RECOMMENDED_ROW_LABELS} description={RECOMMENDED_ROW_COPY[s.recommendedRow]}
+                value={s.recommendedRow} onSelect={value => a.run(a.store.setRecommendedRow(value))} />}
             {has('wishlistDeals') && <ToggleRow id="gg:home:wishlistDeals" label="Show wishlist deals"
                 description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
                 checked={s.wishlistDeals} onChange={value => a.run(a.store.setWishlistDeals(value))} />}

@@ -54,6 +54,18 @@ export function tabForButton(tab: number, button: number, tabCount: number): num
     return Math.min(last, Math.max(0, at + step));
 }
 
+/** GamepadButton.DIR_DOWN in @decky/ui. */
+const DIR_DOWN = 10;
+
+/**
+ * Whether Down on the feed tabs should enter the first row at its start (the calendar's today, `start` > 0) itself.
+ * Steam's own move picks the column nearest the tab (seven days back) and wins over any refocus afterwards, so the
+ * press is taken, as A on a tab is. A row that starts at its first card is left to Steam.
+ */
+export function downToStart(button: number, start: number): boolean {
+    return button === DIR_DOWN && start > 0;
+}
+
 /** GamepadButton.SELECT (View) and START (Menu) in @decky/ui. */
 const SELECT = 13;
 const START = 14;
@@ -154,3 +166,6 @@ export const PREFERRED_CHILD = 4;
 
 /** NavEntryPositionPreferences.FIRST in @decky/ui: focus entering a row lands on its first child. */
 export const NAV_FIRST = 0;
+
+/** NavEntryPositionPreferences.MAINTAIN_Y in @decky/ui: focus entering a column lands at the same height it left from. */
+export const NAV_MAINTAIN_Y = 3;

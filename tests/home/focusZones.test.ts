@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     BUMPER_REPEAT_FIRST_MS, BUMPER_REPEAT_MS, bumperRepeatDelay, nextZone, onBack, opensGameMenu, recentsButton, heldEvent, HELD_SILENCE_MS, stillHeld, selectionForButton, stepSelection, tabForButton,
+    downToStart,
 } from '../../src/home/focusZones';
 
 describe('focusZones', () => {
@@ -168,5 +169,14 @@ describe('focusZones', () => {
             expect(tabForButton(0, 6, 0)).toBe(0);
             expect(tabForButton(NaN, 6, 3)).toBe(1);
         });
+    });
+});
+
+describe('downToStart: Down from the tabs enters a row that has a start (the calendar\'s today) there', () => {
+    it('D-pad Down with a start past the first card', () => expect(downToStart(10, 7)).toBe(true));
+    it('a row starting at its first card is left to Steam', () => expect(downToStart(10, 0)).toBe(false));
+    it('other buttons are left to Steam', () => {
+        expect(downToStart(9, 7)).toBe(false);
+        expect(downToStart(Number.NaN, 7)).toBe(false);
     });
 });

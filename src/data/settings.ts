@@ -4,6 +4,7 @@ import { FEED_TABS_DEFAULT, FeedTabs, feedTabsOf } from '../home/feedTabs';
 import { assignSlot, DEFAULT_SLOTS, GameInfoSlots, infoSlotsOf, SlotIndex, StatId } from '../logic/infoSlots';
 import type { FeedTab } from '../home/feedLayout';
 import { HeroFit, heroFitOf } from '../home/heroFit';
+import { RecommendedRow, recommendedRowOf } from '../home/recommendedRow';
 import { PageShading, pageShadingOf } from '../home/pageShading';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
 import { TitleSize, titleSizeOf } from '../home/titleSize';
@@ -39,6 +40,7 @@ export interface Settings {
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     homeGrayUninstalled: boolean; // gray treatment for uninstalled Steam games in Home's row
+    recommendedRow: RecommendedRow; // what the Recommended tab's first row shows: 'playNext' (installed games to play next) or 'calendar' (Steam's Personal Calendar)
     heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off), 'expanded' (covers the top 70%, over a blurred copy) or 'fit' (the whole art at the top over a blurred copy)
     pageShading: PageShading; // the shading over the art on Home and the game page: 'bottom' (the bottom half) or 'none'
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
@@ -48,7 +50,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {} };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -92,6 +94,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
                 homeGrayUninstalled: pick('homeGrayUninstalled'),
                 heroFit: heroFitOf(raw?.heroFit),
+                recommendedRow: recommendedRowOf(raw?.recommendedRow),
                 pageShading: pageShadingOf(raw?.pageShading),
                 feedTabs: feedTabsOf(raw?.feedTabs),
                 infoSlots: infoSlotsOf(raw?.infoSlots),
@@ -147,6 +150,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, homeGrayUninstalled };
             emit();
             await persist({ homeGrayUninstalled });
+        },
+        async setRecommendedRow(recommendedRow: RecommendedRow): Promise<void> {
+            current = { ...current, recommendedRow };
+            emit();
+            await persist({ recommendedRow });
         },
         async setHeroFit(heroFit: HeroFit): Promise<void> {
             current = { ...current, heroFit };

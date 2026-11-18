@@ -1,6 +1,7 @@
 import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
 import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, HeroFit } from '../home/heroFit';
+import { RECOMMENDED_ROW_COPY, RECOMMENDED_ROW_LABELS, RECOMMENDED_ROWS, RecommendedRow } from '../home/recommendedRow';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
 import { TITLE_SIZES, TITLE_SIZE_COPY, TitleSize } from '../home/titleSize';
 import { ACCENT_MODE_COPY, ACCENT_MODE_LABELS, ACCENT_SWATCHES, AccentMode } from '../home/accentChoice';
@@ -21,7 +22,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver, recommendedRow } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -102,6 +103,16 @@ export function SettingsPanel() {
                 description="Shows uninstalled Steam games in gray until selected. Turn off to keep their artwork in color."
                 checked={homeGrayUninstalled}
                 onChange={(value) => settings.setHomeGrayUninstalled(value)}
+            />
+        ),
+        recommendedRow: (
+            <DropdownItem
+                label="Recommended row"
+                description={RECOMMENDED_ROW_COPY[recommendedRow]}
+                menuLabel="Recommended row"
+                rgOptions={RECOMMENDED_ROWS.map((row) => ({ data: row, label: RECOMMENDED_ROW_LABELS[row] }))}
+                selectedOption={recommendedRow}
+                onChange={(option) => settings.setRecommendedRow(option.data as RecommendedRow)}
             />
         ),
         wishlistDeals: (

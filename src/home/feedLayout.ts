@@ -201,6 +201,70 @@ export interface FeedItem {
     /** Small avatars of friends who play the game (trending cards), and how many more ("+N"). */
     friends?: Array<{ url: string | null; initial: string }>;
     moreFriends?: number;
+    /** A Personal Calendar day column (Recommended row 1): its heading and games, drawn by DayColumn instead of a card. */
+    day?: CalendarDayItem;
+    /** The item a row starts on (the calendar's today); missing = the row starts at its first item. */
+    start?: true;
+    /** Played over the art while the card has focus (a calendar game's microtrailer); missing = none. */
+    motion?: CardMotionSource;
+}
+
+/** A calendar day column as the feed draws it: a heading, then its games stacked, each `cardW` x `cardH`. */
+export interface CalendarDayItem {
+    weekday: string;
+    date: string;
+    today: boolean;
+    cardW: number;
+    cardH: number;
+    games: Array<{ appId: number; name: string; art: string[]; opens: FeedOpen; motion: CardMotionSource }>;
+}
+
+/** What a focused card plays over its art (home/CardMotion): the microtrailer, or the screenshots it cycles instead. */
+export interface CardMotionSource {
+    clip: string | null;
+    shots: string[];
+}
+
+/** One calendar day for the feed (home/calendar's day, labelled, with each game's name and header art when known). */
+export interface CalendarColumn {
+    key: string;
+    weekday: string;
+    date: string;
+    today: boolean;
+    /** The day the row starts on. */
+    start: boolean;
+    games: Array<{ appId: number; name: string; art: string | null; clip?: string | null; shots?: string[] }>;
+}
+
+/** A day column's heading line, the room around its cards, and the gap between them. */
+const CAL_HEADING = 30;
+const CAL_PAD = 8;
+const CAL_GAP = 8;
+
+/** A day column's size at row height `h`: two library-header cards (460:215) under the heading, padded. */
+export function calendarColumn(h: number): { width: number; cardW: number; cardH: number } {
+    const cardH = Math.round((h - CAL_HEADING - CAL_GAP - CAL_PAD) / 2);
+    const cardW = Math.round(cardH * FEED_WIDE_ASPECT);
+    return { width: cardW + 2 * CAL_PAD, cardW, cardH };
+}
+
+/** The index a row starts on: its `start` item, else 0. */
+export function rowStart(items: FeedItem[]): number {
+    return Math.max(0, items.findIndex((i) => i.start));
+}
+
+/**
+ * Where a row's selection goes when the row's cards change (the calendar arriving, a day dropping off the front): the
+ * selected card's new index by its key, else -1 (the row's start). Nothing chosen (`key` null) stays -1.
+ */
+export function keptSelection(key: string | null, items: FeedItem[]): number {
+    return key === null ? -1 : items.findIndex((i) => i.key === key);
+}
+
+/** A row's selected index: `at` < 0 means nothing chosen yet (the row's start); a chosen index is clamped to the row. */
+export function selectedIndex(at: number, items: FeedItem[]): number {
+    if (!(at >= 0)) return rowStart(items);
+    return Math.min(Math.floor(at), Math.max(0, items.length - 1));
 }
 
 /** A piece of a card's sub line: `struck` draws it struck through (a sale's full price, instead of the word "was"). */
@@ -219,6 +283,8 @@ export interface FeedData {
     trending?: TrendingCard[];
     friends: FriendCard[];
     recommended: RecommendedCard[];
+    /** Recommended, first row instead of Play next (the setting): Personal Calendar days; missing or empty = Play next. */
+    calendar?: CalendarColumn[];
     /** Friends online now (the Friends tab badge); missing = 0. */
     friendsOnline?: number;
 }
@@ -345,7 +411,28 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
         })) : [];
         return [...cards, ...trending];
     }
-    const playNext: FeedItem[] = data.recommended.map((c) => ({
+    const calendar = data.calendar ?? [];
+    const column = calendarColumn(rows.row1);
+    const days: FeedItem[] = calendar.map((d) => ({
+        key: `cal-${d.key}`,
+        row: 0,
+        width: column.width,
+        height: rows.row1,
+        featured: false,
+        art: [],
+        pill: '',
+        title: `${d.weekday} ${d.date}`,
+        sub: '',
+        accentAppId: null,
+        opens: d.games[0] ? { kind: 'store', appId: d.games[0].appId } : null,
+        avatar: null,
+        ...(d.start ? { start: true as const } : {}),
+        day: {
+            weekday: d.weekday, date: d.date, today: d.today, cardW: column.cardW, cardH: column.cardH,
+            games: d.games.map((g) => ({ appId: g.appId, name: g.name, art: g.art ? [g.art] : [], opens: { kind: 'store' as const, appId: g.appId }, motion: { clip: g.clip ?? null, shots: g.shots ?? [] } })),
+        },
+    }));
+    const playNext: FeedItem[] = days.length > 0 ? days : data.recommended.map((c) => ({
         key: `recommended-${c.appId}`,
         row: 0,
         width: feedCardWidthAt('recommended', false, rows.row1),

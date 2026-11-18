@@ -35,6 +35,8 @@ import { readSteamTrending } from './steamTrending';
 import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
+import { calendarDays, calendarGames, calendarStart, dayLabel, fetchCalendarJson, getCalendar } from './calendar';
+import type { CalendarColumn } from './feedLayout';
 import { fillMissing } from './homeView';
 import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
@@ -114,6 +116,8 @@ export interface HomeData {
     recommended: RecommendedCard[];
     /** Wishlist sales for the Recommended tab's second row (only with Show wishlist deals on); biggest discount first. */
     deals: DealCard[];
+    /** Personal Calendar days for the Recommended tab's first row (only with the Recommended row set to it); [] = Play next. */
+    calendar: CalendarColumn[];
 }
 
 type AnyApp = RawApp & SteamHomeApp & { installed?: boolean; m_gameid?: string; appid: number };
@@ -483,6 +487,42 @@ function useRecommended(games: HomeGame[], wishlistDeals: boolean, enabled: bool
     return { cards, deals: wishlistDeals ? deals : [] };
 }
 
+/** The last calendar days, for an instant first row on the next Home open. */
+let calendarMemo: CalendarColumn[] = [];
+
+/**
+ * Steam's Personal Calendar as day columns (home/calendar), while `enabled` (Recommended on, its row set to the
+ * calendar). The session memo paints at once; names and art arrive with the days. [] on any failure: Play next shows.
+ */
+function useCalendar(enabled: boolean, locale: string): CalendarColumn[] {
+    const [days, setDays] = useState<CalendarColumn[]>(() => (enabled ? calendarMemo : []));
+    useEffect(() => {
+        if (!enabled) return undefined;
+        let active = true;
+        (async () => {
+            const steamId = readSteamId();
+            if (!steamId) return;
+            const now = new Date();
+            const picked = calendarDays(await getCalendar(steamId, { cache, fetchJson: fetchCalendarJson, now: Date.now }), now);
+            const info = await calendarGames(picked.flatMap((d) => d.games.map((g) => g.appId)), { cache, fetcher: (url) => fetchNoCors(url), language: peekSteamLanguage() ?? 'english' });
+            const start = calendarStart(picked, now);
+            const columns: CalendarColumn[] = picked.map((d, i) => ({
+                key: d.key,
+                ...dayLabel(d, locale),
+                today: d.today,
+                start: i === start,
+                games: d.games.map((g) => ({ appId: g.appId, name: info.get(g.appId)?.name ?? '', art: info.get(g.appId)?.art ?? null, clip: info.get(g.appId)?.clip ?? null, shots: info.get(g.appId)?.shots ?? [] })),
+            }));
+            calendarMemo = columns;
+            if (active) setDays(columns);
+        })().catch((error) => console.warn(`${LOG_PREFIX} Home: calendar failed`, error));
+        return () => {
+            active = false;
+        };
+    }, [enabled, locale]);
+    return enabled ? days : [];
+}
+
 /**
  * Each feed card's own game accent (its pill, a friend's ring), from the same per-game cache and session memo
  * as the hero accent. Resolved only while `enabled` (the sheet has been raised), for the ids given (the
@@ -619,7 +659,7 @@ function useFriendLastGames(raw: RawFriend[], enabled: boolean): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, infoSlots } = useSettings();
+    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, infoSlots, recommendedRow } = useSettings();
     const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -771,6 +811,7 @@ export function useHomeData(focusIndex = 0): HomeData {
     const derivedTrending = useMemo(() => (feedTabs.friends ? guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []) : []), [rawFriends, lastGames, feedTabs.friends]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
     const { cards: recommended, deals } = useRecommended(games, wishlistDeals, feedTabs.recommended);
+    const calendar = useCalendar(feedTabs.recommended && recommendedRow === 'calendar', locale);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
@@ -778,5 +819,5 @@ export function useHomeData(focusIndex = 0): HomeData {
 
     // Read on each render (detailsVersion re-renders when Steam loads the details): a shortcut has none.
     const spaceRequired = focused && !info?.isShortcut ? guarded('space required', () => spaceRequiredOf(focused.appId, steam.appDetailsStore?.GetAppDetails?.(focused.appId)), undefined) : undefined;
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals, calendar };
 }

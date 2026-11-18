@@ -1556,3 +1556,11 @@ describe('closingRules (the way back glide)', () => {
         expect(homeCss()).toContain(css());
     });
 });
+
+describe('calendar day columns', () => {
+    it('a day\'s games sit at their own top, under the heading (the card rule pins top to 0)', async () => {
+        const { homeCss } = await import('../../src/home/homeCss');
+        const css = typeof homeCss === 'function' ? (homeCss as () => string)() : String(homeCss);
+        expect(css).toMatch(/\.gh-cal-day \.gh-card\s*\{[^}]*top:\s*var\(--gh-card-top, 0px\)/);
+    });
+});

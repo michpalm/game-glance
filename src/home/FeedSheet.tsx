@@ -5,8 +5,9 @@ import { FaUserFriends } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { browserStores, capsuleUrls, heroUrls, landscapeUrls, storeHeaderUrl } from './artwork';
 import { FeedCard } from './FeedCards';
-import { claimsPreferredFocus, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle } from './feedLayout';
-import { NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from './focusZones';
+import { DayColumn } from './DayColumn';
+import { claimsPreferredFocus, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle, selectedIndex, keptSelection } from './feedLayout';
+import { downToStart, NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from './focusZones';
 import { focusElement, holdsFocus } from './homeNav';
 import { HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
 import { nextTabId, restoreTabId } from './feedTabs';
@@ -93,8 +94,8 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     // The remembered card belongs to the remembered tab: a restore that fell back to another tab drops it.
     const restoreKey = useRef(restore && restore.tab !== null && tabs.includes(restore.tab) ? restore.feedKey : null).current;
     // The selected card of each row (the second row: What's new's recently updated, Recommended's wishlist deals) and
-    // the row that last had focus.
-    const [at, setAt] = useState<[number, number]>([0, 0]);
+    // the row that last had focus. -1: nothing chosen yet, so the row's start (the calendar's today, else its first card).
+    const [at, setAt] = useState<[number, number]>([-1, -1]);
     const [row, setRow] = useState<0 | 1>(0);
     // Set once focus has been in the tabs or feed in this mount. Until then the sheet claims no preferred focus
     // (Home opens on the game cards) and its rows enter at their first child, which is then the selected
@@ -112,8 +113,8 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     // 'tab': the selected tab was turned off while focus was in the sheet; focus the tab that took its place.
     const focusAfterSwitch = useRef<'card' | 'tab' | null>(null);
 
-    const { news, updated, friends, trending, recommended, deals } = data;
-    const items = useMemo(() => feedItems(tabId, { news, updated, friends, trending, recommended, deals }, art, space), [tabId, news, updated, friends, trending, recommended, deals, space]);
+    const { news, updated, friends, trending, recommended, deals, calendar } = data;
+    const items = useMemo(() => feedItems(tabId, { news, updated, friends, trending, recommended, deals, calendar }, art, space), [tabId, news, updated, friends, trending, recommended, deals, calendar, space]);
     const geometry = feedRows(tabId, space, hasSecondRow(tabId, { news, updated, friends, trending, recommended, deals }));
     const rows: [FeedItem[], FeedItem[]] = [items.filter((i) => i.row === 0), items.filter((i) => i.row === 1)];
     /** A card's place in `items` (row 1 first, then row 2), which also indexes cardRefs. */
@@ -121,7 +122,7 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     const cardAccent = useCardAccents(items.map((i) => i.accentAppId ?? 0), entered);
     const { accentMode, accentColor } = useSettings();
     const accentOf = (appId: number) => effectiveAccent(cardAccent(appId), { accentMode, accentColor });
-    const sel: [number, number] = [0, 1].map((r) => Math.min(Math.max(0, at[r]), Math.max(0, rows[r].length - 1))) as [number, number];
+    const sel: [number, number] = [selectedIndex(at[0], rows[0]), selectedIndex(at[1], rows[1])];
     const selRow: 0 | 1 = row === 1 && rows[1].length > 0 ? 1 : 0;
     const scrolls = [0, 1].map((r) => feedScroll(sel[r], rows[r].map((i) => i.width), FEED_GAP, viewport));
     // A finger on a row (useRowDrag): a sideways drag steps through its cards by moving focus to them, as Left/Right
@@ -169,12 +170,36 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
         }, 0);
         return out;
     });
+    // A row whose cards change under the selection (the calendar arriving over Play next, or a day dropping off the
+    // front at midnight) keeps the selected card by its key; a card that is gone gives the row's start. When the
+    // focused card itself is gone, focus moves to the row's new selection, so it is never left on nothing.
+    const chosenKeys = useRef<[string | null, string | null]>([null, null]);
+    const rowKeys = rows.map((list) => list.map((i) => i.key).join('|'));
+    useLayoutEffect(() => {
+        ([0, 1] as const).forEach((r) => {
+            const was = chosenKeys.current[r];
+            if (at[r] < 0 || was === null || rows[r][at[r]]?.key === was) return;
+            const next = keptSelection(was, rows[r]);
+            setAt((old) => (r === 0 ? [next, old[1]] : [old[0], next]));
+            const doc = tabRefs.current[0]?.ownerDocument;
+            const lost = !doc?.activeElement || doc.activeElement === doc.body;
+            if (lost && row === r && raised && rows[r].length > 0) {
+                const i = selectedIndex(next, rows[r]);
+                focusElement(cardRefs.current[flat(r, i)], `feed card ${i}`);
+            }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rowKeys[0], rowKeys[1]]);
+    // Recorded after the remap above has read the previous render's keys (effects run in order).
+    useLayoutEffect(() => {
+        chosenKeys.current = [at[0] >= 0 ? rows[0][sel[0]]?.key ?? null : null, at[1] >= 0 ? rows[1][sel[1]]?.key ?? null : null];
+    });
     const select = (r: 0 | 1, i: number) => {
         setRow(r);
         setAt((old) => (old[r] === i ? old : (r === 0 ? [i, old[1]] : [old[0], i])));
     };
     const reset = () => {
-        setAt([0, 0]);
+        setAt([-1, -1]);
         setRow(0);
     };
 
@@ -246,6 +271,13 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
      */
     const shoulder = (zone: 'tabs' | 'feed') => (evt: GamepadEvent) => {
         try {
+            if (zone === 'tabs' && rows[0].length > 0 && downToStart(Number(evt?.detail?.button), sel[0])) {
+                evt.preventDefault?.();
+                evt.stopPropagation?.();
+                playNavSound('BasicNav');
+                enterFeed();
+                return;
+            }
             const next = tabForButton(tab, Number(evt?.detail?.button), shown.length);
             if (next === null) return;
             evt.preventDefault?.();
@@ -319,7 +351,22 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
                                     {...rowHandlers(r)}
                                     style={{ transform: `translateX(${-scrolls[r] + (drags[r].dragging ? drags[r].offset : 0)}px)` }}
                                 >
-                                    {rows[r].map((item, i) => (
+                                    {rows[r].map((item, i) => item.day ? (
+                                        <DayColumn
+                                            key={item.key}
+                                            item={item}
+                                            left={lefts[r][i]}
+                                            accent={accentOf(0)}
+                                            preferred={claimsPreferredFocus(entered, i, sel[r])}
+                                            onFocused={() => {
+                                                onZone('feed');
+                                                select(r, i);
+                                            }}
+                                            setRef={(el) => {
+                                                cardRefs.current[flat(r, i)] = el;
+                                            }}
+                                        />
+                                    ) : (
                                         <FeedCard
                                             key={item.key}
                                             item={item}

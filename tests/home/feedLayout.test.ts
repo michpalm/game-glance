@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    claimsPreferredFocus, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
+    calendarColumn, claimsPreferredFocus, keptSelection, rowStart, selectedIndex, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
 } from '../../src/home/feedLayout';
 
 // Handoff: featured news 600, news 320, friend 230, recommended 187; gap 14; viewport 1440 - 2 x 44 = 1352.
@@ -359,3 +359,67 @@ describe('feedRows at the growth cap (#55, found on the Ally at Steam 1.5)', () 
     });
     it('keeps row 1 at full size with room to spare', () => expect(feedRows('news', 420, false).row1).toBe(FEED_ROW1_H));
 });
+
+describe('Recommended first row: the Personal Calendar', () => {
+    const art = (appId: number) => ({ hero: [`hero-${appId}`], capsule: [`cap-${appId}`], wide: [`wide-${appId}`] });
+    const play = [{ appId: 30, name: 'Game 30', pill: 'Play next', pillKey: 'playNext' as const, sub: '' }];
+    const deals = [{ appId: 70, name: 'Big Sale', pill: '-75%', sub: 'On your wishlist' }];
+    const calendar = [
+        { key: '2026-11-17', weekday: 'Tue', date: '17/11', today: false, start: false, games: [{ appId: 1, name: 'One', art: 'https://cdn/1.jpg', clip: 'https://v/1.webm', shots: ['https://s/1.jpg'] }, { appId: 2, name: '', art: null }] },
+        { key: '2026-11-18', weekday: 'Wed', date: '18/11', today: true, start: true, games: [{ appId: 3, name: 'Three', art: 'https://cdn/3.jpg' }] },
+    ];
+    it('a day column holds a 30 heading and two 460:215 cards with 8 gaps: 256 x 270 at row 1\'s 270', () => {
+        expect(calendarColumn(270)).toEqual({ width: 256, cardW: 240, cardH: 112 });
+        expect(calendarColumn(230)).toEqual({ width: 213, cardW: 197, cardH: 92 });
+    });
+    it('one row-1 item per day, the deals row unchanged; A on a game opens its store page', () => {
+        const items = feedItems('recommended', { news: [], friends: [], recommended: play, deals, calendar }, art, 436);
+        expect(items.map((i) => [i.key, i.row, i.width, i.height])).toEqual([
+            ['cal-2026-11-17', 0, 256, 270],
+            ['cal-2026-11-18', 0, 256, 270],
+            ['deal-70', 1, 274, 128],
+        ]);
+        expect(items[0].day).toEqual({
+            weekday: 'Tue', date: '17/11', today: false, cardW: 240, cardH: 112,
+            games: [
+                { appId: 1, name: 'One', art: ['https://cdn/1.jpg'], opens: { kind: 'store', appId: 1 }, motion: { clip: 'https://v/1.webm', shots: ['https://s/1.jpg'] } },
+                { appId: 2, name: '', art: [], opens: { kind: 'store', appId: 2 }, motion: { clip: null, shots: [] } },
+            ],
+        });
+        expect(items[0].title).toBe('Tue 17/11');
+        expect(items[1].start).toBe(true);
+        expect(items[0].start).toBeUndefined();
+        expect(items[1].opens).toEqual({ kind: 'store', appId: 3 });
+    });
+    it('no calendar days: Play next as before', () => {
+        expect(feedItems('recommended', { news: [], friends: [], recommended: play, calendar: [] }, art).map((i) => i.key)).toEqual(['recommended-30']);
+    });
+    it('rowStart: the start item, else 0', () => {
+        const items = feedItems('recommended', { news: [], friends: [], recommended: play, calendar }, art);
+        expect(rowStart(items)).toBe(1);
+        expect(rowStart(feedItems('recommended', { news: [], friends: [], recommended: play }, art))).toBe(0);
+        expect(rowStart([])).toBe(0);
+    });
+});
+
+describe('selectedIndex: a row\'s selection, -1 = where the row starts', () => {
+    const art = (appId: number) => ({ hero: [], capsule: [], wide: [] });
+    const day = (key: string, start: boolean) => ({ key, weekday: 'Mon', date: key, today: start, start, games: [{ appId: 1, name: 'x', art: null }] });
+    const items = feedItems('recommended', { news: [], friends: [], recommended: [], calendar: [day('a', false), day('b', false), day('c', true)] }, art);
+    it('-1 is the start item', () => expect(selectedIndex(-1, items)).toBe(2));
+    it('a chosen index is kept, clamped to the row', () => {
+        expect(selectedIndex(1, items)).toBe(1);
+        expect(selectedIndex(9, items)).toBe(2);
+        expect(selectedIndex(-1, [])).toBe(0);
+    });
+});
+
+describe('keptSelection: a row\'s selection follows its card by key when the row changes', () => {
+    const art = () => ({ hero: [], capsule: [], wide: [] });
+    const day = (key: string, start = false) => ({ key, weekday: 'Mon', date: key, today: start, start, games: [{ appId: 1, name: 'x', art: null }] });
+    const row = (...keys: string[]) => feedItems('recommended', { news: [], friends: [], recommended: [], calendar: keys.map((k) => day(k, k === 'd')) }, art);
+    it('the same card at a new index (a day dropped off the front)', () => expect(keptSelection('cal-c', row('b', 'c', 'd'))).toBe(1));
+    it('the card is gone (Play next swapped for the calendar): back to the row start', () => expect(keptSelection('recommended-30', row('b', 'c', 'd'))).toBe(-1));
+    it('nothing chosen stays nothing chosen', () => expect(keptSelection(null, row('b'))).toBe(-1));
+});
+

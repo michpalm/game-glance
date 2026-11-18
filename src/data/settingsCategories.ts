@@ -11,7 +11,7 @@ export const CATEGORY_LABELS: Record<CategoryId, string> = {
     home: 'Home', 'game-page': 'Game page', 'status-bar': 'Status bar & footer', menu: 'Menu', screensaver: 'Screensaver', general: 'General',
 };
 
-export type HomeRow = 'spotlightHome' | 'gamesRow' | 'rowSort' | 'rowStyle' | 'grayUninstalled' | 'news' | 'friends' | 'recommended' | 'wishlistDeals';
+export type HomeRow = 'spotlightHome' | 'gamesRow' | 'rowSort' | 'rowStyle' | 'grayUninstalled' | 'news' | 'friends' | 'recommended' | 'recommendedRow' | 'wishlistDeals';
 
 /** Home's rows in display order; with Spotlight Home off only its toggle. A collection row has a sort order; wishlist deals depend on Recommended. */
 export function homeRows(s: Pick<Settings, 'spotlightHome' | 'feedTabs'>, collectionRow: boolean): HomeRow[] {
@@ -20,7 +20,7 @@ export function homeRows(s: Pick<Settings, 'spotlightHome' | 'feedTabs'>, collec
     rows.push('gamesRow');
     if (collectionRow) rows.push('rowSort');
     rows.push('rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended');
-    if (s.feedTabs.recommended) rows.push('wishlistDeals');
+    if (s.feedTabs.recommended) rows.push('recommendedRow', 'wishlistDeals');
     return rows;
 }
 

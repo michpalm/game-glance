@@ -58,7 +58,7 @@ function rule(selector: string, body: string): string {
  * version choice) and the family pill beside it, the Library card's body, the feed cards. Not the store pill's holder
  * (.gh-source): it holds glass, so it never fades as one layer (that showed both pills' art sharp, then snapped).
  */
-export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-store-choice', '.gh-store-face', '.gh-family', '.gh-players', '.gh-lib-body', '.gh-card'];
+export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-store-choice', '.gh-store-face', '.gh-family', '.gh-players', '.gh-lib-body', '.gh-card', '.gh-cal-day'];
 /** Hover looks apply only in mouse mode (mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
 /** Section 7: the one frost (tokens.frostSurface) with Home's hairline edge. */
@@ -624,6 +624,23 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-wide .gh-pill', 'padding: 3px 8px; font-size: 9.5px'),
         rule('.gh-card-featured .gh-card-title', 'font-size: 26px; -webkit-line-clamp: 2'),
         // A sale's full price, struck through (no "was" to translate), a little dimmer than the price it was cut to.
+        // Personal Calendar day columns (Recommended row 1): frosted, a heading line, the games stacked; names show on focus.
+        rule('.gh-cal-day', `position: absolute; top: 0; margin: 0; padding: 0; border-radius: var(--gh-r-panel); ${GLASS}`),
+        rule('.gh-cal-head', `position: absolute; left: 0; right: 0; top: 0; height: 30px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; line-height: 1; ${labelText()}`),
+        rule('.gh-cal-today .gh-cal-head', 'color: var(--gh-card-accent)'),
+        rule('.gh-cal-games', 'position: absolute; inset: 0; margin: 0; padding: 0'),
+        rule('.gh-cal-day .gh-card', 'top: var(--gh-card-top, 0px)'),
+        // A focused calendar game's microtrailer (or screenshot cycle), over its art and under its shade and name.
+        rule('.gh-card-clip', `position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; object-fit: cover; animation: gh-fade-in ${FEED_ART_FADE_MS}ms ease both`),
+        rule('.gh-card-shots', 'position: absolute; inset: 0; margin: 0; padding: 0'),
+        rule('.gh-card-shot', 'position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; object-fit: cover; opacity: 0; transition: opacity 300ms'),
+        rule('.gh-card-shot-on', 'opacity: 1'),
+        rule('.gh-cal-day .gh-card-text', 'left: 10px; right: 10px; bottom: 8px; gap: 4px; opacity: 0; transition: opacity 200ms'),
+        rule('.gh-cal-day .gh-card-focus .gh-card-text', 'opacity: 1'),
+        rule('.gh-cal-day .gh-card-title', 'font-size: 13px; -webkit-line-clamp: 1'),
+        rule('.gh-cal-day .gh-card-shade', 'opacity: 0; transition: opacity 200ms'),
+        rule('.gh-cal-day .gh-card-focus .gh-card-shade', 'opacity: 1'),
         rule('.gh-card-was', 'text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .7'),
         rule('.gh-card-sub', `font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; ${labelText()};
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden`),

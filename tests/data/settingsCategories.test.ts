@@ -6,7 +6,7 @@ import type { Settings } from '../../src/data/settings';
 const on: Settings = {
     enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: false, cleanPage: false, homeStatusBar: true,
     homeExpandedControls: true, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent',
-    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom',
+    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', recommendedRow: 'playNext',
     feedTabs: { news: true, friends: true, recommended: true },
     infoSlots: DEFAULT_SLOTS,
     screensaver: { enabled: false, logo: true, statusBar: true, stats: true } as Settings['screensaver'],
@@ -22,11 +22,13 @@ describe('categories', () => {
 
 describe('homeRows (a row shows while the row it depends on is on)', () => {
     it('lists every row in order with everything on and a collection row', () =>
-        expect(homeRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended', 'wishlistDeals']));
+        expect(homeRows(on, true)).toEqual(['spotlightHome', 'gamesRow', 'rowSort', 'rowStyle', 'grayUninstalled', 'news', 'friends', 'recommended', 'recommendedRow', 'wishlistDeals']));
     it('has no sort for the recent games row', () => expect(homeRows(on, false)).not.toContain('rowSort'));
     it('shows only the main toggle with Spotlight Home off', () => expect(homeRows({ ...on, spotlightHome: false }, true)).toEqual(['spotlightHome']));
     it('hides wishlist deals with Recommended off', () =>
         expect(homeRows({ ...on, feedTabs: { ...on.feedTabs, recommended: false } }, false)).not.toContain('wishlistDeals'));
+    it('hides the Recommended row choice with Recommended off', () =>
+        expect(homeRows({ ...on, feedTabs: { ...on.feedTabs, recommended: false } }, false)).not.toContain('recommendedRow'));
     it('keeps the tab switches with all tabs off', () =>
         expect(homeRows({ ...on, feedTabs: { news: false, friends: false, recommended: false } }, false)).toEqual(expect.arrayContaining(['news', 'friends', 'recommended'])));
 });
