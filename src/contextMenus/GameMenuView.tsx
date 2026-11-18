@@ -1,4 +1,4 @@
-import { cloneElement, createElement, isValidElement, useEffect, useState, type ComponentType, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, createElement, isValidElement, useEffect, useRef, useState, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import { resolveArt } from '../home/HeroBackground';
 import { peekSteamLanguage } from '../data/steam';
 import { steamLanguageToLocale } from '../logic/format';
@@ -8,7 +8,7 @@ import type { GameMenuModel } from './reshape';
 import { pageGroupFocus, rootChildren, rowClassName, viewRows, type Page, type Row } from './viewRows';
 import { CHEVRON_LEFT, CHEVRON_RIGHT, Icon } from './icons';
 import { Focusable } from '@decky/ui';
-import { backOnCancel } from './pageCancel';
+import { backOnCancel, holdAtPageEdge } from './pageCancel';
 import { expandDeveloper } from './developerPage';
 
 type Props = { model: GameMenuModel; instance?: unknown; overview?: unknown };
@@ -17,6 +17,7 @@ type Props = { model: GameMenuModel; instance?: unknown; overview?: unknown };
 export function GameMenuView({ model, overview }: Props) {
     const [page, setPage] = useState<Page>('main');
     const [opener, setOpener] = useState<string | null>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
     const card = cardModel(overview as Parameters<typeof cardModel>[0], Date.now() / 1000, steamLanguageToLocale(peekSteamLanguage() ?? 'english'));
     const appId = card?.appId ?? 0;
     const [art, setArt] = useState<string | null>(null);
@@ -69,6 +70,9 @@ export function GameMenuView({ model, overview }: Props) {
     const drawn = rows.map((r, i) => draw(r, i === firstIndex));
     // On a page, B goes back: our own focus group catches it before Steam's MenuRoot (which would close the menu).
     const body = page === 'main' ? drawn
-        : [<Focusable key={`page-${page}`} className="gg-gm-page" flow-children="column" {...pageGroupFocus()} onCancel={backOnCancel(back)}>{drawn}</Focusable>];
+        : [<Focusable key={`page-${page}`} ref={pageRef} className="gg-gm-page" flow-children="column" {...pageGroupFocus()} onCancel={backOnCancel(back)} {...steamMoves(() => holdAtPageEdge(pageRef.current, 'first'), () => holdAtPageEdge(pageRef.current, 'last'))}>{drawn}</Focusable>];
     return <Root label={null}>{rootChildren(page, header, body)}</Root>;
 }
+
+/** Steam's Panel takes onMoveUp / onMoveDown (its MenuRoot uses onMoveLeft the same way); Decky's FocusableProps does not list them. */
+const steamMoves = (onMoveUp: () => boolean, onMoveDown: () => boolean) => ({ onMoveUp, onMoveDown }) as object;
