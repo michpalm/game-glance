@@ -47,7 +47,8 @@ export function contextMenuCss(c: MenuClasses | null): string {
         const s = cls(k);
         if (s) out.push(rule([selector(s)], body));
     };
-    add('BasicContextMenuContainer', (s) => `${MENU} ${s}`, `background:rgba(12,16,22,.40);backdrop-filter:blur(${u(16)});border:${rimBorder()};border-radius:${u(16)};padding:${u(8)};box-shadow:${rim(SURFACE_RIM.shadow)}`);
+    // margin and max-height: a tall menu fills Steam's overflow-hidden wrapper, which cut the box's outer ring at the top.
+    add('BasicContextMenuContainer', (s) => `${MENU} ${s}`, `background:rgba(12,16,22,.40);backdrop-filter:blur(${u(16)});border:${rimBorder()};border-radius:${u(16)};padding:${u(8)};box-shadow:${rim(SURFACE_RIM.shadow)};margin-block:${u(2)};max-height:calc(100% - ${u(4)})`);
     // The row whose submenu is open (Steam's `active`): a quiet fill, so the cascade shows where it came from.
     add('active', (s) => `${ROW}${s}`, 'background:rgba(255,255,255,.08)');
     add('Selected', (s) => `${ROW}${s}`, 'color:rgba(255,255,255,.9)');
@@ -74,6 +75,8 @@ export function contextMenuCss(c: MenuClasses | null): string {
         // line-height: Steam's 20 px lines under our 21 px type clipped g, y, p (the label clips overflow for the ellipsis).
         rule([G('.gg-gm-label')], 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3'),
         rule([G('.gg-gm-icon')], `width:${u(22)};height:${u(22)};flex:none;opacity:.9`),
+        // Where we draw our icon, Steam's own (New collection…'s plus circle, inside its label) would make two.
+        rule([G('.gg-gm-icon + .gg-gm-label > svg')], 'display:none'),
         rule([G('.gg-gm-end')], `margin-left:auto;display:flex;align-items:center;gap:${u(8)};font-size:${u(18)};color:rgba(255,255,255,.55)`),
         rule([G('.gg-gm-end .gg-gm-chev')], `width:${u(20)};height:${u(20)}`),
         rule([G('.gg-gm-chk')], `width:${u(24)};height:${u(24)};border-radius:${u(7)};border:${u(2)} solid rgba(255,255,255,.55);flex:none;display:grid;place-items:center;box-sizing:border-box`),
@@ -91,6 +94,8 @@ export function contextMenuCss(c: MenuClasses | null): string {
     add('BasicContextMenuContainer', (s) => G(`${s}:has(.gg-gm)`), `padding:0 0 ${u(8)}`);
     if (c.contextMenuContents) {
         const list = G(`.${c.contextMenuContents}:has(.gg-gm)`);
+        // A page's title sits above its rows: Steam's own 72 px scroll padding brought the first row back with the title cut.
+        out.push(rule([G(`.${c.contextMenuContents}:has(> .gg-gm-pagehead)`)], `scroll-padding-top:${u(96)}`));
         out.push(rule([`${list} .contextMenuItem`], 'line-height:1.3'));
 
         // A row another plugin adds into the panel (SteamGridDB's Change Artwork…): our size, its label in line with ours.

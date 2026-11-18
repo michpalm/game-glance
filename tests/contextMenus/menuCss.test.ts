@@ -14,6 +14,20 @@ const rules = (css: string) => css.split('}').map((r) => r.trim()).filter(Boolea
 const ruleFor = (css: string, selector: string) => rules(css).find((r) => r.selectors.includes(selector));
 
 describe('contextMenuCss', () => {
+    it('hides Steam\'s own icon in a label where Game Glance draws its icon: one plus on New collection…, not two (PS5, 2026-11-18)', () => {
+        const css = contextMenuCss(C);
+        const hide = rules(css).find((r) => r.selectors.some((s) => s.endsWith('.gg-gm-icon + .gg-gm-label > svg')));
+        expect(hide?.body).toContain('display:none');
+    });
+    it('scrolls a page back to its title on its first row: room above the rows for the title (PS5, 2026-11-19: Steam\'s 72 px cut it)', () => {
+        const css = contextMenuCss(C);
+        expect(ruleFor(css, '.FullModalOverlay:has(.BasicUIContextMenu) ._k_contextMenuContents:has(> .gg-gm-pagehead)')?.body).toContain(`scroll-padding-top:${u(96)}`);
+    });
+    it('keeps the box 2 px inside Steam\'s clipping wrapper, so a tall menu keeps its outer ring at the top and bottom (PS5, 2026-11-19)', () => {
+        const box = ruleFor(contextMenuCss(C), '.BasicUIContextMenu ._k_BasicContextMenuContainer')!.body;
+        expect(box).toContain(`margin-block:${u(2)}`);
+        expect(box).toContain(`max-height:calc(100% - ${u(4)})`);
+    });
     it('is empty without the class module', () => {
         expect(contextMenuCss(null)).toBe('');
     });
