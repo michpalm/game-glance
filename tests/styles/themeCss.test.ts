@@ -168,10 +168,15 @@ describe('buildThemeCss button spacing', () => {
         expect(ruleFor(css, '.rt_Buttons {')).toContain('margin-left: 0');
         expect(ruleFor(css, '.ps_Cloud {')).toContain('var(--gg-buttons, 2) * (var(--gg-icon) + var(--gg-gap))');
     });
-    it('counts Steam’s icon buttons to place the cloud after the last one', () => {
+    it('counts Steam’s icon buttons, not Game Glance’s music button, to place the cloud after the last one', () => {
         const css = buildThemeCss(full);
-        expect(ruleFor(css, '.rt_Play:has(.rt_Buttons > :nth-child(3):last-child) ~ .ps_Cloud {')).toContain('--gg-buttons: 3');
-        expect(ruleFor(css, '.rt_Play:has(.rt_Buttons > :nth-child(1):last-child) ~ .ps_Cloud {')).toContain('--gg-buttons: 1');
+        const steam = ':not(.gg-music-choice)';
+        expect(ruleFor(css, `.rt_Play:has(.rt_Buttons > :nth-child(3 of ${steam}):nth-last-child(1 of ${steam})) ~ .ps_Cloud {`)).toContain('--gg-buttons: 3');
+        expect(ruleFor(css, `.rt_Play:has(.rt_Buttons > :nth-child(1 of ${steam}):nth-last-child(1 of ${steam})) ~ .ps_Cloud {`)).toContain('--gg-buttons: 1');
+    });
+    it('keeps the music button after the cloud: one slot further when the page has a cloud (PS5, 2026-11-18)', () => {
+        const css = buildThemeCss(full);
+        expect(ruleFor(css, '.rt_Play:has(~ .ps_Cloud) .rt_Buttons > .gg-music-choice {')).toContain('margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important');
     });
 });
 
@@ -494,11 +499,12 @@ describe('buildThemeCss 1.1.1 baseline', () => {
                       width: var(--gg-icon) !important; height: var(--gg-icon) !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important;
                       display: flex; align-items: center; justify-content: center; border-radius: 50%;
                       background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); color: var(--gg-ok) !important; }
-          .rt_Play:has(.rt_Buttons > :nth-child(1):last-child) ~ .ps_Cloud { --gg-buttons: 1; }
-          .rt_Play:has(.rt_Buttons > :nth-child(2):last-child) ~ .ps_Cloud { --gg-buttons: 2; }
-          .rt_Play:has(.rt_Buttons > :nth-child(3):last-child) ~ .ps_Cloud { --gg-buttons: 3; }
-          .rt_Play:has(.rt_Buttons > :nth-child(4):last-child) ~ .ps_Cloud { --gg-buttons: 4; }
-          .rt_Play:has(.rt_Buttons > :nth-child(5):last-child) ~ .ps_Cloud { --gg-buttons: 5; }
+          .rt_Play:has(.rt_Buttons > :nth-child(1 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 1; }
+          .rt_Play:has(.rt_Buttons > :nth-child(2 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 2; }
+          .rt_Play:has(.rt_Buttons > :nth-child(3 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 3; }
+          .rt_Play:has(.rt_Buttons > :nth-child(4 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 4; }
+          .rt_Play:has(.rt_Buttons > :nth-child(5 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 5; }
+          .rt_Play:has(~ .ps_Cloud) .rt_Buttons > .gg-music-choice { margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; }
           .ps_Cloud::before, .ps_Cloud::after { content: none !important; }
           .ps_Cloud svg { fill: currentColor !important; color: inherit !important;
                       width: calc(16 * var(--gg-u)) !important; height: calc(16 * var(--gg-u)) !important; margin: 0 calc(8 * var(--gg-u)) calc(4 * var(--gg-u)) !important; }

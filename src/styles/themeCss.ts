@@ -13,6 +13,8 @@ import { LAUNCH_ART_CLASS } from './launchArt';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
 import { actionRadius, focusRing, frostSurface, labelText, TOKENS } from './tokens';
+/** A button of Steam's own in the Play row's group (not Game Glance's music button). */
+const STEAM_BUTTON = ':not(.gg-music-choice)';
 
 export type ClassMap = Record<string, string | undefined> | undefined;
 
@@ -387,9 +389,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
             width: var(--gg-icon) !important; height: var(--gg-icon) !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important;
             display: flex; align-items: center; justify-content: center; border-radius: 50%;
             background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); color: var(--gg-ok) !important; `),
+        // Steam's buttons only: Game Glance's music button (ThemeMusicButton) sits in the same group but goes after the cloud.
         ...[1, 2, 3, 4, 5].map((n) =>
-            rule(playSection && appButtons && cloud && `${playSection}:has(${appButtons} > :nth-child(${n}):last-child) ~ ${cloud}`, ` --gg-buttons: ${n}; `),
+            rule(playSection && appButtons && cloud && `${playSection}:has(${appButtons} > :nth-child(${n} of ${STEAM_BUTTON}):nth-last-child(1 of ${STEAM_BUTTON})) ~ ${cloud}`, ` --gg-buttons: ${n}; `),
         ),
+        rule(playSection && appButtons && cloud && `${playSection}:has(~ ${cloud}) ${appButtons} > .gg-music-choice`, ` margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; `),
         rule(cloud && [`${cloud}::before`, `${cloud}::after`], ` content: none !important; `),
         rule(cloud && `${cloud} svg`, ` fill: currentColor !important; color: inherit !important;
             width: ${u(16)} !important; height: ${u(16)} !important; margin: 0 ${u(8)} ${u(4)} !important; `),
