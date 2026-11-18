@@ -86,9 +86,26 @@ def test_staging_rejects_symlink_and_mismatched_content(tmp_path):
         stage_shader(str(tmp_path), "wrong content", key)
 
 
-def test_hdr_is_explicitly_unavailable_until_native_color_mapping_is_verified():
+def test_an_hdr_display_builds_the_same_shader_as_an_sdr_one():
+    # Gamescope runs the effect on the game's own image, before converting it for the display (2026-11-18): an SDR game
+    # on an HDR display hands it SDR pixels. The shader itself tells SDR and HDR images apart (BUFFER_COLOR_SPACE).
+    hdr = frame()
+    hdr["context"]["colorMode"] = "hdr"
+    assert build_shader(hdr) == build_shader(frame())
+
+
+def test_an_hdr_game_image_passes_through_untouched_until_the_hdr_path_exists():
+    source = build_shader(frame())[0]
+    composite = source[source.index("float4 Composite("):]
+    guard = composite.index("#if defined(BUFFER_COLOR_SPACE) && BUFFER_COLOR_SPACE != 1")
+    assert composite.index("return tex2D(SceneSampler, uv);", guard) < composite.index("#endif", guard)
+    # Before any frost or dim touches the picture.
+    assert guard < composite.index("float2 outUV")
+
+
+def test_a_background_other_than_the_game_is_still_unsupported():
     f = frame()
-    f["context"]["colorMode"] = "hdr"
+    f["context"]["background"] = "steam"
     with pytest.raises(ValueError, match="unsupported"):
         build_shader(f)
 

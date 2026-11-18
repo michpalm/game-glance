@@ -76,7 +76,9 @@ def _blur_body(sigma: float) -> str:
 def build_shader(frame: dict) -> tuple[str, str]:
     frame = validate_frame(frame)
     c = frame["context"]
-    if c["background"] != "game" or c["colorMode"] != "sdr":
+    # An HDR display is fine: Gamescope runs the effect on the game's own image before converting it for the display, and
+    # the shader passes HDR game images through untouched (BUFFER_COLOR_SPACE; spec 2026-11-18-hdr-frost).
+    if c["background"] != "game":
         raise ValueError("unsupported color/background mapping")
     source = (Path(__file__).parent / "assets/qam-frost.fx.in").read_text()
     geometry = frost_geometry(frame)

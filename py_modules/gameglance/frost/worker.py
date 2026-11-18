@@ -155,7 +155,8 @@ class FrostWorker:
         return self.native.environment()
 
     def _context_supported(self,context):
-        if context['background'] != 'game' or context['colorMode'] != 'sdr':
+        # HDR displays too (the shader handles the game image's colour space); the mode must still match Gamescope's below.
+        if context['background'] != 'game':
             return False
         environment=self.native.environment()
         if not isinstance(environment,dict) or type(environment.get("hdr")) is not bool:

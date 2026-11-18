@@ -204,6 +204,11 @@ void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv :
     present = state.y;
 }
 float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1, nointerpolation float present : TEXCOORD2) : SV_Target {
+#if defined(BUFFER_COLOR_SPACE) && BUFFER_COLOR_SPACE != 1
+    // An HDR game image (scRGB, PQ): untouched. The frost, calm and dim maths are for SDR values; the HDR path comes later
+    // (spec 2026-11-18-hdr-frost). An SDR game on an HDR display is still SDR here: Gamescope converts it afterwards.
+    return tex2D(SceneSampler, uv);
+#else
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
 #if DIM_BLUR
@@ -224,6 +229,7 @@ float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolatio
     // The dim, after the areas: the menu's glass shows a dimmed game, as over Steam's context menus.
     color.rgb = lerp(color.rgb, DimColor, DimAlpha * fade * present);
     return color;
+#endif
 }
 technique QAMFrost {
     pass Remember { VertexShader = VS; PixelShader = Remember; RenderTarget = StateB; }

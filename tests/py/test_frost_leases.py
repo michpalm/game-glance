@@ -248,7 +248,7 @@ def test_stale_frontend_color_or_auto_cap_cannot_enable_a_shader(tmp_path):
 
 
 @pytest.mark.parametrize('operation', ['prepare', 'present'])
-@pytest.mark.parametrize('background,color', [('game', 'hdr'), ('steam', 'sdr')])
+@pytest.mark.parametrize('background,color', [('steam', 'sdr'), ('steam', 'hdr')])
 def test_valid_unsupported_mapping_reports_fallback_without_touching_native(tmp_path, operation, background, color):
     w, n, _, replies = fixture(tmp_path)
     f = frame()
@@ -457,3 +457,17 @@ def test_a_closed_keyboard_arms_and_activates_with_a_zero_keyboard_mask(tmp_path
     assert uniforms["Keyboard"] == struct.pack("<4f", 0, 0, 0, 0)
     assert uniforms["KeyboardRadius"] == struct.pack("<2f", 0, 0)
     assert uniforms["Panel"] != struct.pack("<4f", 0, 0, 0, 0)
+
+
+def test_an_hdr_display_is_prepared_like_an_sdr_one(tmp_path):
+    # The PS5 on an HDR TV, 2026-11-18: frost was refused as unsupported over every game, SDR ones included.
+    w, n, _, replies = fixture(tmp_path)
+    n.environment_state['hdr'] = True
+    f = frame()
+    f['context']['colorMode'] = 'hdr'
+    w.command(1, 'prepare', {'request_id': 'hdr-display', 'frame': f})
+    # Not refused at once: the effect is set and the reply waits for Gamescope's ready callback, as on an SDR display.
+    assert 1 not in replies
+    assert n.calls and n.calls[0][0] == 'set'
+    n.ready.add(n.path); w.tick()
+    assert replies[1]['status'] == 'ready'
