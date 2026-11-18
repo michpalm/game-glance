@@ -5,6 +5,7 @@ import { homeCanvas } from '../home/scale';
 import { contextMenusOn } from './gate';
 import { menuClasses } from './menuClasses';
 import { contextMenuCss } from './menuCss';
+import { confirmDialogCss } from './confirmCss';
 import { applyMenuStyle } from './applyMenuStyle';
 import { installGameMenuPatch } from './menuPatch';
 import { keepTrying } from './keepTrying';
@@ -37,7 +38,8 @@ function ContextMenusOn({ doc }: { doc: Document }) {
         // True once Steam's class module was found and the rules are in (until then Steam's menus keep their look).
         const apply = () => {
             const css = contextMenuCss(menuClasses());
-            remove = applyMenuStyle(doc, css, homeCanvas(view.innerWidth, view.innerHeight).scale);
+            // Confirm dialogs use Steam's plain class names: their look needs no class lookup, so it applies at once.
+            remove = applyMenuStyle(doc, css + confirmDialogCss(), homeCanvas(view.innerWidth, view.innerHeight).scale);
             return css !== '';
         };
         const stopTrying = keepTrying(apply, LOOKUP_RETRY_MS);

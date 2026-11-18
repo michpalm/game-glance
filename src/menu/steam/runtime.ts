@@ -9,7 +9,8 @@ export type NavigateDestination = 'home' | 'library' | 'soundtracks' | 'store' |
 export type NativeRequest =
     | { kind: 'main-menu' }
     | { kind: 'qam'; tab: QamTab }
-    | { kind: 'navigate'; destination: NavigateDestination }
+    /** `onCancel` (Power): run when the power menu is backed out of; the Game Glance menu reopens on Navigate. */
+    | { kind: 'navigate'; destination: NavigateDestination; onCancel?: () => void }
     | { kind: 'game-action'; appId: number; gameId: string; actionId: string }
     | { kind: 'guide-article'; appId: number; fileId: string }
     | { kind: 'friend-chat'; steamId: string }
@@ -36,6 +37,8 @@ export interface IntentHandlers {
     open(entry: Entry, replayNative: Stop): void;
     closed(): void;
     suspended(value: boolean): void;
+    /** Steam opening its main menu by itself (no button behind it): true when Game Glance takes it (after Power). */
+    reclaim?(): boolean;
 }
 export interface NativeBindings {
     capabilities: ReadonlySet<string>;
@@ -144,6 +147,8 @@ export function discoverMenuRuntime(): NativeBindings | null {
             try {
                 stops.push(ownMethod(menu, 'OpenSideMenu', next => function(this: NativeMenu, kind) {
                     if (intercept(() => next.call(this, kind))) return;
+                    // Steam returning focus to its main menu (a confirm cancelled after Power): Game Glance's, when it expects it.
+                    if (!bypass && !intent && kind === 1 && handlers.reclaim?.()) return;
                     if (!bypass && (kind === 1 || kind === 2)) handlers.suspended(true);
                     return next.call(this, kind);
                 }));

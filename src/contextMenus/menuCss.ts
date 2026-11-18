@@ -3,14 +3,14 @@ import { focusRing, labelText, MENU_DIM, menuDimColor, SURFACE_RIM } from '../st
 
 /** Canvas px to Big Picture CSS px: the host sets it on :root to Home's canvas scale, so the menu scales as Home does. */
 export const CTX_UNIT = '--gg-ctx-u';
-const u = (n: number) => `calc(${n}px * var(${CTX_UNIT}, 1))`;
+export const u = (n: number) => `calc(${n}px * var(${CTX_UNIT}, 1))`;
 /** The Game Glance menu's rim at the menu's size: the menu draws it inside its scale() transform, so its px scale too. */
-const rim = (css: string) => css.replace(/(\d*\.?\d+)px/g, (_, n: string) => u(Number(n)));
+export const rim = (css: string) => css.replace(/(\d*\.?\d+)px/g, (_, n: string) => u(Number(n)));
 /** The rim colour's alpha as the menu's rim reaches the screen: our border snaps to one whole device pixel at full alpha,
  * the menu's scaled 1.5 px rim is antialiased over ~1.25 px. Measured on the Ally, 2026-11-13: (86,93,103) over
  * (61,67,71), the colour rgb(182,199,224) at about .21. */
 const RIM_ON_SCREEN_ALPHA = '.21';
-const rimBorder = () => rim(SURFACE_RIM.border).replace(/rgba\((\d+,\d+,\d+),[.\d]+\)/, `rgba($1,${RIM_ON_SCREEN_ALPHA})`);
+export const rimBorder = () => rim(SURFACE_RIM.border).replace(/rgba\((\d+,\d+,\d+),[.\d]+\)/, `rgba($1,${RIM_ON_SCREEN_ALPHA})`);
 
 /** The panel's image icon (icons.tsx), as a mask for a row we do not draw (SteamGridDB's Change Artwork…). */
 const IMAGE_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>');
@@ -19,7 +19,7 @@ const DIM = '.FullModalOverlay:has(.BasicUIContextMenu)';
 const ROW = `${MENU} .contextMenuItem`;
 
 /** One rule; every declaration wins over Steam's own (specific) rules. Nothing here is animated. */
-const rule = (selectors: string[], body: string) =>
+export const rule = (selectors: string[], body: string) =>
     `${selectors.join(',')}{${body.split(';').filter(Boolean).map((d) => `${d}!important`).join(';')}}`;
 
 /**

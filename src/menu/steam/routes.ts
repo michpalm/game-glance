@@ -4,7 +4,7 @@ import type { NativeRequest, QamTab } from './runtime';
 export interface NativeTabs { Notifications:number; Friends:number; Settings:number; Perf:number; Help:number; Music:number; Decky:number }
 export interface RouteBindings {
     deactivate(): void; tabs: NativeTabs; openMain(): void; openQam(tab:number): void;
-    library(): void; navigate(path:string): void; finishNavigation(): void; power(): void;
+    library(): void; navigate(path:string): void; finishNavigation(): void; power(onCancel?:()=>void): void;
     /** A Library tab by Steam's own name ("Soundtracks"), as Steam's Soundtrack tab opens it. */
     libraryTab?(tab:string): void;
     exitGame(gameId:string): void;
@@ -27,6 +27,10 @@ const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|j
 const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
 export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
+/** Power opens Steam's power menu without handing the slot back to Steam's menu; backing out runs the request's onCancel. */
+export function opensOverMenu(request:NativeRequest):boolean {
+    return request.kind==='navigate'&&request.destination==='power';
+}
 /** The requests that end in finishNavigation: Steam's menu closes behind them, so the host leaves as if closing
  * (its native scrim stays hidden) instead of handing the slot back to Steam's own menu. */
 export function closesSteamMenu(request:NativeRequest):boolean {
@@ -39,6 +43,7 @@ export function closesSteamMenu(request:NativeRequest):boolean {
 }
 export function createRoutes(bindings:RouteBindings) {
     return { async open(request:NativeRequest):Promise<void> {
+        if(opensOverMenu(request)&&request.kind==='navigate'){bindings.power(request.onCancel);return;}
         bindings.deactivate();
         if(request.kind==='main-menu'){bindings.openMain();return;}
         if(request.kind==='qam'){

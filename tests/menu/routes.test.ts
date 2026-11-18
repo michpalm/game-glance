@@ -9,6 +9,15 @@ function harness() {
     };
     return { b, order, routes: createRoutes(b) };
 }
+describe('Power from the Game Glance menu', () => {
+    it('opens Steam\'s power menu with our cancel, without handing the slot back to Steam\'s menu', async () => {
+        const h = harness(); const onCancel = vi.fn();
+        await h.routes.open({ kind: 'navigate', destination: 'power', onCancel });
+        expect(h.b.power).toHaveBeenCalledWith(onCancel);
+        expect(h.b.deactivate).not.toHaveBeenCalled();
+        expect(h.b.finishNavigation).not.toHaveBeenCalled();
+    });
+});
 describe('menu native destinations', () => {
     it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['settings-internet','/settings/internet'],['media','/media/grid'],['storage','/game-glance/storage']] as const)('maps %s to its native route', async (destination,path) => {
         const h = harness(); await h.routes.open({kind:'navigate',destination}); expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.b.deactivate).toHaveBeenCalledTimes(1);
