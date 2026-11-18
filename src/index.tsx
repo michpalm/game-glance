@@ -17,6 +17,7 @@ import { ChromeHost } from './chrome/ChromeHost';
 import { ContextMenusHost, CONTEXT_MENUS_COMPONENT } from './contextMenus/ContextMenusHost';
 import { noteLoad, remountHomeAfterReload } from './home/reloadRemount';
 import { StoragePage, STORAGE_ROUTE } from './storage/StoragePage';
+import { ThemeMusicHide, THEME_MUSIC_COMPONENT } from './components/ThemeMusicButton';
 
 const SCREENSAVER_COMPONENT = 'GameGlanceScreensaver';
 const CHROME_COMPONENT = 'GameGlanceChrome';
@@ -32,6 +33,7 @@ export default definePlugin(() => {
     routerHook.addGlobalComponent(SCREENSAVER_COMPONENT, ScreensaverHost); // draws only while Steam's screensaver is on
     routerHook.addGlobalComponent(CHROME_COMPONENT, ChromeHost); // the status bar, Search and footer, for every page
     routerHook.addGlobalComponent(CONTEXT_MENUS_COMPONENT, () => <ContextMenusHost masterReady={masterReady}/>);
+    routerHook.addGlobalComponent(THEME_MUSIC_COMPONENT, ThemeMusicHide); // NonSteamLaunchers' theme-music buttons stay hidden (our one button stands in)
     routerHook.addRoute(STORAGE_ROUTE, StoragePage); // Game Glance's own Storage screen, from the Navigate tile
     const stopAutoPreload = startAutoPreload();
     const stopUpdateChecks = startUpdateChecks(); // quiet: once now (a day-old answer is reused), then daily
@@ -53,6 +55,7 @@ export default definePlugin(() => {
                 ['screensaver remove', () => routerHook.removeGlobalComponent(SCREENSAVER_COMPONENT)],
                 ['chrome remove', () => routerHook.removeGlobalComponent(CHROME_COMPONENT)],
                 ['context menus remove', () => routerHook.removeGlobalComponent(CONTEXT_MENUS_COMPONENT)],
+                ['theme music remove', () => routerHook.removeGlobalComponent(THEME_MUSIC_COMPONENT)],
                 ['storage route remove', () => routerHook.removeRoute(STORAGE_ROUTE)],
                 ['auto preload stop', stopAutoPreload],
                 ['update checks stop', stopUpdateChecks],

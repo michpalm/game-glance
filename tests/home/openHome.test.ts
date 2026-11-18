@@ -1,3 +1,4 @@
+import { HOME_CIRCLE } from '../../src/home/circles';
 import { describe, expect, it, vi } from 'vitest';
 import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
 import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, openPlayedMissing, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
@@ -52,7 +53,7 @@ function home(withPlay = true) {
         ...(withPlay ? { '.gh-actions .gh-btn[data-action="play"]': el(20, 459, 271, 58) } : {}),
         '.gh-source': el(1377, 472, 103, 33),
     }, {
-        '.gh-actions .gh-btn-circle': circles,
+        [`.gh-actions ${HOME_CIRCLE}`]: circles,
         '.gh-chip': [chip('played', 25, false), chip('achievements', 144, true), chip(null, 288, true)],
     });
 }

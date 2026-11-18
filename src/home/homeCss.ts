@@ -12,6 +12,7 @@ import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
+import { HOME_CIRCLE } from './circles';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
 import { EYEBROW, PAGE_LAYOUT, PAGE_TYPE, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
@@ -685,7 +686,7 @@ function shadeNoneRules(): string[] {
 }
 
 const PLAY = '.gh-actions > .gh-btn[data-action="play"]';
-const CIRCLE = (i: number) => `.gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle)`;
+const CIRCLE = (i: number) => `.gh-actions > .gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE})`;
 
 /**
  * The parts the open's morph moves and the way back glides (closingRules), each with openMotion's variable: the title,
@@ -913,7 +914,7 @@ export function openingRules(): string[] {
         rule(`${MT} ${play}::before`, `transform: var(--gho-play-bg); transition: ${move}`),
         rule(`${MT} ${play}::after`, `${settle}; transform: translate(0, 0) scale(1, 1); transition: ${move}`),
         // The circles by their order among circles (openHome measures .gh-btn-circle), whatever comes before them (the stream arrow).
-        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle)`, `transform: var(--gho-circle-${i}, none); transition: ${move}`)),
+        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE})`, `transform: var(--gho-circle-${i}, none); transition: ${move}`)),
         // Each circle's own edge (1 canvas px, drawn soft once scaled) becomes a layer on it, as the panels' (.gh-open-shell::before),
         // that fades out as the page's crisp one fades in (.gh-open-cring): opacity only, never an animated border colour.
         rule(`${M} .gh-actions > .gh-btn-circle`, 'position: relative; border-color: transparent; transition: none'),
@@ -930,11 +931,11 @@ export function openingRules(): string[] {
         rule(`${MT} .gh-open-cring[data-i="3"]`, late('gh-open-extras-in')),
         // Each circle's icon shrinks as the circle grows (openMotion), so it is the page's size throughout.
         rule(`${M} .gh-actions > .gh-btn-circle > .gh-btn-icon`, 'transform-origin: 50% 50%'),
-        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle) > .gh-btn-icon`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
+        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE}) > .gh-btn-icon`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
         // The cloud's state badge (#64) too, about its top-right corner: that corner is the circle's, which the circle's
         // scale carries onto the page's corner, so the badge stays the page's size there throughout (no settling).
         rule(`${M} .gh-actions > .gh-btn-cloud::after`, 'transform-origin: 100% 0'),
-        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
+        ...[0, 1, 2, 3].map((i) => rule(`${MT} .gh-actions > .gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE}).gh-btn-cloud::after`, `transform: var(--gho-circle-icon-${i}, none); transition: ${move}`)),
         // Chips: their glass gives way to the panels at once; texts move and grow; the bars and unmatched chips fade.
         rule(`${M} .gh-chip`, 'background: transparent; border-color: transparent; backdrop-filter: none; box-shadow: none'),
         // An accent copy of a value's words (data-text) over it, for a value the page draws in the accent (openMotion).

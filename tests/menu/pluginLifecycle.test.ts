@@ -14,6 +14,7 @@ vi.mock('../../src/home/reloadRemount', () => ({ noteLoad: vi.fn(), remountHomeA
 vi.mock('../../src/screensaver/ScreensaverView', () => ({ ScreensaverHost: () => null }));
 vi.mock('../../src/chrome/ChromeHost', () => ({ ChromeHost: () => null }));
 vi.mock('../../src/contextMenus/ContextMenusHost', () => ({ ContextMenusHost: () => null, CONTEXT_MENUS_COMPONENT: 'GameGlanceContextMenus' }));
+vi.mock('../../src/components/ThemeMusicButton', () => ({ ThemeMusicHide: () => null, THEME_MUSIC_COMPONENT: 'GameGlanceThemeMusic' }));
 vi.mock('../../src/storage/StoragePage', () => ({ StoragePage: () => null, STORAGE_ROUTE: '/game-glance/storage' }));
 vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn(), addRoute: vi.fn(), removeRoute: vi.fn() } }));
 vi.mock('@decky/ui', () => ({ staticClasses: {} }));

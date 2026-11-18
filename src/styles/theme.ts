@@ -109,6 +109,12 @@ export function pageHeroImage(): string | null {
     return heroImageSelector(themeClasses());
 }
 
+/** Steam's round-button group in the Play row (controller, Manage, cloud, extras); null before its class is known. */
+export function appButtonsSelector(): string | null {
+    const name = themeClasses().root?.AppButtons;
+    return name ? `.${name}` : null;
+}
+
 export function playRow(): string | null {
     return playRowSelector(themeClasses());
 }

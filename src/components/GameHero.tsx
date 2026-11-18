@@ -55,6 +55,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { GameStatusBar } from './GameStatusBar';
 import { UnifideckRowNav } from './UnifideckRowNav';
 import { PlayRowNav } from './PlayRowNav';
+import { ThemeMusicButton } from './ThemeMusicButton';
 import { UnifideckCloud } from './UnifideckCloud';
 import { FeaturedCard } from './FeaturedCard';
 import { InfoCard } from './InfoCard';
@@ -322,6 +323,8 @@ function Hero({ overview, details, restyle, clean }: Props & { restyle: boolean;
             {/* A Unifideck game's circle buttons are reordered by CSS; the D-pad then steps by position. */}
             {game.isShortcut && <UnifideckRowNav />}
             {restyle && <PlayRowNav />}
+            {/* NonSteamLaunchers' theme music: its four buttons fold into one at the end of the row (data/themeMusic). */}
+            {restyle && <ThemeMusicButton doc={pageDoc} appId={game.appId} arriving={!!arrival && !arrival.revealed} />}
             {restyle && game.isShortcut && <UnifideckCloud appId={game.appId} installed={uniInstalled} />}
             {/* Spotlight Home's eyebrow and title; the theme shows them only with its full-screen layout, where Steam's logo was (hidden then). */}
             {restyle && game.name !== '' && (

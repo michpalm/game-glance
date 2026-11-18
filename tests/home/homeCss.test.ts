@@ -1,3 +1,4 @@
+import { HOME_CIRCLE } from '../../src/home/circles';
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
 import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
 import { ART_FILL_FILTER, EXPANDED_INSET, EXPANDED_MASK } from '../../src/home/heroFit';
@@ -823,15 +824,23 @@ describe('homeCss open transition', () => {
     it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
         const all = rules(css);
         for (const i of [0, 1, 2, 3]) {
-            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`));
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE}).gh-btn-cloud::after`));
             expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
         }
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
     });
+    it("counts only Home's own circles: NonSteamLaunchers' cloned buttons in the row never shift a circle's transform", () => {
+        expect(HOME_CIRCLE).toBe('.gh-btn-circle:not([id^="my-custom-"])');
+        const all = rules(css);
+        for (const i of [0, 1, 2, 3]) {
+            expect(all.some(([sel, body]) => sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE})`) && body.includes(`var(--gho-circle-${i}, none)`))).toBe(true);
+        }
+        expect(css).not.toContain('of .gh-btn-circle)');
+    });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);
         // Picked among the circles (openHome measures .gh-btn-circle in order), so the stream arrow before them shifts nothing.
-        const icon = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-circle:nth-child(2 of .gh-btn-circle) > .gh-btn-icon'));
+        const icon = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(2 of ${HOME_CIRCLE}) > .gh-btn-icon`));
         expect(icon?.[1]).toContain('transform: var(--gho-circle-icon-1, none)');
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.includes('.gh-btn-circle > .gh-btn-icon') && /transform-origin:\s*50% 50%/.test(body))).toBe(true);
         // The cloud's icon is the page's size too (PAGE_LAYOUT.cloudIcon, on both).

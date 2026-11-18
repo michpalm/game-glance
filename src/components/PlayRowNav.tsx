@@ -32,7 +32,7 @@ export function PlayRowNav() {
                 }
                 const items = [...doc.querySelectorAll<HTMLElement>(selector)].filter((el) => el.getBoundingClientRect().width > 0);
                 const xs = items.map((el) => el.getBoundingClientRect().x);
-                const crossesGroups = items.some((el) => el.matches('.gg-copy-pill, .gg-store-choice, .gg-players-choice'));
+                const crossesGroups = items.some((el) => el.matches('.gg-copy-pill, .gg-store-choice, .gg-players-choice, .gg-music-choice'));
                 if (!needsVisualNav(xs, crossesGroups)) return;
                 const gp = doc.querySelector<HTMLElement>('.gpfocus');
                 const from = rowFocusIndex(items, target, gp, (el, focus) => el === focus || el.contains(focus));

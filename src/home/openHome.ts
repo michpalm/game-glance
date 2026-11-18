@@ -1,4 +1,5 @@
 import type { HomeRects, MotionVar } from './openMotion';
+import { HOME_CIRCLE } from './circles';
 import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
 import { pageTargets, type Box, type ExtraColumn, type ExtrasAsked, type LineMeasure, type Measure, type PageLook, type PageStat, type PageTargets, type StatKey } from './openTargets';
 import { limitFromShells } from '../styles/playersFit';
@@ -87,7 +88,7 @@ export function measureHome(root: Element | null): HomeRects | null {
         const play = boxOf(playElement);
         if (!canvas || !titleSlot || !eyebrow || !play) return null;
         const playStyle = playElement && root.ownerDocument?.defaultView?.getComputedStyle(playElement);
-        const circleEls = [...root.querySelectorAll('.gh-actions .gh-btn-circle')];
+        const circleEls = [...root.querySelectorAll(`.gh-actions ${HOME_CIRCLE}`)];
         const info = circleEls.findIndex((c) => c.getAttribute('data-action') === 'info');
         const chips = drawnChips(root).map((chip) => ({
             key: chip.getAttribute('data-chip') ?? '',
