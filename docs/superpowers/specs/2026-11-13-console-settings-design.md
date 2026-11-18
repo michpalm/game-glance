@@ -91,7 +91,7 @@ Out of scope here: hidden networks, proxy, static IP, wired settings (Steam's In
 
 A full screen in the Game Glance page style (title top-left, Home's art blurred and dimmed behind, the status pill and
 footer hints as on other pages), opened from a new **Storage** tile in Navigate. Navigate has eight tiles in two full
-rows today; the Storage tile starts a **third row** (Michael, 2026-11-16, round-4 mock-ups; five across was declined).
+rows today; the Storage tile starts a **third row** (Michael, 2026-11-16, round-4 mock-ups; five across was declined). Changed 2026-11-19 (Michael): Power is always the last tile, so Storage sits before it.
 
 - **Left: the drives** (internal, SD card, any other Steam library folder). Each card: name, free space large, "used of
   total · N games", a usage bar. Up/down picks a drive; the list on the right follows.
