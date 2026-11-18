@@ -17,6 +17,10 @@ describe('storageStyles', () => {
         const list = rule('.gg-storage-list{');
         expect(list).toContain('padding:6px');
         expect(list).toContain('margin:-6px');
+        // Steam scrolls a focused row just into view: the padding must stay in view with it, or the ring's edge is cut.
+        expect(list).toContain('scroll-padding-block:6px');
+        expect(list).toContain('min-height:0');
+        expect(rule('.gg-storage-games{')).toContain('flex-direction:column');
     });
     it('draws the games list large enough for a handheld (Michael, 2026-11-17: "a bit bigger")', () => {
         expect(rule('.gg-storage-name{')).toContain(`font-size:${unit(30)}`);

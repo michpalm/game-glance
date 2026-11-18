@@ -55,11 +55,14 @@ export function StoragePageView({ view, art, hero, onPick, onRow, onBack }: View
                             </Button>;
                         })}
                     </Focusable>
-                    <Focusable className="gg-storage-list" flow-children="column">
+                    {/* The eyebrow stays above the scrolling list: inside it, going back up to the first row left it scrolled away. */}
+                    <div className="gg-storage-games">
                         <p className="gg-storage-eyebrow">{view.eyebrow}</p>
-                        {view.rows.map(row => <GameRowView key={row.appId} row={row} art={art(row.appId)} onRow={onRow} />)}
-                        {view.empty && <p className="gg-storage-empty">{view.empty}</p>}
-                    </Focusable>
+                        <Focusable className="gg-storage-list" flow-children="column">
+                            {view.rows.map(row => <GameRowView key={row.appId} row={row} art={art(row.appId)} onRow={onRow} />)}
+                            {view.empty && <p className="gg-storage-empty">{view.empty}</p>}
+                        </Focusable>
+                    </div>
                 </Focusable>}
         </div>
         {view.note && <div className="gg-storage-note" role="status">{view.note}</div>}

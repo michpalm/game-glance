@@ -38,6 +38,13 @@ describe('StoragePageView', () => {
         expect(focus(out, 'storage:game:1')).toBeTruthy();
         expect(focus(out, 'storage:game:2')).toBeTruthy();
     });
+    it('keeps the eyebrow above the scrolling list, so going back up to the first row never hides it or cuts its ring (PS5, 2026-11-18)', () => {
+        const out = render(view());
+        const list = tree(out).find(e => String(e.props.className).split(' ').includes('gg-storage-list'))!;
+        expect(tree(list).some(e => e.props.className === 'gg-storage-eyebrow')).toBe(false);
+        const games = tree(out).find(e => e.props.className === 'gg-storage-games')!;
+        expect(tree(games).map(e => e.props.className).filter(c => c === 'gg-storage-eyebrow' || c === 'gg-storage-list')).toEqual(['gg-storage-eyebrow', 'gg-storage-list']);
+    });
     it('puts the buttons on each row, and no hint for a missing one', () => {
         const onRow = vi.fn();
         const out = render(view(), { onRow });

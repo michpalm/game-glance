@@ -16,7 +16,9 @@ export const storageStyles = tokenCss('.gg-storage') + `
 .gg-storage-title{margin:0 0 ${u(34)};font-size:${u(40)};font-weight:var(--gg-weight-heading);line-height:1.2}
 .gg-storage-columns{flex:1;min-height:0;display:flex;gap:${u(44)}}
 .gg-storage-drives{width:${u(520)};flex:none;display:flex;flex-direction:column;gap:${u(18)}}
-.gg-storage-list{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:${u(10)};padding:6px;margin:-6px}
+.gg-storage-games{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+/* Steam scrolls a focused row just into view; scroll-padding keeps the 6 px ring room in view with it. */
+.gg-storage-list{flex:1;min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:${u(10)};padding:6px;margin:-6px;scroll-padding-block:6px}
 ${ROW},${CARD}{display:flex;box-sizing:border-box;width:100%;min-width:0;margin:0;text-align:left;cursor:default;font:inherit;text-transform:none;color:var(--gg-text);text-shadow:var(--gg-text-shadow);border:${u(1.5)} solid var(--gg-menu-detail-edge,rgba(182,199,224,.40));background:var(--gg-glass);box-shadow:none;transition:background var(--gg-base),box-shadow var(--gg-base),border-color var(--gg-fast),outline-color var(--gg-fast)}
 ${ROW}:not(${FOCUS}),${CARD}:not(${FOCUS}):not([aria-current="true"]){border-color:${IDLE_TILE.edge};background-image:linear-gradient(${IDLE_TILE.tint},${IDLE_TILE.tint})}
 ${CARD}{flex-direction:column;align-items:stretch;gap:${u(6)};padding:${u(28)} ${u(28)} ${u(26)};border-radius:${u(22)};backdrop-filter:blur(var(--gg-glass-blur))}
@@ -30,7 +32,7 @@ ${CARD}[aria-current="true"]:not(${FOCUS}){border-color:rgba(182,199,224,.49);ba
 .gg-storage-card-moving{color:var(--gg-accent-text)}
 .gg-storage-bar{margin-top:${u(14)};height:${u(6)};border-radius:var(--gg-r-pill);background:var(--gg-track);overflow:hidden}
 .gg-storage-bar>span{display:block;height:100%;border-radius:inherit;background:var(--gg-accent)}
-.gg-storage-eyebrow{margin:${u(-4)} 0 ${u(6)} ${u(6)};font-size:${u(15)};font-weight:var(--gg-weight-body);letter-spacing:.18em;text-transform:uppercase;color:var(--gg-text-dim)}
+.gg-storage-eyebrow{margin:${u(-4)} 0 ${u(16)} ${u(6)};font-size:${u(15)};font-weight:var(--gg-weight-body);letter-spacing:.18em;text-transform:uppercase;color:var(--gg-text-dim)}
 ${ROW}{flex:none;align-items:center;min-height:${u(108)};padding:${u(14)} ${u(28)} ${u(14)} ${u(14)};gap:${u(24)};border-radius:${u(22)}}
 .gg-storage-art{width:${u(168)};height:${u(79)};flex:none;border-radius:${u(12)};object-fit:cover;background:rgba(255,255,255,.08)}
 .gg-storage-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:${u(2)}}
