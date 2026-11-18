@@ -12,6 +12,7 @@ import { getSteamLanguage } from './data/steam';
 import { startUpdateChecks } from './data/update';
 import { patchGamePage } from './patches/gamePage';
 import { patchHomePage } from './patches/homePage';
+import { patchDownloadsPage } from './patches/downloadsPage';
 import { ScreensaverHost } from './screensaver/ScreensaverView';
 import { ChromeHost } from './chrome/ChromeHost';
 import { ContextMenusHost, CONTEXT_MENUS_COMPONENT } from './contextMenus/ContextMenusHost';
@@ -29,6 +30,7 @@ export default definePlugin(() => {
     void getSteamLanguage(); // resolve early so game pages render in the right locale immediately
     const unpatch = patchGamePage();
     const unpatchHome = patchHomePage(); // never throws; applied after and independent of the game page patch
+    const unpatchDownloads = patchDownloadsPage(); // Game Glance's Downloads in place of Steam's (falls back to Steam's)
     const cancelRemount = remountHomeAfterReload(noteLoad()); // an update: Home on screen is redrawn by this copy
     routerHook.addGlobalComponent(SCREENSAVER_COMPONENT, ScreensaverHost); // draws only while Steam's screensaver is on
     routerHook.addGlobalComponent(CHROME_COMPONENT, ChromeHost); // the status bar, Search and footer, for every page
@@ -51,6 +53,7 @@ export default definePlugin(() => {
                 ['floating menu stop', stopMenu],
                 ['game page unpatch', unpatch],
                 ['Home unpatch', unpatchHome],
+                ['Downloads unpatch', unpatchDownloads],
                 ['Home reopen cancel', cancelRemount],
                 ['screensaver remove', () => routerHook.removeGlobalComponent(SCREENSAVER_COMPONENT)],
                 ['chrome remove', () => routerHook.removeGlobalComponent(CHROME_COMPONENT)],
