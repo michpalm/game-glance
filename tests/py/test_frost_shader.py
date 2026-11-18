@@ -94,13 +94,92 @@ def test_an_hdr_display_builds_the_same_shader_as_an_sdr_one():
     assert build_shader(hdr) == build_shader(frame())
 
 
-def test_an_hdr_game_image_passes_through_untouched_until_the_hdr_path_exists():
-    source = build_shader(frame())[0]
-    composite = source[source.index("float4 Composite("):]
-    guard = composite.index("#if defined(BUFFER_COLOR_SPACE) && BUFFER_COLOR_SPACE != 1")
-    assert composite.index("return tex2D(SceneSampler, uv);", guard) < composite.index("#endif", guard)
-    # Before any frost or dim touches the picture.
-    assert guard < composite.index("float2 outUV")
+import re as _re
+
+
+def _source():
+    return build_shader(frame())[0]
+
+
+def _function(source, name):
+    start = source.index(name + "(")
+    depth, i = 0, source.index("{", start)
+    for j in range(i, len(source)):
+        depth += {"{": 1, "}": -1}.get(source[j], 0)
+        if depth == 0:
+            return source[start:j + 1]
+
+
+def _defines(source):
+    return {m.group(1): float(m.group(2)) for m in _re.finditer(r"#define (\w+) \(?(-?[\d.]+)\)?\s*$", source, _re.M)}
+
+
+def test_an_unknown_game_colour_space_passes_through_untouched():
+    composite = _function(_source(), "float4 Composite")
+    guard = composite.index("#if defined(BUFFER_COLOR_SPACE) && BUFFER_COLOR_SPACE != 1 && BUFFER_COLOR_SPACE != 2 && BUFFER_COLOR_SPACE != 3")
+    assert composite.index("return tex2D(SceneSampler, uv);", guard) < composite.index("#else", guard)
+
+
+def test_scrgb_and_pq_game_images_are_hdr_and_others_are_sdr():
+    source = _source()
+    assert "#if defined(BUFFER_COLOR_SPACE) && (BUFFER_COLOR_SPACE == 2 || BUFFER_COLOR_SPACE == 3)\n#define HDR_IMAGE 1" in source
+
+
+def test_every_blur_reads_the_game_through_tosdr():
+    source = _source()
+    for name in ("float4 Box", "float4 Box4"):
+        body = _function(source, name)
+        assert body.count("tex2D(SceneSampler") == body.count("ToSdr(tex2D(SceneSampler") > 0
+
+
+def test_every_frosted_area_and_the_dim_go_back_through_fromsdr():
+    composite = _function(_source(), "float4 Composite")
+    assert composite.count("Calm(") == composite.count("FromSdr(Calm(") == 7
+    assert "FromSdr(tex2D(DimVS, outUV))" in composite or "DIM_BLUR" not in composite
+    assert "FromSdr(float4(DimColor, 1.0)).rgb" in composite
+
+
+def test_sdr_images_convert_nothing():
+    source = _source()
+    for name in ("float4 ToSdr", "float4 FromSdr"):
+        body = _function(source, name)
+        assert "#if HDR_IMAGE" in body and "#else\n    return c;\n#endif" in body
+
+
+def test_the_reference_white_and_scrgb_scale():
+    d = _defines(_source())
+    assert d["RefWhiteNits"] == 203.0 and d["ScRgbNits"] == 80.0
+
+
+def test_the_pq_curve_round_trips_and_matches_st2084():
+    d = _defines(_source())
+    m1, m2, c1, c2, c3 = (d[k] for k in ("PqM1", "PqM2", "PqC1", "PqC2", "PqC3"))
+    assert (m1, m2, c1, c2, c3) == (0.1593017578125, 78.84375, 0.8359375, 18.8515625, 18.6875)
+    def to_nits(e):
+        p = e ** (1 / m2)
+        return 10000 * (max(p - c1, 0) / (c2 - c3 * p)) ** (1 / m1)
+    def to_pq(nits):
+        y = (nits / 10000) ** m1
+        return ((c1 + c2 * y) / (1 + c3 * y)) ** m2
+    for nits in (0.01, 1, 80, 203, 1000, 4000, 10000):
+        assert abs(to_nits(to_pq(nits)) - nits) / nits < 1e-6
+    assert abs(to_pq(203) - 0.58) < 0.01  # BT.2408 reference white sits at ~58% PQ
+
+
+def test_the_bt2020_and_rec709_matrices_are_inverses():
+    source = _source()
+    def rows(name):
+        body = _function(source, "float3 " + name)
+        return [[float(x) for x in m.group(1).split(",")] for m in _re.finditer(r"dot\(float3\(([^)]*)\), c\)", body)]
+    a, b = rows("Bt2020To709"), rows("Bt709To2020")
+    assert len(a) == len(b) == 3
+    for i in range(3):
+        for j in range(3):
+            v = sum(a[i][k] * b[k][j] for k in range(3))
+            assert abs(v - (1.0 if i == j else 0.0)) < 2e-3
+    # White stays white.
+    for r in a:
+        assert abs(sum(r) - 1) < 2e-3
 
 
 def test_a_background_other_than_the_game_is_still_unsupported():

@@ -43,3 +43,33 @@ So an **SDR game on an HDR display** hands the frost plain SDR pixels: today's s
 ## Non-goals (step 1)
 
 HDR game images (step 2); the menu's look when frost is refused for other reasons (integer scaling).
+
+---
+
+# Step 2: true HDR games (2026-11-18)
+
+## What changes
+
+The shader reads the game in two helpers only (`Box`, `Box4`, every blur's input) and mixes everything in `Composite`.
+
+- **In:** `Box`/`Box4` convert each HDR sample to SDR values (`ToSdr`): decode (scRGB: linear, 1.0 = 80 nits, Rec. 709;
+  PQ: ST 2084 to nits, BT.2020 → Rec. 709), divide by the reference white, compress highlights above it softly into
+  0–1, encode as sRGB. All of today's blur, calm and glass maths then runs unchanged.
+- **Out:** in `Composite`, the frosted areas, the blurred dim and the dim colour are converted back (`FromSdr`: sRGB
+  decode, × reference white, back to the game's encoding) before they are mixed with the game.
+- SDR game images: both conversions are the identity (compiled out), so step 1 is untouched.
+
+## Choices
+
+1. **Under the glass, HDR highlights are compressed to SDR** (recommended): the frost looks the same as over an SDR game,
+   and a sun or explosion behind the menu cannot glare through and wash out its text. (Alternative: keep HDR under the
+   glass; brighter, but text over bright scenes is harder to read.)
+2. **Reference white: 203 nits** (recommended; ITU-R BT.2408's reference for SDR white in HDR, what most HDR games use for
+   their own menus). (Alternative: follow Gamescope's SDR brightness setting, which needs reading another Gamescope value.)
+
+Outside the glass, the dim mixes in the game's own encoding, so the game keeps its HDR highlights there (dimmed like now).
+
+## Check
+
+On the PS5 with a game that renders HDR: the frost and dim look like over an SDR game, no colour cast, no banding in
+dark gradients, and the game outside the menu keeps its HDR highlights. Step 1's SDR path is re-checked over Battle.net.
