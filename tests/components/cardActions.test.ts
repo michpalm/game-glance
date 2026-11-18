@@ -39,9 +39,16 @@ describe('featuredPress: the featured card opens what it shows', async () => {
     const { featuredPress } = await import('../../src/components/cardActions');
     const nav = vi.mocked(Navigation.Navigate), web = vi.mocked(Navigation.NavigateToExternalWeb);
     const reset = () => { nav.mockClear(); web.mockClear(); };
-    it('Achievements opens Steam\'s achievements page for the game', () => {
+    it('Achievements opens Game Glance\'s own Achievements page in the menu, for that game', () => {
         reset();
-        featuredPress('achievements', { appId: 1145360, isShortcut: false, hltb: undefined })!();
+        const open = vi.fn(() => true);
+        featuredPress('achievements', { appId: 1145360, isShortcut: false, hltb: undefined }, open)!();
+        expect(open).toHaveBeenCalledWith('achievements:1145360');
+        expect(nav).not.toHaveBeenCalled();
+    });
+    it('Achievements falls back to Steam\'s list when the menu is off or not running', () => {
+        reset();
+        featuredPress('achievements', { appId: 1145360, isShortcut: false, hltb: undefined }, () => false)!();
         expect(nav).toHaveBeenCalledWith('/library/app/1145360/achievements/my/individual');
     });
     it('ProtonDB opens the game on protondb.com in Steam\'s browser', () => {

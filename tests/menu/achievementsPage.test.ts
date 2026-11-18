@@ -96,3 +96,26 @@ describe('sorting the list (variant A, 2026-11-17)', () => {
         expect(at('recent', 3)).toMatchObject({ title: 'Unlocked', items: [] });
     });
 });
+
+describe('pinned achievements (2026-11-18)', () => {
+    it('come first, in pin order, in every locked list; the rest keep the sort\'s order without repeats', () => {
+        const next = achievementsPage(schema, user, rates, 0, now, 'en-US', '', 'closest', [4, 2])!;
+        expect(next.items.map(i => [i.key, i.pinned])).toEqual([[4, true], [2, true], [3, false]]);
+        expect(next.pins).toEqual([4, 2]);
+        const rarest = achievementsPage(schema, user, rates, 0, now, 'en-US', '', 'rarest', [2])!;
+        expect(rarest.items.map(i => i.key)).toEqual([2, 4, 3, 1]);
+    });
+    it('drops a pin once its achievement is unlocked, or when the set no longer has it', () => {
+        const page = achievementsPage(schema, user, rates, 0, now, 'en-US', '', 'closest', [1, 99, 3])!;
+        expect(page.pins).toEqual([3]);
+        expect(page.items.filter(i => i.pinned).map(i => i.key)).toEqual([3]);
+    });
+    it('never shows pins in the Unlocked list', () => {
+        const page = achievementsPage(schema, user, rates, 0, now, 'en-US', '', 'recent', [2])!;
+        expect(page.items.some(i => i.pinned)).toBe(false);
+        expect(page.items.map(i => i.key)).toEqual([1]);
+    });
+    it('with no pins, the list is as before', () => {
+        expect(achievementsPage(schema, user, rates, 0, now, 'en-US')!.items.map(i => i.key)).toEqual([3, 2, 4]);
+    });
+});

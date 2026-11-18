@@ -297,3 +297,24 @@ it('keeps every row of the Achievements columns at its own height (a fixed-heigh
     const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
     expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)>\*\{flex:none\}/);
 });
+
+it('the Achievements sort list opens over the list, under its pill and right-aligned with it; the page never moves and the list dims behind it', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).not.toMatch(/\.gg-ach-list-head \.gg-menu-picker-list\{position:static/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-list-head \.gg-menu-picker-list\{[^}]*left:auto;right:0/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-right:has\(\.gg-menu-picker-list\) \.gg-ach-list\{[^}]*opacity:\.35/);
+});
+
+it('the Achievements list keeps a gap under its header and fades only the edges with more to scroll', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-list\{[^}]*margin-top:0/);
+    expect(achievementsStyles).toMatch(/\[data-more-above\][^{]*\{[^}]*mask-image/);
+    expect(achievementsStyles).toMatch(/\[data-more-below\][^{]*\{[^}]*mask-image/);
+});
+
+it('the Achievements headers share one row height and sit on the cards\' left edge, like the crumb', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-head\{[^}]*min-height:36px/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-head h3\{[^}]*margin:0[;}]/);
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)\{[^}]*margin:0 -6px -6px/);
+});

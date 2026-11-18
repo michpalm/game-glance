@@ -18,7 +18,7 @@ import { GameStatusBar } from '../../components/GameStatusBar';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
 import { GameGlanceSection } from './GameGlanceSection';
-import { ACHIEVEMENTS_VIEW, GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
+import { ACHIEVEMENTS_VIEW, parseAchievementsView, GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
 import { WifiNetworkPage } from './WifiNetworkPage';
 import { WifiPage } from './WifiPage';
 import { NavigatePanel } from './NavigatePanel';
@@ -31,7 +31,7 @@ import type { createNotificationBadge, createNotificationList } from '../steam/n
 import { MorePanel } from './MorePanel';
 import { SocialPanel } from './SocialPanel';
 import { InGamePanel } from './InGamePanel';
-import { AchievementsPage } from './AchievementsPage';
+import { AchievementsPage, libraryName, pageGame } from './AchievementsPage';
 import { NotificationsPanel } from './NotificationsPanel';
 import { PluginsSection } from './PluginsSection';
 import { pluginStyles } from '../pluginStyles';
@@ -167,6 +167,9 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
     const inGameTop = state.section === 'in-game' ? state.stack[state.stack.length - 1] : undefined;
     if (content === undefined && inGameTop === ACHIEVEMENTS_VIEW && state.game) content = <AchievementsPage game={state.game} handoff={enterNative} />;
+    // Any game's Achievements page, opened straight from its game page's card (menu/openView).
+    const achievementsApp = parseAchievementsView(state.stack[state.stack.length - 1]);
+    if (achievementsApp !== null && !showingNotifications) { const target = pageGame(achievementsApp, state.game, libraryName); content = <AchievementsPage key={achievementsApp} game={target.game} steamList={target.steamList} handoff={enterNative} />; }
     if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} openAchievements={() => dispatch({ type: 'push', viewId: ACHIEVEMENTS_VIEW })} />;
     // Navigate's Game Glance tile opens Game Glance's settings in place: any view on Navigate's stack is one of theirs.
     const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;

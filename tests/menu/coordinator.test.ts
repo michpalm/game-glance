@@ -10,6 +10,16 @@ function harness(){
     const c=createMenuCoordinator({bindings,getState:()=>state,dispatch:(e:MenuEvent)=>{state=reduceMenu(state,e);},render:()=>null});
     return {c,bindings,host,order,releaseHooks,releaseGame,replay,state:()=>state,handlers:()=>handlers,disable:()=>{state=reduceMenu(state,{type:'enable',value:false});}};
 }
+describe('opening the menu straight on a view',()=>{
+    it('opens and presents the menu on that view alone, even when it is already open',async()=>{
+        const h=harness();h.c.start();
+        await h.c.open('home','achievements:292030');
+        expect(h.state()).toMatchObject({phase:'custom-open',stack:['achievements:292030'],direct:true});
+        expect(h.host.present).toHaveBeenCalledTimes(1);
+        await h.c.open('home','achievements:1');
+        expect(h.state()).toMatchObject({phase:'custom-open',stack:['achievements:1']});
+    });
+});
 describe('floating menu coordinator',()=>{
     it('lets the menu paint hidden before running expensive close teardown', async () => {
         const h = harness(); let painted!: () => void;

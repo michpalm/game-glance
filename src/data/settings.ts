@@ -10,6 +10,7 @@ import { TitleSize, titleSizeOf } from '../home/titleSize';
 import { AccentChoice, accentColorOf, AccentMode, accentModeOf } from '../home/accentChoice';
 import { DEFAULT_ACCENT } from '../home/accent';
 import { backendKv, KvBackend } from './kv';
+import { MAX_PINS } from '../menu/achievementPins';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
 
 export const PROFILE_STYLES = ['dot', 'circle', 'square'] as const;
@@ -43,10 +44,11 @@ export interface Settings {
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
     infoSlots: GameInfoSlots; // which stats Home's chips and the game page show, in what order; ProtonDB is asked only while it is in a slot
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
+    achievementPins: Record<string, number[]>; // the menu's Achievements page: per "<appId>:<setId>", pinned internal_keys, oldest first (menu/achievementPins)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {} };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -94,6 +96,7 @@ export function createSettingsStore(kv: KvBackend) {
                 feedTabs: feedTabsOf(raw?.feedTabs),
                 infoSlots: infoSlotsOf(raw?.infoSlots),
                 screensaver: readScreensaverOptions(raw?.screensaver),
+                achievementPins: achievementPinsOf(raw?.achievementPins),
             };
             emit();
         },
@@ -221,6 +224,14 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             await persist({ titleSize: current.titleSize });
         },
+        /** One set's pins (menu/achievementPins); an empty list removes the set. */
+        async setAchievementPins(slot: string, keys: number[]): Promise<void> {
+            const { [slot]: _gone, ...rest } = current.achievementPins;
+            const achievementPins = keys.length > 0 ? { ...rest, [slot]: [...keys] } : rest;
+            current = { ...current, achievementPins };
+            emit();
+            await persist({ achievementPins });
+        },
         /** One or more screensaver options. */
         async setScreensaver(change: Partial<ScreensaverOptions>): Promise<void> {
             current = { ...current, screensaver: { ...current.screensaver, ...change } };
@@ -232,6 +243,18 @@ export function createSettingsStore(kv: KvBackend) {
             return () => listeners.delete(listener);
         },
     };
+}
+
+/** Saved pins: string keys with lists of whole numbers, the newest MAX_PINS of each; anything else is dropped. */
+function achievementPinsOf(value: unknown): Record<string, number[]> {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+    const out: Record<string, number[]> = {};
+    for (const [slot, keys] of Object.entries(value as Record<string, unknown>)) {
+        if (!Array.isArray(keys)) continue;
+        const ok = keys.filter((k): k is number => Number.isInteger(k)).slice(-MAX_PINS);
+        if (ok.length > 0) out[slot] = ok;
+    }
+    return out;
 }
 
 export const settings = createSettingsStore(backendKv);

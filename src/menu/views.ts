@@ -13,6 +13,13 @@ export const WIFI_ROW = 'quick:wifi';
 /** In game › Achievements (mock-up "Achievement Sets"), opened from its tile; B returns to the tile. */
 export const ACHIEVEMENTS_VIEW = 'in-game:achievements-page';
 export const ACHIEVEMENTS_TILE = 'in-game:achievements';
+/** Any game's Achievements page, opened straight from its game page's featured card (B closes the menu). */
+const ACHIEVEMENTS_GAME_PREFIX = 'achievements:';
+export const achievementsView = (appId: number) => `${ACHIEVEMENTS_GAME_PREFIX}${appId}`;
+export function parseAchievementsView(viewId: string | undefined): number | null {
+    const id = viewId?.startsWith(ACHIEVEMENTS_GAME_PREFIX) ? Number(viewId.slice(ACHIEVEMENTS_GAME_PREFIX.length)) : NaN;
+    return Number.isInteger(id) && id > 0 && viewId === achievementsView(id) ? id : null;
+}
 /** A Wi-Fi network's own page (Disconnect, Join, Forget), by its access point key; B returns to its row. */
 const WIFI_NETWORK_PREFIX = 'quick:wifi-network:';
 export const wifiNetworkView = (key: string) => `${WIFI_NETWORK_PREFIX}${key}`;

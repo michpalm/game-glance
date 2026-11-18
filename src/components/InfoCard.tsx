@@ -3,6 +3,7 @@ import type { HltbResult } from '../data/hltb';
 import { cleanStats } from '../logic/cleanInfo';
 import { descriptionState } from '../logic/infoCard';
 import type { SizeStat } from '../logic/sizeStat';
+import { RollingText } from './ScrollingText';
 import { CardShell } from './CardShell';
 import type { GameInfoSlots } from '../logic/infoSlots';
 import type { ProtonResult } from '../data/protondb';
@@ -39,7 +40,7 @@ export function InfoCardPanel({ stats, description, prefix = 'gg', onPress }: { 
                 </div>)}
             </div>
             {desc.kind === 'loading' && <p className={`${prefix}-desc`}><span className={`${prefix}-skeleton`} /></p>}
-            {desc.kind === 'text' && <p className={`${prefix}-desc`}>{desc.text}</p>}
+            {desc.kind === 'text' && <RollingText className={`${prefix}-desc`}>{desc.text}</RollingText>}
         </CardShell>
     );
 }

@@ -18,10 +18,12 @@ export interface MenuState {
     pins: PinnedSectionId[];
     game: GameContext | null;
     focus: Partial<Record<SectionId, string>>;
+    /** Opened straight on a view (the game page's Achievements card): B on it closes the menu. */
+    direct?: boolean;
 }
 export type MenuEvent =
     | { type: 'enable'; value: boolean }
-    | { type: 'open'; entry: Entry }
+    | { type: 'open'; entry: Entry; /** Open on this view alone (direct). */ view?: string }
     | { type: 'select'; section: SectionId }
     | { type: 'step'; direction: -1 | 1 }
     | { type: 'push'; viewId: string }
@@ -67,9 +69,10 @@ export function reduceMenu(state: MenuState, event: MenuEvent): MenuState {
         }
         case 'open':
             if (state.phase === 'disabled' || state.phase === 'failed') return state;
+            if (event.view) return { ...state, phase: 'custom-open', entry: event.entry, section: 'navigate', stack: [event.view], direct: true };
             if (state.phase === 'custom-open' && state.entry === event.entry) return { ...state, phase: 'closed', stack: [] };
             return { ...state, phase: 'custom-open', entry: event.entry, section: event.entry === 'quick-access' ? 'quick-settings' : state.game ? 'in-game' : 'navigate', stack: [] };
-        case 'close': return state.phase === 'disabled' || state.phase === 'failed' ? state : { ...state, phase: 'closed', stack: [] };
+        case 'close': return state.phase === 'disabled' || state.phase === 'failed' ? state : { ...state, phase: 'closed', stack: [], direct: false };
         case 'handoff': return state.phase === 'custom-open' ? { ...state, phase: 'native-handoff' } : state;
         default: break;
     }
@@ -87,6 +90,7 @@ export function reduceMenu(state: MenuState, event: MenuEvent): MenuState {
         // Tabs and Notifications belong to the global shell, never a panel's restoration history.
         case 'focus': return event.key.startsWith('section:') || event.key === 'notifications' ? state : { ...state, focus: { ...state.focus, [event.section]: event.key } };
         case 'back':
+            if (state.direct && state.stack.length === 1) return { ...state, phase: 'closed', stack: [], direct: false };
             if (state.stack.length) {
                 const key = returnFocusKey(state.stack[state.stack.length - 1]);
                 return { ...state, stack: state.stack.slice(0, -1), ...(key ? { focus: { ...state.focus, [state.section]: key } } : {}) };

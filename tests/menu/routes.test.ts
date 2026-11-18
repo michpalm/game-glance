@@ -39,7 +39,7 @@ it('opens the native Library root without constructing an unresolved tab route',
 
 describe('in-game page destinations', () => {
     it.each([['achievements','/app/1057090/overlay/achievements'],['recordings','/app/1057090/overlay/gamerecording'],['guides','/app/1057090/overlay/guides'],
-        ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090']] as const)('opens %s for the running game', async (actionId, path) => {
+        ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090'],['achievements-list','/library/app/1057090/achievements/my/individual']] as const)('opens %s for the running game', async (actionId, path) => {
         const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'1057090',actionId});
         expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.order).toEqual(['deactivate','close']);
     });

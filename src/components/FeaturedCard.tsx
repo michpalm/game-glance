@@ -6,6 +6,7 @@ import { PROTON_COLOURS } from '../logic/protonTier';
 import { FeaturedId } from '../logic/infoSlots';
 import { CardShell } from './CardShell';
 import { HltbCard } from './HltbCard';
+import { ScrollLine } from './ScrollingText';
 
 interface Props {
     prefix?: string;
@@ -53,7 +54,7 @@ export function FeaturedCard(p: Props) {
                     )}
                     <div className={`${prefix}-featured-text`}>
                         <div className={`${prefix}-label`}>{view.icon.label}</div>
-                        <div className={view.icon.accent ? `${prefix}-value ${prefix}-featured-accent` : `${prefix}-value`} data-tone={view.icon.tone}>{view.icon.value}</div>
+                        <ScrollLine className={view.icon.accent ? `${prefix}-value ${prefix}-featured-accent` : `${prefix}-value`} tone={view.icon.tone}>{view.icon.value}</ScrollLine>
                     </div>
                 </div>
             )}
@@ -79,7 +80,7 @@ export function FeaturedCard(p: Props) {
                 </div>
             )}
             {view.bar !== null && <div className={`${prefix}-bar`}><div style={{ width: `${view.bar}%` }} /></div>}
-            {view.caption !== null && <div className={`${prefix}-caption`}>{view.caption}</div>}
+            {view.caption !== null && <ScrollLine className={`${prefix}-caption`}>{view.caption}</ScrollLine>}
         </CardShell>
     );
 }

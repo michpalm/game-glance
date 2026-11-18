@@ -27,7 +27,7 @@ function revealTarget(list:HTMLElement,row:HTMLElement,unscaledInset:number):num
     const delta=target.top<bounds.top+inset?target.top-bounds.top-inset:target.bottom>bounds.bottom-inset?target.bottom-bounds.bottom+inset:0;
     return delta?Math.max(0,Math.min(list.scrollHeight-list.clientHeight,list.scrollTop+delta/scale)):null;
 }
-function revealWithin(list:HTMLElement,row:HTMLElement,unscaledInset:number):void {
+export function revealWithin(list:HTMLElement,row:HTMLElement,unscaledInset:number):void {
     const top=revealTarget(list,row,unscaledInset);
     if(top!==null)list.scrollTop=top;
 }

@@ -22,9 +22,10 @@ const page: Page = {
         { id: 2, name: 'Night Market', kind: 'DLC', count: '2 / 2', ratio: 1, done: true, base: false },
     ],
     items: [
-        { key: 3, name: 'Ember Keeper', description: 'Collect 50 embers', icon: 'off3.jpg', right: '41 / 50', progress: .82, rarity: '22.5% of players', rare: false, unlocked: false },
-        { key: 4, name: 'Hidden achievement', description: 'Keep playing to reveal it', icon: null, right: 'Locked', progress: null, rarity: '3.2% of players · Rare', rare: true, unlocked: false },
+        { key: 3, name: 'Ember Keeper', description: 'Collect 50 embers', icon: 'off3.jpg', right: '41 / 50', progress: .82, rarity: '22.5% of players', rare: false, unlocked: false, pinned: true },
+        { key: 4, name: 'Hidden achievement', description: 'Keep playing to reveal it', icon: null, right: 'Locked', progress: null, rarity: '3.2% of players · Rare', rare: true, unlocked: false, pinned: false },
     ],
+    pins: [3],
 };
 
 describe('AchievementsPageView', () => {
@@ -117,8 +118,119 @@ describe('the sort pill (variant A)', () => {
         expect(pill.props.options.map((o: { id: string; label: string }) => [o.id, o.label])).toEqual([['closest', 'Closest first'], ['rarest', 'Rarest first'], ['common', 'Most common first'], ['recent', 'Recently unlocked']]);
         pill.props.onPick('recent');
         expect(onSort).toHaveBeenCalledWith('recent');
-        const head = tree(out).find(e => e.props.className === 'gg-ach-list-head')!;
+        const head = tree(out).find(e => typeof e.props.className === 'string' && e.props.className.split(' ').includes('gg-ach-list-head'))!;
         expect(tree(head.props.children).some(e => e.props.id === 'achievements:sort')).toBe(true);
         expect(tree(out).find(e => e.props.className === 'gg-ach-list')!.key).toBe('list:0:rarest');
+    });
+});
+
+describe('pageGame: whose page the menu draws for achievements:<appId>', async () => {
+    const { pageGame } = await import('../../src/menu/components/AchievementsPage');
+    const running = { appId: 7, gameId: '7', name: 'Running', kind: 'local' as const, actionIds: [] };
+    it('the running game is itself, and Steam\'s list opens in its overlay', () => {
+        expect(pageGame(7, running, () => 'Lib')).toEqual({ game: running, steamList: 'achievements' });
+    });
+    it('another game takes its name from the library, and Steam\'s list opens from the library', () => {
+        expect(pageGame(292030, running, id => id === 292030 ? 'The Witcher 3' : undefined)).toEqual({
+            game: { appId: 292030, gameId: '292030', name: 'The Witcher 3', kind: 'local', actionIds: [] }, steamList: 'achievements-list' });
+        expect(pageGame(5, null, () => undefined).game.name).toBe('');
+    });
+});
+
+describe('layout and scrolling (2026-11-18)', () => {
+    const view = () => AchievementsPageView({ game: 'G', page, onPick: () => {}, openSteam: () => {} });
+    const find = (out: ReactNode, c: string) => tree(out).find(e => typeof e.props.className === 'string' && e.props.className.split(' ').includes(c));
+    it('puts Open full list in Steam under the sets, not below both columns', () => {
+        const out = view();
+        const left = find(out, 'gg-ach-left')!;
+        expect(tree(left.props.children).some(e => e.props.id === 'achievements:steam')).toBe(true);
+        expect(find(out, 'gg-ach-actions')?.props.className).toContain('gg-ach-left-actions');
+    });
+    it('both columns open with the same header row, outside their scrolling lists, so titles and first cards line up', () => {
+        const out = view();
+        const heads = tree(out).filter(e => typeof e.props.className === 'string' && e.props.className.split(' ').includes('gg-ach-head'));
+        expect(heads).toHaveLength(2);
+        expect(tree(heads[0].props.children).some(e => e.type === 'h3' && e.props.children === 'Sets')).toBe(true);
+        expect(tree(find(out, 'gg-ach-sets')!.props.children).some(e => e.type === 'h3')).toBe(false);
+        expect(heads[1].props.className).toContain('gg-ach-list-head');
+    });
+    it('the sort list opens in place under its pill (it never covers the achievements)', () => {
+        expect(find(view(), 'gg-ach-list-head')!.props.className).toContain('gg-ach-list-head');
+    });
+});
+
+describe('followFocus: a column shows the focused row at once, in one step', async () => {
+    const { followFocus } = await import('../../src/menu/components/AchievementsPage');
+    it('scrolls the column the moment a row out of view takes focus, with a margin', () => {
+        const listeners: Record<string, (e: unknown) => void> = {};
+        const column = { scrollTop: 0, scrollHeight: 1000, clientHeight: 300, getBoundingClientRect: () => ({ top: 0, bottom: 300, height: 300 }),
+            addEventListener: (t: string, f: (e: unknown) => void) => { listeners[t] = f; }, removeEventListener: vi.fn(), contains: () => true };
+        const row = { getBoundingClientRect: () => ({ top: 320, bottom: 380, height: 60 }), closest: () => row };
+        const stop = followFocus(column as unknown as HTMLElement);
+        listeners.focusin({ target: row });
+        expect(column.scrollTop).toBe(380 - 300 + 28);
+        stop();
+        expect(column.removeEventListener).toHaveBeenCalled();
+    });
+    it('leaves the column alone when the row is already in view', () => {
+        const listeners: Record<string, (e: unknown) => void> = {};
+        const column = { scrollTop: 50, scrollHeight: 1000, clientHeight: 300, getBoundingClientRect: () => ({ top: 0, bottom: 300, height: 300 }),
+            addEventListener: (t: string, f: (e: unknown) => void) => { listeners[t] = f; }, removeEventListener: () => {}, contains: () => true };
+        const row = { getBoundingClientRect: () => ({ top: 100, bottom: 160, height: 60 }), closest: () => row };
+        followFocus(column as unknown as HTMLElement);
+        listeners.focusin({ target: row });
+        expect(column.scrollTop).toBe(50);
+    });
+});
+
+describe('markEdges: a column says which way there is more to scroll (its edges fade)', async () => {
+    const { markEdges } = await import('../../src/menu/components/AchievementsPage');
+    const column = (scrollTop: number) => {
+        const attrs: Record<string, string> = {}; const listeners: Record<string, () => void> = {};
+        const el = { scrollTop, scrollHeight: 1000, clientHeight: 300, setAttribute: (k: string, v: string) => { attrs[k] = v; }, removeAttribute: (k: string) => { delete attrs[k]; },
+            addEventListener: (t: string, f: () => void) => { listeners[t] = f; }, removeEventListener: vi.fn() };
+        return { el, attrs, listeners };
+    };
+    it('at the top: more below only; in the middle: both; at the end: more above only', () => {
+        const c = column(0);
+        markEdges(c.el as unknown as HTMLElement);
+        expect(c.attrs).toEqual({ 'data-more-below': '' });
+        c.el.scrollTop = 400; c.listeners.scroll();
+        expect(c.attrs).toEqual({ 'data-more-above': '', 'data-more-below': '' });
+        c.el.scrollTop = 700; c.listeners.scroll();
+        expect(c.attrs).toEqual({ 'data-more-above': '' });
+    });
+});
+
+describe('pins: Y on an achievement (2026-11-18)', () => {
+    it('Y pins or unpins the achievement, and Steam\'s footer names which', () => {
+        const onTogglePin = vi.fn();
+        const out = AchievementsPageView({ game: 'G', page, onPick: () => {}, openSteam: () => {}, onTogglePin });
+        const pinned = byId(out, 'achievements:item:3')!, other = byId(out, 'achievements:item:4')!;
+        expect(pinned.props.optionsLabel).toBe('Unpin');
+        expect(other.props.optionsLabel).toBe('Pin');
+        other.props.onOptions();
+        expect(onTogglePin).toHaveBeenCalledWith(4);
+    });
+    it('marks a pinned row with a pin before its name', () => {
+        const out = AchievementsPageView({ game: 'G', page, onPick: () => {}, openSteam: () => {} });
+        const pinned = byId(out, 'achievements:item:3')!, other = byId(out, 'achievements:item:4')!;
+        expect(pinned.props.className).toContain('gg-ach-pinned');
+        expect(other.props.className).not.toContain('gg-ach-pinned');
+        expect(tree(pinned.props.children).some(e => e.props.className === 'gg-ach-pin')).toBe(true);
+        expect(tree(other.props.children).some(e => e.props.className === 'gg-ach-pin')).toBe(false);
+    });
+});
+
+describe('MenuAction: the Y button', async () => {
+    const { MenuAction } = await import('../../src/menu/components/MenuAction');
+    it('passes Y and its footer label to Steam\'s button only when given', () => {
+        const onOptions = vi.fn();
+        const withY = MenuAction({ id: 'x', children: 'X', onAction: () => {}, onOptions, optionsLabel: 'Pin' }) as ReactElement<Record<string, any>>;
+        expect(withY.props.onOptionsActionDescription).toBe('Pin');
+        withY.props.onOptionsButton();
+        expect(onOptions).toHaveBeenCalled();
+        const plain = MenuAction({ id: 'x', children: 'X', onAction: () => {} }) as ReactElement<Record<string, any>>;
+        expect(plain.props.onOptionsButton).toBeUndefined();
     });
 });

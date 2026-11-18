@@ -26,3 +26,15 @@ describe('shared normal card styles', () => {
     });
 
 });
+
+describe('scrolling text that does not fit (2026-11-18)', async () => {
+    const { cardBaseCss } = await import('../../src/styles/themeCss');
+    const css = cardBaseCss('gg', n => `${n}px`);
+    it('a sliding line clips instead of "…" and lets its text move', () => {
+        expect(css).toMatch(/\[data-gg-scroll="line"\]\[data-gg-marquee\] \{[^}]*text-overflow: clip/);
+        expect(css).toMatch(/\[data-gg-scroll="line"\]\[data-gg-marquee\] > span \{[^}]*display: inline-block/);
+    });
+    it('a rolling description keeps its three lines\' height but clips instead of clamping', () => {
+        expect(css).toMatch(/\.gg-desc\[data-gg-roll\] \{[^}]*display: block;[^}]*-webkit-line-clamp: unset;[^}]*max-height: 3lh;[^}]*overflow: hidden;[^}]*scroll-behavior: smooth/);
+    });
+});

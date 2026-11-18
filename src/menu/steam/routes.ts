@@ -18,6 +18,8 @@ export interface RouteBindings {
 const GAME_PAGES: Record<string,(appId:number)=>string> = {
     achievements:id=>`/app/${id}/overlay/achievements`, recordings:id=>`/app/${id}/overlay/gamerecording`,
     guides:id=>`/app/${id}/overlay/guides`, controller:id=>`/app/${id}/overlay/controller`, 'game-page':id=>`/library/app/${id}`,
+    // Steam's own list from the library (no game running): where its game page and carousel go.
+    'achievements-list':id=>`/library/app/${id}/achievements/my/individual`,
 };
 // The two urls Steam's own friends menu opens for Join Game (home/join.ts builds them); nothing else.
 const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;

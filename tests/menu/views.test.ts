@@ -85,3 +85,10 @@ describe('a Wi-Fi network\'s page', () => {
         expect(returnFocusKey(wifiNetworkView('k/1'))).toBe('wifi:k/1');
     });
 });
+
+it('names a game\'s Achievements page by its app id, and reads it back', async () => {
+    const { achievementsView, parseAchievementsView } = await import('../../src/menu/views');
+    expect(achievementsView(292030)).toBe('achievements:292030');
+    expect(parseAchievementsView('achievements:292030')).toBe(292030);
+    for (const bad of ['achievements:', 'achievements:0', 'achievements:-3', 'achievements:1.5', 'gg:home', undefined]) expect(parseAchievementsView(bad)).toBeNull();
+});

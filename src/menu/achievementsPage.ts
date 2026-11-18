@@ -19,8 +19,12 @@ export interface ItemRow {
     /** Its date once unlocked, its progress ("41 / 50"), or Locked. */ right: string;
     /** 0–1 for one with progress steps, else null. */ progress: number | null;
     rarity: string | null; rare: boolean; unlocked: boolean;
+    /** Pinned with Y (menu/achievementPins): first in the list. */ pinned: boolean;
 }
-export interface AchievementsPageView { header: string; sets: SetRow[]; picked: number; title: string; items: ItemRow[] }
+export interface AchievementsPageView {
+    header: string; sets: SetRow[]; picked: number; title: string; items: ItemRow[];
+    /** The picked set's live pins: the given ones it still has and that are still locked, in pin order. */ pins: number[];
+}
 
 /** The list's orders (sort pill, mock-up variant A). Closest first is the default: what is next to earn. */
 export const ACH_SORTS = ['closest', 'rarest', 'common', 'recent'] as const;
@@ -52,7 +56,7 @@ function setName(name: string, game: string): string {
     return rest ? rest[1] : name;
 }
 
-export function achievementsPage(schema: PageSchema | undefined, user: PageUser | undefined, rates: PageRates | undefined, picked: number | null, now: number, locale: string, gameName = '', sort: AchSort = 'closest'): AchievementsPageView | null {
+export function achievementsPage(schema: PageSchema | undefined, user: PageUser | undefined, rates: PageRates | undefined, picked: number | null, now: number, locale: string, gameName = '', sort: AchSort = 'closest', pinned: readonly number[] = []): AchievementsPageView | null {
     if (!schema || !user || !Array.isArray(schema.groups)) return null;
     // A game with one set still gets its page.
     const summary = allSets(schema, user);
@@ -70,6 +74,13 @@ export function achievementsPage(schema: PageSchema | undefined, user: PageUser 
     const pick = bars.find(b => b.id === picked) ?? bars.find(b => b.earnable && !b.complete) ?? bars[0];
     const group = schema.groups.find(g => g.id === pick.id)!;
     const counted = (group.achievements ?? []).filter(x => group.archived || !x.archived || got(x.internal_key));
+    // A pin of an achievement since unlocked, or one this set no longer has, is dropped here (spec: read, not cleaned up).
+    const pins = pinned.filter((k, i) => pinned.indexOf(k) === i && counted.some(x => x.internal_key === k) && !got(k));
+    const pinFirst = (items: ItemRow[]): ItemRow[] => [
+        // Every live pin is a locked achievement of this set, so each locked list holds it.
+        ...pins.map(k => ({ ...items.find(x => x.key === k)!, pinned: true })),
+        ...items.filter(x => !pins.includes(x.key)),
+    ];
     const rate = (key: number) => { const p = rates?.percentages?.[key]; return typeof p === 'number' && Number.isFinite(p) ? p : null; };
     const stepOf = (x: PageAchievement) => {
         const max = Number(x.max_progress), min = Number(x.min_progress) || 0, cur = Number(user.achievements?.[x.internal_key]?.progress);
@@ -86,6 +97,7 @@ export function achievementsPage(schema: PageSchema | undefined, user: PageUser 
             right: unlocked ? (typeof when === 'number' && when > 0 ? whenText(when, now, locale) : 'Unlocked') : step ? `${step.cur} / ${step.max}` : 'Locked',
             progress: step ? (step.cur - step.min) / (step.max - step.min) : null,
             rarity: p === null ? null : `${p.toFixed(1)}% of players${p < RARE_PERCENT ? ' · Rare' : ''}`, rare: p !== null && p < RARE_PERCENT,
+            pinned: false,
         };
     };
     const time = (k: number) => user.achievements?.[k]?.unlock_time ?? 0;
@@ -94,15 +106,15 @@ export function achievementsPage(schema: PageSchema | undefined, user: PageUser 
     if (sort === 'rarest' || sort === 'common') {
         const items = counted.map(item);
         items.sort(sort === 'rarest' ? (x, y) => share(x.key, 1e9) - share(y.key, 1e9) : (x, y) => share(y.key, -1e9) - share(x.key, -1e9));
-        return { header, sets, picked: pick.id, title: LIST_TITLES.all, items };
+        return { header, sets, picked: pick.id, title: LIST_TITLES.all, items: pinFirst(items), pins };
     }
     // Closest first on a finished set has nothing left: it shows what was unlocked, as Recently unlocked does.
     if (sort === 'recent' || pick.complete) {
         const items = counted.filter(x => got(x.internal_key)).map(item);
         items.sort((x, y) => time(y.key) - time(x.key));
-        return { header, sets, picked: pick.id, title: LIST_TITLES.unlocked, items };
+        return { header, sets, picked: pick.id, title: LIST_TITLES.unlocked, items, pins };
     }
     const items = counted.filter(x => !got(x.internal_key)).map(item);
     items.sort((x, y) => (y.progress ?? 0) - (x.progress ?? 0) || (rate(y.key) ?? 0) - (rate(x.key) ?? 0));
-    return { header, sets, picked: pick.id, title: LIST_TITLES.next, items };
+    return { header, sets, picked: pick.id, title: LIST_TITLES.next, items: pinFirst(items), pins };
 }

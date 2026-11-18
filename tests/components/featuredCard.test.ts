@@ -35,7 +35,7 @@ describe('FeaturedCard', () => {
     it('draws the ProtonDB tile in its tone, the rating in its tone, and the ladder with the rating lit', () => {
         const html = render({ proton: { status: 'found', tier: 'gold' }, compat: { deck: 1, tool: 'Proton 9.0' } });
         expect(html).toContain('<div class="gg-featured-icon gg-featured-mark" data-tone="gold" aria-hidden="true">');
-        expect(html).toContain('<div class="gg-value" data-tone="gold">Gold</div>');
+        expect(html).toContain('<div class="gg-value" data-tone="gold" data-gg-scroll="line"><span>Gold</span></div>');
         expect(html).toContain('class="gg-ladder"');
         expect(html.match(/data-lit=""/g)).toHaveLength(1);
         expect(html).toContain('Unsupported on Steam Deck · runs with Proton 9.0');
@@ -44,7 +44,7 @@ describe('FeaturedCard', () => {
         const html = render({ featured: 'played', playTime: { minutes: 90, twoWeeks: 0, lastPlayed: 0, icon: 'https://x.test/i.jpg', purchased: 0, reviews: 91 } });
         expect(html).toContain('gg-card gg-featured gg-featured-played gg-featured-dense');
         expect(html).toContain('<img src="https://x.test/i.jpg"');
-        expect(html).toContain('<div class="gg-value gg-featured-accent">1.5 h played</div>');
+        expect(html).toContain('<div class="gg-value gg-featured-accent" data-gg-scroll="line"><span>1.5 h played</span></div>');
         expect(html).toContain('Steam reviews');
     });
     it("HowLongToBeat's restyled track: one stretch per time, the fill along all of it", () => {
@@ -61,5 +61,18 @@ describe('FeaturedCard', () => {
         expect(html).toContain('<img src="https://x.test/a.jpg"');
         expect(html).toContain('Wood Riddance');
         expect(html).toContain('Latest');
+    });
+});
+
+describe('scrolling text that doesn\'t fit (2026-11-18)', async () => {
+    const { InfoCardPanel } = await import('../../src/components/InfoCard');
+    it('the achievements card\'s latest name and its caption can scroll: each text sits in its own moving span', () => {
+        const html = render({ featured: 'achievements', achievements: { achieved: 1, total: 2, unlocked: [{ id: 'a', name: 'A very long achievement name', image: '', unlockedAt: 0, globalPct: 9 }] } });
+        expect(html).toMatch(/class="gg-value" data-gg-scroll="line"><span>A very long achievement name<\/span>/);
+        expect(html).toMatch(/class="gg-caption" data-gg-scroll="line"><span>1 of 2 unlocked · rarest: A very long achievement name \(9\.0% have it\)<\/span>/);
+    });
+    it('the stat card\'s description can roll', () => {
+        const html = renderToStaticMarkup(createElement(InfoCardPanel, { stats: [], description: 'Long text' }));
+        expect(html).toMatch(/<p class="gg-desc" data-gg-scroll="roll"><span>Long text<\/span><\/p>/);
     });
 });

@@ -579,6 +579,11 @@ export function cardBaseCss(prefix: string, unit: (n: number) => string): string
         `.gg-goal .gg-value { color: var(--gg-accent); }`,
         `.gg-desc { margin: ${unit(6)} 0 0; font-size: ${unit(10.5)}; line-height: 1.4; color: rgba(255, 255, 255, 0.85);
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }`,
+        // Text that doesn't fit (components/scrollText): a rolling description keeps its three lines' height, clipped instead
+        // of "…", and steps smoothly; a sliding line clips too, and its span moves.
+        `.gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }`,
+        `.gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }`,
+        `.gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }`,
         `.gg-muted { margin-top: ${unit(8)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
         `.gg-bar { margin-top: ${unit(8)}; height: ${unit(4)}; border-radius: ${unit(2)}; background: rgba(255, 255, 255, 0.14); overflow: hidden; }`,
         `.gg-bar > div { height: 100%; border-radius: ${unit(2)}; background: var(--gg-accent); }`,

@@ -3,6 +3,7 @@ import { createElement, useSyncExternalStore } from 'react';
 import { backendKv } from '../data/kv';
 import { settings } from '../data/settings';
 import { createMenuCoordinator } from './coordinator';
+import { setMenuViewOpener } from './openView';
 import { registerDiscoveredMenuHost } from './host';
 import { defaultMenuState, reduceMenu, type MenuEvent, type Stop } from './model';
 import { createMenuPreferences,menuPreferences } from './preferences';
@@ -99,6 +100,15 @@ export function startMenu(options?: Partial<Options>): Stop {
             }
             controller = createMenuCoordinator({ bindings, getState: () => state, dispatch, render: () => createElement(ConnectedShell) });
             stopSession = controller.start();
+            const session = controller;
+            // The game page's Achievements card opens the menu straight on a view (menu/openView).
+            const stopOpener = setMenuViewOpener(view => {
+                if (controller !== session || state.phase === 'disabled' || state.phase === 'failed') return false;
+                void session.open('home', view).catch(error => console.warn('[Game Glance] menu view failed', error));
+                return true;
+            });
+            const stopController = stopSession;
+            stopSession = () => { stopOpener(); stopController(); };
         } catch (error) { release(); console.warn('[Game Glance] floating menu unavailable; native menus remain active', error); }
     }
     const stopMaster = masterSettings.subscribe(reconcile), stopPreferences = preferences.subscribe(reconcile);

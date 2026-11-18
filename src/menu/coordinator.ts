@@ -56,11 +56,11 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
         };
         const cleared=clearFrost();if(cleared)void cleared.then(conceal);else conceal();
     };
-    async function openWithFallback(entry: Entry, replay: () => void | Promise<void>) {
+    async function openWithFallback(entry: Entry, replay: () => void | Promise<void>, view?: string) {
         if (!alive) return;
         if(closing){closing=false;dispatch({type:'close'});}
         const ticket = ++generation;
-        dispatch({ type: 'open', entry });
+        dispatch({ type: 'open', entry, ...(view ? { view } : {}) });
         if (getState().phase !== 'custom-open') { host?.close(); bindings.closeMenuHost(); return; }
         try {
             frostGeneration=ticket;
@@ -110,8 +110,9 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
                 return () => cleanup();
             } catch (error) { cleanup(true); throw error; }
         },
-        open(entry: Entry): Promise<void> {
-            return openWithFallback(entry, () => bindings.openNative(entry === 'home' ? { kind: 'main-menu' } : { kind: 'qam', tab: 'quick-settings' }));
+        /** `view`: open straight on it (the game page's Achievements card); B on it closes the menu. */
+        open(entry: Entry, view?: string): Promise<void> {
+            return openWithFallback(entry, () => bindings.openNative(entry === 'home' ? { kind: 'main-menu' } : { kind: 'qam', tab: 'quick-settings' }), view);
         },
         async handoff(request: NativeRequest): Promise<void> {
             if (!alive) return;

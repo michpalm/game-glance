@@ -423,6 +423,9 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-goal .gg-value { color: var(--gg-accent); }
           .gg-desc { margin: calc(6 * var(--gg-u)) 0 0; font-size: calc(10.5 * var(--gg-u)); line-height: 1.4; color: rgba(255, 255, 255, 0.85);
                       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }
           .gg-muted { margin-top: calc(8 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
@@ -551,6 +554,9 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-goal .gg-value { color: var(--gg-accent); }
           .gg-desc { margin: calc(6 * var(--gg-u)) 0 0; font-size: calc(10.5 * var(--gg-u)); line-height: 1.4; color: rgba(255, 255, 255, 0.85);
                       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }
           .gg-muted { margin-top: calc(8 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
