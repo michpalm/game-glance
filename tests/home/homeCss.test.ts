@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { SOURCE_PILL } from '../../src/styles/sourcePill';
 import {
     closingRules, CLOSING_MOVES, openingRules, statusCss, HOME_GLASS, HOME_PILL, PILL_CHIPS_GAP,
-    FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
+    FEED_DIM, FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { NOT_MOUSE } from '../../src/home/mouseMode';
@@ -150,6 +150,33 @@ describe('frost and labels (VDL Section 7)', () => {
         expect(css).toMatch(/\.gh-twin\[data-role="label"\][^{]*\{[^}]*rgba\(255,255,255,\.90\)[^}]*#0009/);
         expect(ruleFor(css, '.gh-open-shell')).toContain('rgba(12,16,22,.40)');
         expect(ruleFor(css, '.gh-open-shell')).toContain('backdrop-filter:blur(16px)');
+    });
+});
+
+describe('hero frost while the feed sheet is up (Michael, 2026-11-19)', () => {
+    const css = homeCss();
+    it('a 24px frost over the hero fades in with the sheet (its 500ms and easing) and is off at rest', () => {
+        const frost = ruleFor(css, '.gh-scrim-frost');
+        expect(frost).toContain('backdrop-filter: blur(24px)');
+        expect(frost).toContain('opacity: var(--gh-frost)');
+        expect(frost).toContain(`transition: opacity ${SHEET_MS}ms`);
+        expect(ruleFor(css, '.gh-root')).toContain('--gh-frost: 0');
+    });
+    it('the page shading (shadow) leaves with the sheet up, in step with the frost, and is back while a game opens', () => {
+        const page = ruleFor(css, '.gh-scrim-page');
+        expect(page).toContain('opacity: calc(1 - var(--gh-frost))');
+        expect(page).toContain(`transition: opacity ${SHEET_MS}ms`);
+        expect(ruleFor(css, '.gh-root[data-gh-opening] .gh-scrim-page')).toContain('opacity: 1');
+    });
+});
+
+describe('feed contrast with the sheet up (Michael, 2026-11-19: dark cards were hard to tell from the background)', () => {
+    const css = homeCss();
+    it('the sheet dims the frosted hero less (the frost calms it now): 25%, none at rest', () => {
+        expect(FEED_DIM).toEqual({ rest: 0, sheet: 0.25 });
+    });
+    it('every feed card has a faint light edge inside it, so a dark card\'s outline shows', () => {
+        expect(ruleFor(css, '.gh-card')).toContain('box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 6px 20px -10px rgba(0,0,0,.6)');
     });
 });
 
@@ -857,8 +884,11 @@ describe('homeCss open transition', () => {
         expect(page?.[1]).not.toMatch(/opacity:\s*0/);
         // Home's own gradients are gone, and nothing about the shading changes while opening.
         expect(all.some(([sel]) => sel.includes('.gh-scrim-v') || sel.includes('.gh-scrim-l'))).toBe(false);
-        expect(all.some(([sel]) => sel.includes('data-gh-opening') && sel.includes('.gh-scrim-page'))).toBe(false);
-        // No dimming at rest (the page has none); the feed sheet still dims (SpotlightHome's DIM_SHEET).
+        // The one opening rule on it brings back the shading the raised feed sheet faded out (opacity only), so the page
+        // arrives with its own shading; the shading itself (its background) never changes while opening.
+        const opening = all.filter(([sel]) => sel.includes('data-gh-opening') && sel.includes('.gh-scrim-page'));
+        expect(opening.map(([, body]) => body.trim().replace(/;$/, ''))).toEqual(['opacity: 1']);
+        // No dimming at rest (the page has none); the feed sheet still dims (FEED_DIM.sheet).
         expect(all.find(([sel]) => sel === '.gh-root')?.[1]).toMatch(/--gh-dim:\s*0;/);
     });
     it("the extras layer (the description, the HowLongToBeat card's rest) is hidden at rest and shown, part by part, only by a morph", () => {
@@ -1031,11 +1061,11 @@ describe('the way back (B from a page)', () => {
         expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\):not\(\[data-gh-closing\]\) \.gh-safe :is\(/);
         expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
-    it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
+    it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, the status bar and the hero frost are outside .gh-safe)", () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
         expect(blurred.length).toBeGreaterThan(0);
         for (const sel of blurred) {
-            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
+            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status', '.gh-scrim-frost'].some((outside) => sel.includes(outside))) continue;
             const last = sel.split(',').map((p) => p.trim().split(/[\s>+~]+/).pop()!);
             for (const compound of last) expect(HOME_GLASS.some((g) => compound.includes(g)), sel).toBe(true);
         }

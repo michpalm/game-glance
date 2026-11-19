@@ -13,7 +13,7 @@ import { FRIEND_COLOURS } from './friends';
 import { FEED_ROW2_HEADER, FRIEND_BAND_H } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { HOME_CIRCLE } from './circles';
-import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
+import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_EASE, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
 import { EYEBROW, PAGE_LAYOUT, PAGE_TYPE, cleanInfoCss, cardBaseCss, normalCardsCss, pageScrims, pageType, SHADE_NONE, STEAM_PLAY_LINE } from '../styles/themeCss';
 import { PAGE_LINES } from './openTargets';
 import { TITLE_SCALE_VAR } from './titleSize';
@@ -58,6 +58,8 @@ function rule(selector: string, body: string): string {
  * version choice) and the family pill beside it, the Library card's body, the feed cards. Not the store pill's holder
  * (.gh-source): it holds glass, so it never fades as one layer (that showed both pills' art sharp, then snapped).
  */
+/** The hero's dim (--gh-dim): none at rest; with the feed sheet up 25%, since the frost calms the art (Michael, 2026-11-19: 45% left dark cards hard to see). */
+export const FEED_DIM = { rest: 0, sheet: 0.25 } as const;
 export const HOME_GLASS = ['.gh-chip', '.gh-btn', '.gh-store-choice', '.gh-store-face', '.gh-family', '.gh-players', '.gh-lib-body', '.gh-card', '.gh-cal-day'];
 /** Hover looks apply only in mouse mode (mouseMode). */
 const HOVER = `html[${MOUSE_ATTR}]`;
@@ -283,7 +285,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
         `@property --gh-card-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
         `@keyframes gh-fade-in { from { opacity: 0; } to { opacity: 1; } }`,
-        rule('.gh-root', `--gh-side: ${SIDE_INSET.handheld}px; --gh-row: ${SIDE_INSET.handheld - ROW_OFFSET}px; --gh-pill: ${PILL_INSET.handheld}px; --glance-accent: ${DEFAULT_ACCENT}; --glance-accent-text: ${DEFAULT_ACCENT}; --gh-top: 52px; --gh-bottom: ${FEED_SHEET.legendReserve}px; --gh-shift: 0px; --gh-dim: 0;
+        rule('.gh-root', `--gh-side: ${SIDE_INSET.handheld}px; --gh-row: ${SIDE_INSET.handheld - ROW_OFFSET}px; --gh-pill: ${PILL_INSET.handheld}px; --glance-accent: ${DEFAULT_ACCENT}; --glance-accent-text: ${DEFAULT_ACCENT}; --gh-top: 52px; --gh-bottom: ${FEED_SHEET.legendReserve}px; --gh-shift: 0px; --gh-dim: 0; --gh-frost: 0;
             --gh-ink: #07090c; --gh-on-accent: #0b0d10; --gh-r-capsule: 8px; --gh-r-card: 12px; --gh-r-panel: 16px; --gh-r-pill: 999px;
             --gg-accent: var(--glance-accent); --gg-text: #fff; --gg-selected: ${TOKENS.selected}; --gg-selected-edge: inset 0 -2px 0 color-mix(in srgb, var(--gg-accent) 55%, transparent);
             transition: none;
@@ -319,8 +321,14 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         // .gh-shade-none on the root), so the art looks the same on both and opening a game never changes it; a flat dim
         // only under the feed sheet.
         rule('.gh-scrim', 'position: absolute; inset: 0; pointer-events: none'),
+        // The feed sheet up: the hero frosted (Michael, 2026-11-19: the full backdrop under the tabs was too busy). A fixed
+        // blur faded in with the sheet (opacity is cheap to animate; the blur radius is not), under the dim.
+        rule('.gh-scrim-frost', `backdrop-filter: blur(24px); opacity: var(--gh-frost); transition: opacity ${SHEET_MS}ms ${SHEET_EASE}`),
         rule('.gh-scrim-dim', `background: rgba(${SCRIM},var(--gh-dim)); transition: background ${SHEET_MS}ms`),
-        rule('.gh-scrim-page', `background: ${pageScrims('bottom')}`),
+        // The page shading is for Home at rest and the game page: with the feed sheet up it fades out with the frost coming
+        // in (Michael, 2026-11-19), and comes back while a game opens so the page arrives with its own shading.
+        rule('.gh-scrim-page', `background: ${pageScrims('bottom')}; opacity: calc(1 - var(--gh-frost)); transition: opacity ${SHEET_MS}ms ${SHEET_EASE}`),
+        rule('.gh-root[data-gh-opening] .gh-scrim-page', 'opacity: 1'),
         rule('.gh-shade-none .gh-scrim-page', `background: ${pageScrims('none')}`),
 
         // Scaled canvas; width, height and transform are set inline from homeCanvas().
@@ -579,7 +587,7 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-feed-empty', `position: absolute; left: 0; top: 0; height: 260px; display: flex; align-items: center; font-size: 16px; font-weight: 700; letter-spacing: .02em; ${labelText()}`),
         rule('.gh-card', `--gh-ring: rgba(255,255,255,.25);
             position: absolute; top: 0; height: var(--gh-card-h, 260px); margin: 0; padding: 0; border-radius: var(--gh-r-card); overflow: hidden; color: #fff;
-            ${frostSurface('16px')}; border: none; --gh-edge: rgba(255,255,255,.1); box-shadow: 0 6px 20px -10px rgba(0,0,0,.6);
+            ${frostSurface('16px')}; border: none; --gh-edge: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 6px 20px -10px rgba(0,0,0,.6);
             transform: none; outline: none; cursor: pointer; transition: box-shadow 300ms, transform 300ms, --gh-card-accent ${ACCENT_MS}ms ease`),
         // The edge over the art and shade, as on the recents capsules (no un-shaded bottom row).
         rule('.gh-card::after', `content: ''; position: absolute; inset: 0; margin: 0; padding: 0; border-radius: inherit; pointer-events: none;

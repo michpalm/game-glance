@@ -38,7 +38,7 @@ import { legibleAccent } from './accent';
 import { shownAccent } from './shownAccent';
 import { solveRaiseDelta } from './raised';
 import { watchLegendHeight, legendReserve } from './legend';
-import { FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
+import { FEED_DIM, FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { HomePills } from './HomePills';
@@ -77,8 +77,6 @@ const MENU_POLL_MS = 250;
 const MENU_SETTLE_MS = 300;
 
 /** Hero dim: none at rest (the art is shaded as on the game page, per Page shading: homeCss .gh-scrim-page), .45 while the feed sheet is up. */
-const DIM_REST = 0;
-const DIM_SHEET = 0.45;
 /** Two activations closer than this are one press (A and a touch both arriving); see onRecentsActivate. */
 const SAME_PRESS_MS = 300;
 
@@ -616,11 +614,13 @@ export function SpotlightHome() {
     }, [back]);
 
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${overFill(heroFit) ? ' gh-fit' : ''}${heroFit === 'expanded' ? ' gh-expanded' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ [TITLE_SCALE_VAR]: titleK, '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${overFill(heroFit) ? ' gh-fit' : ''}${heroFit === 'expanded' ? ' gh-expanded' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ [TITLE_SCALE_VAR]: titleK, '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? FEED_DIM.sheet : FEED_DIM.rest, '--gh-frost': sheetUp ? 1 : 0, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
             <HeroBackground appId={resolved ? shownGame?.appId ?? null : null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
+            {/* The hero frosted while the feed sheet is up (under the opened game's hero, so that one opens sharp). */}
+            <div className="gh-scrim gh-scrim-frost" />
             {/* The opened game's hero (a feed card's, homeCss.openingRules), the feed sheet's dim, and the page's shading. */}
             <div className="gh-hero-open" />
             <div className="gh-scrim gh-scrim-dim" />
