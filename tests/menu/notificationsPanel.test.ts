@@ -16,12 +16,20 @@ const rows: TrayRow[] = [
     { id: '1', kind: 'wishlist', appId: 2129530, count: 20, time: 0, unread: false },
     { id: '9', kind: 'other', appId: null, count: 1, time: 0, unread: false },
 ];
-function harness(list = rows, unread = (row: TrayRow) => row.unread, friendName?: (id: string) => string | undefined) {
+function harness(list = rows, unread = (row: TrayRow) => row.unread, friendName?: (id: string) => string | undefined, previews?: Record<string, string>) {
     const open = vi.fn(), markAll = vi.fn(), seeAll = vi.fn();
-    const nodes = tree(NotificationsContents({ rows: list, sales: { 3339880: { name: 'OFF', price: '9,76€' }, 2129530: { name: 'REANIMAL' } }, unread, action: row => rowAction(row, () => null), open, markAll, seeAll, friendName }));
+    const nodes = tree(NotificationsContents({ rows: list, sales: { 3339880: { name: 'OFF', price: '9,76€' }, 2129530: { name: 'REANIMAL' } }, unread, action: row => rowAction(row, () => null), open, markAll, seeAll, friendName, previews }));
     return { nodes, open, markAll, seeAll, action: (key: string) => nodes.find(n => n.props.id === key)! };
 }
 describe('Notifications page', () => {
+    it('a screenshot notification shows the screenshot itself (Michael, 2026-11-19); the camera until it is found', () => {
+        const shot: TrayRow = { id: 's', kind: 'screenshot', appId: null, count: 1, time: 0, unread: true, mediaId: '7_12', title: 'Screenshot taken' };
+        const withPreview = harness([shot], undefined, undefined, { '7_12': 'https://steamloopback.host/s/12.jpg' });
+        const img = withPreview.nodes.find(n => n.type === 'img')!;
+        expect(img.props.src).toBe('https://steamloopback.host/s/12.jpg');
+        expect(img.props.className).toBe('gg-notification-art gg-notification-shot');
+        expect(harness([shot]).nodes.some(n => n.type === 'img')).toBe(false);
+    });
     it('shows one row per notification with the game’s store art and one sentence', () => {
         const h = harness();
         expect(strings(h.nodes)).toContain('OFF is on sale for 9,76€');

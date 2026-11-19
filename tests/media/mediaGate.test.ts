@@ -66,3 +66,21 @@ describe('final review fixes', () => {
         mediaMemory.reset();
     });
 });
+
+describe('opening one screenshot (Michael, 2026-11-19: a notification goes to that shot)', () => {
+    it('reads the shot from Steam\'s item path', async () => {
+        const { mediaItemFromPath } = await import('../../src/media/mediaState');
+        expect(mediaItemFromPath('/media/item/screenshot/7_12')).toBe('7_12');
+        expect(mediaItemFromPath('/media/item/screenshot/1262350_11/')).toBe('1262350_11');
+        expect(mediaItemFromPath('/media/item/clip/abc')).toBeNull();
+        expect(mediaItemFromPath('/media/grid')).toBeNull();
+        expect(mediaItemFromPath(null)).toBeNull();
+    });
+    it('the opening screen: the viewer on that shot when it exists, else the gallery', async () => {
+        const { openingScreen } = await import('../../src/media/mediaState');
+        const shot = { kind: 'shot' as const, id: '7_12', appId: 7, gameId: '7', handle: 12, created: 1, width: 1, height: 1, url: '', uploaded: false };
+        expect(openingScreen([shot], '7_12')).toEqual({ screen: { kind: 'viewer', id: '7_12' }, tab: 'all', focusId: '7_12' });
+        expect(openingScreen([shot], '7_99')).toBeNull();
+        expect(openingScreen([shot], null)).toBeNull();
+    });
+});

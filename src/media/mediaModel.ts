@@ -99,3 +99,13 @@ export function focusAfterDelete(items: MediaItem[], deletedId: string): string 
     if (i < 0) return null;
     return items[i + 1]?.id ?? items[i - 1]?.id ?? null;
 }
+
+/** Pictures for screenshot notifications: Steam's notification names a shot as "<gameId>_<handle>", the Media item id. */
+export function shotPreviews(shots: RawShot[], ids: string[]): Record<string, string> {
+    const wanted = new Set(ids), out: Record<string, string> = {};
+    for (const s of shots) {
+        const id = `${s.strGameID}_${s.hHandle}`;
+        if (wanted.has(id)) out[id] = shotUrl(s.strUrl);
+    }
+    return out;
+}

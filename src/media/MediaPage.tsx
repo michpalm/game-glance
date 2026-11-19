@@ -5,11 +5,11 @@ import { useSettings } from '../data/settings';
 import { browserStores, landscapeUrls } from '../home/artwork';
 import { NAV_MAINTAIN_X } from '../home/focusZones';
 import { takeSteamFocus } from '../home/steamFocus';
-import { CoverImg, keepCoverInView, LibraryLogo } from '../library/LibraryPage';
+import { CoverImg, keepCoverInView } from '../library/LibraryPage';
 import { Eyebrow, PageFrame, shoulderHandler, Tabs, type PadEvent } from '../pageKit/PageKit';
 import { routeSource, type RouteSource } from '../search/steam';
 import { buildItems, dayGroups, focusAfterDelete, formatDuration, formatWhen, mediaTabs, stepItem, tabItems, type MediaItem, type MediaTab, type ShotItem } from './mediaModel';
-import { ensureMediaNativeReset, focusGone, mediaGateChoice, mediaMemory, runDelete, runUpload } from './mediaState';
+import { ensureMediaNativeReset, focusGone, mediaGateChoice, mediaItemFromPath, mediaKeepsNative, mediaMemory, openingScreen, runDelete, runUpload } from './mediaState';
 import { mediaStyles } from './mediaStyles';
 import { sharedMediaBindings, type MediaBindings } from './steamMedia';
 
@@ -145,7 +145,8 @@ function Viewer({ p, shot, shots }: { p: MediaViewProps; shot: ShotItem; shots: 
         </>}>
         <div className="gg-media-view-shot"><CoverImg urls={[shot.url]} alt="" /></div>
         <Area className="gg-media-panel" flow-children="column">
-            <LibraryLogo appId={shot.appId} name={name ?? ''} />
+            {/* The name, never the logo (Michael, PS5 check: SIGNALIS's logo did not fit the card). */}
+            {name && <h2 className="gg-media-panel-name">{name}</h2>}
             <span className="gg-media-panel-line">{formatWhen(shot.created, p.now)}</span>
             <span className="gg-media-panel-line">{`Screenshot · ${shot.width} × ${shot.height}`}</span>
             {shot.uploaded && <span className="gg-media-uploaded">Uploaded</span>}
@@ -218,7 +219,7 @@ function focusKey(root: ParentNode | null | undefined, key: string): boolean {
 }
 
 /** Game Glance's Media, live from Steam's screenshots and recordings (spec §1–§5); Steam's page if they can't be read. */
-export function MediaPage({ bindings, native }: { bindings: MediaBindings; native: ReactNode }) {
+export function MediaPage({ bindings, native, openItem = null }: { bindings: MediaBindings; native: ReactNode; openItem?: string | null }) {
     const [items, setItems] = useState<MediaItem[] | null>(null);
     const [failed, setFailed] = useState(false);
     const [tab, setTab] = useState<MediaTab>(() => mediaMemory.get().tab);
@@ -227,6 +228,7 @@ export function MediaPage({ bindings, native }: { bindings: MediaBindings; nativ
     const [message, setMessage] = useState<string | null>(null);
     const [stripVisible, setStripVisible] = useState(true);
     const host = useRef<HTMLDivElement | null>(null);
+    const opened = useRef(false);
     const stripTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const messageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -236,7 +238,12 @@ export function MediaPage({ bindings, native }: { bindings: MediaBindings; nativ
         const load = () => bindings.list().then(r => {
             if (!live) return;
             if (!r) { setFailed(true); return; }
-            setItems(buildItems(r.shots, r.clips));
+            const built = buildItems(r.shots, r.clips);
+            setItems(built);
+            // Steam asked for one shot (a notification's View): open the viewer on it, once (Michael, 2026-11-19).
+            const opening = opened.current ? null : openingScreen(built, openItem);
+            opened.current = true;
+            if (opening) { setTab(opening.tab); setFocusId(opening.focusId); setScreen(opening.screen); }
         });
         void load();
         const stop = bindings.onNewShot(() => { void load(); });
@@ -371,6 +378,11 @@ export function MediaGate({ native, bindings = sharedMediaBindings(), route = me
     const last = useRef<'ours' | 'native' | undefined>(undefined);
     const choice = mediaGateChoice({ enabled, available: bindings.available(), path, native: memory.native }, last.current);
     last.current = choice;
+    // While Steam leaves Media the path names the next page: keep the shot asked for, so the page doesn't remount on the way out.
+    const asked = useRef<string | null>(null);
+    if (path === null || mediaKeepsNative(path)) asked.current = mediaItemFromPath(path);
+    const openItem = asked.current;
     if (choice === 'native') return native;
-    return <MediaBoundary fallback={native}><MediaPage bindings={bindings} native={native} /></MediaBoundary>;
+    // Keyed by the asked-for shot: a notification opening another shot while Media is shown opens it too.
+    return <MediaBoundary fallback={native}><MediaPage key={openItem ?? 'media'} bindings={bindings} native={native} openItem={openItem} /></MediaBoundary>;
 }

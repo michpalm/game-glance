@@ -79,3 +79,15 @@ export async function runUpload(item: MediaItem, privacy: 0 | 1 | 2, upload: Med
     if (item.kind !== 'shot') return false;
     try { return await upload(item, privacy); } catch { return false; }
 }
+
+/** The screenshot Steam's item path names (`/media/item/screenshot/<gameId>_<handle>`, as a notification opens it); null otherwise. */
+export function mediaItemFromPath(path: string | null): string | null {
+    const m = path?.match(/^\/media\/item\/screenshot\/([\w.-]{1,64})\/?$/);
+    return m ? m[1] : null;
+}
+
+/** Where the page opens when Steam asked for one shot: the viewer on it (All tab) when it is on this device; null: as usual. */
+export function openingScreen(items: MediaItem[], want: string | null): { screen: { kind: 'viewer'; id: string }; tab: MediaTab; focusId: string } | null {
+    if (!want || !items.some(i => i.kind === 'shot' && i.id === want)) return null;
+    return { screen: { kind: 'viewer', id: want }, tab: 'all', focusId: want };
+}

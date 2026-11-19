@@ -107,3 +107,11 @@ describe('formatWhen', () => {
         expect(formatWhen(local('2025-10-27T09:05:00'), now)).toBe('27 October 2025, 09:05');
     });
 });
+
+describe('shotPreviews (notifications)', () => {
+    it("maps a screenshot notification's id to its picture", async () => {
+        const { shotPreviews } = await import('../../src/media/mediaModel');
+        expect(shotPreviews([steamShot, gameShot], ['7_2', 'nope'])).toEqual({ '7_2': 'https://steamloopback.host/screenshots/7/screenshots/20261118003725_1.jpg' });
+        expect(shotPreviews([], ['7_2'])).toEqual({});
+    });
+});

@@ -95,10 +95,10 @@ describe('viewer', () => {
         expect(text(up)).toContain('Uploaded');
         expect(text(up)).not.toContain('Upload to Steam');
     });
-    it('the name once: the logo slot shows it when there is no logo', () => {
+    it('the game\'s name, never its logo (Michael, PS5 check: SIGNALIS\'s logo did not fit the card)', () => {
         const out = tree(viewer());
-        expect(out.find(e => e.type === LibraryLogo)!.props.name).toBe('Steam');
-        expect(out.some(e => e.props.className === 'gg-media-panel-name')).toBe(false);
+        expect(out.some(e => e.type === LibraryLogo)).toBe(false);
+        expect(out.find(e => e.props.className === 'gg-media-panel-name')!.props.children).toBe('Steam');
     });
     it("≡ is the viewer's Full screen shortcut; Steam's media is the gallery's only (Michael, PS5 check 4)", () => {
         const onFull = vi.fn(), onSteamMedia = vi.fn();

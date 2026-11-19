@@ -9,6 +9,8 @@ import type { NotificationActions } from '../steam/notificationActions';
 import type { createNotificationList } from '../steam/notifications';
 import type { NativeRequest } from '../steam/runtime';
 import { lookupSale } from '../steam/storeSale';
+import { shotPreviews } from '../../media/mediaModel';
+import { sharedMediaBindings } from '../../media/steamMedia';
 import { MenuAction } from './MenuAction';
 
 const art = (appId: number) => `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
@@ -18,10 +20,12 @@ interface ContentsProps {
     open(row: TrayRow): void; markAll(): void; seeAll(): void;
     friendName?(steamId: string): string | undefined;
     rootRef?: Ref<HTMLDivElement>;
+    /** Screenshot notifications' pictures, by the shot's Media id ("<gameId>_<handle>"). */
+    previews?: Record<string, string>;
 }
 
 /** Stateless presentation of this visit's rows: each opens what it is about; Mark all read clears every dot. */
-export function NotificationsContents({ rows, sales, unread, action, open, markAll, seeAll, friendName, rootRef }: ContentsProps) {
+export function NotificationsContents({ rows, sales, unread, action, open, markAll, seeAll, friendName, rootRef, previews }: ContentsProps) {
     const anyUnread = rows.some(unread);
     return <div className="gg-notifications" ref={rootRef}>
         <div className="gg-menu-heading"><h2>Notifications</h2>
@@ -30,7 +34,8 @@ export function NotificationsContents({ rows, sales, unread, action, open, markA
             {rows.map(row => {
                 const text = rowText(row, row.kind==='wishlist'&&row.appId ? sales[row.appId] : null, undefined, friendName), label = action(row).label;
                 return <MenuAction key={row.id} id={`notification:${row.id}`} className={`gg-notification${unread(row) ? ' gg-notification-unread' : ''}`} onAction={() => open(row)}>
-                    {row.appId ? <img className="gg-notification-art" src={art(row.appId)} alt="" /> : <span className="gg-notification-art">{row.kind === 'screenshot' ? <LuCamera aria-hidden="true" /> : <LuBell aria-hidden="true" />}</span>}
+                    {row.kind === 'screenshot' && row.mediaId && previews?.[row.mediaId] ? <img className="gg-notification-art gg-notification-shot" src={previews[row.mediaId]} alt="" />
+                        : row.appId ? <img className="gg-notification-art" src={art(row.appId)} alt="" /> : <span className="gg-notification-art">{row.kind === 'screenshot' ? <LuCamera aria-hidden="true" /> : <LuBell aria-hidden="true" />}</span>}
                     <span className="gg-notification-text"><small>{text.label}</small><strong>{text.title}</strong>{text.body!=null&&<span className="gg-notification-body">{text.body}</span>}</span>
                     {label && <span className="gg-notification-action">{label}</span>}
                 </MenuAction>;
@@ -84,5 +89,14 @@ export function NotificationsPanel({ list, reads, actions, handoff, close, openC
         }
         return () => { alive = false; };
     }, [all]);
-    return <NotificationsContents rows={rows} sales={sales} unread={visit.unread} action={visit.action} open={visit.open} markAll={() => visit.markAll(all)} seeAll={visit.seeAll} friendName={friendNameFrom(friends)} rootRef={root} />;
+    // A screenshot notification shows the shot itself (Michael, 2026-11-19): Steam's list is read once per visit, when one is there.
+    const [previews, setPreviews] = useState<Record<string, string>>({});
+    const shotIds = rows.flatMap(r => (r.kind === 'screenshot' && r.mediaId ? [r.mediaId] : [])).filter(id => !(id in previews));
+    useEffect(() => {
+        if (shotIds.length === 0) return undefined;
+        let alive = true;
+        void sharedMediaBindings().list().then(r => { if (alive && r) setPreviews(current => ({ ...current, ...shotPreviews(r.shots, shotIds) })); }).catch(() => undefined);
+        return () => { alive = false; };
+    }, [shotIds.join(',')]);
+    return <NotificationsContents rows={rows} sales={sales} unread={visit.unread} action={visit.action} open={visit.open} markAll={() => visit.markAll(all)} seeAll={visit.seeAll} friendName={friendNameFrom(friends)} rootRef={root} previews={previews} />;
 }

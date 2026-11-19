@@ -29,10 +29,7 @@ ${PLAIN}${FOCUS}{${focusRing('menu', u)};background:rgba(255,255,255,.92);color:
 .gg-media-view-shot{position:absolute;left:${u(96)};top:${u(150)};width:${u(1280)};height:${u(720)};border-radius:${u(14)};overflow:hidden;background:#000}
 .gg-media-view-shot img{width:100%;height:100%;object-fit:contain}
 .gg-media-panel{position:absolute;left:${u(1404)};top:${u(150)};width:${u(420)};height:${u(720)};box-sizing:border-box;padding:${u(30)};display:flex;flex-direction:column;gap:${u(14)};border-radius:${u(18)};border:${u(1.5)} solid ${IDLE_TILE.edge};background:var(--gg-glass);backdrop-filter:blur(var(--gg-glass-blur))}
-.gg-media .gg-library-logo-slot{height:${u(110)};display:flex;align-items:flex-end}
-.gg-media .gg-library-logo{display:block;max-width:100%;object-fit:contain;object-position:left bottom}
-.gg-media .gg-library-logo-dark{filter:drop-shadow(0 0 ${u(2)} rgba(255,255,255,.85)) drop-shadow(0 0 ${u(16)} rgba(255,255,255,.45))}
-.gg-media .gg-library-name{margin:0;font-size:${u(32)};font-weight:var(--gg-weight-heading);line-height:1.1}
+.gg-media-panel-name{margin:0;font-size:${u(32)};font-weight:var(--gg-weight-heading);line-height:1.15;overflow-wrap:anywhere}
 .gg-media-panel-line{font-size:${u(18)};color:var(--gg-text-dim)}
 .gg-media-uploaded{align-self:flex-start;padding:${u(4)} ${u(12)};border-radius:var(--gg-r-pill);background:rgba(95,209,174,.2);font-size:${u(16)}}
 .gg-media-actions{margin-top:auto;display:flex;flex-direction:column;gap:${u(10)}}
