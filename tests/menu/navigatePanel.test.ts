@@ -17,12 +17,12 @@ it('has no Steam menu button: the heading is the title alone', () => {
     expect(nodes.some(n => n.props.id === 'navigate:native')).toBe(false);
 });
 
-it('lists Media after Store, in Steam’s menu order, with Game Glance before Power, on a four-column grid', () => {
+it('Michael’s order (2026-11-19): Home, Library, Game Glance, Store, Media, Downloads, Settings, Power, on a four-column grid', () => {
     const handoff = vi.fn();
     const nodes = tree(NavigatePanel({ handoff, openGameGlance: vi.fn() }));
     expect(nodes.find(n => String(n.props.className).includes('gg-menu-grid'))?.props.className).toBe('gg-menu-grid gg-menu-grid-navigate');
     const ids = nodes.map(n => n.props.id).filter((id): id is string => typeof id === 'string');
-    expect(ids).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:game-glance', 'navigate:power']);
+    expect(ids).toEqual(['navigate:home', 'navigate:library', 'navigate:game-glance', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:power']);
     nodes.find(n => n.props.id === 'navigate:media')!.props.onAction();
     expect(handoff).toHaveBeenCalledWith({ kind: 'navigate', destination: 'media' });
 });
@@ -40,7 +40,7 @@ it('opens Game Glance’s settings inside the menu, not in Steam', () => {
 it('adds Storage only when Steam offers it, and Power is always the last tile (Michael, 2026-11-19)', () => {
     const handoff = vi.fn();
     const ids = (storage: boolean) => tree(NavigatePanel({ handoff, openGameGlance: vi.fn(), storage })).map(n => n.props.id).filter((id): id is string => typeof id === 'string');
-    expect(ids(true)).toEqual(['navigate:home', 'navigate:library', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:settings', 'navigate:game-glance', 'navigate:storage', 'navigate:power']);
+    expect(ids(true)).toEqual(['navigate:home', 'navigate:library', 'navigate:game-glance', 'navigate:store', 'navigate:media', 'navigate:downloads', 'navigate:storage', 'navigate:settings', 'navigate:power']);
     expect(ids(false)).not.toContain('navigate:storage');
     expect(ids(false).at(-1)).toBe('navigate:power');
     const nodes = tree(NavigatePanel({ handoff, openGameGlance: vi.fn(), storage: true }));

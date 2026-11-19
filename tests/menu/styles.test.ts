@@ -318,10 +318,10 @@ it('the Achievements headers share one row height and sit on the cards\' left ed
     expect(achievementsStyles).toMatch(/\.gg-ach-head h3\{[^}]*margin:0[;}]/);
     expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)\{[^}]*margin:0 -6px -6px/);
 });
-it('draws the Resume art’s focus ring above the art, with a selector that beats Steam’s DialogButton:enabled::before{content:none}', () => {
-    const ring = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(*,:enabled,:active)::before');
-    expect(ring).toContain('content:""');
-    expect(ring).toContain('z-index:2');
-    expect(ring).toContain('border:3px solid #fff');
-    expect(menuStyles).toContain('.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible)::before{opacity:1}');
+it('the Resume art has no focus ring: the play button and a brighter art show it (Michael, 2026-11-19: the square looked ugly)', () => {
+    expect(menuStyles).not.toContain('.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible)::before{opacity:1}');
+    expect(menuStyles).not.toMatch(/gg-ingame-hero\.DialogButton[^{]*::before\{[^}]*border:3px solid #fff/);
+    expect(rule('.gg-menu .gg-ingame-art')).toContain('filter:brightness(.82)');
+    expect(menuStyles).toMatch(/gg-ingame-hero\.DialogButton:is\(\.gpfocus,:focus-visible\) \.gg-ingame-art\{filter:brightness\(1\)\}/);
+    expect(menuStyles).toMatch(/gg-ingame-hero\.DialogButton:is\(\.gpfocus,:focus-visible\) \.gg-ingame-play\{background:#fff/);
 });

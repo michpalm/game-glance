@@ -74,10 +74,9 @@ html[data-gg-mouse] .gg-menu-native-host .gg-menu button.gg-menu-tab.DialogButto
 :where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible){outline:none;background:transparent;transform:none}
 .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:not(:disabled):active{transform:none}
 .gg-menu .gg-ingame-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--gg-glass-solid))}
-/* The ring is a layer over the art: the art and its gradient are positioned, and Chromium paints them over the button's own outline. */
-.gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(*,:enabled,:active)::before{content:"";position:absolute;inset:6px;z-index:2;border:3px solid #fff;border-radius:calc(var(--gg-r-panel) - 6px);opacity:0;pointer-events:none;transition:opacity var(--gg-fast)}
-:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible)::before{opacity:1}
-.gg-menu .gg-ingame-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+/* No ring on the Resume art (Michael, 2026-11-19: the square looked ugly): focus shows as the play button turning white and the art brightening. */
+:where(html:not([data-gg-mouse])) .gg-menu-native-host .gg-menu button.gg-menu-action.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible) .gg-ingame-art{filter:brightness(1)}
+.gg-menu .gg-ingame-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%;filter:brightness(.82);transition:filter var(--gg-base)}
 .gg-menu .gg-ingame-logo{position:relative;z-index:1;max-width:45%;max-height:90px;object-fit:contain;object-position:left bottom;filter:drop-shadow(var(--gg-text-shadow))}
 .gg-menu .gg-ingame-hero h2{position:relative;z-index:1;margin:0}
 .gg-menu .gg-ingame-logo-slot{position:relative;display:block;height:90px}
