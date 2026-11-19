@@ -14,6 +14,7 @@ const BTN_RESET = 'margin:0;padding:0;border:none;box-shadow:none;cursor:default
 export const mediaStyles = `
 .gg-media .gg-pk-backdrop{filter:var(--gg-art-fill);opacity:.45}
 .gg-media-tabs{position:absolute;left:${u(96)};top:${u(150)};width:${u(1728)};z-index:1}
+.gg-media-tabs .gg-pk-tabs-list{flex:0 1 auto;width:max-content;max-width:calc(100% - ${u(100)})}
 .gg-media-grid{position:absolute;left:${u(90)};right:${u(90)};top:${u(212)};bottom:0;overflow-y:auto;padding:6px 6px ${u(120)};scroll-padding-block:6px ${u(120)};scrollbar-width:none}
 .gg-media-day{margin:${u(18)} 0 ${u(12)}}
 .gg-media-row{display:flex;gap:${u(20)};margin-bottom:${u(20)}}
