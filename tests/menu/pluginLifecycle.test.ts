@@ -7,6 +7,7 @@ vi.mock('../../src/patches/homePage', () => ({ patchHomePage: () => h.homeStop }
 vi.mock('../../src/patches/downloadsPage', () => ({ patchDownloadsPage: () => vi.fn() }));
 vi.mock('../../src/patches/libraryPage', () => ({ patchLibraryPage: () => vi.fn() }));
 vi.mock('../../src/patches/mediaPage', () => ({ patchMediaPage: () => vi.fn() }));
+vi.mock('../../src/patches/settingsPage', () => ({ patchSettingsPage: () => vi.fn() }));
 vi.mock('../../src/data/settings', () => ({ settings: { load: async () => {} } }));
 vi.mock('../../src/data/steam', () => ({ getSteamLanguage: async () => {} }));
 vi.mock('../../src/data/autoPreload', () => ({ startAutoPreload: () => vi.fn() }));

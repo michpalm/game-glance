@@ -4,7 +4,7 @@ import os
 
 import decky
 
-from gameglance.bluetooth import read_controllers
+from gameglance.bluetooth import read_controllers, read_paired
 from gameglance.frost.service import FrostService
 from gameglance.heroic import HeroicLibrary, heroic_cache_dirs
 from gameglance.home_errors import FILE_NAME, append_log, start_entry
@@ -103,6 +103,14 @@ class Plugin:
             return await asyncio.to_thread(read_controllers, log=lambda reason: decky.logger.warning(f"[game-glance] controller batteries: {reason}"))
         except Exception:
             decky.logger.exception("[game-glance] get_controller_batteries failed")
+            return []
+
+    async def get_bluetooth_devices(self):
+        # [{"name", "connected", "kind", "percent"?}] for paired Bluetooth devices (Settings home); busctl off the event loop.
+        try:
+            return await asyncio.to_thread(read_paired, log=lambda reason: decky.logger.warning(f"[game-glance] bluetooth devices: {reason}"))
+        except Exception:
+            decky.logger.exception("[game-glance] get_bluetooth_devices failed")
             return []
 
     async def log_home_error(self, entry: str) -> None:

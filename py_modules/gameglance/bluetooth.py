@@ -6,6 +6,7 @@ leave this module: no addresses or object paths.
 """
 
 import json
+import re
 import os
 import subprocess
 
@@ -50,19 +51,58 @@ def subprocess_env(environ):
     return env
 
 
-def read_controllers(run=subprocess.run, environ=None, log=None):
-    """
-    The connected controllers' batteries; [] when BlueZ or busctl is missing, slow or answers something unexpected.
-    `log` hears why in one line (an exit code or an error type, never busctl's output: it holds device addresses).
-    """
+def _read(parse, run, environ, log):
+    """BlueZ's managed objects through `parse`; [] when BlueZ or busctl is missing, slow or answers something unexpected.
+    `log` hears why in one line (an exit code or an error type, never busctl's output: it holds device addresses)."""
     try:
         result = run(COMMAND, capture_output=True, text=True, timeout=TIMEOUT_S, env=subprocess_env(os.environ if environ is None else environ))
         if result.returncode != 0:
             if log:
                 log(f"busctl exited with {result.returncode}")
             return []
-        return parse_controllers(json.loads(result.stdout)["data"][0])
+        return parse(json.loads(result.stdout)["data"][0])
     except Exception as error:
         if log:
             log(f"reading BlueZ failed: {type(error).__name__}")
         return []
+
+
+def read_controllers(run=subprocess.run, environ=None, log=None):
+    """The connected controllers' batteries (see _read)."""
+    return _read(parse_controllers, run, environ, log)
+
+
+_ADDRESS = re.compile(r"^([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}$")
+
+
+def _kind(icon):
+    if isinstance(icon, str) and icon.startswith("input-gaming"):
+        return "gamepad"
+    if isinstance(icon, str) and icon.startswith("audio-"):
+        return "audio"
+    return "other"
+
+
+def parse_paired(managed):
+    """[{"name", "connected", "kind", "percent"?}] for every paired device, connected first, then by name. Pure; no addresses."""
+    devices = []
+    for interfaces in (managed or {}).values():
+        if not isinstance(interfaces, dict):
+            continue
+        device = interfaces.get("org.bluez.Device1")
+        if not device or _value(device, "Paired") is not True:
+            continue
+        # BlueZ's Alias falls back to the address for a nameless device: never let an address out (final review).
+        name = next((n for n in (_value(device, "Alias"), _value(device, "Name")) if isinstance(n, str) and n and not _ADDRESS.match(n)), "Device")
+        entry = {"name": name, "connected": _value(device, "Connected") is True, "kind": _kind(_value(device, "Icon"))}
+        battery = interfaces.get("org.bluez.Battery1")
+        percent = _value(battery, "Percentage") if battery is not None else None
+        if isinstance(percent, (int, float)) and not isinstance(percent, bool):
+            entry["percent"] = max(0, min(100, int(round(percent))))
+        devices.append(entry)
+    return sorted(devices, key=lambda d: (not d["connected"], d["name"].lower()))
+
+
+def read_paired(run=subprocess.run, environ=None, log=None):
+    """The paired Bluetooth devices for the Settings home (see _read)."""
+    return _read(parse_paired, run, environ, log)

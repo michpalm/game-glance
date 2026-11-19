@@ -15,6 +15,7 @@ import { patchHomePage } from './patches/homePage';
 import { patchDownloadsPage } from './patches/downloadsPage';
 import { patchLibraryPage } from './patches/libraryPage';
 import { patchMediaPage } from './patches/mediaPage';
+import { patchSettingsPage } from './patches/settingsPage';
 import { ScreensaverHost } from './screensaver/ScreensaverView';
 import { ChromeHost } from './chrome/ChromeHost';
 import { ContextMenusHost, CONTEXT_MENUS_COMPONENT } from './contextMenus/ContextMenusHost';
@@ -35,6 +36,7 @@ export default definePlugin(() => {
     const unpatchDownloads = patchDownloadsPage(); // Game Glance's Downloads in place of Steam's (falls back to Steam's)
     const unpatchLibrary = patchLibraryPage(); // Game Glance's Library in place of Steam's tabbed Library (falls back to Steam's)
     const unpatchMedia = patchMediaPage(); // Game Glance's Media in place of Steam's Media page (falls back to Steam's)
+    const unpatchSettings = patchSettingsPage(); // Game Glance's Settings home on Steam's bare /settings (falls back to Steam's)
     const cancelRemount = remountHomeAfterReload(noteLoad()); // an update: Home on screen is redrawn by this copy
     routerHook.addGlobalComponent(SCREENSAVER_COMPONENT, ScreensaverHost); // draws only while Steam's screensaver is on
     routerHook.addGlobalComponent(CHROME_COMPONENT, ChromeHost); // the status bar, Search and footer, for every page
@@ -60,6 +62,7 @@ export default definePlugin(() => {
                 ['Downloads unpatch', unpatchDownloads],
                 ['Library unpatch', unpatchLibrary],
                 ['Media unpatch', unpatchMedia],
+                ['Settings unpatch', unpatchSettings],
                 ['Home reopen cancel', cancelRemount],
                 ['screensaver remove', () => routerHook.removeGlobalComponent(SCREENSAVER_COMPONENT)],
                 ['chrome remove', () => routerHook.removeGlobalComponent(CHROME_COMPONENT)],

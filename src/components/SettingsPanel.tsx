@@ -22,7 +22,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, libraryPage, mediaPage, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver, recommendedRow } = useSettings();
+    const { enabled, autoPreload, libraryPage, mediaPage, settingsPage, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver, recommendedRow } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -189,6 +189,10 @@ export function SettingsPanel() {
                 <PanelSectionRow>
                     <ToggleField label="Media page" description="Game Glance's Media in place of Steam's. Steam's stays one button away (≡)."
                         checked={mediaPage} onChange={(value) => settings.setMediaPage(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Settings page" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
+                        checked={settingsPage} onChange={(value) => settings.setSettingsPage(value)} />
                 </PanelSectionRow>
             </PanelSection>
             <PanelSection title="Home">

@@ -181,6 +181,8 @@ export function GeneralPage({ v, a }: PageProps) {
                 checked={s.libraryPage} onChange={value => a.run(a.store.setLibraryPage(value))} />
             <ToggleRow id="gg:general:mediaPage" label="Media page" description="Game Glance's Media in place of Steam's. Steam's stays one button away (≡)."
                 checked={s.mediaPage} onChange={value => a.run(a.store.setMediaPage(value))} />
+            <ToggleRow id="gg:general:settingsPage" label="Settings page" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
+                checked={s.settingsPage} onChange={value => a.run(a.store.setSettingsPage(value))} />
             <h3>Look on Home and the game page</h3>
             <ToggleRow id="gg:general:gameLogo" label="Game logo" description="The game's logo instead of its name. A game without one keeps its name."
                 checked={s.gameLogo} onChange={value => a.run(a.store.setGameLogo(value))} />
