@@ -28,6 +28,7 @@ export interface Settings {
     homeExpandedControls: boolean; // opt-in Home footer styling and focus-only status items
     chromeEveryPage: boolean; // opt-in: the status bar and footer on every Steam page, not only Home
     libraryPage: boolean; // Game Glance's Library in place of Steam's tabbed Library (spec 2026-11-19-library-page-design)
+    mediaPage: boolean; // Game Glance's Media in place of Steam's Media page (spec 2026-11-19-media-page-design)
     statusAvatar: boolean; // Kept for older builds.
     profileStyle?: ProfileStyle;
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
@@ -51,7 +52,7 @@ export interface Settings {
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: true, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: true, mediaPage: true, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -81,6 +82,7 @@ export function createSettingsStore(kv: KvBackend) {
                 homeExpandedControls: pick('homeExpandedControls'),
                 chromeEveryPage: pick('chromeEveryPage'),
                 libraryPage: pick('libraryPage'),
+                mediaPage: pick('mediaPage'),
                 statusAvatar: pick('statusAvatar'),
                 profileStyle: raw.profileStyle && PROFILE_STYLES.includes(raw.profileStyle)
                     ? raw.profileStyle : pick('statusAvatar') ? 'square' : 'dot',
@@ -201,6 +203,11 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, libraryPage };
             emit();
             await persist({ libraryPage });
+        },
+        async setMediaPage(mediaPage: boolean): Promise<void> {
+            current = { ...current, mediaPage };
+            emit();
+            await persist({ mediaPage });
         },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };

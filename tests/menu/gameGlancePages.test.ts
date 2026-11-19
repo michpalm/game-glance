@@ -160,7 +160,7 @@ describe('General', () => {
     });
     it('lists Game Glance, the look, data and updates', () => {
         const page = GeneralPage({ v: values(), a: actions() });
-        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:libraryPage', 'gg:general:gameLogo', 'gg:general:titleSize', 'gg:general:accentMode', 'gg:general:accentColor', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
+        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:libraryPage', 'gg:general:mediaPage', 'gg:general:gameLogo', 'gg:general:titleSize', 'gg:general:accentMode', 'gg:general:accentColor', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
     });
     it('offers the update when one is available', () => {
         const a = actions();
