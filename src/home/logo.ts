@@ -22,6 +22,8 @@ export interface LogoChoice {
     src?: string;
     trim: LogoTrim | null;
     natural: { width: number; height: number };
+    /** How bright its visible pixels are, 0 (black) to 1 (white); absent when not measured. The Library lifts dark ones. */
+    luma?: number;
 }
 
 /** The visible part is found on a copy at most this wide: a quarter of Steam's 640 px files, 16 times fewer pixels to read. */
@@ -42,13 +44,14 @@ export type PixelReader = (url: string, size: { width: number; height: number })
  * (`readable`; when not, the file is drawn whole). Only the copy at measureSize is read: a 6790 x 3213 SteamGridDB logo
  * decoded whole on the main thread froze Home for about 300 ms (#31). Never rejects.
  */
-export async function measureLogo(url: string, natural: { width: number; height: number }, read: PixelReader): Promise<{ readable: boolean; trim: LogoTrim | null }> {
+export async function measureLogo(url: string, natural: { width: number; height: number }, read: PixelReader): Promise<{ readable: boolean; trim: LogoTrim | null; luma?: number }> {
     const size = measureSize(natural);
     if (!size) return { readable: false, trim: null };
     try {
         const pixels = await read(url, { width: size.width, height: size.height });
         if (!pixels) return { readable: false, trim: null };
-        return { readable: true, trim: scaleTrim(alphaBounds(pixels, size.width, size.height), size.scale, natural) };
+        const luma = logoLuma(pixels, size.width, size.height);
+        return { readable: true, trim: scaleTrim(alphaBounds(pixels, size.width, size.height), size.scale, natural), ...(luma === null ? {} : { luma }) };
     } catch {
         return { readable: false, trim: null };
     }
@@ -78,6 +81,25 @@ export const LOGO_AREA = 56_000;
 
 /** Below this alpha (of 255) a pixel counts as transparent: soft shadows and stray pixels do not stretch the box. */
 const ALPHA_MIN = 16;
+
+/**
+ * How bright a logo is: the mean relative luminance (0-1) of its pixels that show, weighted by their alpha; null when
+ * none shows. Read on the same small copy as the crop (Library, PS5 check 2026-11-19: dark logos vanished on dark art).
+ */
+export function logoLuma(data: ArrayLike<number>, width: number, height: number): number | null {
+    const n = width * height;
+    if (!(n > 0) || data.length < n * 4) return null;
+    let sum = 0;
+    let weight = 0;
+    for (let i = 0; i < n; i++) {
+        const a = data[i * 4 + 3];
+        if (a <= ALPHA_MIN) continue;
+        const l = (0.2126 * data[i * 4] + 0.7152 * data[i * 4 + 1] + 0.0722 * data[i * 4 + 2]) / 255;
+        sum += l * a;
+        weight += a;
+    }
+    return weight > 0 ? sum / weight : null;
+}
 
 /** The box around the pixels that show (alpha above ALPHA_MIN) in RGBA `data`; null for an empty image or bad sizes. */
 export function alphaBounds(data: ArrayLike<number>, width: number, height: number): LogoTrim | null {

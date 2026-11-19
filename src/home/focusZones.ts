@@ -167,5 +167,8 @@ export const PREFERRED_CHILD = 4;
 /** NavEntryPositionPreferences.FIRST in @decky/ui: focus entering a row lands on its first child. */
 export const NAV_FIRST = 0;
 
+/** NavEntryPositionPreferences.MAINTAIN_X in @decky/ui: focus entering a row lands at the same x it left from (a grid's columns). */
+export const NAV_MAINTAIN_X = 2;
+
 /** NavEntryPositionPreferences.MAINTAIN_Y in @decky/ui: focus entering a column lands at the same height it left from. */
 export const NAV_MAINTAIN_Y = 3;

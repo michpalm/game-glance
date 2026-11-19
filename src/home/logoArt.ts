@@ -109,7 +109,7 @@ async function lookOnce(url: string): Promise<LogoChoice | null> {
     if (!img || !(img.naturalWidth > 0)) return null;
     const seen = await measureLogo(url, { width: img.naturalWidth, height: img.naturalHeight }, pixelReader(img));
     if (isBlankLogo(seen.readable, seen.trim)) return null;
-    const file: LogoChoice = { url, trim: seen.trim, natural: { width: img.naturalWidth, height: img.naturalHeight } };
+    const file: LogoChoice = { url, trim: seen.trim, natural: { width: img.naturalWidth, height: img.naturalHeight }, ...(seen.luma === undefined ? {} : { luma: seen.luma }) };
     // A logo far bigger than it is drawn (custom art: 3841x5405) is drawn from a smaller copy (home/artShrink).
     const copy = logoCopy(file, displayInfo().perCanvas);
     const src = copy ? await makeCopy(url, copy.natural, 'image/png') : null;
