@@ -28,7 +28,8 @@ import { accentVersion, sampleAccent } from './accentSample';
 import { DownloadState } from './downloadProgress';
 import { useDownload } from './useDownload';
 import { Chip, gameChips, libraryChips, readLibraryCounts, readStorageBytes } from './chips';
-import { FriendCard, friendsKey, LAST_GAMES_KEY, LastGames, mapFriends, observeLastGames, onlineCount, parseLastGames, RawFriend, readFriends } from './friends';
+import { FriendCard, friendsKey, LAST_GAMES_KEY, LastGames, mapFriends, observeLastGames, observeSessions, onlineCount, parseLastGames, RawFriend, readFriends, Sessions } from './friends';
+import { achievementLine, createFriendActivity, steamActivity } from './friendActivity';
 import { mapWhatsNew, NewsCard, readWhatsNew } from './news';
 import { loadRecentlyUpdated, UpdatedCard } from './recentlyUpdated';
 import { readSteamTrending } from './steamTrending';
@@ -111,6 +112,8 @@ export interface HomeData {
     friends: FriendCard[];
     /** Friends online now, over all friends (the cards stop at 10). */
     friendsOnline: number;
+    /** Each shown friend's achievement line, by steamid (FeedData.friendActivity). */
+    friendActivity: Record<string, string>;
     /** Games friends are playing or played recently (Friends tab, second row); [] when none. */
     trending: TrendingCard[];
     recommended: RecommendedCard[];
@@ -623,6 +626,23 @@ function useLiveFriends(enabled: boolean): RawFriend[] {
     return enabled ? state.list : NO_FRIENDS;
 }
 
+/** Friends' play sessions Home saw (memory only, for as long as Steam runs): the card's time in game and session length. */
+let sessionsMemo: Sessions = {};
+/** Steam's game Activity store, wrapped once (null where Steam has none). */
+let activityMemo: ReturnType<typeof createFriendActivity> | null | undefined;
+const friendActivitySource = () => (activityMemo === undefined ? (activityMemo = (() => { const s = steamActivity(); return s ? createFriendActivity(s, Date.now) : null; })()) : activityMemo);
+/** The friend cards' clock: times ("45 min", "12 min ago") and achievements Steam loads later are re-read this often. */
+const FRIEND_CARD_TICK_MS = 30_000;
+function useTick(enabled: boolean, ms: number): number {
+    const [tick, setTick] = useState(0);
+    useEffect(() => {
+        if (!enabled) return undefined;
+        const timer = setInterval(() => { if (!pageHidden()) setTick((t) => t + 1); }, ms);
+        return () => clearInterval(timer);
+    }, [enabled, ms]);
+    return tick;
+}
+
 /** The friend last-played cache for the session (loaded once, then kept in step with what Home observes). */
 let lastGamesMemo: LastGames | null = null;
 
@@ -803,7 +823,24 @@ export function useHomeData(focusIndex = 0): HomeData {
     const updated = useRecentlyUpdated(feedTabs.news);
     const rawFriends = useLiveFriends(feedTabs.friends);
     const lastGames = useFriendLastGames(rawFriends, feedTabs.friends);
-    const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
+    const friendTick = useTick(feedTabs.friends, FRIEND_CARD_TICK_MS);
+    const sessions = useMemo(() => (sessionsMemo = guarded('friend sessions', () => observeSessions(sessionsMemo, rawFriends, Date.now()), sessionsMemo)), [rawFriends]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames, sessions, Date.now()), []), [rawFriends, lastGames, sessions, friendTick]);
+    // The achievement line: the friend's unlocks in the card's game, from Steam's own game Activity store (asked for at most every 5 min per game).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const friendActivity = useMemo(() => guarded('friend activity', () => {
+        const activity = friendActivitySource();
+        if (!activity) return {};
+        const gameOf = (c: FriendCard) => c.appId ?? c.lastAppId ?? 0;
+        activity.want([...new Set(friends.map(gameOf).filter((id) => id > 0))]);
+        const out: Record<string, string> = {}, now = Date.now();
+        for (const c of friends) {
+            const line = achievementLine(activity.get(gameOf(c), c.accountId), now);
+            if (line) out[c.steamId] = line;
+        }
+        return out;
+    }, {} as Record<string, string>), [friends, friendTick]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
@@ -819,5 +856,5 @@ export function useHomeData(focusIndex = 0): HomeData {
 
     // Read on each render (detailsVersion re-renders when Steam loads the details): a shortcut has none.
     const spaceRequired = focused && !info?.isShortcut ? guarded('space required', () => spaceRequiredOf(focused.appId, steam.appDetailsStore?.GetAppDetails?.(focused.appId)), undefined) : undefined;
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals, calendar };
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, friendActivity, trending, recommended, deals, calendar };
 }

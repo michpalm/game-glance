@@ -10,7 +10,7 @@ import { PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 import { ART_FILL_FILTER, EXPANDED_INSET, EXPANDED_MASK } from './heroFit';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from './mouseMode';
 import { FRIEND_COLOURS } from './friends';
-import { FEED_ROW2_HEADER } from './feedLayout';
+import { FEED_ROW2_HEADER, FRIEND_BAND_H } from './feedLayout';
 import { PERSONA_DOT, PERSONA_DOT_COLOURS, PersonaDot, STATUS_BAR, STATUS_FADE_MS } from './statusItems';
 import { HOME_CIRCLE } from './circles';
 import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, FEED_ART_FADE_MS, FEED_SCROLL, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SETTLE_WIDEN_MS, SHEET, SHEET_MS, SLIDE, SLIDE_EASE } from './motion';
@@ -591,6 +591,29 @@ export function homeCss(cardScale: number = CARD_SCALE_HANDHELD): string {
         rule('.gh-card-ring-online', `--gh-ring: ${FRIEND_COLOURS.online}`),
         rule('.gh-card-ring-away', `--gh-ring: ${FRIEND_COLOURS.away}`),
         rule('.gh-card-offline .gh-avatar', 'box-shadow: none; opacity: .55; filter: grayscale(.4)'),
+        // Friend cards, game first (design A3, 2026-11-19). Band (online, away, offline): the game's header art across the top,
+        // whole (FRIEND_BAND_H: its 460 x 215 shape at the card's width), fading out at its foot; the avatar on its edge; the name and lines under it, the achievement at the bottom.
+        rule('.gh-card-friend-band .gh-card-art', `bottom: auto; height: ${FRIEND_BAND_H}px; background-size: cover; background-position: center; -webkit-mask-image: linear-gradient(180deg, #000 75%, transparent); mask-image: linear-gradient(180deg, #000 75%, transparent)`),
+        rule('.gh-card-friend-band .gh-card-shade', `background: linear-gradient(180deg, rgba(${SCRIM},0) 0, rgba(${SCRIM},.25) ${FRIEND_BAND_H - 30}px, rgba(${SCRIM},.9) ${FRIEND_BAND_H}px)`),
+        rule('.gh-card-friend-band .gh-avatar', `top: ${FRIEND_BAND_H - 36}px; width: 48px; height: 48px`),
+        rule('.gh-fc-text', 'top: auto; gap: 2px; align-items: stretch; min-width: 0'),
+        rule('.gh-fc-text > *', 'flex-shrink: 0'),
+        rule('.gh-card-friend-band .gh-fc-text', `top: ${FRIEND_BAND_H + 14}px; bottom: 12px`),
+        // Wide (in game): the hero art over the whole double card, darkened from the left for the text; avatar top left, pill top right.
+        rule('.gh-card-friend-wide .gh-card-art', 'background-position: center 35%'),
+        rule('.gh-card-friend-wide .gh-card-shade', `background: linear-gradient(90deg, rgba(${SCRIM},.92) 0, rgba(${SCRIM},.6) 45%, rgba(${SCRIM},0) 75%), linear-gradient(180deg, rgba(${SCRIM},0) 55%, rgba(${SCRIM},.85) 100%)`),
+        rule('.gh-card-friend-wide .gh-avatar', 'width: 56px; height: 56px'),
+        rule('.gh-card-friend-wide .gh-fc-text', 'top: 84px; bottom: 14px; right: 35%'),
+        rule('.gh-fc-pill', 'position: absolute; top: 14px; right: 14px'),
+        rule('.gh-fc-text .gh-card-title', 'font-size: 17px; -webkit-line-clamp: 1; margin-bottom: 2px'),
+        rule('.gh-fc-line', 'display: block; font-size: 12.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255,255,255,.86)'),
+        rule('.gh-fc-status-online', `color: ${FRIEND_COLOURS.online}; font-weight: 700`),
+        rule('.gh-fc-status-away', `color: ${FRIEND_COLOURS.away}; font-weight: 700`),
+        rule('.gh-fc-status-offline', 'color: rgba(255,255,255,.6); font-weight: 700'),
+        rule('.gh-fc-meta', 'color: rgba(255,255,255,.6)'),
+        rule('.gh-fc-achievement', 'margin-top: auto; color: #e8d6a0'),
+        rule('.gh-fc-achievement svg', 'margin-right: 6px; vertical-align: -1px; color: #f0c454'),
+        rule('.gh-fc-grey .gh-card-art', 'filter: grayscale(1) brightness(.6)'),
         // Friend card placeholder (no game art): the friend's avatar as a backdrop, scaled to cover, blurred once (a single
         // filter on one element per card; feed scroll measured unchanged on the Ally with 7 such cards), darkened and
         // desaturated; a faint presence tint over it; without an avatar a soft gradient from the card's accent.

@@ -1,5 +1,6 @@
 import { ConfirmModal, Focusable, showModal } from '@decky/ui';
 import { CSSProperties, useRef, useState } from 'react';
+import { FaTrophy } from 'react-icons/fa';
 import { CardMotion } from './CardMotion';
 import { microtrailersOff } from './calendar';
 import { LOG_PREFIX } from '../constants';
@@ -94,6 +95,8 @@ export function FeedCard({ item, left, top, accent, preferred, onFocused, setRef
     if (item.fit) classes.push('gh-card-fitted');
     if (item.avatar?.inGame) classes.push('gh-card-ingame');
     if (item.avatar) classes.push(item.avatar.ring ? `gh-card-ring-${item.avatar.ring}` : 'gh-card-offline');
+    if (item.friendCard) classes.push(`gh-card-friend-${item.friendCard.layout}`);
+    if (item.friendCard?.grey) classes.push('gh-fc-grey');
     if (hover) classes.push('gh-card-hover');
     return (
         <Focusable
@@ -146,6 +149,21 @@ export function FeedCard({ item, left, top, accent, preferred, onFocused, setRef
                     {(item.moreFriends ?? 0) > 0 && <div className="gh-card-friend gh-card-friend-more">+{item.moreFriends}</div>}
                 </div>
             )}
+            {item.friendCard ? (
+                // A friend card (design A3): the pill in the top right, the name and its lines (each one line, empty ones never made).
+                <>
+                    {item.pill && <span className="gh-pill gh-fc-pill">{item.pill}</span>}
+                    <div className="gh-card-text gh-fc-text">
+                        <div className="gh-card-title">{item.title}</div>
+                        {item.friendCard.lines.map((line, i) => (
+                            <div key={i} className={`gh-fc-line gh-fc-${line.tone}`}>
+                                {line.tone === 'achievement' && <FaTrophy aria-hidden="true" />}
+                                {line.text}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
             <div className="gh-card-text">
                 {item.pill && <span className="gh-pill">{item.pill}</span>}
                 <div className="gh-card-title">{item.title}</div>
@@ -157,6 +175,7 @@ export function FeedCard({ item, left, top, accent, preferred, onFocused, setRef
                     item.sub && <div className="gh-card-sub">{item.sub}</div>
                 )}
             </div>
+            )}
         </Focusable>
     );
 }

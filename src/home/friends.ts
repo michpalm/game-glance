@@ -34,6 +34,12 @@ export interface RawFriend {
     serverIp?: number;
     /** The friend's rich presence "connect" string (persona.connect_string), '' when none. */
     connect?: string;
+    /** The game's own status line (persona.GetCurrentGameRichPresence(), as Steam's friends list), '' when none. */
+    statusLine?: string;
+    /** When Steam saw the friend stop playing (friend.m_dtLastSeenPlaying), Unix seconds; 0 unknown (only since Steam started). */
+    lastPlayedAt?: number;
+    /** friend.m_unAccountID: the key of Steam's game activity (achievements by user). */
+    accountId?: number;
 }
 
 export interface FriendCard {
@@ -52,6 +58,51 @@ export interface FriendCard {
     gameInLibrary: boolean;
     /** Steam's Join Game url for this friend (join.joinUrl), null when not joinable. */
     joinUrl: string | null;
+    /** The status line: Steam's own text ("Online", "Away", "Last online 3 days ago"); in game, "Playing {game}". */
+    status: string;
+    /** In game: the game's status line. Not playing: "Last played {game}" (" · {when}" when known). '' when unknown. */
+    detail: string;
+    /** In game: time since Game Glance saw them start ("45 min"). Not playing: the last session's length ("1 h 20 min session"). '' when unknown. */
+    meta: string;
+    /** When they last played, Unix seconds; 0 unknown. */
+    lastAt: number;
+    /** friend.m_unAccountID (0 unknown): looks up their achievements in Steam's game activity. */
+    accountId: number;
+}
+
+/** A play session Game Glance saw (ms). `since` 0: the friend was already playing when first seen (start unknown). */
+export interface Session { appId: number; since: number; until?: number }
+/** The last session per friend steamid; appId 0 = seen, not playing, no session yet. Memory only (lives as long as Steam). */
+export type Sessions = Record<string, Session>;
+
+/** Sessions after a friends read at `now` (ms): starts on 0 → game or a switch, ends on game → 0. */
+export function observeSessions(prev: Sessions, friends: RawFriend[], now: number): Sessions {
+    let next: Sessions | null = null;
+    const set = (id: string, s: Session) => { (next ??= { ...prev })[id] = s; };
+    for (const f of friends) {
+        const s = prev[f.steamId], game = f.gameAppId > 0 ? f.gameAppId : 0;
+        if (game) {
+            if (!s) set(f.steamId, { appId: game, since: 0 });
+            else if (s.appId !== game || s.until !== undefined) set(f.steamId, { appId: game, since: now });
+        } else if (!s) set(f.steamId, { appId: 0, since: now });
+        else if (s.appId > 0 && s.until === undefined) set(f.steamId, { ...s, until: now });
+    }
+    return next ?? prev;
+}
+
+/** "45 min", "1 h 5 min", "3 h". */
+function duration(ms: number): string {
+    const min = Math.max(1, Math.round(ms / 60_000)), h = Math.floor(min / 60), m = min % 60;
+    return h === 0 ? `${m} min` : m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+/** "just now", "12 min ago", "2 h ago", then Steam's own day phrases. */
+export function ago(seconds: number, nowMs: number): string {
+    const s = Math.max(0, nowMs / 1000 - seconds);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+    const days = Math.floor(s / 86400);
+    return days === 1 ? tr('dayAgo') : tr('daysAgo', [days]);
 }
 
 const ORDER = { ingame: 0, online: 1, away: 2, offline: 3 } as const;
@@ -165,7 +216,7 @@ export function observeLastGames(prev: LastGames, friends: RawFriend[], appName:
  * offline: "Last played {game}" (with that game's card art) from Steam's own last seen game or the cache when its name
  * is known, else Steam's status text ("Away", "Last online ...").
  */
-export function mapFriends(friends: RawFriend[], appName: (appId: number) => string, limit = 10, last: LastGames = {}): FriendCard[] {
+export function mapFriends(friends: RawFriend[], appName: (appId: number) => string, limit = 10, last: LastGames = {}, sessions: Sessions = {}, now = Date.now()): FriendCard[] {
     const cards = friends.map((f): FriendCard => {
         const inGame = f.gameAppId > 0;
         const game = inGame ? appName(f.gameAppId) || f.gameName || '' : '';
@@ -174,6 +225,12 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
         const lastName = lastId > 0 ? appName(lastId) || (cached?.appId === lastId ? cached.name : '') : '';
         const state = inGame ? 'ingame' : !isOnlineState(f.personaState) ? 'offline' : isAwayState(f.personaState) ? 'away' : 'online';
         const status = f.onlineStatus || (state === 'online' ? tr('online') : state === 'away' ? tr('away') : '');
+        const session = sessions[f.steamId];
+        const ended = !inGame && session && session.appId > 0 && session.appId === lastId && session.until !== undefined ? session : null;
+        const lastAt = inGame ? 0 : Number(f.lastPlayedAt) > 0 ? Math.round(Number(f.lastPlayedAt)) : ended ? Math.round(ended.until! / 1000) : 0;
+        const running = inGame && session?.appId === f.gameAppId && session.since > 0 && session.until === undefined ? session : null;
+        const detail = inGame ? f.statusLine ?? '' : lastName ? (lastAt ? `${tr('lastPlayedGame', [lastName])} · ${ago(lastAt, now)}` : tr('lastPlayedGame', [lastName])) : '';
+        const meta = running ? duration(now - running.since) : ended && ended.since > 0 ? `${duration(ended.until! - ended.since)} session` : '';
         return {
             steamId: f.steamId,
             name: f.name,
@@ -185,6 +242,11 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
             game,
             gameInLibrary: inGame && appName(f.gameAppId) !== '',
             joinUrl: inGame ? joinUrl(f) : null,
+            status: inGame ? (game ? tr('playingGame', [game]) : tr('inGame')) : status,
+            detail,
+            meta,
+            lastAt,
+            accountId: Number(f.accountId) || 0,
         };
     });
     // Offline: seen online most recently first, unknown times last. Array.prototype.sort is stable, so Steam's own order
@@ -197,7 +259,7 @@ export function mapFriends(friends: RawFriend[], appName: (appId: number) => str
 /** What the cards and the badge show for a list, as one string: Home re-renders only when it changes. */
 export function friendsKey(friends: RawFriend[]): string {
     return friends.map((f) => [f.steamId, f.name, f.avatarUrl ?? '', f.personaState, f.gameAppId, f.gameName ?? '', f.lastPlayedAppId ?? 0, f.lastOnline ?? 0, f.onlineStatus,
-        f.stateFlags ?? 0, f.lobbyId ?? '', f.serverIp ?? 0, f.connect ?? ''].join('\u0001')).join('\u0002');
+        f.stateFlags ?? 0, f.lobbyId ?? '', f.serverIp ?? 0, f.connect ?? '', f.statusLine ?? '', f.lastPlayedAt ?? 0].join('\u0001')).join('\u0002');
 }
 
 /** Steam falls back to Friends app-info when presence omits the title. A vanished lookup must not discard the friend list. */
@@ -225,6 +287,20 @@ export function readFriends(): RawFriend[] {
             gameName: currentGameName(f.persona),
             lastPlayedAppId: Number(f.m_nAppIDLastSeenPlaying) || 0,
             lastOnline: Number(f.persona?.m_rtLastSeenOnline) || 0,
+            accountId: Number(f.m_unAccountID) || 0,
+            statusLine: (() => {
+                try {
+                    if (!(Number(f.persona?.m_unGamePlayedAppID) > 0)) return '';
+                    const line = f.persona?.GetCurrentGameRichPresence?.();
+                    return typeof line === 'string' ? line : '';
+                } catch {
+                    return '';
+                }
+            })(),
+            lastPlayedAt: (() => {
+                const at = f.m_dtLastSeenPlaying instanceof Date ? f.m_dtLastSeenPlaying.getTime() : NaN;
+                return Number.isFinite(at) && at > 0 ? Math.round(at / 1000) : 0;
+            })(),
             stateFlags: Number(f.persona?.m_unPersonaStateFlags) || 0,
             lobbyId: f.persona?.m_game_lobby_id == null ? '' : String(f.persona.m_game_lobby_id),
             serverIp: Number(f.persona?.m_unGameServerIP) || 0,

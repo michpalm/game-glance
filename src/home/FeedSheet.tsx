@@ -6,7 +6,7 @@ import { LOG_PREFIX } from '../constants';
 import { browserStores, capsuleUrls, heroUrls, landscapeUrls, storeHeaderUrl } from './artwork';
 import { FeedCard } from './FeedCards';
 import { DayColumn } from './DayColumn';
-import { claimsPreferredFocus, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle, selectedIndex, keptSelection } from './feedLayout';
+import { claimsPreferredFocus, sheetData, FEED_GAP, FEED_ROW2_HEADER, FeedData, FeedItem, FeedTab, feedItems, feedRows, feedScroll, hasSecondRow, rowPosition, secondRowTitle, selectedIndex, keptSelection } from './feedLayout';
 import { downToStart, NAV_FIRST, onBack, PREFERRED_CHILD as PREFERRED, tabForButton } from './focusZones';
 import { focusElement, holdsFocus } from './homeNav';
 import { HomeMemory, noteHome, RESTORE_WAIT_MS, restoreStep } from './homeMemory';
@@ -113,8 +113,8 @@ export function FeedSheet({ data, tabs, raised, viewport, space, onZone, onBackT
     // 'tab': the selected tab was turned off while focus was in the sheet; focus the tab that took its place.
     const focusAfterSwitch = useRef<'card' | 'tab' | null>(null);
 
-    const { news, updated, friends, trending, recommended, deals, calendar } = data;
-    const items = useMemo(() => feedItems(tabId, { news, updated, friends, trending, recommended, deals, calendar }, art, space), [tabId, news, updated, friends, trending, recommended, deals, calendar, space]);
+    const { news, updated, friends, trending, recommended, deals, calendar, friendActivity } = data;
+    const items = useMemo(() => feedItems(tabId, sheetData(data), art, space), [tabId, news, updated, friends, trending, recommended, deals, calendar, friendActivity, space]);
     const geometry = feedRows(tabId, space, hasSecondRow(tabId, { news, updated, friends, trending, recommended, deals }));
     const rows: [FeedItem[], FeedItem[]] = [items.filter((i) => i.row === 0), items.filter((i) => i.row === 1)];
     /** A card's place in `items` (row 1 first, then row 2), which also indexes cardRefs. */

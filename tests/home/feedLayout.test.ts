@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    calendarColumn, claimsPreferredFocus, keptSelection, rowStart, selectedIndex, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
+    calendarColumn, claimsPreferredFocus, FRIEND_WIDE_W, keptSelection, rowStart, selectedIndex, FEED_GAP, FEED_ROW1_H, FEED_ROW1_MIN_H, FEED_ROW2_HEADER, FEED_ROW2_MIN_H, FEED_ROW_GAP, FEED_TOP_RAISED, FEED_VIEWPORT_INSET, feedCardWidth, feedCardWidthAt, feedItems, feedRows, feedScroll, feedSpace, hasSecondRow, rowPosition, secondRowTitle, wideCardWidth,
 } from '../../src/home/feedLayout';
 
 // Handoff: featured news 600, news 320, friend 230, recommended 187; gap 14; viewport 1440 - 2 x 44 = 1352.
@@ -77,7 +77,7 @@ describe('feedCardWidth', () => {
 });
 
 describe('feedItems', () => {
-    const art = (appId: number) => ({ hero: [`hero-${appId}`], capsule: [`cap-${appId}`] });
+    const art = (appId: number) => ({ hero: [`hero-${appId}`], capsule: [`cap-${appId}`], wide: [`wide-${appId}`] });
     const data = {
         news: [
             { gid: '1', appId: 10, title: 'Big update', pill: 'Major update', pillKey: 'major' as const, sub: 'GAME 10 - TODAY', featured: true, imageUrl: 'https://event/1.png' },
@@ -103,11 +103,11 @@ describe('feedItems', () => {
         expect(items[1].opens).toEqual({ kind: 'news', appId: 11, gid: '2' });
     });
 
-    it('maps friends: 230 wide, art and pill only in game, avatar ring in game', () => {
+    it('maps friends: in game a double card (474) with the hero art, others 230; pill only in game, avatar ring in game', () => {
         const [inGame, offline] = feedItems('friends', data, art);
-        expect([inGame.width, offline.width]).toEqual([230, 230]);
+        expect([inGame.width, offline.width]).toEqual([474, 230]);
         // In a game that cannot be joined: A opens that game's page (owned).
-        expect(inGame).toMatchObject({ pill: 'In game', title: 'friend one', sub: 'Playing Game 20', art: ['cap-20'], accentAppId: 20, opens: { kind: 'page', appId: 20 } });
+        expect(inGame).toMatchObject({ pill: 'In game', title: 'friend one', sub: 'Playing Game 20', art: ['hero-20'], accentAppId: 20, opens: { kind: 'page', appId: 20 } });
         expect(offline.opens).toBeNull();
         expect(inGame.avatar).toEqual({ url: 'https://avatar/1.jpg', initial: 'f', inGame: true, ring: 'online' });
         expect(offline).toMatchObject({ pill: '', art: [], accentAppId: null, sub: 'Last online 2 days ago' });
@@ -156,15 +156,62 @@ describe('feedItems', () => {
     it('a friend with a last played library game shows its art, without pill or accent ring', () => {
         const friends = [{ steamId: 'f3', name: 'Friend Three', avatarUrl: null, state: 'online' as const, appId: null, lastAppId: 25, sub: 'Last played Game 25' }];
         const [card] = feedItems('friends', { ...data, friends }, art);
-        expect(card).toMatchObject({ pill: '', art: ['cap-25'], accentAppId: null, sub: 'Last played Game 25', opens: null });
+        expect(card).toMatchObject({ pill: '', art: ['wide-25'], accentAppId: null, sub: 'Last played Game 25', opens: null });
         expect(card.avatar).toEqual({ url: null, initial: 'F', inGame: false, ring: 'online' });
     });
 
     it('an away friend: blue ring, and the last played game\'s art and line', () => {
         const friends = [{ steamId: 'f4', name: 'Friend Four', avatarUrl: null, state: 'away' as const, appId: null, lastAppId: 26, sub: 'Last played Game 26' }];
         const [card] = feedItems('friends', { ...data, friends }, art);
-        expect(card).toMatchObject({ art: ['cap-26'], sub: 'Last played Game 26', pill: '' });
+        expect(card).toMatchObject({ art: ['wide-26'], sub: 'Last played Game 26', pill: '' });
         expect(card.avatar?.ring).toBe('away');
+    });
+
+    describe('friend cards (game first, A3)', () => {
+        const f = (steamId: string, state: 'ingame' | 'online' | 'away' | 'offline', extra: Record<string, unknown> = {}) => ({
+            steamId, name: steamId, avatarUrl: `https://avatar/${steamId}.jpg`, state, appId: state === 'ingame' ? 20 : null, lastAppId: state === 'ingame' ? null : 25,
+            sub: '', game: 'Game 20', gameInLibrary: true, joinUrl: null, status: `status-${steamId}`, detail: '', meta: '', lastAt: 0, accountId: 1, ...extra,
+        });
+        const items = (friends: unknown[], extra: Record<string, unknown> = {}) => feedItems('friends', { ...data, friends, ...extra } as never, art);
+        it('a friend in game is one wide card (FRIEND_WIDE_W = 2 x 230 + gap) with the game\'s hero art', () => {
+            expect(FRIEND_WIDE_W).toBe(474);
+            const [card] = items([f('a', 'ingame')]);
+            expect(card).toMatchObject({ width: 474, art: ['hero-20'], friendCard: { layout: 'wide', grey: false } });
+        });
+        it('others are band cards (230) with the last game\'s wide art; offline ones are grey', () => {
+            const [on, away, off] = items([f('b', 'online'), f('c', 'away'), f('d', 'offline')]);
+            expect([on, away, off].map(c => [c.width, c.art[0], c.friendCard?.layout, c.friendCard?.grey])).toEqual([
+                [230, 'wide-25', 'band', false], [230, 'wide-25', 'band', false], [230, 'wide-25', 'band', true],
+            ]);
+        });
+        it('lines: the status coloured by state, then detail, meta and achievement; empty ones left out; at most 4', () => {
+            const tones = (c: ReturnType<typeof items>[number]) => c.friendCard!.lines.map(l => l.tone);
+            const [full] = items([f('a', 'ingame', { detail: 'Hole 7', meta: '45 min' })], { friendActivity: { a: 'Hole in One · 12 min ago' } });
+            expect(full.friendCard!.lines).toEqual([
+                { text: 'status-a', tone: 'status-online' }, { text: 'Hole 7', tone: 'detail' }, { text: '45 min', tone: 'meta' }, { text: 'Hole in One · 12 min ago', tone: 'achievement' },
+            ]);
+            expect(tones(items([f('c', 'away')])[0])).toEqual(['status-away']);
+            expect(tones(items([f('d', 'offline', { meta: '1 h session' })])[0])).toEqual(['status-offline', 'meta']);
+        });
+        it('a band card keeps all four lines under the name (the 108 band leaves room for them)', () => {
+            const tones = (c: ReturnType<typeof items>[number]) => c.friendCard!.lines.map(l => l.tone);
+            const [band] = items([f('d', 'offline', { detail: 'Last played Game 25', meta: '1 h session' })], { friendActivity: { d: 'Par · 2 h ago' } });
+            expect(tones(band)).toEqual(['status-offline', 'detail', 'meta', 'achievement']);
+            const [wide] = items([f('a', 'ingame', { detail: 'Hole 7', meta: '45 min' })], { friendActivity: { a: 'Par · 2 h ago' } });
+            expect(tones(wide)).toEqual(['status-online', 'detail', 'meta', 'achievement']);
+        });
+        it('the card keeps its key when the friend goes in game, so focus stays on them (Review Focus 1)', () => {
+            expect(items([f('a', 'online')])[0].key).toBe(items([f('a', 'ingame')])[0].key);
+        });
+        it('no avatar and no known game: no art, the soft placeholder backdrop (Review Focus 4)', () => {
+            const [card] = items([f('e', 'offline', { avatarUrl: null, lastAppId: null })]);
+            expect(card.art).toEqual([]);
+            expect(card.backdrop).toEqual({ url: null, tone: null });
+        });
+        it('four friends in game: four wide cards, still the friends given (Review Focus 5)', () => {
+            const list = [1, 2, 3, 4].map(i => f(`g${i}`, 'ingame')).concat([5, 6].map(i => f(`o${i}`, 'offline')));
+            expect(items(list).filter(c => c.row === 0).map(c => c.width)).toEqual([474, 474, 474, 474, 230, 230]);
+        });
     });
 
     it('is empty for a tab with no cards', () => {
@@ -423,3 +470,12 @@ describe('keptSelection: a row\'s selection follows its card by key when the row
     it('nothing chosen stays nothing chosen', () => expect(keptSelection(null, row('b'))).toBe(-1));
 });
 
+
+import { sheetData } from '../../src/home/feedLayout';
+
+describe('sheetData (what the sheet hands to feedItems)', () => {
+    it('keeps every field the cards read, the friends\' achievement lines included (PS5: samiafro\'s line was dropped)', () => {
+        const data = { news: [], updated: [], friends: [], trending: [], recommended: [], deals: [], calendar: [], friendActivity: { a: 'Hole in One · 12 min ago' }, friendsOnline: 3 };
+        expect(sheetData(data as never)).toEqual({ news: [], updated: [], friends: [], trending: [], recommended: [], deals: [], calendar: [], friendActivity: { a: 'Hole in One · 12 min ago' } });
+    });
+});
