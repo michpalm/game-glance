@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { collectionEyebrow, homeCollections, pickCollectionGames, ROW_SORTS, rowSortLabel, rowSortOf } from '../../src/home/collections';
+import { afterEach, describe, expect, it } from 'vitest';
+import { collectionEyebrow, homeCollections, INSTALLED_ROW, installedRowApps, pickCollectionGames, ROW_SORTS, rowSortLabel, rowSortOf, steamHomeCollections, withInstalledRow } from '../../src/home/collections';
 import type { RawApp } from '../../src/home/recents';
+import { readRowGames } from '../../src/home/useHomeData';
 
 const GAME = 1;
 const SHORTCUT = 1073741824;
@@ -66,6 +67,45 @@ describe('pickCollectionGames', () => {
         expect(pickCollectionGames(apps.slice(0, 2), () => {
             throw new Error('x');
         }, 'name').map((g) => g.appId)).toEqual([2, 1]);
+    });
+});
+
+describe('All installed games', () => {
+    const localGames = [app(1, 'Steam installed', { rt_last_time_played: 10 }), app(2, 'Steam uninstalled', { rt_last_time_played: 50 })];
+    const library = [...localGames, app(3, 'Shortcut', { app_type: SHORTCUT, rt_last_time_played: 30 } as never)];
+    const globals = globalThis as Record<string, unknown>;
+    afterEach(() => {
+        delete globals.collectionStore;
+        delete globals.appStore;
+    });
+
+    it('keeps Steam’s Locally Installed Games collection unchanged and adds a distinct shortcut-aware choice after it', () => {
+        const steamCollections = [coll('local-install', 'Installed', [localGames[0]]), coll('uc-backlog', 'Backlog', [localGames[1]])];
+        expect(homeCollections(steamCollections)).toEqual([
+            { id: 'local-install', name: 'Locally Installed Games', count: 1 },
+            { id: 'uc-backlog', name: 'Backlog', count: 1 },
+        ]);
+        expect(withInstalledRow(homeCollections(steamCollections), 2)).toEqual([
+            { id: 'local-install', name: 'Locally Installed Games', count: 1 },
+            { id: INSTALLED_ROW, name: 'All installed games', count: 2 },
+            { id: 'uc-backlog', name: 'Backlog', count: 1 },
+        ]);
+    });
+
+    it('uses Steam’s installed apps plus non-Steam shortcuts for the new choice, without adding uninstalled Steam games', () => {
+        expect(installedRowApps([localGames[0]], library).map(a => a.appid)).toEqual([1, 3]);
+    });
+
+    it('renders Steam’s collection as before and the new choice with the shortcut', () => {
+        globals.collectionStore = {
+            localGamesCollection: { allApps: [localGames[0]] },
+            userCollections: [coll('local-install', 'Installed', [localGames[0]])],
+            BIsHidden: () => false,
+        };
+        globals.appStore = { allApps: library };
+        expect(steamHomeCollections().map(c => c.id)).toEqual(['local-install', INSTALLED_ROW]);
+        expect(readRowGames('local-install', 'lastPlayed').games.map(g => g.appId)).toEqual([1]);
+        expect(readRowGames(INSTALLED_ROW, 'lastPlayed').games.map(g => g.appId)).toEqual([3, 1]);
     });
 });
 

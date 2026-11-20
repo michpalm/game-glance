@@ -1,3 +1,4 @@
+import { SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { PhraseKey, tr } from '../i18n/steamText';
 import { addedTime, isRowApp, RawApp, RECENTS_LIMIT, RecentGame } from './recents';
 
@@ -10,6 +11,12 @@ import { addedTime, isRowApp, RawApp, RECENTS_LIMIT, RecentGame } from './recent
 
 /** What the Games row shows: Steam's recent games (the default) or a collection's id. */
 export const RECENT_ROW = 'recent';
+/**
+ * A Game Glance-only Home-row source. Steam's `local-install` collection stays untouched; this adds non-Steam
+ * shortcuts beside its installed Steam apps.
+ */
+export const INSTALLED_ROW = 'gg-installed';
+export const INSTALLED_ROW_NAME = 'All installed games';
 
 export const ROW_SORTS = ['lastPlayed', 'name', 'added'] as const;
 export type RowSort = (typeof ROW_SORTS)[number];
@@ -56,6 +63,27 @@ export function homeCollections(collections: unknown): HomeCollection[] {
     }
     const rank = (c: HomeCollection) => (FIRST.includes(c.id) ? FIRST.indexOf(c.id) : FIRST.length);
     return list.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+}
+
+/** Steam's locally installed apps plus every non-Steam shortcut in the library, with duplicate app ids removed. */
+export function installedRowApps<T extends RawApp>(localGames: unknown, library: unknown): T[] {
+    const seen = new Set<number>();
+    const apps: T[] = [];
+    const add = (app: T | null | undefined) => {
+        if (!app || typeof app !== 'object' || !Number.isInteger(app.appid) || seen.has(app.appid)) return;
+        seen.add(app.appid);
+        apps.push(app);
+    };
+    if (Array.isArray(localGames)) (localGames as T[]).forEach(add);
+    if (Array.isArray(library)) (library as T[]).forEach(app => { if (app?.app_type === SHORTCUT_APP_TYPE) add(app); });
+    return apps;
+}
+
+/** Inserts Game Glance's separate all-installed choice after Steam's own built-in collections. */
+export function withInstalledRow(list: HomeCollection[], count: number): HomeCollection[] {
+    if (count <= 0) return list;
+    const at = list.filter(collection => FIRST.includes(collection.id)).length;
+    return [...list.slice(0, at), { id: INSTALLED_ROW, name: INSTALLED_ROW_NAME, count }, ...list.slice(at)];
 }
 
 const sortName = (a: RawApp & { sort_as?: unknown }) => (typeof a.sort_as === 'string' && a.sort_as ? a.sort_as : a.display_name ?? '').toLowerCase();
@@ -105,11 +133,12 @@ export function sortByLabel(): string {
     return tr('sortBy').replace(/\s*[:：]\s*$/, '');
 }
 
-/** Steam's collections as the Games row picker offers them, read live (empty when Steam's store is not there). */
+/** Steam's collections plus Game Glance's separate all-installed choice, read live (empty when Steam's store is not there). */
 export function steamHomeCollections(): HomeCollection[] {
     try {
-        const store = (globalThis as unknown as { collectionStore?: { userCollections?: unknown } }).collectionStore;
-        return homeCollections(store?.userCollections);
+        const steam = globalThis as unknown as { collectionStore?: { userCollections?: unknown; localGamesCollection?: { allApps?: unknown } }; appStore?: { allApps?: unknown } };
+        const installed = installedRowApps(steam.collectionStore?.localGamesCollection?.allApps, steam.appStore?.allApps).filter(isRowApp).length;
+        return withInstalledRow(homeCollections(steam.collectionStore?.userCollections), installed);
     } catch {
         return [];
     }

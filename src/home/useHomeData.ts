@@ -39,7 +39,7 @@ import { DealCard, dealCards } from './recommended';
 import { calendarDays, calendarGames, calendarStart, dayLabel, fetchCalendarJson, getCalendar } from './calendar';
 import type { CalendarColumn } from './feedLayout';
 import { fillMissing } from './homeView';
-import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
+import { homeCollections, INSTALLED_ROW, INSTALLED_ROW_NAME, installedRowApps, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
@@ -244,7 +244,16 @@ function withLaunchInfo(picked: RecentGame[], apps: AnyApp[]): HomeGame[] {
  * or has no games left falls back to the recent games, so Home is never empty because of the setting.
  */
 export function readRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null } {
-    if (row !== RECENT_ROW) {
+    if (row === INSTALLED_ROW) {
+        const chosen = guarded('all installed games', () => {
+            const store = steam.collectionStore;
+            const apps = installedRowApps<AnyApp>(store?.localGamesCollection?.allApps, steam.appStore?.allApps);
+            const isHidden = (appId: number) => store?.BIsHidden?.(appId) === true;
+            const games = withLaunchInfo(pickCollectionGames(apps, isHidden, sort), apps);
+            return games.length > 0 ? { games, collection: INSTALLED_ROW_NAME } : null;
+        }, null);
+        if (chosen) return chosen;
+    } else if (row !== RECENT_ROW) {
         const chosen = guarded('collection', () => {
             const store = steam.collectionStore;
             const found = store?.userCollections?.find((c) => c?.id === row);

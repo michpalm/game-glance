@@ -53,8 +53,9 @@ An optional new Home screen, off by default (Quick Access → Game Glance → Sp
   it, chips for play time, achievements and HowLongToBeat's main story, a Play button and the game's buttons. The
   accent colour follows each game's art. The chips are filled in ahead of time for every game in the row, so they are
   there the moment you land on a game.
-- **The games row.** Your recent games (up to 20, as many as Steam's own Home), or one of your collections (see the
-  Games row setting below). Games new to your library join the recent games, marked NEW, and demos show as on Steam's
+- **The games row.** Your recent games (up to 20, as many as Steam's own Home), All installed games (Steam-installed
+  games and non-Steam shortcuts together), or one of your collections (see the Games row setting below). Steam's
+  original Locally Installed Games collection remains separate. Games new to your library join the recent games, marked NEW, and demos show as on Steam's
   Home. As on Steam's Home, the last played game is the wide card and the selection moves to the middle of the screen,
   the games before it faded on the left (or, with Games row style Spotlight, the selected game opens into a wide card at
   the left). Games not installed on this device are grey until selected. The row ends in a Library card.
@@ -121,7 +122,7 @@ Quick Access (…) → Game Glance:
 | Status bar | On | The clock, battery, connection and online status at the top right. |
 | Game logo | Off | The game's logo in place of its name, on Home and the game page. A game without a logo keeps its name. Each logo is cropped to its artwork and sized so that wide and compact logos look about equally big. |
 | Title size | Large | How big the game's logo or name is drawn on Home and the game page: Small (70%), Medium (85%) or Large (full size). The eyebrow, stats and buttons stay in place. |
-| Games row | Recent Games | What Home's row shows: your recent games, or one of your Steam collections (Favorites, Locally Installed Games and your own). With a collection, **Sort By** offers Last Played, Alphabetical or Date Added to Library, and the line under the title starts with the collection's name. |
+| Games row | Recent Games | What Home's row shows: your recent games, All installed games (Steam-installed games and non-Steam shortcuts together, up to 20), or one of your Steam collections (Favorites, Locally Installed Games and your own). Locally Installed Games remains Steam’s original collection. With All installed games or a collection, **Sort By** offers Last Played, Alphabetical or Date Added to Library, and the line under the title starts with its name. |
 | Games row style | Steam | How the row moves. Steam: the last played game is the wide card and the selection moves to the middle of the screen, as on Steam's Home. Spotlight: the selected game widens and the row slides it to the left edge (Game Glance's row before 3.3.0). |
 | What's new, Friends, Recommended | On | Home's feed tabs. A tab that is off is not shown and loads nothing; all three off removes the feed (Down does nothing). |
 | Show wishlist deals | Off | Wishlist games on sale in the Recommended tab (see [Privacy](../README.md#privacy)). Shown while Recommended is on; with Recommended off nothing is sent. |
