@@ -18,7 +18,7 @@ export interface RouteBindings {
 }
 // Steam's in-game overlay routes (sp.js AppOverlay: `/app/${appid}/overlay/...`).
 const GAME_PAGES: Record<string,(appId:number)=>string> = {
-    achievements:id=>`/app/${id}/overlay/achievements`, recordings:id=>`/app/${id}/overlay/gamerecording`,
+    achievements:id=>`/app/${id}/overlay/achievements`,
     guides:id=>`/app/${id}/overlay/guides`, controller:id=>`/app/${id}/overlay/controller`, 'game-page':id=>`/library/app/${id}`,
     // Steam's own list from the library (no game running): where its game page and carousel go.
     'achievements-list':id=>`/library/app/${id}/achievements/my/individual`,
@@ -27,7 +27,7 @@ const GAME_PAGES: Record<string,(appId:number)=>string> = {
 const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;
 // Notification links (Steam's account link table, invite urls): Steam pages or steam:// urls only.
 const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
-export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit', 'resume'] as const;
+export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'recordings', 'exit', 'resume'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
 /** Power opens Steam's power menu without handing the slot back to Steam's menu; backing out runs the request's onCancel. */
 export function opensOverMenu(request:NativeRequest):boolean {
@@ -109,6 +109,10 @@ export function createRoutes(bindings:RouteBindings) {
             if(!Number.isInteger(request.appId)||request.appId<=0||!/^\d{1,20}$/.test(request.gameId))throw Error('This game is unavailable');
             if(request.actionId==='exit'){bindings.exitGame(request.gameId);return;}
             if(request.actionId==='resume'){if(!bindings.resumeGame)throw Error('Steam cannot resume this game');bindings.resumeGame();bindings.finishNavigation();return;}
+            if(request.actionId==='recordings'){
+                bindings.navigate(`/media/grid?game=${encodeURIComponent(request.gameId)}`);
+                bindings.finishNavigation();return;
+            }
             const page=GAME_PAGES[request.actionId];
             if(!page)throw Error('This game destination is unavailable');
             bindings.navigate(page(request.appId));bindings.finishNavigation();return;

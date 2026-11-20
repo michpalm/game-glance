@@ -1,3 +1,4 @@
+import { openSteamKeyboard } from '../steam/keyboard';
 import { menuScale, menuWindowSize } from '../menuScale';
 import { Focusable, type GamepadEvent } from '@decky/ui';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
@@ -10,7 +11,7 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, pageTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
+import { findMenuFocus, focusPrefersBar, handleMenuButton, steamKeyboardShortcut, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, pageTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
@@ -38,6 +39,7 @@ import { pluginStyles } from '../pluginStyles';
 import { soundtrackStyles } from '../soundtrackStyles';
 import { achievementsStyles } from '../achievementsStyles';
 import { SoundtrackSection } from './SoundtrackSection';
+import { installScreensaverWakeGuard, useScreensaverActive } from '../../screensaver/steamScreensaver';
 import type { SoundtrackService } from '../steam/soundtrack';
 import type { SocialService } from '../steam/social';
 import type { PersonaService } from '../steam/persona';
@@ -82,6 +84,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     // The bell keeps a notification until it is read; Steam's unviewed count only when the tray cannot be read.
     const badgeCount = notifications ? countUnread(trayRows, remembered) : unviewed;
     const active = state.phase === 'custom-open';
+    const screensaverActive = useScreensaverActive();
     const appId = state.game?.appId;
     const homeAccent = useSyncExternalStore(shownAccent.subscribe, shownAccent.get);
     const { accentMode, accentColor } = useSettings();
@@ -90,6 +93,17 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         const document = root.current?.ownerDocument;
         return active && document ? installMouseMode(document) : undefined;
     }, [active]);
+    useLayoutEffect(() => {
+        const document = root.current?.ownerDocument;
+        return active && screensaverActive && document ? installScreensaverWakeGuard([document]) : undefined;
+    }, [active, screensaverActive]);
+    useEffect(() => {
+        if (active && screensaverActive) close();
+    }, [active, screensaverActive, close]);
+    useLayoutEffect(() => {
+        const document = root.current?.ownerDocument;
+        return active && screensaverActive && document ? installScreensaverWakeGuard([document]) : undefined;
+    }, [active, screensaverActive]);
     useEffect(() => {
         if (!active || !appId) return;
         let alive = true;
@@ -148,6 +162,8 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (inputActive() && radialOwnsButton(event.detail, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         if (event.detail.button === 2 && !cancel) return;
+        // X: Steam's keyboard, as Steam + X (which some controllers have no chord for); Steam closes this menu as it opens.
+        if (!cancel && steamKeyboardShortcut(event.detail, keyboard, inputActive()) && openSteamKeyboard()) { event.preventDefault(); event.stopPropagation(); return; }
         if (keyboardTakesCancel(event.detail, cancel, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         if (pageTakesCancel(event.detail, cancel, pageBack.current)) { event.preventDefault(); event.stopPropagation(); return; }
         const next: MenuEvent[] = [];
@@ -191,7 +207,7 @@ export function MenuShell({ persona, state, preferences, dispatch, handoff, clos
         const tab = NATIVE_TABS[state.section];
         content = <div className="gg-menu-heading"><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}><LuArrowUpRight aria-hidden="true" />Open in Steam</MenuAction></div>;
     }
-    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent), '--gg-on-accent': onAccentFor(accentChoice) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
+    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent), '--gg-on-accent': onAccentFor(accentChoice) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onSecondaryActionDescription="Keyboard" onFocusCapture={event => {
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>

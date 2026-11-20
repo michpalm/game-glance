@@ -298,6 +298,28 @@ Frontend problems need Steam's debugger, which this setup reaches through SSH:
 
 Afterwards turn both off again: `sudo systemctl disable --now sshd` and Remote CEF Debugging off.
 
+## Test devices
+
+### PlayStation 5 (Bazzite)
+
+A PS5 running Bazzite in Game Mode, always on a TV, so it covers the docked layout (rows marked TV/docked).
+Added 2026-11-17.
+
+- **Disk:** Bazzite is installed on an external Samsung T7 SSD over USB, not the PS5's internal storage.
+  The kernel forces a 1080p mode (`amdgpu.force_1080p=1`). The image is the community PS5 build
+  `ghcr.io/vivalavent/ps5-bazzite-bootc:beta`, not stock Bazzite.
+- **Decky:** Decky Loader with Game Glance, Unifideck, Decky-Framegen and decky-lsfg-vk. Remote CEF Debugging is on;
+  reach it with the tunnel above.
+- **SSH:** off by default on Bazzite; turn it on with `ujust toggle-ssh`. Shutting down over SSH needs `sudo`.
+- **Network:** it can show up at two addresses (a wired one and Wi-Fi with a random MAC); SSH answers only on the
+  Wi-Fi one. Wi-Fi comes up only after the Game Mode session starts, so a crashed session also means no SSH.
+- **Known issue:** the T7's cable links at USB 2.0 (480 Mb/s) even in the front USB-C port, and a USB dropout on
+  2026-11-17 corrupted the filesystem (Steam's runtime). Symptom: Steam and Gamescope restart in a loop and the
+  screen is black with a `_` cursor. Check `journalctl -k -b | grep -c "EXT4-fs error"` and `lsusb -t` (the drive
+  should show `5000M` or `10000M`). Repair from a Mac with Homebrew's `e2fsprogs`: `e2fsck -fy -D /dev/diskNs4`
+  (use `disk`, not `rdisk`: the superblock write fails on `rdisk`), then boot; Steam rebuilds its runtime itself.
+  Before blaming Game Glance for crashes on this device, rule this out first.
+
 ## 3.5.0 development checks
 
 These checks apply to the development branch, not the published 3.4.1 release.

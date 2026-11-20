@@ -50,7 +50,7 @@ export function InGameContents({ game, stats, sets = null, hero, logo, exitArmed
                         <i style={{ width: `${bar.size > 0 ? Math.round(bar.unlocked / bar.size * 100) : 0}%` }} /></span>)}
                 </span></>
                 : stats.achievements && <><small>{`${stats.achievements.unlocked} of ${stats.achievements.total}`}</small><span className="gg-ingame-bar"><i className="gg-ingame-progress" style={{ width: `${progress}%` }} /></span></>}</span></MenuAction>
-            <MenuAction id="in-game:recordings" onAction={open('recordings')}><LuCamera aria-hidden="true" /><span className="gg-ingame-label"><strong>Screenshots</strong><small>Recordings and screenshots</small></span></MenuAction>
+            <MenuAction id="in-game:recordings" onAction={open('recordings')}><LuCamera aria-hidden="true" /><span className="gg-ingame-label"><strong>Screenshots</strong><small>Screenshots and recordings</small></span></MenuAction>
             <MenuAction id="in-game:guides" onAction={open('guides')}><LuBookOpen aria-hidden="true" /><span className="gg-ingame-label"><strong>Guides</strong><small>Community guides</small></span></MenuAction>
             <MenuAction id="in-game:controller" onAction={open('controller')}><LuGamepad2 aria-hidden="true" /><span className="gg-ingame-label"><strong>Controller</strong><small>Layout for this game</small></span></MenuAction>
             <MenuAction id="in-game:game-page" onAction={open('game-page')}><LuArrowUpRight aria-hidden="true" /><span className="gg-ingame-label"><strong>Open in Steam</strong><small>Game page</small></span></MenuAction>

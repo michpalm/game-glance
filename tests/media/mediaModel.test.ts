@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    buildItems, dayGroups, dayLabel, focusAfterDelete, formatDuration, formatWhen, mediaTabs, shotUrl, stepItem, tabItems,
+    buildItems, dayGroups, dayLabel, focusAfterDelete, formatDuration, formatWhen, gameCollections, itemsForGame, mediaTabs, shotUrl, stepItem, tabItems,
     type RawClip, type RawShot,
 } from '../../src/media/mediaModel';
 
@@ -53,6 +53,26 @@ describe('tabs', () => {
         expect(tabItems(items, 'shots').every(i => i.kind === 'shot')).toBe(true);
         expect(tabItems(items, 'clips').map(i => i.id)).toEqual(['clip_abc', 'clip_def']);
         expect(tabItems(items, 'all')).toHaveLength(4);
+    });
+});
+
+describe('game collections', () => {
+    it('groups shots and clips by exact GameID, counts captures, uses screenshot art and sorts newest first', () => {
+        const matchedShot = { ...gameShot, strGameID: '1145360', nAppID: 1145360 };
+        const items = buildItems([steamShot, matchedShot], [clipNew]);
+        const games = gameCollections(items, item => item.appId === 7 ? 'Steam' : item.appId === 1145360 ? 'Hades' : null);
+        expect(games.map(g => [g.gameId, g.name, g.screenshots, g.recordings, g.newest])).toEqual([
+            ['7', 'Steam', 1, 0, 1794958645], ['1145360', 'Hades', 1, 1, 1794958000],
+        ]);
+        expect(games[1].artUrl).toBe('https://steamloopback.host/screenshots/9055727/screenshots/1.jpg');
+        expect(itemsForGame(items, '1145360').map(item => item.kind)).toEqual(['clip', 'shot']);
+        expect(itemsForGame(items, '01145360')).toEqual([]);
+    });
+    it('keeps unknown and very large Steam IDs as separate named collections', () => {
+        const games = gameCollections(buildItems([gameShot], [clipOld]), () => null);
+        expect(games.map(g => [g.gameId, g.name])).toEqual([
+            ['9055727', 'Unknown game'], ['18446744073709551615', 'Unknown game'],
+        ]);
     });
 });
 

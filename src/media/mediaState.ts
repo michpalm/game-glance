@@ -17,9 +17,16 @@ export function mediaGateChoice({ enabled, available, path, native }: MediaGateI
     return 'ours';
 }
 
-/** What Media remembers for the session: the tab, the highlighted item, and "Steam's media" chosen for this visit. */
-export interface MediaMemory { tab: MediaTab; focusId: string | null; native: boolean }
-const fresh = (): MediaMemory => ({ tab: 'all', focusId: null, native: false });
+/** What Media remembers for the session: the selected gallery view, tab and item focus, Games card focus, and Steam fallback. */
+export interface MediaMemory { tab: MediaTab; focusId: string | null; native: boolean; view: 'all' | 'games'; gameFocusId: string | null }
+const fresh = (): MediaMemory => ({ tab: 'all', focusId: null, native: false, view: 'all', gameFocusId: null });
+
+/** A scoped gallery tab switch must not replace the remembered root Media view. */
+export function mediaViewAfterTab(view: 'all' | 'games', scoped: boolean, next: MediaTab | 'games'): 'all' | 'games' {
+    if (next === 'games') return 'games';
+    return scoped ? view : 'all';
+}
+
 let current = fresh();
 const listeners = new Set<() => void>();
 const emit = () => { for (const fn of [...listeners]) fn(); };
@@ -29,6 +36,8 @@ export const mediaMemory = {
     set(patch: Partial<MediaMemory>): void { current = { ...current, ...patch }; emit(); },
     subscribe(fn: () => void): () => void { listeners.add(fn); return () => { listeners.delete(fn); }; },
     reset(): void { current = fresh(); emit(); },
+    /** Opens a collection with All selected and records the card to restore on Back. */
+    openGame(gameId: string): void { current = { ...current, tab: 'all', focusId: null, view: 'games', gameFocusId: gameId }; emit(); },
     /** Stores without telling subscribers: the page notes its tab and highlight on every move, and the gate needn't redraw. */
     // In place, so the gate's useSyncExternalStore snapshot keeps its identity and doesn't redraw either.
     remember(patch: Partial<MediaMemory>): void { Object.assign(current, patch); },
@@ -82,8 +91,29 @@ export async function runUpload(item: MediaItem, privacy: 0 | 1 | 2, upload: Med
 
 /** The screenshot Steam's item path names (`/media/item/screenshot/<gameId>_<handle>`, as a notification opens it); null otherwise. */
 export function mediaItemFromPath(path: string | null): string | null {
-    const m = path?.match(/^\/media\/item\/screenshot\/([\w.-]{1,64})\/?$/);
+    const pathname = path?.split(/[?#]/, 1)[0];
+    const m = pathname?.match(/^\/media\/item\/screenshot\/([\w.-]{1,64})\/?$/);
     return m ? m[1] : null;
+}
+
+/** A decimal Steam GameID (including 64-bit IDs) is kept as text to avoid precision loss. */
+export function mediaGameFromPath(path: string | null): string | null {
+    if (!path) return null;
+    const [pathname, query = ''] = path.split('?', 2);
+    if (pathname !== '/media/grid' && pathname !== '/media') return null;
+    try {
+        const params = new URLSearchParams(query);
+        const values = params.getAll('game');
+        const gameId = values.length === 1 ? values[0] : null;
+        return gameId && /^\d{1,20}$/.test(gameId) ? gameId : null;
+    } catch { return null; }
+}
+
+export function mediaHasInvalidGameQuery(path: string | null): boolean {
+    if (!path || !/^\/media(?:\/grid)?(?:\?|$)/.test(path)) return false;
+    const query = path.split('?', 2)[1] ?? '';
+    try { return new URLSearchParams(query).has('game') && mediaGameFromPath(path) === null; }
+    catch { return true; }
 }
 
 /** Where the page opens when Steam asked for one shot: the viewer on it (All tab) when it is on this device; null: as usual. */

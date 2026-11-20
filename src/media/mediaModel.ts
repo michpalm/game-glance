@@ -9,6 +9,38 @@ export type MediaItem =
 export type ShotItem = Extract<MediaItem, { kind: 'shot' }>;
 export type MediaTab = 'all' | 'shots' | 'clips';
 
+export interface MediaGameCollection {
+    gameId: string;
+    name: string;
+    items: MediaItem[];
+    screenshots: number;
+    recordings: number;
+    newest: number;
+    artUrl: string | null;
+}
+
+/** Local captures grouped by Steam's exact GameID string; display names never define identity. */
+export function gameCollections(items: MediaItem[], nameOf: (item: MediaItem) => string | null): MediaGameCollection[] {
+    const grouped = new Map<string, MediaItem[]>();
+    for (const item of items) {
+        const group = grouped.get(item.gameId);
+        if (group) group.push(item);
+        else grouped.set(item.gameId, [item]);
+    }
+    return [...grouped.entries()].map(([gameId, group]) => {
+        const screenshots = group.filter((item): item is ShotItem => item.kind === 'shot');
+        const name = group.map(nameOf).find(value => typeof value === 'string' && value.length > 0) ?? 'Unknown game';
+        return {
+            gameId, name, items: group, screenshots: screenshots.length, recordings: group.length - screenshots.length,
+            newest: Math.max(...group.map(item => item.created)), artUrl: screenshots[0]?.url ?? null,
+        };
+    }).sort((a, b) => b.newest - a.newest || (a.gameId < b.gameId ? -1 : a.gameId > b.gameId ? 1 : 0));
+}
+
+export function itemsForGame(items: MediaItem[], gameId: string): MediaItem[] {
+    return items.filter(item => item.gameId === gameId);
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** Steam's own helper (sp.js): a relative screenshot path is served from its loopback host. */

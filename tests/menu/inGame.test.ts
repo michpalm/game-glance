@@ -58,6 +58,12 @@ describe('in-game page', () => {
         resume.props.onAction();
         expect(h.handoff).toHaveBeenCalledWith({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'resume' });
     });
+    it('labels the Screenshots action as the shared screenshots and recordings page', () => {
+        const h = harness(), screenshots = h.action('in-game:recordings');
+        expect(text(tree(screenshots))).toContain('Screenshots and recordings');
+        screenshots.props.onAction();
+        expect(h.handoff).toHaveBeenCalledWith({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'recordings' });
+    });
     it('leads with the game’s art and this session, and offers its six destinations as tiles', () => {
         const h = harness();
         expect(h.nodes.some(n => n.type === 'img' && n.props.src === 'hero.jpg')).toBe(true);

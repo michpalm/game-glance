@@ -56,10 +56,14 @@ it('opens the native Library root without constructing an unresolved tab route',
 });
 
 describe('in-game page destinations', () => {
-    it.each([['achievements','/app/1057090/overlay/achievements'],['recordings','/app/1057090/overlay/gamerecording'],['guides','/app/1057090/overlay/guides'],
+    it.each([['achievements','/app/1057090/overlay/achievements'],['guides','/app/1057090/overlay/guides'],
         ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090'],['achievements-list','/library/app/1057090/achievements/my/individual']] as const)('opens %s for the running game', async (actionId, path) => {
         const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'1057090',actionId});
         expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.order).toEqual(['deactivate','close']);
+    });
+    it.each(['1057090', '18446744073709551615'])('opens the shared game-scoped Media route for GameID %s', async gameId => {
+        const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId,actionId:'recordings'});
+        expect(h.b.navigate).toHaveBeenCalledWith(`/media/grid?game=${gameId}`); expect(h.order).toEqual(['deactivate','close']);
     });
     it('exits the running game by its game id without navigating', async () => {
         const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'13243934688390676480',actionId:'exit'});

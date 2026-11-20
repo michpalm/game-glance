@@ -3,6 +3,7 @@ import type { Entry, GameContext, Stop } from '../model';
 import { createRoutes } from './routes';
 import { nativeRouteBindings } from './nativeCore';
 import { ownMethod } from './patchOwnership';
+import { dismissScreensaver, screensaverWakeInProgress } from '../../screensaver/steamScreensaver';
 
 export type QamTab = 'notifications' | 'friends' | 'quick-settings' | 'performance' | 'help' | 'soundtrack' | 'decky';
 export type NavigateDestination = 'home' | 'library' | 'soundtracks' | 'store' | 'media' | 'downloads' | 'settings' | 'settings-internet' | 'profile' | 'power' | 'storage';
@@ -164,6 +165,7 @@ export function discoverMenuRuntime(): NativeBindings | null {
                 }));
                 for (const [key, entry] of [['OnHomeButtonPressed', 'home'], ['OnQuickAccessButtonPressed', 'quick-access']] as const) {
                     stops.push(ownMethod(owner, key, next => function(this: NativeOwner) {
+                        if (screensaverWakeInProgress()) { dismissScreensaver(); return; }
                         const previous = intent;
                         intent = { entry, handled: false };
                         try { return next.call(this); } finally { intent = previous; }

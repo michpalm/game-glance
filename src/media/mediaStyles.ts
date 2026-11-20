@@ -16,6 +16,16 @@ export const mediaStyles = `
 .gg-media-tabs{position:absolute;left:${u(96)};top:${u(150)};width:${u(1728)};z-index:1}
 .gg-media-tabs .gg-pk-tabs-list{flex:0 1 auto;width:max-content;max-width:calc(100% - ${u(100)})}
 .gg-media-grid{position:absolute;left:${u(90)};right:${u(90)};top:${u(212)};bottom:0;overflow-y:auto;padding:6px 6px ${u(120)};scroll-padding-block:6px ${u(120)};scrollbar-width:none}
+.gg-media-games{position:absolute;left:${u(90)};right:${u(90)};top:${u(212)};bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:start;gap:${u(20)};overflow-y:auto;padding:6px 6px ${u(120)};scroll-padding-block:6px ${u(120)};scrollbar-width:none}
+.gg-media button.gg-media-game.DialogButton{position:relative;display:block;width:100%;height:${u(220)};min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,.16);border-radius:${u(14)};${BTN_RESET};background:rgba(255,255,255,.08);text-align:left}
+.gg-media-game img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gg-media-game-fallback{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(10,14,20,.72))}
+.gg-media-game-shade{position:absolute;inset:25% 0 0;background:linear-gradient(180deg,transparent,rgba(5,7,10,.9))}
+.gg-media-game-copy{position:absolute;left:${u(18)};right:${u(18)};bottom:${u(16)};display:flex;flex-direction:column;gap:${u(6)};text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.gg-media-game-copy strong{color:#fff;opacity:1;font-size:${u(23)};font-weight:var(--gg-weight-heading);line-height:1.15;text-shadow:0 2px 8px rgba(0,0,0,.95)}
+.gg-media button.gg-media-game.DialogButton:is(.gpfocus,:focus-visible,:focus) .gg-media-game-copy strong{color:#fff!important;opacity:1!important;filter:brightness(1)!important}
+.gg-media-game-copy small{font-size:${u(16)};color:rgba(255,255,255,.88)}
+.gg-media button.gg-media-game.DialogButton:is(.gpfocus,:focus-visible,:focus){${focusRing('menu', u)}}
 .gg-media-day{margin:${u(18)} 0 ${u(12)}}
 .gg-media-row{display:flex;gap:${u(20)};margin-bottom:${u(20)}}
 ${TILE}{position:relative;flex:none;width:${u(330)};height:${u(186)};min-width:0;${BTN_RESET};border-radius:${u(12)};overflow:hidden;background:rgba(255,255,255,.08)}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ensureMediaNativeReset, mediaGateChoice, mediaKeepsNative, mediaMemory, stopMediaNativeReset } from '../../src/media/mediaState';
+import { ensureMediaNativeReset, mediaGateChoice, mediaGameFromPath, mediaHasInvalidGameQuery, mediaKeepsNative, mediaMemory, mediaViewAfterTab, stopMediaNativeReset } from '../../src/media/mediaState';
 
 const on = { enabled: true, available: true, path: '/media', native: false };
 
@@ -26,6 +26,27 @@ describe('mediaKeepsNative', () => {
     it('stays under /media', () => {
         for (const p of ['/media', '/media/grid', '/media/list', '/media/item/clip/abc']) expect(mediaKeepsNative(p)).toBe(true);
         for (const p of ['/library/home', '/mediaplayer', '/']) expect(mediaKeepsNative(p)).toBe(false);
+    });
+});
+
+describe('Games view navigation', () => {
+    afterEach(() => mediaMemory.reset());
+    it('keeps Games selected when changing a tab inside a scoped gallery', () => {
+        expect(mediaViewAfterTab('games', true, 'shots')).toBe('games');
+        expect(mediaViewAfterTab('games', false, 'shots')).toBe('all');
+        expect(mediaViewAfterTab('all', false, 'games')).toBe('games');
+    });
+    it('reads a bounded decimal GameID from the Media route without numeric coercion', () => {
+        expect(mediaGameFromPath('/media/grid?game=18446744073709551615')).toBe('18446744073709551615');
+        expect(mediaGameFromPath('/media/grid')).toBeNull();
+        expect(mediaGameFromPath('/media/grid?game=12&game=13')).toBeNull();
+        expect(mediaHasInvalidGameQuery('/media/grid?game=12&game=13')).toBe(true);
+        expect(mediaHasInvalidGameQuery('/media/grid')).toBe(false);
+    });
+    it('opens a collection on All and remembers the Games card to return to', () => {
+        mediaMemory.set({ tab: 'clips', focusId: 'clip_old', view: 'all' });
+        mediaMemory.openGame('1262350');
+        expect(mediaMemory.get()).toMatchObject({ tab: 'all', focusId: null, view: 'games', gameFocusId: '1262350' });
     });
 });
 

@@ -130,19 +130,36 @@ function focusKey(root: ParentNode | null | undefined, key: string): boolean {
     return true;
 }
 
+/** The Settings backdrop uses the most recently played game's hero, once Steam's library store is ready. */
+function settingsBackdrop(): string | null {
+    try {
+        const appId = recentGame(sharedLibraryBindings().read()?.games ?? []);
+        return appId === null ? null : heroUrls(appId, browserStores)[0] ?? capsuleUrls(appId, browserStores)[0] ?? null;
+    } catch { return null; }
+}
+
 /** Game Glance's Settings home, live from Steam's stores (spec §3); reads only. */
 export function SettingsPage({ readers }: { readers: SettingsReaders }) {
     const [focus, setFocus] = useState<EntryKey>(() => settingsMemory.get().focus);
     const [snap, setSnap] = useState<SettingsSnapshot>(() => readers.readNow());
     const host = useRef<HTMLDivElement | null>(null);
     // Frosted like the other pages (Michael, PS5 check): the last played game's hero, blurred by the kit's backdrop.
-    const [backdrop] = useState<string | null>(() => {
-        try {
-            const appId = recentGame(sharedLibraryBindings().read()?.games ?? []);
-            return appId === null ? null : heroUrls(appId, browserStores)[0] ?? capsuleUrls(appId, browserStores)[0] ?? null;
-        } catch { return null; }
-    });
+    const [backdrop, setBackdrop] = useState<string | null>(() => settingsBackdrop());
     const placeOn = useRef<EntryKey | null>(focus); // the entry to give focus to after this render (first render, and moves across groups)
+
+    useEffect(() => {
+        let live = true;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let attempts = 0;
+        const findBackdrop = () => {
+            if (!live || backdrop) return;
+            const art = settingsBackdrop();
+            if (art) { setBackdrop(art); return; }
+            if (++attempts < 20) timer = setTimeout(findBackdrop, 250);
+        };
+        timer = setTimeout(findBackdrop, 250);
+        return () => { live = false; if (timer) clearTimeout(timer); };
+    }, [backdrop]);
 
     useEffect(() => {
         let live = true;

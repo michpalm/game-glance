@@ -1,5 +1,6 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Router } from '@decky/ui';
 import { GameTitle } from '../components/GameTitle';
 import { attempt } from '../data/attempt';
 import { cache, overrides } from '../data/cache';
@@ -18,7 +19,7 @@ import { cardScale, CROSSFADE_MS, ScreensaverCanvas, screensaverCanvas, screensa
 import { EMPTY_STACK, firstSettled, nextIndexes, nextSlides, PICK_AHEAD, PRELOAD_AHEAD, settledSlides, slideLayers, SlidePhase, SlideStack } from './slideStack';
 import { screensaverStats } from './stats';
 import { installCalmFilter } from '../styles/tokens';
-import { slideshowClasses, useScreensaverActive, useScreensaverDocument } from './steamScreensaver';
+import { installScreensaverWakeGuard, slideshowClasses, useScreensaverActive, useScreensaverDocument } from './steamScreensaver';
 
 interface Slide { id: number; appId: number; name: string; art: Exclude<Art, { mode: 'none' }> }
 
@@ -208,12 +209,36 @@ export function ScreensaverHost() {
         if (el) setDoc(el.ownerDocument);
     }, []);
     const active = useScreensaverActive();
+    const wasActive = useRef(active);
     // Read the settings again as the screensaver starts: right after an install Decky can load the plugin twice, and this
     // component could be the first copy's, whose settings were read before a change made in the second's Quick Access.
     useEffect(() => {
         if (active) settings.load().catch(() => undefined);
     }, [active]);
     const ssDoc = useScreensaverDocument(doc, active && screensaver.enabled);
+    useEffect(() => {
+        const closeSideMenus = () => {
+            try {
+                const owner = (Router as unknown as { WindowStore?: { GamepadUIMainWindowInstance?: { MenuStore?: { CloseSideMenus?(): void } } } })
+                    ?.WindowStore?.GamepadUIMainWindowInstance;
+                owner?.MenuStore?.CloseSideMenus?.();
+            } catch {
+                // Steam's native menu store is optional on older clients.
+            }
+        };
+        let trailingClose: ReturnType<typeof setTimeout> | undefined;
+        if (active) closeSideMenus();
+        else if (wasActive.current) {
+            closeSideMenus();
+            trailingClose = setTimeout(closeSideMenus, 500);
+        }
+        wasActive.current = active;
+        return () => { if (trailingClose !== undefined) clearTimeout(trailingClose); };
+    }, [active]);
+    useEffect(() => active && screensaver.enabled
+        ? installScreensaverWakeGuard([doc])
+        : undefined,
+    [active, screensaver.enabled, doc]);
     return (
         <>
             <span ref={marker} style={{ display: 'none' }} />

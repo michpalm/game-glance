@@ -9,6 +9,8 @@ const LIGHT = 'background:rgba(255,255,255,.92);color:#10141a;text-shadow:none';
 
 /** The Settings home (mock-ups S2c list, S2b panel) on the page kit. Units are the mock-ups' 1920-wide pixels. */
 export const settingsStyles = `
+/* Lift this page's darker hero art so the shared frosted backdrop stays visible under the common shade. */
+.gg-settings .gg-pk-backdrop{filter:var(--gg-art-fill);opacity:.7}
 .gg-settings-list{position:absolute;left:${u(96)};top:${u(146)};width:${u(514)};display:flex;flex-direction:column}
 .gg-settings-group{display:flex;flex-direction:column;border-top:1px solid rgba(255,255,255,.13);padding:${u(14)} 0}
 .gg-settings-group:first-child{border-top:none;padding-top:0}

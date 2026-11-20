@@ -177,11 +177,9 @@ export function GeneralPage({ v, a }: PageProps) {
         {rows(<>
             <ToggleRow id="gg:general:enabled" label="Game Glance" description="Off turns Game Glance off everywhere: game page, Home, menu and screensaver."
                 checked={s.enabled} onChange={value => a.run(a.store.setEnabled(value))} />
-            <ToggleRow id="gg:general:libraryPage" label="Library page" description="Game Glance's Library in place of Steam's. Steam's stays one button away (Y)."
-                checked={s.libraryPage} onChange={value => a.run(a.store.setLibraryPage(value))} />
-            <ToggleRow id="gg:general:mediaPage" label="Media page" description="Game Glance's Media in place of Steam's. Steam's stays one button away (≡)."
-                checked={s.mediaPage} onChange={value => a.run(a.store.setMediaPage(value))} />
-            <ToggleRow id="gg:general:settingsPage" label="Settings page" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
+            <ToggleRow id="gg:general:libraryPage" label="Library page (in progress)" description="Game Glance's Library is in progress and unavailable for now."
+                checked={false} disabled onChange={() => {}} />
+            <ToggleRow id="gg:general:settingsPage" label="Settings page (in progress)" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
                 checked={s.settingsPage} onChange={value => a.run(a.store.setSettingsPage(value))} />
             <h3>Look on Home and the game page</h3>
             <ToggleRow id="gg:general:gameLogo" label="Game logo" description="The game's logo instead of its name. A game without one keeps its name."

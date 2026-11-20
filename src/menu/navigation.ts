@@ -39,6 +39,15 @@ export function handleMenuButton(detail: { button: number; is_repeat?: boolean }
     if (!detail.is_repeat) dispatch(detail.button === 2 ? { type: 'back' } : { type: 'step', direction: detail.button === 5 ? -1 : 1 });
     return true;
 }
+/** GamepadButton.SECONDARY in @decky/ui: X (B is CANCEL, 2). */
+const BUTTON_X = 3;
+/**
+ * X in the menu opens Steam's keyboard, as Steam + X would (spec 2026-11-18-menu-keyboard-shortcut): only while the menu
+ * owns input, and not while Game Glance's own keyboard is open (X is backspace there). A held X does not repeat it.
+ */
+export function steamKeyboardShortcut(detail: { button: number; is_repeat?: boolean }, session: KeyboardSession, inputActive: boolean): boolean {
+    return detail.button === BUTTON_X && !detail.is_repeat && inputActive && !session.get().open;
+}
 /** A fresh opening (menu or quick-access button) starts on its active tab; a tab switch keeps bar focus only if it was there. */
 export const focusPrefersBar = (wasOpen: boolean, focusInBar: boolean) => !wasOpen || focusInBar;
 /** What can take focus in a menu or a page (findMenuFocus; the chrome host's page fallback). */

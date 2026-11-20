@@ -18,4 +18,8 @@ describe('mediaStyles', () => {
             expect(mediaStyles).toMatch(focused);
         }
     });
+    it('a focused Games card keeps its title bright and opaque over the art', () => {
+        expect(mediaStyles).toMatch(/\.gg-media-game-copy strong\{[^}]*color:#fff[^}]*opacity:1/);
+        expect(mediaStyles).toMatch(/gg-media-game\.DialogButton:is\(\.gpfocus,:focus-visible,:focus\)[^}]*\.gg-media-game-copy strong\{[^}]*color:#fff[^}]*opacity:1/);
+    });
 });

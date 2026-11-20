@@ -18,6 +18,9 @@ interface ScreensaverService {
 }
 
 let service: ScreensaverService | null | undefined;
+let lastActive: boolean | undefined;
+let becameInactiveAt = 0;
+const WAKE_TRANSITION_MS = 500;
 
 function screensaverService(): ScreensaverService | null {
     if (service !== undefined) return service;
@@ -36,6 +39,59 @@ export function previewScreensaver(): void {
     screensaverService()?.ForceScreensaver({ enabled: true }).catch(() => undefined);
 }
 
+/** Ends the active screensaver without forwarding its wake press to the underlying Steam page. */
+export function dismissScreensaver(): void {
+    screensaverService()?.ForceScreensaver({ enabled: false }).catch(() => undefined);
+}
+
+/** True while active and briefly after exit, when Steam may still deliver its native menu callback for the wake press. */
+export function screensaverWakeInProgress(): boolean {
+    return lastActive === true || Date.now() - becameInactiveAt < WAKE_TRANSITION_MS;
+}
+
+const WAKE_INPUTS = ['vgp_onbuttondown', 'vgp_onbuttonup', 'vgp_oncancel', 'vgp_onok', 'keydown', 'pointerdown', 'click', 'touchstart'] as const;
+const WAKE_GUARD_MS = 500;
+
+/**
+ * Consumes the input that wakes Game Glance's screensaver, so B and Steam's Menu button don't also navigate the page
+ * underneath. Steam can deliver the same press to both its main window and the screensaver popup, so both documents
+ * share one guard. Keep the listener briefly after dismissal to consume follow-up events from the same press.
+ */
+export function installScreensaverWakeGuard(documents: Array<Document | null>): () => void {
+    const docs = [...new Set(documents.filter((doc): doc is Document => !!doc))];
+    if (docs.length === 0) return () => undefined;
+    const targets = [...new Set<EventTarget>(docs.flatMap(doc => [doc, ...(doc.defaultView ? [doc.defaultView] : [])]))];
+
+    let guardUntil = 0;
+    const consume = (event: Event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+    };
+    const wake = (event: Event) => {
+        const now = Date.now();
+        consume(event);
+        if (now < guardUntil) return;
+        guardUntil = now + WAKE_GUARD_MS;
+        screensaverService()?.ForceScreensaver({ enabled: false }).catch(() => undefined);
+    };
+    for (const target of targets) for (const type of WAKE_INPUTS) target.addEventListener(type, wake, true);
+
+    let removed = false;
+    const remove = () => {
+        if (removed) return;
+        removed = true;
+        for (const target of targets) for (const type of WAKE_INPUTS) target.removeEventListener(type, wake, true);
+    };
+    return () => {
+        // Steam can report inactive before it dispatches B/Menu to the page underneath. Keep the capture listener
+        // through that transition even if it never saw the original press.
+        const remaining = Math.max(WAKE_GUARD_MS, guardUntil - Date.now());
+        if (remaining > 0) setTimeout(remove, remaining);
+        else remove();
+    };
+}
+
 /** Whether Steam's screensaver is on, from Steam's own notification. False when the service is unknown. */
 export function useScreensaverActive(): boolean {
     const [active, setActive] = useState(false);
@@ -45,7 +101,11 @@ export function useScreensaverActive(): boolean {
         let live = true;
         const read = (message: ActiveStateMessage) => {
             try {
-                if (live) setActive(message.Body().active());
+                const next = message.Body().active();
+                if (lastActive === true && !next) becameInactiveAt = Date.now();
+                if (next) becameInactiveAt = 0;
+                lastActive = next;
+                if (live) setActive(next);
             } catch {
                 // keep the last state
             }

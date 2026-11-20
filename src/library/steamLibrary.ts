@@ -62,5 +62,8 @@ let shared: LibraryBindings | null = null;
 /** The bindings on Steam's own stores, made on first use (the stores load after the plugin). */
 export function sharedLibraryBindings(): LibraryBindings {
     const g = globalThis as Record<string, unknown>;
-    return shared ??= createLibraryBindings(g.collectionStore, g.appStore);
+    // Steam creates these stores after the plugin loads. If an early page asks before the library is ready,
+    // don't keep the empty binding forever; the next read can bind to the live store.
+    if (!shared || !shared.available()) shared = createLibraryBindings(g.collectionStore, g.appStore);
+    return shared;
 }

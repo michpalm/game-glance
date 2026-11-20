@@ -30,12 +30,20 @@ Every feature and setting is described in [docs/features.md](docs/features.md).
 
 ## Install
 
-Game Glance is not in the Decky plugin store. Install it from a release:
+Game Glance is not in the Decky plugin store. Install it from Game Mode, with no downloads or Desktop Mode:
 
-1. In Game Mode, open Decky → Settings → General and turn on **Developer mode**.
-2. Download `game-glance.zip` from the [latest release](../../releases/latest).
-3. Decky → Settings → Developer → **Install plugin from ZIP** (or **Install plugin from URL** with the release asset's
-   link).
+1. Open Quick Access (…) → Decky → the gear icon → General, and turn on **Developer mode**.
+2. Go to Developer → **Install plugin from URL**, enter this link and choose **Install**:
+
+   ```
+   https://github.com/michpalm/game-glance/releases/latest/download/game-glance.zip
+   ```
+
+   The link always points to the latest stable release.
+3. You can turn Developer mode off again; Game Glance keeps working.
+
+You can also download `game-glance.zip` from the [latest release](../../releases/latest) and use **Install plugin from
+ZIP**. To try a test build, use the zip from that prerelease's page.
 
 Updates install from Game Mode: Game Glance checks for a new release once a day, and Quick Access → Game Glance →
 Updates shows **Update to …**, which hands it to Decky to confirm, install and reload Game Glance.

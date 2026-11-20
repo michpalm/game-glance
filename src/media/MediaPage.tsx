@@ -1,15 +1,14 @@
 import { ConfirmModal, DialogButton, Focusable, Menu, MenuItem, Navigation, showContextMenu, showModal } from '@decky/ui';
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from 'react';
 import { LOG_PREFIX } from '../constants';
-import { useSettings } from '../data/settings';
 import { browserStores, landscapeUrls } from '../home/artwork';
 import { NAV_MAINTAIN_X } from '../home/focusZones';
 import { takeSteamFocus } from '../home/steamFocus';
 import { CoverImg, keepCoverInView } from '../library/LibraryPage';
-import { Eyebrow, PageFrame, shoulderHandler, Tabs, type PadEvent } from '../pageKit/PageKit';
+import { Eyebrow, PageFrame, shoulderHandler, Tabs, type KitTab, type PadEvent } from '../pageKit/PageKit';
 import { routeSource, type RouteSource } from '../search/steam';
-import { buildItems, dayGroups, focusAfterDelete, formatDuration, formatWhen, mediaTabs, stepItem, tabItems, type MediaItem, type MediaTab, type ShotItem } from './mediaModel';
-import { ensureMediaNativeReset, focusGone, mediaGateChoice, mediaItemFromPath, mediaKeepsNative, mediaMemory, openingScreen, runDelete, runUpload } from './mediaState';
+import { buildItems, dayGroups, focusAfterDelete, formatDuration, formatWhen, gameCollections, itemsForGame, mediaTabs, stepItem, tabItems, type MediaGameCollection, type MediaItem, type MediaTab, type ShotItem } from './mediaModel';
+import { ensureMediaNativeReset, focusGone, mediaGateChoice, mediaGameFromPath, mediaHasInvalidGameQuery, mediaItemFromPath, mediaKeepsNative, mediaMemory, mediaViewAfterTab, openingScreen, runDelete, runUpload } from './mediaState';
 import { mediaStyles } from './mediaStyles';
 import { sharedMediaBindings, type MediaBindings } from './steamMedia';
 
@@ -20,8 +19,8 @@ const Area = Focusable as unknown as AnyComponent;
 export type MediaScreen = { kind: 'gallery' } | { kind: 'viewer'; id: string } | { kind: 'full'; id: string };
 export interface MediaViewProps {
     screen: MediaScreen;
-    tab: MediaTab;
-    tabs: ReturnType<typeof mediaTabs>;
+    tab: MediaTab | 'games';
+    tabs: KitTab[];
     groups: ReturnType<typeof dayGroups>;
     /** The active tab's items, newest first. */
     items: MediaItem[];
@@ -32,7 +31,7 @@ export interface MediaViewProps {
     clipArt(appId: number): string[];
     message: string | null;
     stripVisible: boolean;
-    onTab(tab: MediaTab): void;
+    onTab(tab: MediaTab | 'games'): void;
     onFocus(id: string): void;
     onOpen(item: MediaItem): void;
     onFull(item: MediaItem): void;
@@ -43,6 +42,12 @@ export interface MediaViewProps {
     onBack(): void;
     /** Any press in full screen (the strip comes back). */
     onPress(): void;
+    view?: 'all' | 'games';
+    games?: MediaGameCollection[];
+    gameId?: string | null;
+    gameName?: string | null;
+    onOpenGame?(gameId: string): void;
+    onFocusGame?(gameId: string): void;
 }
 
 /** The gallery's tiles (mock-up M1): 5 a row of 330 × 186 units, 20 apart. */
@@ -93,7 +98,7 @@ function Tile({ p, item }: { p: MediaViewProps; item: MediaItem }) {
 
 function Gallery({ p }: { p: MediaViewProps }) {
     const newest = p.items.find(isShot);
-    return <PageFrame className="gg-media" title="Media" onBack={p.onBack}
+    return <PageFrame className="gg-media" title={p.gameId ? `Media — ${p.gameName || 'Unknown game'}` : 'Media'} onBack={p.onBack}
         onButtonDown={shoulderHandler(p.tabs.map(t => t.key), p.tab, key => p.onTab(key as MediaTab))}
         backdrop={<>
             <style>{mediaStyles}</style>
@@ -121,6 +126,33 @@ function Gallery({ p }: { p: MediaViewProps }) {
     </PageFrame>;
 }
 
+function GameCard({ p, game }: { p: MediaViewProps; game: MediaGameCollection }) {
+    const art = game.artUrl ? [game.artUrl] : game.items.length ? p.clipArt(game.items[0].appId) : [];
+    return <Button className="gg-media-game" data-gg-focus={`media-game:${game.gameId}`} aria-label={`${game.name}, ${game.screenshots} screenshots, ${game.recordings} recordings`}
+        onClick={() => p.onOpenGame?.(game.gameId)} onOKActionDescription="Open game media"
+        onFocus={(evt: { currentTarget?: HTMLElement } | undefined) => {
+            const el = evt?.currentTarget;
+            if (el) keepCoverInView(el.closest<HTMLElement>('.gg-media-games'), el, RING_ROOM, footerRoomPx(el));
+            p.onFocusGame?.(game.gameId);
+        }}>
+        {art.length > 0 ? <CoverImg urls={art} lazy alt="" /> : <span className="gg-media-game-fallback" />}
+        <span className="gg-media-game-shade" />
+        <span className="gg-media-game-copy"><strong>{game.name}</strong><small>{`${game.screenshots} screenshots · ${game.recordings} recordings`}</small></span>
+    </Button>;
+}
+
+function GamesIndex({ p }: { p: MediaViewProps }) {
+    const games = p.games ?? [];
+    return <PageFrame className="gg-media" title="Media" onBack={p.onBack}
+        onButtonDown={shoulderHandler(p.tabs.map(t => t.key), 'games', key => p.onTab(key as MediaTab | 'games'))}
+        backdrop={<><style>{mediaStyles}</style><div className="gg-pk-shade" /></>}>
+        <div className="gg-media-tabs"><Tabs tabs={p.tabs} active="games" onChange={key => p.onTab(key as MediaTab | 'games')} /></div>
+        {games.length === 0
+            ? <Area className="gg-media-empty" flow-children="column"><span>Games will appear here after you save a screenshot or recording</span></Area>
+            : <Area className="gg-media-games" flow-children="grid">{games.map(game => <GameCard key={game.gameId} p={p} game={game} />)}</Area>}
+    </PageFrame>;
+}
+
 /** Up to `FILM` shots around `index`, kept inside the list. */
 function filmWindow(count: number, index: number): { first: number; last: number } {
     const first = Math.max(0, Math.min(index - Math.floor(FILM / 2), count - FILM));
@@ -136,7 +168,7 @@ function Viewer({ p, shot, shots }: { p: MediaViewProps; shot: ShotItem; shots: 
         <Button className="gg-media-action" data-gg-focus={`media-action:${label}`} preferredFocus={focus || undefined} onClick={onClick} {...buttons}>
             <span>{label}</span>
         </Button>;
-    return <PageFrame className="gg-media gg-media-viewer" title="Media" onBack={p.onBack}
+    return <PageFrame className="gg-media gg-media-viewer" title={p.gameId ? `Media — ${p.gameName || 'Unknown game'}` : 'Media'} onBack={p.onBack}
         onButtonDown={(evt: PadEvent) => { const s = shoulderStep(evt); if (s !== null) { evt.preventDefault?.(); evt.stopPropagation?.(); p.onStep(s); } }}
         backdrop={<>
             <style>{mediaStyles}</style>
@@ -167,7 +199,7 @@ function Viewer({ p, shot, shots }: { p: MediaViewProps; shot: ShotItem; shots: 
 
 function FullScreen({ p, shot, shots }: { p: MediaViewProps; shot: ShotItem; shots: ShotItem[] }) {
     const name = p.name(shot);
-    return <PageFrame className="gg-media gg-media-full" title="Media" onBack={p.onBack}
+    return <PageFrame className="gg-media gg-media-full" title={p.gameId ? `Media — ${p.gameName || 'Unknown game'}` : 'Media'} onBack={p.onBack}
         onButtonDown={(evt: PadEvent) => {
             p.onPress();
             const s = shoulderStep(evt);
@@ -194,6 +226,7 @@ export function MediaPageView(p: MediaViewProps) {
         const shot = shots.find(s => s.id === id);
         if (shot) return p.screen.kind === 'viewer' ? <Viewer p={p} shot={shot} shots={shots} /> : <FullScreen p={p} shot={shot} shots={shots} />;
     }
+    if (!p.gameId && p.view === 'games') return <GamesIndex p={p} />;
     return <Gallery p={p} />;
 }
 
@@ -203,7 +236,7 @@ const STRIP_MS = 2500;
 const MESSAGE_MS = 3000;
 const PRIVACY: { label: string; value: 0 | 1 | 2 }[] = [{ label: 'Public', value: 0 }, { label: 'Friends only', value: 1 }, { label: 'Private', value: 2 }];
 
-const steamHistory = () => (globalThis as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { History?: { location?: { pathname?: string }; listen?(fn: () => void): unknown } } } } })
+const steamHistory = () => (globalThis as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { History?: { location?: { pathname?: string; search?: string }; listen?(fn: () => void): unknown } } } } })
     .SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance?.History;
 /** "Steam's media" resets on leaving Media; watching starts once Steam's history exists. */
 export const watchMediaNativeReset = () => ensureMediaNativeReset(steamHistory);
@@ -219,10 +252,11 @@ function focusKey(root: ParentNode | null | undefined, key: string): boolean {
 }
 
 /** Game Glance's Media, live from Steam's screenshots and recordings (spec §1–§5); Steam's page if they can't be read. */
-export function MediaPage({ bindings, native, openItem = null }: { bindings: MediaBindings; native: ReactNode; openItem?: string | null }) {
+export function MediaPage({ bindings, native, openItem = null, gameId = null }: { bindings: MediaBindings; native: ReactNode; openItem?: string | null; gameId?: string | null }) {
     const [items, setItems] = useState<MediaItem[] | null>(null);
     const [failed, setFailed] = useState(false);
     const [tab, setTab] = useState<MediaTab>(() => mediaMemory.get().tab);
+    const [view, setView] = useState<'all' | 'games'>(() => mediaMemory.get().view);
     const [screen, setScreen] = useState<MediaScreen>({ kind: 'gallery' });
     const [focusId, setFocusId] = useState<string | null>(() => mediaMemory.get().focusId);
     const [message, setMessage] = useState<string | null>(null);
@@ -253,17 +287,25 @@ export function MediaPage({ bindings, native, openItem = null }: { bindings: Med
         if (stripTimer.current) clearTimeout(stripTimer.current);
         if (messageTimer.current) clearTimeout(messageTimer.current);
     }, []);
-    useEffect(() => { mediaMemory.remember({ tab, focusId }); }, [tab, focusId]);
+    useEffect(() => { mediaMemory.remember({ tab, focusId, view }); }, [tab, focusId, view]);
 
-    const list = useMemo(() => tabItems(items ?? [], tab), [items, tab]);
+    const allItems = items ?? [];
+    const games = useMemo(() => gameCollections(allItems, bindings.gameName), [items, bindings]);
+    const selectedGame = gameId === null ? null : games.find(g => g.gameId === gameId) ?? null;
+    const sourceItems = gameId !== null ? (selectedGame ? itemsForGame(allItems, selectedGame.gameId) : []) : allItems;
+    const list = useMemo(() => tabItems(sourceItems, tab), [items, tab, gameId]);
     const shots = useMemo(() => list.filter((i): i is ShotItem => i.kind === 'shot'), [list]);
     const now = new Date();
     const groups = useMemo(() => dayGroups(list, now), [list, now.toDateString()]);
-    const tabs = useMemo(() => mediaTabs(items ?? []), [items]);
+    const tabs = useMemo<KitTab[]>(() => {
+        const scoped = mediaTabs(sourceItems);
+        return gameId !== null ? scoped : [...scoped, { key: 'games', label: 'Games', count: games.length }];
+    }, [items, selectedGame, games.length, gameId]);
 
     // Focus: on each screen, and again whenever the list changes under the gallery (a new shot moves tiles between rows).
     const focusTarget = screen.kind === 'viewer' ? 'media-action:Full screen'
         : screen.kind === 'full' ? `media-full:${screen.id}`
+            : !gameId && view === 'games' ? (games.length ? `media-game:${games.some(game => game.gameId === mediaMemory.get().gameFocusId) ? mediaMemory.get().gameFocusId : games[0].gameId}` : 'tab:games')
             : focusId && list.some(i => i.id === focusId) ? `media:${focusId}`
                 : list[0] ? `media:${list[0].id}` : 'media:steam';
     const placed = useRef<string | null>(null);
@@ -286,10 +328,14 @@ export function MediaPage({ bindings, native, openItem = null }: { bindings: Med
         stripTimer.current = setTimeout(() => setStripVisible(false), STRIP_MS);
     };
 
-    const onTab = (next: MediaTab) => {
+    const onTab = (next: MediaTab | 'games') => {
+        const nextView = mediaViewAfterTab(view, gameId !== null, next);
+        setView(nextView);
+        mediaMemory.remember({ view: nextView });
+        if (next === 'games') return;
         if (next === tab) return;
         setTab(next);
-        setFocusId(tabItems(items ?? [], next)[0]?.id ?? null);
+        setFocusId(tabItems(sourceItems, next)[0]?.id ?? null);
     };
     const onOpen = (item: MediaItem) => {
         if (item.kind === 'clip') {
@@ -315,6 +361,11 @@ export function MediaPage({ bindings, native, openItem = null }: { bindings: Med
         else if (screen.kind === 'viewer') { setFocusId(screen.id); setScreen({ kind: 'gallery' }); }
         else Navigation.NavigateBack();
     };
+    const onOpenGame = (id: string) => {
+        mediaMemory.openGame(id);
+        Navigation.Navigate(`/media/grid?game=${encodeURIComponent(id)}`);
+    };
+    const onFocusGame = (id: string) => mediaMemory.remember({ gameFocusId: id });
     const anchor = () => host.current?.querySelector<HTMLElement>(`[data-gg-focus="${CSS.escape(focusTarget)}"]`) ?? host.current ?? undefined;
     const onUpload = (item: MediaItem) => {
         if (item.kind !== 'shot' || item.uploaded) return;
@@ -351,10 +402,12 @@ export function MediaPage({ bindings, native, openItem = null }: { bindings: Med
     if (failed) return <>{native}</>;
     if (items === null) return <div ref={host} style={{ height: '100%' }} />;
     return <div ref={host} style={{ height: '100%' }}>
-        <MediaPageView screen={screen} tab={tab} tabs={tabs} groups={groups} items={list} now={now} focusId={focusId}
+        <MediaPageView screen={screen} tab={gameId ? tab : view === 'games' ? 'games' : tab} tabs={tabs} groups={groups} items={list} now={now} focusId={focusId}
             name={bindings.gameName} clipArt={clipArtOf} message={message} stripVisible={stripVisible}
             onTab={onTab} onFocus={setFocusId} onOpen={onOpen} onFull={onFull} onStep={onStep} onUpload={onUpload}
-            onDelete={onDelete} onSteamMedia={onSteamMedia} onBack={onBack} onPress={showStrip} />
+            onDelete={onDelete} onSteamMedia={onSteamMedia} onBack={onBack} onPress={showStrip}
+            view={view} games={games} gameId={gameId} gameName={selectedGame?.name ?? 'Unknown game'}
+            onOpenGame={onOpenGame} onFocusGame={onFocusGame} />
     </div>;
 }
 
@@ -367,22 +420,33 @@ class MediaBoundary extends Component<{ fallback: ReactNode; children: ReactNode
 }
 
 let sharedRoute: RouteSource | null = null;
-const mediaRoute = () => sharedRoute ??= routeSource(steamHistory as () => never);
+const mediaRoute = () => sharedRoute ??= (() => {
+    const source = routeSource(steamHistory as () => never);
+    return {
+        get: () => {
+            try {
+                const location = steamHistory()?.location;
+                return typeof location?.pathname === 'string' ? `${location.pathname}${location.search ?? ''}` : null;
+            } catch { return null; }
+        },
+        subscribe: source.subscribe,
+    };
+})();
 
 /** Steam's `/media` route renders this: Game Glance's Media, or Steam's own element (spec §1). */
 export function MediaGate({ native, bindings = sharedMediaBindings(), route = mediaRoute() }: { native: ReactNode; bindings?: MediaBindings; route?: RouteSource }): ReactNode {
     watchMediaNativeReset();
     const memory = useSyncExternalStore(mediaMemory.subscribe, mediaMemory.get);
     const path = useSyncExternalStore(route.subscribe, route.get);
-    const enabled = useSettings().mediaPage;
     const last = useRef<'ours' | 'native' | undefined>(undefined);
-    const choice = mediaGateChoice({ enabled, available: bindings.available(), path, native: memory.native }, last.current);
+    const choice = mediaGateChoice({ enabled: true, available: bindings.available(), path, native: memory.native }, last.current);
     last.current = choice;
     // While Steam leaves Media the path names the next page: keep the shot asked for, so the page doesn't remount on the way out.
     const asked = useRef<string | null>(null);
     if (path === null || mediaKeepsNative(path)) asked.current = mediaItemFromPath(path);
     const openItem = asked.current;
-    if (choice === 'native') return native;
+    const gameId = mediaGameFromPath(path);
+    if (choice === 'native' || mediaHasInvalidGameQuery(path)) return native;
     // Keyed by the asked-for shot: a notification opening another shot while Media is shown opens it too.
-    return <MediaBoundary fallback={native}><MediaPage key={openItem ?? 'media'} bindings={bindings} native={native} openItem={openItem} /></MediaBoundary>;
+    return <MediaBoundary fallback={native}><MediaPage key={openItem ?? 'media'} bindings={bindings} native={native} openItem={openItem} gameId={gameId} /></MediaBoundary>;
 }
