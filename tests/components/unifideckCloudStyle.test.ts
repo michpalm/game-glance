@@ -17,6 +17,9 @@ describe('unifideckCloudCss (Game Glance’s cloud on Unifideck’s button)', ()
             expect(css).toContain(CLOUD_GLYPH_URL);
             expect(css).toMatch(/> \*,\.gg-uni-cloud > \*\{visibility:hidden!important\}/);
             expect(css).toContain(`background:${CLOUD_COLOURS[tone]}`);
+            // In the page's unit, as Home's and Steam's page dots (raw px before: a different size at the hand-over).
+            expect(css).toContain('width:calc(10.5 * var(--gg-d, 1px));height:calc(10.5 * var(--gg-d, 1px))');
+            expect(css).toContain('box-shadow:0 0 0 calc(1.75 * var(--gg-d, 1px)) rgba(0, 0, 0, 0.75)');
         }
     });
 });

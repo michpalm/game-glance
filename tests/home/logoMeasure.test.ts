@@ -18,7 +18,7 @@ describe('measuring a logo from a small copy read off the main thread (#31)', ()
     it("gives the visible part in the file's own pixels", async () => {
         // A 640 x 360 Steam logo read at 160 x 90 (a quarter): artwork at 40..119 x 20..59 there.
         const read = async (_url: string, size: { width: number; height: number }) => withBlock(size.width, size.height, { x: 40, y: 20, width: 80, height: 40 });
-        expect(await measureLogo('logo.png', { width: 640, height: 360 }, read)).toEqual({ readable: true, trim: { x: 160, y: 80, width: 320, height: 160 } });
+        expect(await measureLogo('logo.png', { width: 640, height: 360 }, read)).toMatchObject({ readable: true, trim: { x: 160, y: 80, width: 320, height: 160 } }); // plus its luma (Library)
     });
 
     it('a fully transparent file is readable with nothing showing', async () => {

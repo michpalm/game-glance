@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createMenuCoordinator } from '../../src/menu/coordinator';
+import { createMenuCoordinator, POWER_RETURN_MS } from '../../src/menu/coordinator';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
 import type { IntentHandlers, NativeBindings } from '../../src/menu/steam/runtime';
 function harness(){
@@ -10,6 +10,60 @@ function harness(){
     const c=createMenuCoordinator({bindings,getState:()=>state,dispatch:(e:MenuEvent)=>{state=reduceMenu(state,e);},render:()=>null});
     return {c,bindings,host,order,releaseHooks,releaseGame,replay,state:()=>state,handlers:()=>handlers,disable:()=>{state=reduceMenu(state,{type:'enable',value:false});}};
 }
+describe('opening the menu straight on a view',()=>{
+    it('opens and presents the menu on that view alone, even when it is already open',async()=>{
+        const h=harness();h.c.start();
+        await h.c.open('home','achievements:292030');
+        expect(h.state()).toMatchObject({phase:'custom-open',stack:['achievements:292030'],direct:true});
+        expect(h.host.present).toHaveBeenCalledTimes(1);
+        await h.c.open('home','achievements:1');
+        expect(h.state()).toMatchObject({phase:'custom-open',stack:['achievements:1']});
+    });
+});
+describe('Power from Navigate',()=>{
+    it('hands Steam the power menu without suspending to Steam\'s menu',async()=>{
+        const h=harness();h.c.start();await h.c.open('home');h.order.length=0;
+        await h.c.handoff({kind:'navigate',destination:'power'});
+        expect(h.order).toEqual(['native']);
+        expect(h.host.suspend).not.toHaveBeenCalled();
+    });
+    it('backing out of the power menu reopens Game Glance on Navigate',async()=>{
+        const h=harness();h.c.start();await h.c.open('home');
+        await h.c.handoff({kind:'navigate',destination:'power'});
+        const sent=(h.bindings.openNative as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as {onCancel?():void};
+        expect(typeof sent.onCancel).toBe('function');
+        h.handlers().closed();expect(h.state().phase).toBe('closed');
+        sent.onCancel!();await Promise.resolve();await Promise.resolve();
+        expect(h.state()).toMatchObject({phase:'custom-open',section:'navigate'});
+    });
+});
+describe('Power, then a confirm cancelled (Restart Steam → Cancel)',()=>{
+    it('Steam reopening its main menu by itself after Power reopens Game Glance on Navigate, once',async()=>{
+        const h=harness();h.c.start();await h.c.open('home');
+        await h.c.handoff({kind:'navigate',destination:'power'});
+        h.handlers().closed();expect(h.state().phase).toBe('closed');
+        expect(h.handlers().reclaim?.()).toBe(true);await Promise.resolve();await Promise.resolve();
+        expect(h.state()).toMatchObject({phase:'custom-open',section:'navigate'});
+        h.c.close();await Promise.resolve();
+        expect(h.handlers().reclaim?.()).toBe(false);
+    });
+    it('nothing to reclaim without Power, or after backing out of the power menu',async()=>{
+        const h=harness();h.c.start();await h.c.open('home');
+        expect(h.handlers().reclaim?.()).toBe(false);
+        await h.c.handoff({kind:'navigate',destination:'power'});
+        const sent=(h.bindings.openNative as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as {onCancel?():void};
+        h.handlers().closed();sent.onCancel!();await Promise.resolve();await Promise.resolve();
+        expect(h.handlers().reclaim?.()).toBe(false);
+    });
+    it('the ticket runs out after a while',async()=>{
+        vi.useFakeTimers();try{
+            const h=harness();h.c.start();await h.c.open('home');
+            await h.c.handoff({kind:'navigate',destination:'power'});
+            vi.advanceTimersByTime(POWER_RETURN_MS+1);
+            expect(h.handlers().reclaim?.()).toBe(false);
+        }finally{vi.useRealTimers();}
+    });
+});
 describe('floating menu coordinator',()=>{
     it('lets the menu paint hidden before running expensive close teardown', async () => {
         const h = harness(); let painted!: () => void;

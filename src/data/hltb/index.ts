@@ -7,7 +7,8 @@ import { attempt } from '../attempt';
 import { Cache, cache, Overrides, overrides, TTL } from '../cache';
 
 export type HltbResult =
-    | { status: 'found'; gameId: number; times: HltbTimes }
+    // rating: HowLongToBeat's players' rating in percent (null: none); absent in an entry cached before it was kept.
+    | { status: 'found'; gameId: number; times: HltbTimes; rating?: number | null }
     | { status: 'notFound'; overrideId?: number }
     | { status: 'unavailable' };
 
@@ -58,6 +59,7 @@ function toFound(stats: HLTBGameStats): HltbResult {
             mainExtras: parseStat(stats.mainPlusStat),
             completionist: parseStat(stats.completeStat),
         },
+        rating: typeof stats.reviewScore === 'number' && stats.reviewScore > 0 ? stats.reviewScore : null,
     };
 }
 
@@ -90,6 +92,8 @@ function strip(stored: Stored): HltbResult {
 export function createHltbLookup(deps: HltbDeps) {
     const now = deps.now ?? Date.now;
     const inflight = new Map<string, Promise<HltbResult>>();
+    /** Keys refetched for a missing rating this session: a refetch that fails is not repeated on every page visit. */
+    const askedRating = new Set<string>();
 
     async function read(game: HltbGame) {
         const overrideId = await attempt('override read', () => deps.overrides.get(game.appId), null);
@@ -149,7 +153,11 @@ export function createHltbLookup(deps: HltbDeps) {
     async function lookup(game: HltbGame): Promise<HltbResult> {
         const { overrideId, key, cached, stale } = await read(game);
         if (cached) {
-            if (stale) refresh(game, overrideId, key, foundOrNull(cached)).catch(() => undefined);
+            // Found times cached before the rating was kept are fetched again behind, once, when a page asks (not by
+            // "fetch all" or the pre-load, which would refetch the whole library at once).
+            const lacksRating = cached.status === 'found' && !('rating' in cached) && !askedRating.has(key);
+            if (lacksRating) askedRating.add(key);
+            if (stale || lacksRating) refresh(game, overrideId, key, foundOrNull(cached)).catch(() => undefined);
             return strip(cached);
         }
         return refresh(game, overrideId, key, null);

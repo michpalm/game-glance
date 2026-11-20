@@ -9,8 +9,26 @@ function harness() {
     };
     return { b, order, routes: createRoutes(b) };
 }
+describe('Resume game', () => {
+    it('goes back into the running game as Steam\'s own menu does, and closes the menu', async () => {
+        const h = harness(); (h.b as Record<string, unknown>).resumeGame = vi.fn(() => { h.order.push('resume'); });
+        await h.routes.open({ kind: 'game-action', appId: 1057090, gameId: '1057090', actionId: 'resume' });
+        expect(h.order).toEqual(['deactivate', 'resume', 'close']);
+        expect(h.b.navigate).not.toHaveBeenCalled();
+        expect(closesSteamMenu({ kind: 'game-action', appId: 1, gameId: '1', actionId: 'resume' })).toBe(true);
+    });
+});
+describe('Power from the Game Glance menu', () => {
+    it('opens Steam\'s power menu with our cancel, without handing the slot back to Steam\'s menu', async () => {
+        const h = harness(); const onCancel = vi.fn();
+        await h.routes.open({ kind: 'navigate', destination: 'power', onCancel });
+        expect(h.b.power).toHaveBeenCalledWith(onCancel);
+        expect(h.b.deactivate).not.toHaveBeenCalled();
+        expect(h.b.finishNavigation).not.toHaveBeenCalled();
+    });
+});
 describe('menu native destinations', () => {
-    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['media','/media/grid']] as const)('maps %s to its native route', async (destination,path) => {
+    it.each([['home','/library/home'],['store','/steamweb'],['downloads','/library/downloads'],['settings','/settings'],['settings-internet','/settings/internet'],['media','/media/grid'],['storage','/game-glance/storage']] as const)('maps %s to its native route', async (destination,path) => {
         const h = harness(); await h.routes.open({kind:'navigate',destination}); expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.b.deactivate).toHaveBeenCalledTimes(1);
     });
     it('deactivates before navigation and closes the side menu after navigation', async () => {
@@ -38,10 +56,14 @@ it('opens the native Library root without constructing an unresolved tab route',
 });
 
 describe('in-game page destinations', () => {
-    it.each([['achievements','/app/1057090/overlay/achievements'],['recordings','/app/1057090/overlay/gamerecording'],['guides','/app/1057090/overlay/guides'],
-        ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090']] as const)('opens %s for the running game', async (actionId, path) => {
+    it.each([['achievements','/app/1057090/overlay/achievements'],['guides','/app/1057090/overlay/guides'],
+        ['controller','/app/1057090/overlay/controller'],['game-page','/library/app/1057090'],['achievements-list','/library/app/1057090/achievements/my/individual']] as const)('opens %s for the running game', async (actionId, path) => {
         const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'1057090',actionId});
         expect(h.b.navigate).toHaveBeenCalledWith(path); expect(h.order).toEqual(['deactivate','close']);
+    });
+    it.each(['1057090', '18446744073709551615'])('opens the shared game-scoped Media route for GameID %s', async gameId => {
+        const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId,actionId:'recordings'});
+        expect(h.b.navigate).toHaveBeenCalledWith(`/media/grid?game=${gameId}`); expect(h.order).toEqual(['deactivate','close']);
     });
     it('exits the running game by its game id without navigating', async () => {
         const h = harness(); await h.routes.open({kind:'game-action',appId:1057090,gameId:'13243934688390676480',actionId:'exit'});
@@ -127,6 +149,7 @@ describe('requests that close Steam\'s menu', () => {
     it('are the ones that end in finishNavigation', () => {
         expect(closesSteamMenu({ kind: 'navigate', destination: 'library' })).toBe(true);
         expect(closesSteamMenu({ kind: 'navigate', destination: 'settings' })).toBe(true);
+        expect(closesSteamMenu({ kind: 'navigate', destination: 'storage' })).toBe(true);
         expect(closesSteamMenu({ kind: 'friend-profile', steamId: '76561197960287930' })).toBe(true);
         expect(closesSteamMenu({ kind: 'app', appId: 10 })).toBe(true);
         expect(closesSteamMenu({ kind: 'media-item', item: 'screenshot', id: 'a' })).toBe(true);

@@ -23,6 +23,7 @@ export interface GameData {
     comp_all: number;
     game_id: number;
     profile_steam: number;
+    review_score?: number; // game-glance local patch: the players' rating (percent), kept for the game page's card
 }
 
 export interface HLTBGameStats {
@@ -32,6 +33,7 @@ export interface HLTBGameStats {
     allStylesStat: string;
     lastUpdatedAt: Date;
     gameId: number;
+    reviewScore?: number | null; // game-glance local patch: GameData.review_score, null without one
 }
 
 export interface HLTBStats extends Omit<HLTBGameStats, 'gameId'> {

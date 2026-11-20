@@ -4,6 +4,10 @@ vi.mock('../../src/menu/startMenu', () => ({ startMenu: vi.fn(() => h.menuStop) 
 vi.mock('../../src/components/SettingsPanel', () => ({ SettingsPanel: () => null }));
 vi.mock('../../src/patches/gamePage', () => ({ patchGamePage: () => h.pageStop }));
 vi.mock('../../src/patches/homePage', () => ({ patchHomePage: () => h.homeStop }));
+vi.mock('../../src/patches/downloadsPage', () => ({ patchDownloadsPage: () => vi.fn() }));
+vi.mock('../../src/patches/libraryPage', () => ({ patchLibraryPage: () => vi.fn() }));
+vi.mock('../../src/patches/mediaPage', () => ({ patchMediaPage: () => vi.fn() }));
+vi.mock('../../src/patches/settingsPage', () => ({ patchSettingsPage: () => vi.fn() }));
 vi.mock('../../src/data/settings', () => ({ settings: { load: async () => {} } }));
 vi.mock('../../src/data/steam', () => ({ getSteamLanguage: async () => {} }));
 vi.mock('../../src/data/autoPreload', () => ({ startAutoPreload: () => vi.fn() }));
@@ -13,13 +17,22 @@ vi.mock('../../src/home/statusStore', () => ({ stopStatus: vi.fn() }));
 vi.mock('../../src/home/reloadRemount', () => ({ noteLoad: vi.fn(), remountHomeAfterReload: () => vi.fn() }));
 vi.mock('../../src/screensaver/ScreensaverView', () => ({ ScreensaverHost: () => null }));
 vi.mock('../../src/chrome/ChromeHost', () => ({ ChromeHost: () => null }));
-vi.mock('../../src/nativeSettings/NativeSettingsHost', () => ({ NativeSettingsHost: () => null }));
-vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn() } }));
+vi.mock('../../src/contextMenus/ContextMenusHost', () => ({ ContextMenusHost: () => null, CONTEXT_MENUS_COMPONENT: 'GameGlanceContextMenus' }));
+vi.mock('../../src/components/ThemeMusicButton', () => ({ ThemeMusicHide: () => null, THEME_MUSIC_COMPONENT: 'GameGlanceThemeMusic' }));
+vi.mock('../../src/storage/StoragePage', () => ({ StoragePage: () => null, STORAGE_ROUTE: '/game-glance/storage' }));
+vi.mock('@decky/api', () => ({ definePlugin: (fn: unknown) => fn, routerHook: { addGlobalComponent: vi.fn(), removeGlobalComponent: vi.fn(), addRoute: vi.fn(), removeRoute: vi.fn() } }));
 vi.mock('@decky/ui', () => ({ staticClasses: {} }));
+import { routerHook } from '@decky/api';
 import plugin from '../../src/index';
 it('continues the other plugin cleanup steps after menu cleanup throws', () => {
     const instance = (plugin as unknown as () => { onDismount(): void })();
     instance.onDismount();
     expect(h.menuStop).toHaveBeenCalledTimes(1);
     expect(h.pageStop).toHaveBeenCalledTimes(1); expect(h.homeStop).toHaveBeenCalledTimes(1); expect(h.downloadStop).toHaveBeenCalledTimes(1);
+});
+it('adds the Storage route on load and removes it on unload', () => {
+    const instance = (plugin as unknown as () => { onDismount(): void })();
+    expect(routerHook.addRoute).toHaveBeenCalledWith('/game-glance/storage', expect.any(Function));
+    instance.onDismount();
+    expect(routerHook.removeRoute).toHaveBeenCalledWith('/game-glance/storage');
 });

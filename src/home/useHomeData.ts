@@ -4,6 +4,7 @@ import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, overrides, TTL } from '../data/cache';
 import { hltbCacheKey, HltbResult, lookupHltb } from '../data/hltb';
+import { useProton } from '../data/useProton';
 import { DEMO_APP_TYPE, GAME_APP_TYPE, SHORTCUT_APP_TYPE } from '../data/installedGames';
 import { useSettings } from '../data/settings';
 import { getSourceLabel, peekSourceLabel } from '../data/source';
@@ -18,25 +19,31 @@ import { BUMPER_REPEAT_MS } from './focusZones';
 import { FAST_CYCLE_MS, SETTLE_WIDEN_MS } from './fastCycle';
 import { steamLanguageToLocale } from '../logic/format';
 import { heroicStoreLabel } from '../logic/heroic';
+import { usesStat } from '../logic/infoSlots';
+import { AchievementFacts, pageAchievementFacts, PlayFacts, playFactsOf, SteamCompat, steamCompatOf } from '../logic/featuredViews';
+import type { ProtonResult } from '../data/protondb';
 import { accentFor, DEFAULT_ACCENT } from './accent';
 import { accentMemo } from './accentMemo';
 import { accentVersion, sampleAccent } from './accentSample';
 import { DownloadState } from './downloadProgress';
 import { useDownload } from './useDownload';
 import { Chip, gameChips, libraryChips, readLibraryCounts, readStorageBytes } from './chips';
-import { FriendCard, friendsKey, LAST_GAMES_KEY, LastGames, mapFriends, observeLastGames, onlineCount, parseLastGames, RawFriend, readFriends } from './friends';
+import { FriendCard, friendsKey, LAST_GAMES_KEY, LastGames, mapFriends, observeLastGames, observeSessions, onlineCount, parseLastGames, RawFriend, readFriends, Sessions } from './friends';
+import { achievementLine, createFriendActivity, steamActivity } from './friendActivity';
 import { mapWhatsNew, NewsCard, readWhatsNew } from './news';
 import { loadRecentlyUpdated, UpdatedCard } from './recentlyUpdated';
 import { readSteamTrending } from './steamTrending';
 import { TrendingCard, trendingGames } from './trending';
 import { PlayNextCandidate, RecommendedCard, scorePlayNext } from './playNext';
 import { DealCard, dealCards } from './recommended';
+import { calendarDays, calendarGames, calendarStart, dayLabel, fetchCalendarJson, getCalendar } from './calendar';
+import type { CalendarColumn } from './feedLayout';
 import { fillMissing } from './homeView';
-import { homeCollections, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
+import { homeCollections, INSTALLED_ROW, INSTALLED_ROW_NAME, installedRowApps, pickCollectionGames, RECENT_ROW, RowSort } from './collections';
 import { formatLastPlayed, mergeRecentSources, pickHomeRecents, pickRecents, pickSteamHomeRecents, RawApp, RecentGame, SteamHomeApp } from './recents';
 import { getWishlistDeals } from './wishlist';
 import { pageHidden } from './pageVisible';
-import { memoPlaytime, memoSpaceRequired, noteDetails, withKnownAchievements } from './detailsMemo';
+import { knownAchievementFacts, memoPlaytime, noteDetails, spaceRequiredOf, withKnownAchievements } from './detailsMemo';
 import { neighbourIds } from './heroLayers';
 import { useWarmup, useWarmVersion } from './useWarmup';
 import { forgetHltb, peekDescription, peekHltb, rememberDescription, rememberHltb } from './warmup';
@@ -50,6 +57,14 @@ export interface HomeGame extends RecentGame {
     demo?: boolean;
     /** Steam's 64-bit game id (set for non-Steam shortcuts); RunGame needs it for them. */
     gameId: string | undefined;
+}
+
+/** What components/FeaturedCard draws a featured card from, besides HowLongToBeat's result. */
+export interface FeaturedFacts {
+    proton: ProtonResult | undefined;
+    achievements: AchievementFacts | undefined;
+    playTime: PlayFacts;
+    compat: SteamCompat;
 }
 
 export interface HomeData {
@@ -74,6 +89,13 @@ export interface HomeData {
     hltb: HltbResult | undefined;
     /** The focused game's play time in minutes (Steam's, or Unifideck's when it knows more), as the page counts it. */
     playedMinutes: number;
+    /**
+     * The focused game's facts for the featured card (Game info slots) as the page reads them, for the copy of the page's
+     * cards Home morphs into (components/FeaturedCard); null without a focused game. Achievements' only when featured.
+     */
+    featuredFacts: FeaturedFacts | null;
+    /** The space the focused game needs to install (Steam's details, else the memo), for the Install pill; undefined when unknown. */
+    spaceRequired: number | undefined;
     /** The focused game's description in Steam's language, once fetched (null: none, or the Clean look, which shows none). */
     description: string | null;
     /** The focused game's store ("Steam", "GOG", ...), once known; the same label as the details page's source pill. */
@@ -90,11 +112,15 @@ export interface HomeData {
     friends: FriendCard[];
     /** Friends online now, over all friends (the cards stop at 10). */
     friendsOnline: number;
+    /** Each shown friend's achievement line, by steamid (FeedData.friendActivity). */
+    friendActivity: Record<string, string>;
     /** Games friends are playing or played recently (Friends tab, second row); [] when none. */
     trending: TrendingCard[];
     recommended: RecommendedCard[];
     /** Wishlist sales for the Recommended tab's second row (only with Show wishlist deals on); biggest discount first. */
     deals: DealCard[];
+    /** Personal Calendar days for the Recommended tab's first row (only with the Recommended row set to it); [] = Play next. */
+    calendar: CalendarColumn[];
 }
 
 type AnyApp = RawApp & SteamHomeApp & { installed?: boolean; m_gameid?: string; appid: number };
@@ -218,7 +244,16 @@ function withLaunchInfo(picked: RecentGame[], apps: AnyApp[]): HomeGame[] {
  * or has no games left falls back to the recent games, so Home is never empty because of the setting.
  */
 export function readRowGames(row: string, sort: RowSort): { games: HomeGame[]; collection: string | null } {
-    if (row !== RECENT_ROW) {
+    if (row === INSTALLED_ROW) {
+        const chosen = guarded('all installed games', () => {
+            const store = steam.collectionStore;
+            const apps = installedRowApps<AnyApp>(store?.localGamesCollection?.allApps, steam.appStore?.allApps);
+            const isHidden = (appId: number) => store?.BIsHidden?.(appId) === true;
+            const games = withLaunchInfo(pickCollectionGames(apps, isHidden, sort), apps);
+            return games.length > 0 ? { games, collection: INSTALLED_ROW_NAME } : null;
+        }, null);
+        if (chosen) return chosen;
+    } else if (row !== RECENT_ROW) {
         const chosen = guarded('collection', () => {
             const store = steam.collectionStore;
             const found = store?.userCollections?.find((c) => c?.id === row);
@@ -280,6 +315,7 @@ function readSteamId(): string | null {
 let recommendedMemo: RecommendedCard[] = [];
 /** The last wishlist deal cards, for an instant second row on the next Home open. */
 let dealsMemo: DealCard[] = [];
+
 /** HLTB main hours per installed app (null = unknown), read from the plugin cache once per session. */
 const hltbMainMemo = new Map<number, number | null>();
 
@@ -463,6 +499,42 @@ function useRecommended(games: HomeGame[], wishlistDeals: boolean, enabled: bool
     return { cards, deals: wishlistDeals ? deals : [] };
 }
 
+/** The last calendar days, for an instant first row on the next Home open. */
+let calendarMemo: CalendarColumn[] = [];
+
+/**
+ * Steam's Personal Calendar as day columns (home/calendar), while `enabled` (Recommended on, its row set to the
+ * calendar). The session memo paints at once; names and art arrive with the days. [] on any failure: Play next shows.
+ */
+function useCalendar(enabled: boolean, locale: string): CalendarColumn[] {
+    const [days, setDays] = useState<CalendarColumn[]>(() => (enabled ? calendarMemo : []));
+    useEffect(() => {
+        if (!enabled) return undefined;
+        let active = true;
+        (async () => {
+            const steamId = readSteamId();
+            if (!steamId) return;
+            const now = new Date();
+            const picked = calendarDays(await getCalendar(steamId, { cache, fetchJson: fetchCalendarJson, now: Date.now }), now);
+            const info = await calendarGames(picked.flatMap((d) => d.games.map((g) => g.appId)), { cache, fetcher: (url) => fetchNoCors(url), language: peekSteamLanguage() ?? 'english' });
+            const start = calendarStart(picked, now);
+            const columns: CalendarColumn[] = picked.map((d, i) => ({
+                key: d.key,
+                ...dayLabel(d, locale),
+                today: d.today,
+                start: i === start,
+                games: d.games.map((g) => ({ appId: g.appId, name: info.get(g.appId)?.name ?? '', art: info.get(g.appId)?.art ?? null, clip: info.get(g.appId)?.clip ?? null, shots: info.get(g.appId)?.shots ?? [] })),
+            }));
+            calendarMemo = columns;
+            if (active) setDays(columns);
+        })().catch((error) => console.warn(`${LOG_PREFIX} Home: calendar failed`, error));
+        return () => {
+            active = false;
+        };
+    }, [enabled, locale]);
+    return enabled ? days : [];
+}
+
 /**
  * Each feed card's own game accent (its pill, a friend's ring), from the same per-game cache and session memo
  * as the hero accent. Resolved only while `enabled` (the sheet has been raised), for the ids given (the
@@ -563,6 +635,23 @@ function useLiveFriends(enabled: boolean): RawFriend[] {
     return enabled ? state.list : NO_FRIENDS;
 }
 
+/** Friends' play sessions Home saw (memory only, for as long as Steam runs): the card's time in game and session length. */
+let sessionsMemo: Sessions = {};
+/** Steam's game Activity store, wrapped once (null where Steam has none). */
+let activityMemo: ReturnType<typeof createFriendActivity> | null | undefined;
+const friendActivitySource = () => (activityMemo === undefined ? (activityMemo = (() => { const s = steamActivity(); return s ? createFriendActivity(s, Date.now) : null; })()) : activityMemo);
+/** The friend cards' clock: times ("45 min", "12 min ago") and achievements Steam loads later are re-read this often. */
+const FRIEND_CARD_TICK_MS = 30_000;
+function useTick(enabled: boolean, ms: number): number {
+    const [tick, setTick] = useState(0);
+    useEffect(() => {
+        if (!enabled) return undefined;
+        const timer = setInterval(() => { if (!pageHidden()) setTick((t) => t + 1); }, ms);
+        return () => clearInterval(timer);
+    }, [enabled, ms]);
+    return tick;
+}
+
 /** The friend last-played cache for the session (loaded once, then kept in step with what Home observes). */
 let lastGamesMemo: LastGames | null = null;
 
@@ -599,7 +688,7 @@ function useFriendLastGames(raw: RawFriend[], enabled: boolean): LastGames {
  * `focusIndex` is the selected recents item (L1/R1, bumper navigation); an index past the end keeps the last game (the Library card).
  */
 export function useHomeData(focusIndex = 0): HomeData {
-    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs } = useSettings();
+    const { wishlistDeals, homeRow, homeRowSort, cleanPage, feedTabs, infoSlots, recommendedRow } = useSettings();
     const { games, collection: rowCollection, settled: recentsSettled } = useRowGames(homeRow, homeRowSort);
     const focused = games.length > 0 ? games[Math.min(Math.max(0, focusIndex), games.length - 1)] : null;
     const appId = focused?.appId ?? null;
@@ -645,12 +734,19 @@ export function useHomeData(focusIndex = 0): HomeData {
     );
     // Known already (the warm-up, or an earlier visit this session): shown at once, without waiting for the selection to rest.
     const warmedHltb = focused ? peekHltb(focused.appId) : undefined;
-    const liveHltb = useAsync(focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
+    // Only with HowLongToBeat in a slot, as the page asks (its chip is dropped otherwise).
+    const hltbOn = usesStat(infoSlots, 'hltb');
+    const liveHltb = useAsync(hltbOn && focused && info && resting !== null && !warmedHltb ? `hltb:${focused.appId}:${overrideVersion}` : null, async () => {
         const result = await lookupHltb({ appId: focused?.appId ?? 0, name: info?.name || focused?.name || '', isShortcut: info?.isShortcut ?? false });
         if (focused) rememberHltb(focused.appId, result);
         return result;
     });
     const hltb = warmedHltb ?? liveHltb;
+    // The game's ProtonDB rating, once the selection rests (a shortcut's by the Steam game of its name: data/protonGame).
+    // Kept for the session, so coming back to a game shows its chip at once.
+    // Only with its chip switched on (Settings, off by default): off, nothing is asked of ProtonDB.
+    const protonOn = usesStat(infoSlots, 'protondb');
+    const proton = useProton(focused ? { appId: focused.appId, name: info?.name || focused.name, isShortcut: info?.isShortcut ?? false } : null, protonOn, !!info && resting !== null);
     // The selected game's description once it rests, for the open transition (Home draws it as it turns into the page's
     // Spotlight look; the Clean look has none). Kept in the session memo, which the page reads on its first frame.
     const warmedDescription = focused && lang ? peekDescription(focused.appId, lang) : undefined;
@@ -699,11 +795,22 @@ export function useHomeData(focusIndex = 0): HomeData {
             lastPlayed: merged.lastPlayed,
             hltbMainHours: hltb?.status === 'found' ? hltb.times.main : null,
             addedAt: isNew ? focused.addedAt : undefined,
-            installed: focused.installed,
-            spaceBytes: info?.isShortcut ? null : (memoSpaceRequired(focused.appId) ?? null),
+            protonTier: proton?.status === 'found' ? proton.tier : null,
+            slots: infoSlots,
         }, nowSeconds, locale), []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focused, info, hltb, locale, launcher, detailsVersion]);
+    }, [focused, info, hltb, proton, locale, launcher, detailsVersion, infoSlots]);
+    const featuredFacts = useMemo((): FeaturedFacts | null => {
+        if (!focused || !info) return null;
+        return guarded('featured facts', () => ({
+            proton,
+            achievements: infoSlots.featured === 'achievements' ? knownAchievementFacts(focused.appId, pageAchievementFacts(steam.appDetailsStore?.GetAppDetails?.(focused.appId), info.isShortcut)) : undefined,
+            playTime: playFactsOf(focused.appId, overview(focused.appId), { minutes: playedMinutes, lastPlayed: mergePlaytime({ minutes: 0, lastPlayed: focused.lastPlayed }, launcher).lastPlayed }, info.isShortcut),
+            // The app details only when ProtonDB is featured (its caption names Steam's compatibility tool).
+            compat: steamCompatOf(overview(focused.appId), infoSlots.featured === 'protondb' ? steam.appDetailsStore?.GetAppDetails?.(focused.appId) : undefined, info.isShortcut),
+        }), null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focused, info, proton, playedMinutes, launcher, detailsVersion, infoSlots]);
     // The launcher knows a last played Steam does not: such a game is no longer "new to library".
     const focusedIsNew = focused?.isNew === true && !launcher?.lastPlayed;
     const lastPlayedLabel = focused
@@ -725,7 +832,24 @@ export function useHomeData(focusIndex = 0): HomeData {
     const updated = useRecentlyUpdated(feedTabs.news);
     const rawFriends = useLiveFriends(feedTabs.friends);
     const lastGames = useFriendLastGames(rawFriends, feedTabs.friends);
-    const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames), []), [rawFriends, lastGames]);
+    const friendTick = useTick(feedTabs.friends, FRIEND_CARD_TICK_MS);
+    const sessions = useMemo(() => (sessionsMemo = guarded('friend sessions', () => observeSessions(sessionsMemo, rawFriends, Date.now()), sessionsMemo)), [rawFriends]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const friends = useMemo(() => guarded('friends', () => mapFriends(rawFriends, appName, 10, lastGames, sessions, Date.now()), []), [rawFriends, lastGames, sessions, friendTick]);
+    // The achievement line: the friend's unlocks in the card's game, from Steam's own game Activity store (asked for at most every 5 min per game).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const friendActivity = useMemo(() => guarded('friend activity', () => {
+        const activity = friendActivitySource();
+        if (!activity) return {};
+        const gameOf = (c: FriendCard) => c.appId ?? c.lastAppId ?? 0;
+        activity.want([...new Set(friends.map(gameOf).filter((id) => id > 0))]);
+        const out: Record<string, string> = {}, now = Date.now();
+        for (const c of friends) {
+            const line = achievementLine(activity.get(gameOf(c), c.accountId), now);
+            if (line) out[c.steamId] = line;
+        }
+        return out;
+    }, {} as Record<string, string>), [friends, friendTick]);
     const friendsOnline = useMemo(() => guarded('online friends', () => onlineCount(rawFriends), 0), [rawFriends]);
     // Recomputed only when the live friends list or the last-played cache changes (both keep their identity otherwise).
     // Steam's own list first; the derived one (live games and the 7-day cache) only when Steam's is missing or empty.
@@ -733,10 +857,13 @@ export function useHomeData(focusIndex = 0): HomeData {
     const derivedTrending = useMemo(() => (feedTabs.friends ? guarded('trending', () => trendingGames(rawFriends, lastGames, appName, inLibrary, Date.now()), []) : []), [rawFriends, lastGames, feedTabs.friends]);
     const trending = steamTrending && steamTrending.length > 0 ? steamTrending : derivedTrending;
     const { cards: recommended, deals } = useRecommended(games, wishlistDeals, feedTabs.recommended);
+    const calendar = useCalendar(feedTabs.recommended && recommendedRow === 'calendar', locale);
 
     const focusedRunning = appId !== null && isRunning(appId);
     const { download, installed: installedNow, status: pillStatus } = useDownload(appId, focused?.installed ?? false);
     const focusedLive = useMemo(() => (focused && focused.installed !== installedNow ? { ...focused, installed: installedNow } : focused), [focused, installedNow]);
 
-    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, source, libraryChips: library, accent, news, updated, friends, friendsOnline, trending, recommended, deals };
+    // Read on each render (detailsVersion re-renders when Steam loads the details): a shortcut has none.
+    const spaceRequired = focused && !info?.isShortcut ? guarded('space required', () => spaceRequiredOf(focused.appId, steam.appDetailsStore?.GetAppDetails?.(focused.appId)), undefined) : undefined;
+    return { games, recentsSettled, focused: focusedLive, focusedRunning, download, pillStatus, detailsVersion, locale, lastPlayedLabel, focusedIsNew, rowCollection, chips, hltb, description, playedMinutes, featuredFacts, spaceRequired, source, libraryChips: library, accent, news, updated, friends, friendsOnline, friendActivity, trending, recommended, deals, calendar };
 }

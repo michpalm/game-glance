@@ -21,6 +21,11 @@ describe('mapFriends', () => {
         expect(cards.map((c) => c.state)).toEqual(['ingame', 'online', 'away', 'offline']);
         expect(cards[0].appId).toBe(42);
     });
+    it('puts the offline friends seen online most recently first; unknown times last, in Steam\'s order', () => {
+        const off = (steamId: string, lastOnline?: number): RawFriend => ({ ...base[1], steamId, lastOnline });
+        const cards = mapFriends([off('a', 1788164189), off('b'), off('c', 1794510856), off('d', 0), off('e', 1418070174), base[0]], name);
+        expect(cards.map((c) => c.steamId)).toEqual([base[0].steamId, 'c', 'a', 'e', 'b', 'd']);
+    });
     it('maps every persona state as Steam does (is_online: not 0 or 7; is_awayOrSnooze: 3 or 4; busy is online)', () => {
         const st = (personaState: number, gameAppId = 0) => mapFriends([{ ...base[2], personaState, gameAppId }], name)[0].state;
         expect([0, 1, 2, 3, 4, 5, 6, 7].map((p) => st(p))).toEqual(['offline', 'online', 'online', 'away', 'away', 'online', 'online', 'offline']);
@@ -246,6 +251,10 @@ describe('readFriends', () => {
         const raw = readFriends();
         expect(raw.map((f) => f.lastPlayedAppId)).toEqual([7, 0]);
     });
+    it('reads when Steam last saw a friend online (persona.m_rtLastSeenOnline, Unix seconds), 0 when unset', () => {
+        vi.stubGlobal('friendStore', { allFriends: [{ persona: { m_ePersonaState: 0, m_rtLastSeenOnline: 1794510856 } }, { persona: { m_ePersonaState: 0 } }] });
+        expect(readFriends().map((f) => f.lastOnline)).toEqual([1794510856, 0]);
+    });
 });
 
 describe('mapFriends join fields', () => {
@@ -266,5 +275,59 @@ describe('friendsKey', () => {
         expect(friendsKey([{ ...base[0], gameAppId: 5 }, base[1], base[2]])).not.toBe(k);
         expect(friendsKey([base[0], { ...base[1], lastPlayedAppId: 9 }, base[2]])).not.toBe(k);
         expect(friendsKey([base[1], base[0], base[2]])).not.toBe(k);
+        expect(friendsKey([base[0], { ...base[1], lastOnline: 1794510856 }, base[2]])).not.toBe(k); // it moves the friend
+    });
+});
+
+import { observeSessions, type Sessions } from '../../src/home/friends';
+
+describe('observeSessions (play sessions Game Glance saw)', () => {
+    const f = (steamId: string, gameAppId: number): RawFriend => ({ ...base[2], steamId, gameAppId });
+    it('starts a session on 0 → game and ends it on game → 0', () => {
+        let s: Sessions = observeSessions({}, [f('a', 0)], 500);
+        s = observeSessions(s, [f('a', 5)], 1000);
+        expect(s.a).toEqual({ appId: 5, since: 1000 });
+        s = observeSessions(s, [f('a', 0)], 2000);
+        expect(s.a).toEqual({ appId: 5, since: 1000, until: 2000 });
+        expect(observeSessions(s, [f('a', 0)], 3000).a).toEqual({ appId: 5, since: 1000, until: 2000 });
+    });
+    it('gives no start time to a friend first seen already in game (since 0 = unknown)', () => {
+        expect(observeSessions({}, [f('a', 5)], 1000).a).toEqual({ appId: 5, since: 0 });
+    });
+    it('a switch to another game starts a new session', () => {
+        const s = observeSessions({ a: { appId: 5, since: 1000 } }, [f('a', 6)], 4000);
+        expect(s.a).toEqual({ appId: 6, since: 4000 });
+    });
+    it('keeps a running session as it is', () => {
+        const prev: Sessions = { a: { appId: 5, since: 1000 } };
+        expect(observeSessions(prev, [f('a', 5)], 9000).a).toBe(prev.a);
+    });
+});
+
+describe('friend card lines', () => {
+    const NOW = 1_795_000_000_000, S = NOW / 1000;
+    const friend = (extra: Partial<RawFriend>): RawFriend => ({ ...base[2], steamId: 'x', ...extra });
+    it('in game: detail is the game\'s status line, meta the time since Game Glance saw them start', () => {
+        const c = mapFriends([friend({ personaState: 1, gameAppId: 42, statusLine: 'Hole 7 · Pirate Cove' })], name, 10, {}, { x: { appId: 42, since: NOW - 45 * 60_000 } }, NOW)[0];
+        expect(c).toMatchObject({ detail: 'Hole 7 · Pirate Cove', meta: '45 min' });
+        const long = mapFriends([friend({ personaState: 1, gameAppId: 42 })], name, 10, {}, { x: { appId: 42, since: NOW - 65 * 60_000 } }, NOW)[0];
+        expect(long).toMatchObject({ detail: '', meta: '1 h 5 min' });
+    });
+    it('in game with an unknown start: no time', () => {
+        expect(mapFriends([friend({ personaState: 1, gameAppId: 42 })], name, 10, {}, { x: { appId: 42, since: 0 } }, NOW)[0].meta).toBe('');
+    });
+    it('not playing: status is Steam\'s own text; detail "Last played {game} · {when}" when Steam knows when', () => {
+        const c = mapFriends([friend({ personaState: 0, onlineStatus: 'Last online 5 hours ago', lastPlayedAppId: 42, lastPlayedAt: S - 2 * 3600 })], name, 10, {}, {}, NOW)[0];
+        expect(c).toMatchObject({ status: 'Last online 5 hours ago', detail: 'Last played Game 42 · 2 h ago', lastAt: S - 2 * 3600 });
+        const noWhen = mapFriends([friend({ personaState: 1, onlineStatus: 'Online', lastPlayedAppId: 42 })], name, 10, {}, {}, NOW)[0];
+        expect(noWhen).toMatchObject({ status: 'Online', detail: 'Last played Game 42', lastAt: 0 });
+    });
+    it('offline after a session Game Glance saw: meta is its length, and the end is the "when"', () => {
+        const c = mapFriends([friend({ personaState: 0, lastPlayedAppId: 42 })], name, 10, {}, { x: { appId: 42, since: NOW - 120 * 60_000, until: NOW - 40 * 60_000 } }, NOW)[0];
+        expect(c.meta).toBe('1 h 20 min session');
+        expect(c.detail).toBe('Last played Game 42 · 40 min ago');
+    });
+    it('knows nothing: detail and meta are empty', () => {
+        expect(mapFriends([friend({ personaState: 0 })], name, 10, {}, {}, NOW)[0]).toMatchObject({ detail: '', meta: '', lastAt: 0 });
     });
 });

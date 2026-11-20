@@ -1,11 +1,17 @@
 import { useSyncExternalStore } from 'react';
 import { RECENT_ROW, RowSort, rowSortOf } from '../home/collections';
 import { FEED_TABS_DEFAULT, FeedTabs, feedTabsOf } from '../home/feedTabs';
+import { assignSlot, DEFAULT_SLOTS, GameInfoSlots, infoSlotsOf, SlotIndex, StatId } from '../logic/infoSlots';
 import type { FeedTab } from '../home/feedLayout';
 import { HeroFit, heroFitOf } from '../home/heroFit';
+import { RecommendedRow, recommendedRowOf } from '../home/recommendedRow';
 import { PageShading, pageShadingOf } from '../home/pageShading';
 import { RowStyle, rowStyleOf } from '../home/recentsLayout';
+import { TitleSize, titleSizeOf } from '../home/titleSize';
+import { AccentChoice, accentColorOf, AccentMode, accentModeOf } from '../home/accentChoice';
+import { DEFAULT_ACCENT } from '../home/accent';
 import { backendKv, KvBackend } from './kv';
+import { MAX_PINS } from '../menu/achievementPins';
 import { readScreensaverOptions, SCREENSAVER_DEFAULTS, ScreensaverOptions } from '../screensaver/options';
 
 export const PROFILE_STYLES = ['dot', 'circle', 'square'] as const;
@@ -21,21 +27,33 @@ export interface Settings {
     homeStatusBar: boolean; // Spotlight Home's status bar: clock, battery and connection in Steam's top strip
     homeExpandedControls: boolean; // opt-in Home footer styling and focus-only status items
     chromeEveryPage: boolean; // opt-in: the status bar and footer on every Steam page, not only Home
+    libraryPage: boolean; // Reserved for the in-progress Library; always false until it is ready
+    mediaPage: boolean; // Deprecated compatibility field; Game Glance Media is always enabled
+    settingsPage: boolean; // Game Glance's Settings home in place of Steam's bare /settings (spec 2026-11-19-settings-home-design)
     statusAvatar: boolean; // Kept for older builds.
     profileStyle?: ProfileStyle;
     gameLogo: boolean; // the game's logo instead of its name on Home and the game page (the name when it has none)
+    storePill: boolean; // the store pill (Steam, GOG...) on Home and the game page
+    familyPill: boolean; // the Family Sharing pill on Home and the game page, for a game from the family library
+    playerCountPill: boolean; // how many people play the game now (Steam), beside the store and family pills
+    titleSize: TitleSize; // the logo's or name's size on Home and the game page: 'large' (full), 'medium' or 'small' (home/titleSize)
+    accentMode: AccentMode; // 'adaptive': each game's colour from its art; 'custom': accentColor everywhere (home/accentChoice)
+    accentColor: string; // #rrggbb: the custom colour, and adaptive's colour where the art gives none
     homeRow: string; // Home's games row: 'recent' (Steam's recent games, with those new to the library) or a collection id
     homeRowSort: RowSort; // how a collection's games are sorted in the row
     homeRowStyle: RowStyle; // how the row moves: 'steam' (Steam's Home: the first game wide) 'spotlight' (selected game wide at the left), or 'minimal' (all cards small)
     homeGrayUninstalled: boolean; // gray treatment for uninstalled Steam games in Home's row
-    heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off) or 'fit' (the whole art at the top over a blurred copy)
+    recommendedRow: RecommendedRow; // what the Recommended tab's first row shows: 'playNext' (installed games to play next) or 'calendar' (Steam's Personal Calendar)
+    heroFit: HeroFit; // the hero art: 'fill' (covers the screen, wide art's sides cut off), 'expanded' (covers the top 70%, over a blurred copy) or 'fit' (the whole art at the top over a blurred copy)
     pageShading: PageShading; // the shading over the art on Home and the game page: 'bottom' (the bottom half) or 'none'
     feedTabs: FeedTabs; // Home's feed tabs shown (What's new, Friends, Recommended); a tab that is off loads nothing
+    infoSlots: GameInfoSlots; // which stats Home's chips and the game page show, in what order; ProtonDB is asked only while it is in a slot
     screensaver: ScreensaverOptions; // Steam's screensaver drawn by Game Glance (screensaver/options)
+    achievementPins: Record<string, number[]>; // the menu's Achievements page: per "<appId>:<setId>", pinned internal_keys, oldest first (menu/achievementPins)
 }
 
 const KEY = 'settings';
-const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, screensaver: SCREENSAVER_DEFAULTS };
+const DEFAULTS: Settings = { enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: DEFAULT_ACCENT, storePill: true, familyPill: true, playerCountPill: true, homeRow: RECENT_ROW, homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: FEED_TABS_DEFAULT, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' };
 
 export function createSettingsStore(kv: KvBackend) {
     let current: Settings = { ...DEFAULTS };
@@ -64,18 +82,30 @@ export function createSettingsStore(kv: KvBackend) {
                 homeStatusBar: pick('homeStatusBar'),
                 homeExpandedControls: pick('homeExpandedControls'),
                 chromeEveryPage: pick('chromeEveryPage'),
+                libraryPage: false,
+                mediaPage: true,
+                settingsPage: pick('settingsPage'),
                 statusAvatar: pick('statusAvatar'),
                 profileStyle: raw.profileStyle && PROFILE_STYLES.includes(raw.profileStyle)
                     ? raw.profileStyle : pick('statusAvatar') ? 'square' : 'dot',
                 gameLogo: pick('gameLogo'),
+                storePill: pick('storePill'),
+                familyPill: pick('familyPill'),
+                playerCountPill: pick('playerCountPill'),
+                titleSize: titleSizeOf(raw?.titleSize),
+                accentMode: accentModeOf(raw?.accentMode),
+                accentColor: accentColorOf(raw?.accentColor),
                 homeRow: typeof raw?.homeRow === 'string' && raw.homeRow !== '' ? raw.homeRow : DEFAULTS.homeRow,
                 homeRowSort: rowSortOf(raw?.homeRowSort),
                 homeRowStyle: rowStyleOf(raw?.homeRowStyle),
                 homeGrayUninstalled: pick('homeGrayUninstalled'),
                 heroFit: heroFitOf(raw?.heroFit),
+                recommendedRow: recommendedRowOf(raw?.recommendedRow),
                 pageShading: pageShadingOf(raw?.pageShading),
                 feedTabs: feedTabsOf(raw?.feedTabs),
+                infoSlots: infoSlotsOf(raw?.infoSlots),
                 screensaver: readScreensaverOptions(raw?.screensaver),
+                achievementPins: achievementPinsOf(raw?.achievementPins),
             };
             emit();
         },
@@ -127,6 +157,11 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             await persist({ homeGrayUninstalled });
         },
+        async setRecommendedRow(recommendedRow: RecommendedRow): Promise<void> {
+            current = { ...current, recommendedRow };
+            emit();
+            await persist({ recommendedRow });
+        },
         async setHeroFit(heroFit: HeroFit): Promise<void> {
             current = { ...current, heroFit };
             emit();
@@ -144,6 +179,13 @@ export function createSettingsStore(kv: KvBackend) {
             // Keep tabs a newer version stored (as setScreensaver keeps unknown screensaver keys).
             await persist({ feedTabs: { ...feedTabs, ...object(retained.feedTabs), [tab]: on } as FeedTabs });
         },
+        async setInfoSlot(slot: SlotIndex, id: StatId | null): Promise<void> {
+            const infoSlots = assignSlot(current.infoSlots, slot, id);
+            current = { ...current, infoSlots };
+            emit();
+            // Keep fields a newer version stored (as setFeedTab does).
+            await persist({ infoSlots: { ...object(retained.infoSlots), ...infoSlots } });
+        },
         async setCleanPage(cleanPage: boolean): Promise<void> {
             current = { ...current, cleanPage };
             emit();
@@ -159,6 +201,23 @@ export function createSettingsStore(kv: KvBackend) {
             emit();
             await persist({ chromeEveryPage });
         },
+        async setLibraryPage(libraryPage: boolean): Promise<void> {
+            void libraryPage;
+            current = { ...current, libraryPage: false };
+            emit();
+            await persist({ libraryPage: false });
+        },
+        async setMediaPage(mediaPage: boolean): Promise<void> {
+            void mediaPage;
+            current = { ...current, mediaPage: true };
+            emit();
+            await persist({ mediaPage: true });
+        },
+        async setSettingsPage(settingsPage: boolean): Promise<void> {
+            current = { ...current, settingsPage };
+            emit();
+            await persist({ settingsPage });
+        },
         async setHomeStatusBar(homeStatusBar: boolean): Promise<void> {
             current = { ...current, homeStatusBar };
             emit();
@@ -168,6 +227,41 @@ export function createSettingsStore(kv: KvBackend) {
             current = { ...current, gameLogo };
             emit();
             await persist({ gameLogo });
+        },
+        async setStorePill(storePill: boolean): Promise<void> {
+            current = { ...current, storePill };
+            emit();
+            await persist({ storePill });
+        },
+        async setFamilyPill(familyPill: boolean): Promise<void> {
+            current = { ...current, familyPill };
+            emit();
+            await persist({ familyPill });
+        },
+        async setPlayerCountPill(playerCountPill: boolean): Promise<void> {
+            current = { ...current, playerCountPill };
+            emit();
+            await persist({ playerCountPill });
+        },
+        /** The accent mode, its colour, or both. */
+        async setAccent(change: Partial<AccentChoice>): Promise<void> {
+            const next = { accentMode: accentModeOf(change.accentMode ?? current.accentMode), accentColor: accentColorOf(change.accentColor ?? current.accentColor) };
+            current = { ...current, ...next };
+            emit();
+            await persist(next);
+        },
+        async setTitleSize(titleSize: TitleSize): Promise<void> {
+            current = { ...current, titleSize: titleSizeOf(titleSize) };
+            emit();
+            await persist({ titleSize: current.titleSize });
+        },
+        /** One set's pins (menu/achievementPins); an empty list removes the set. */
+        async setAchievementPins(slot: string, keys: number[]): Promise<void> {
+            const { [slot]: _gone, ...rest } = current.achievementPins;
+            const achievementPins = keys.length > 0 ? { ...rest, [slot]: [...keys] } : rest;
+            current = { ...current, achievementPins };
+            emit();
+            await persist({ achievementPins });
         },
         /** One or more screensaver options. */
         async setScreensaver(change: Partial<ScreensaverOptions>): Promise<void> {
@@ -180,6 +274,18 @@ export function createSettingsStore(kv: KvBackend) {
             return () => listeners.delete(listener);
         },
     };
+}
+
+/** Saved pins: string keys with lists of whole numbers, the newest MAX_PINS of each; anything else is dropped. */
+function achievementPinsOf(value: unknown): Record<string, number[]> {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+    const out: Record<string, number[]> = {};
+    for (const [slot, keys] of Object.entries(value as Record<string, unknown>)) {
+        if (!Array.isArray(keys)) continue;
+        const ok = keys.filter((k): k is number => Number.isInteger(k)).slice(-MAX_PINS);
+        if (ok.length > 0) out[slot] = ok;
+    }
+    return out;
 }
 
 export const settings = createSettingsStore(backendKv);

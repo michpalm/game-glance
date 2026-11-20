@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultGrowth } from '../../src/home/scale';
+import { SIZE_FACTOR, defaultGrowth } from '../../src/home/scale';
 import { labelText } from '../../src/styles/tokens';
 import { cardScale, CARD_MIN_SCALE, screensaverBaseCanvas, screensaverCanvas, screensaverCss, shuffled, SS_CANVAS, SS_MIN_WIDTH } from '../../src/screensaver/screensaverCss';
 
@@ -80,8 +80,11 @@ describe('cardScale', () => {
 describe('screensaverCanvas: the default growth (#55)', () => {
     it('grows by the same factor as Home', () => {
         const c = screensaverCanvas(1920, 1080);
-        expect(c.scale).toBeCloseTo((4 / 3) * defaultGrowth(810), 6);
-        expect(c.logicalHeight).toBeCloseTo(810 / defaultGrowth(810), 6);
+        expect(c.scale).toBeCloseTo((4 / 3) * defaultGrowth(810) * SIZE_FACTOR.tv, 6);
+        expect(c.logicalHeight).toBeCloseTo(810 / (defaultGrowth(810) * SIZE_FACTOR.tv), 6);
+    });
+    it('uses the handheld factor on the handheld', () => {
+        expect(screensaverCanvas(828, 466).scale).toBeCloseTo((466 / 810) * defaultGrowth(810) * SIZE_FACTOR.handheld, 6);
     });
 });
 

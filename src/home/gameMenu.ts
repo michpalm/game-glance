@@ -50,7 +50,7 @@ export function buildGameMenu(mod: MenuModule | null, overview: unknown, ownerWi
 }
 
 /** Steam's app-action module (menu component and options), looked up once on success; a miss is retried at most once a minute. */
-const findMenuModule = memoLookup<MenuModule>('game menu', () => {
+export const findMenuModule = memoLookup<MenuModule>('game menu', () => {
     const mod = findModule((m: any) => m && typeof m.uU === 'function' && typeof m.zq === 'function' && typeof m.AH === 'function');
     return mod ? { uU: mod.uU, zq: mod.zq } : null;
 });

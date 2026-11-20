@@ -1,24 +1,43 @@
 /**
  * The hero art's framing (docs/superpowers/specs/2026-10-23-hero-fit-design.md): Fill covers the screen (the sides of
- * wide art are cut off); Fit shows the whole art at the top centre, its edge fading into a blurred copy of it. Shared by
- * Home, the restyled game page and the open transition, so the hand-over keeps the same framing. Pure.
+ * wide art are cut off); Fit shows the whole art at the top centre, its edge fading into a blurred copy of it; Expanded,
+ * in between, covers the top EXPANDED_HEIGHT of the screen (less of wide art's sides cut off) and fades into the same
+ * blurred copy. Shared by Home, the restyled game page and the open transition, so the hand-over keeps the same framing. Pure.
  */
 
-export type HeroFit = 'fill' | 'fit';
-export const HERO_FITS: readonly HeroFit[] = ['fill', 'fit'];
+export type HeroFit = 'fill' | 'expanded' | 'fit';
+/** In the settings' order: from the most of the screen to the most of the art. */
+export const HERO_FITS: readonly HeroFit[] = ['fill', 'expanded', 'fit'];
+
+export const HERO_FIT_LABELS: Record<HeroFit, string> = { fill: 'Fill', expanded: 'Expanded', fit: 'Fit' };
 
 /** The hero art setting's description, for the selected option. */
 export const HERO_FIT_COPY: Record<HeroFit, string> = {
     fill: 'Fills the screen; the sides of wide art are cut off.',
+    expanded: 'Fills the top of the screen; less of the sides is cut off.',
     fit: 'Shows the whole art at the top, with a blurred copy behind it.',
 };
 
 export function heroFitOf(value: unknown): HeroFit {
-    return value === 'fit' ? 'fit' : 'fill';
+    return value === 'fit' || value === 'expanded' ? value : 'fill';
+}
+
+/** Whether the art is drawn over the blurred art fill (Expanded and Fit), not covering the screen alone (Fill). */
+export function overFill(fit: HeroFit): boolean {
+    return fit !== 'fill';
 }
 
 /** The share of the art's extent, next to the fill, that fades out. */
 export const FIT_FADE = 0.22;
+
+/** Expanded's art box: the top 70% of the screen, the art covering it (centred). */
+export const EXPANDED_HEIGHT = 0.7;
+
+/** Expanded's fade, over its art box: the box's last FIT_FADE, as Fit fades the art's. The art always covers the box, so this needs no art shape. */
+export const EXPANDED_MASK = `linear-gradient(180deg, #000 ${Math.round((1 - FIT_FADE) * 100)}%, transparent 100%)`;
+
+/** Expanded's art box as an inset: the bottom (1 - EXPANDED_HEIGHT) of the screen left to the fill. */
+export const EXPANDED_INSET = `0 0 ${Math.round((1 - EXPANDED_HEIGHT) * 100)}% 0`;
 
 /** Steam's library hero shape (3840 x 1240): used until an art's real size is known. */
 export const STANDARD_HERO_ASPECT = 3.1;

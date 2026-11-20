@@ -1,6 +1,6 @@
 import { appDetailsClasses, appDetailsHeaderClasses, findClassModule, playSectionClasses } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
-import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets, heroImageSelector } from './themeCss';
+import { nativeUnavailableMessageSelectors, arrivalSelectors, buildAccentCss, steamFooterSelector, buildArrivingCss, buildSteamEnterOffCss, buildCleanCss, buildDownloadCss, buildInstallSizeCss, buildLaunchCss, launchArtHostSelector, buildRingCss, buildThemeCss, buildUnifideckCss, ClassMap, launchTargets, playRowSelector, ringBoost, ThemeClasses, ThemeOptions, twinTargets, heroImageSelector } from './themeCss';
 import { viewportSize } from '../home/openHome';
 import type { ReadySelectors } from './pageReady';
 
@@ -48,14 +48,24 @@ export function accentCss(color: string): string {
     return buildAccentCss(themeClasses(), color);
 }
 
+/** Space required at the restyled Install pill's right end; '' without a size (themeCss.buildInstallSizeCss). */
+export function installSizeCss(size: string | null): string {
+    return buildInstallSizeCss(themeClasses(), size);
+}
+
 /** The restyled Play pill's download fill (and Steam's bar hidden); '' without a percent. */
 export function downloadCss(percent: number | null): string {
     return buildDownloadCss(themeClasses(), percent);
 }
 
 /** The page's look while Steam's launch overlay is up (themeCss.buildLaunchCss); '' if the overlay's class is unknown. */
-export function launchCss(): string {
-    return buildLaunchCss(themeClasses());
+export function launchCss(fromHome = false): string {
+    return buildLaunchCss(themeClasses(), fromHome);
+}
+
+/** Steam's header on the game page, where the launch art goes (themeCss.launchArtHostSelector). */
+export function launchArtHost(): string | null {
+    return launchArtHostSelector(themeClasses());
 }
 
 /** The launch overlay's selector and what hides under it (themeCss.launchTargets). */
@@ -99,6 +109,12 @@ export function pageHeroImage(): string | null {
     return heroImageSelector(themeClasses());
 }
 
+/** Steam's round-button group in the Play row (controller, Manage, cloud, extras); null before its class is known. */
+export function appButtonsSelector(): string | null {
+    const name = themeClasses().root?.AppButtons;
+    return name ? `.${name}` : null;
+}
+
 export function playRow(): string | null {
     return playRowSelector(themeClasses());
 }
@@ -129,7 +145,7 @@ export function playRowControlSelector(): string | null {
     const parts = [
         t.root?.PlaySection ? `.${t.root.PlaySection} [role="button"]` : '',
         t.play?.CloudStatusRow ? `.${t.play.CloudStatusRow}` : '',
-        '.gg-copy-pill, .gg-store-choice',
+        '.gg-copy-pill, .gg-store-choice, .gg-players-choice',
         '.unifideck-hide-native-play :is(.unifideck-play-btn, .unifideck-install-btn, .unifideck-resume-btn, .unifideck-update-btn, .unifideck-icon-btn)',
     ].filter((s) => s.length > 0);
     return parts.length > 0 ? parts.join(', ') : null;

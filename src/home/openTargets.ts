@@ -10,7 +10,7 @@ import { baseCanvas } from './scale';
 
 export type PageLook = 'spotlight' | 'clean';
 export interface Box { x: number; y: number; w: number; h: number }
-export type StatKey = 'size' | 'played' | 'achievements' | 'hltb';
+export type StatKey = 'size' | 'played' | 'achievements' | 'protondb' | 'hltb';
 /** One of the page's stat columns, in page order; `bar`: the column has a progress bar under its value (Clean). */
 export interface PageStat { key: StatKey; label: string; value: string; bar?: boolean }
 export interface PageTargets {
@@ -25,8 +25,16 @@ export interface PageTargets {
     circles: Box[];
     /** The store pill, right-aligned (its size is the given one). */
     store: Box;
-    /** Spotlight: [info card, HowLongToBeat card]; Clean: [panel]. On whole device px, as Chromium draws a card's edges. */
+    /**
+     * Spotlight: [info card, featured card] (the featured card is HowLongToBeat's by default; nothing featured: the info
+     * card alone, spanning the row); Clean: [panel]. On whole device px, as Chromium draws a card's edges.
+     */
     shells: Box[];
+    /**
+     * Spotlight: the stat the right-hand card features (its value is the card's first column), null for none. Absent:
+     * HowLongToBeat (the default slots). Clean has no featured card.
+     */
+    featured?: StatKey | null;
     /**
      * The same cards where the page lays them out, unsnapped: each is a compositing layer on the page, and text inside one
      * is snapped from its origin, so the open's layers for card text sit here (openTwins.TwinSpec.card). Absent: shells.
@@ -34,6 +42,7 @@ export interface PageTargets {
     cards?: Box[];
     /** The page's d unit (CSS px per handoff px), exactly as its --gg-d. Absent: Home's canvas scale. */
     d?: number;
+    dpr?: number;
     /** Each stat's label and value; on Clean, the progress bar under a stat that has one. */
     stats: Partial<Record<StatKey, { label: Box; value: Box; bar?: Box }>>;
     /** Spotlight look, when asked for: the description and the rest of the HowLongToBeat card. */
@@ -51,11 +60,11 @@ export interface ExtrasAsked {
 export interface PageExtras {
     /** The info card's description: three lines (it is clamped to them). */
     desc: Box;
-    /** The HowLongToBeat card's title label. */
-    hltbTitle: Box;
+    /** The HowLongToBeat card's title label, columns after Main, bar and caption: only when HowLongToBeat is featured. */
+    hltbTitle?: Box;
     columns: Partial<Record<ExtraColumn['key'], { label: Box; value: Box }>>;
     bar?: Box;
-    caption: Box;
+    caption?: Box;
 }
 /** A text's width in CSS px as the page draws it: a stat label (uppercase, its letter spacing), a card value or a Clean value. */
 export type Measure = (text: string, role: 'label' | 'value' | 'cleanValue', fontPx: number) => number;
@@ -81,12 +90,18 @@ export type LineMeasure = (role: 'label' | 'caption', fontPx: number) => number;
 const LABEL_LINE = 1.5;
 const VALUE_LINE = PAGE_LINES.value;
 const CAPTION_LINE = 1.45;
+/** ProtonDB's mark before its rating, in ems of the value: the mark (1em) and its margin (themeCss protonMarkCss). */
+const PROTON_MARK_EM = 1.35;
 /** The Spotlight cards' height with three description lines (handoff px; the theme's TV_CARDS_H). */
 const CARDS_H = PAGE_LAYOUT.playTop.tvCards;
 
+/**
+ * `featured` (Spotlight): the stat the right-hand card features (Game info slots), placed as that card's first column as
+ * HowLongToBeat's Main is; the info card holds the other stats; null: no right-hand card, the info card spans the row.
+ */
 export function pageTargets(
-    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
-    lines?: LineMeasure,
+    look: PageLook, screen: { width: number; height: number; dpr?: number; grow?: number; side?: number }, stats: PageStat[], measure: Measure, storeSize: { w: number; h: number }, asked?: ExtrasAsked,
+    lines?: LineMeasure, featured: StatKey | null = 'hltb',
 ): PageTargets {
     const L = PAGE_LAYOUT;
     const W = screen.width;
@@ -105,7 +120,8 @@ export function pageTargets(
         return { x, y, w: snap(b.x + b.w) - x, h: snap(b.y + b.h) - y };
     };
     const tv = W >= L.tvQuery.minWidth && H >= L.tvQuery.minHeight;
-    const side = (tv ? L.side.tv : L.side.base) * d;
+    // The side inset in canvas px; `side` overrides it (pages recorded before the handheld's moved to 28: 56).
+    const side = (screen.side ?? (tv ? L.side.tv : L.side.base)) * d;
     const playTop = look === 'clean'
         ? H - L.rowH * d - Math.max(L.clean.bottom * d, L.clean.minBelowRow - (L.rowH - L.icon) * d)
         : tv
@@ -130,7 +146,9 @@ export function pageTargets(
     const valueFont = (look === 'clean' ? L.cleanInfo.value : L.stats.value) * d;
     const valueH = valueFont * VALUE_LINE;
     const barW = L.cleanInfo.barW * d;
-    const columnWidth = (s: PageStat) => Math.max(measure(s.label, 'label', labelFont), measure(s.value, valueRole, valueFont), look === 'clean' && s.bar ? barW : 0);
+    // ProtonDB's rating has its mark before it (themeCss protonMarkCss: 1em wide, then 0.35em).
+    const valueWidth = (s: PageStat) => measure(s.value, valueRole, valueFont) + (s.key === 'protondb' ? PROTON_MARK_EM * valueFont : 0);
+    const columnWidth = (s: PageStat) => Math.max(measure(s.label, 'label', labelFont), valueWidth(s), look === 'clean' && s.bar ? barW : 0);
     const out: PageTargets['stats'] = {};
     /** Lays `list` out as one flex row of columns from (x, y) with `gap` between them; returns the row's width. */
     const row = (list: PageStat[], x: number, y: number, gap: number): number => {
@@ -153,46 +171,54 @@ export function pageTargets(
     if (look === 'spotlight') {
         const top = playTop + L.rowH * d;
         // As the page's grid: the columns share the width between the sides; each card at most its cardMaxWidths,
-        // the info card at the left, HowLongToBeat at the right end, so on a wider screen the art shows between them.
+        // the info card at the left, the featured card (HowLongToBeat's by default) at the right end, so on a wider screen
+        // the art shows between them. Nothing featured: the info card alone, at its own width (the right-hand column empty).
         const inner = W - 2 * side - L.cards.gridGap * d;
         const [a, b] = L.cards.split;
         const [infoMax, hltbMax] = cardMaxWidths(W / H);
         // Their min-height is CARDS_H less 2 for the rings, in d units, and the rings as drawn come on top.
         const cardH = (CARDS_H - 2) * d + 2 * BORDER;
-        const info: Box = { x: side, y: top, w: Math.min((inner * a) / (a + b), infoMax * d - thinner), h: cardH };
+        const infoW = Math.min((inner * a) / (a + b), infoMax * d - thinner);
+        const info: Box = { x: side, y: top, w: infoW, h: cardH };
         const hltbW = Math.min((inner * b) / (a + b), hltbMax * d) - thinner;
-        const hltb: Box = { x: W - side - hltbW, y: top, w: hltbW, h: cardH };
-        cards = [info, hltb];
+        const hltb: Box | null = featured === null ? null : { x: W - side - hltbW, y: top, w: hltbW, h: cardH };
+        cards = hltb ? [info, hltb] : [info];
         shells = cards.map(snapBox);
         const pad = (card: Box) => ({ x: card.x + BORDER + L.cards.padX * d, y: card.y + BORDER + L.cards.padY * d });
         const i0 = pad(info);
-        row(stats.filter((s) => s.key !== 'hltb'), i0.x, i0.y, L.stats.colGapInfo * d);
-        const h0 = pad(hltb);
-        // The HowLongToBeat card: its title label, then the tiers (Main is the `hltb` stat; the others are the page's own).
-        const tiersY = h0.y + labelH + L.cards.hltbGap * d;
-        const mainW = row(stats.filter((s) => s.key === 'hltb'), h0.x, tiersY, L.stats.colGapHltb * d);
-        if (asked) {
-            // Each card is a column: its children one gap apart (the info card's gap, the HowLongToBeat card's smaller one).
-            const statsH = labelH + L.stats.rowGap * d + valueH;
-            const inner = (card: Box) => card.w - 2 * (BORDER + L.cards.padX * d);
-            const infoStats = stats.some((s) => s.key !== 'hltb');
-            const desc: Box = { x: i0.x, y: i0.y + (infoStats ? statsH + L.cards.colGap * d : 0), w: inner(info), h: L.cardText.desc * L.cardText.descLine * L.cardText.descLines * d };
-            const columns: PageExtras['columns'] = {};
-            let at = h0.x + mainW + L.stats.colGapHltb * d;
-            for (const c of asked.columns) {
-                const w = Math.max(measure(c.label, 'label', labelFont), measure(c.value, 'value', valueFont));
-                columns[c.key] = { label: { x: at, y: tiersY, w, h: labelH }, value: { x: at, y: tiersY + labelH + L.stats.rowGap * d, w, h: valueH } };
-                at += w + L.stats.colGapHltb * d;
+        const infoList = stats.filter((s) => s.key !== featured);
+        row(infoList, i0.x, i0.y, L.stats.colGapInfo * d);
+        const inside = (card: Box) => card.w - 2 * (BORDER + L.cards.padX * d);
+        // Each card is a column: its children one gap apart (the info card's gap, the featured card's smaller one).
+        const statsH = labelH + L.stats.rowGap * d + valueH;
+        const desc = (): Box => ({ x: i0.x, y: i0.y + (infoList.length > 0 ? statsH + L.cards.colGap * d : 0), w: inside(info), h: L.cardText.desc * L.cardText.descLine * L.cardText.descLines * d });
+        if (hltb) {
+            const h0 = pad(hltb);
+            // The featured card: its title label, then its first column (the featured stat: HowLongToBeat's Main by
+            // default); its other columns are the page's own.
+            const tiersY = h0.y + labelH + L.cards.hltbGap * d;
+            const mainW = row(stats.filter((s) => s.key === featured), h0.x, tiersY, L.stats.colGapHltb * d);
+            if (asked && featured === 'hltb') {
+                const columns: PageExtras['columns'] = {};
+                let at = h0.x + mainW + L.stats.colGapHltb * d;
+                for (const c of asked.columns) {
+                    const w = Math.max(measure(c.label, 'label', labelFont), measure(c.value, 'value', valueFont));
+                    columns[c.key] = { label: { x: at, y: tiersY, w, h: labelH }, value: { x: at, y: tiersY + labelH + L.stats.rowGap * d, w, h: valueH } };
+                    at += w + L.stats.colGapHltb * d;
+                }
+                const afterTiers = tiersY + statsH + L.cards.hltbGap * d;
+                const bar: Box | undefined = asked.bar ? { x: h0.x, y: afterTiers, w: inside(hltb), h: L.cardText.bar * d } : undefined;
+                const caption: Box = { x: h0.x, y: bar ? bar.y + bar.h + L.cards.hltbGap * d : afterTiers, w: inside(hltb), h: lineOf('caption', L.cardText.caption * d, CAPTION_LINE) };
+                extras = { desc: desc(), hltbTitle: { x: h0.x, y: h0.y, w: inside(hltb), h: labelH }, columns, bar, caption };
             }
-            const afterTiers = tiersY + statsH + L.cards.hltbGap * d;
-            const bar: Box | undefined = asked.bar ? { x: h0.x, y: afterTiers, w: inner(hltb), h: L.cardText.bar * d } : undefined;
-            const caption: Box = { x: h0.x, y: bar ? bar.y + bar.h + L.cards.hltbGap * d : afterTiers, w: inner(hltb), h: lineOf('caption', L.cardText.caption * d, CAPTION_LINE) };
-            extras = { desc, hltbTitle: { x: h0.x, y: h0.y, w: inner(hltb), h: labelH }, columns, bar, caption };
         }
+        // Another featured card's parts are not drawn by Home (they arrive with the page): only the description.
+        if (asked && !extras) extras = { desc: desc(), columns: {} };
         store = { x: W - side - storeSize.w, y: top - L.storePillTop * d, w: storeSize.w, h: storeSize.h };
     } else {
         // Measure the row first (at 0, 0), then place the panel right-aligned and centred on the Play pill.
         const width = row(stats, 0, 0, L.cleanInfo.colGap * d);
+        // No stat to show: the page draws no panel (CleanInfoPanel), so nothing grows into one.
         const barH = stats.some((s) => s.bar) ? (L.stats.rowGap + L.cleanInfo.barTop + L.cleanInfo.barH) * d : 0;
         const columnH = labelH + L.stats.rowGap * d + valueH + barH;
         const panel: Box = { x: 0, y: 0, w: width + 2 * (L.cleanInfo.padX * d + BORDER), h: columnH + 2 * (L.cleanInfo.padY * d + BORDER) };
@@ -206,11 +232,14 @@ export function pageTargets(
             s.value = { ...s.value, x: s.value.x + ox, y: s.value.y + oy };
             if (s.bar) s.bar = { ...s.bar, x: s.bar.x + ox, y: s.bar.y + oy };
         }
-        cards = [panel];
+        cards = stats.length > 0 ? [panel] : [];
         shells = cards.map(snapBox);
         store = { x: W - side - storeSize.w, y: playTop - L.clean.storeGap * d - storeSize.h, w: storeSize.w, h: storeSize.h };
     }
-    return { titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, d, border: BORDER, ring: ringBoost(screen.dpr ?? 0, W, H), stats: out, extras };
+    return {
+        titleBottomLeft, eyebrowBottomLeft, play, circles, store, shells, cards, featured: look === 'spotlight' ? featured : null, d, dpr: screen.dpr,
+        border: BORDER, ring: ringBoost(screen.dpr ?? 0, W, H), stats: out, extras,
+    };
 }
 
 /** The page card (`cards`: PageTargets.shells) that point `p` is in, edges included, or null. Pure. */

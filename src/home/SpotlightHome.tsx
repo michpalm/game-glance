@@ -1,9 +1,12 @@
+import { TITLE_SCALE_VAR, titleScale } from './titleSize';
 import { InfoCardPanel } from '../components/InfoCard';
-import { HltbCard } from '../components/HltbCard';
+import { FeaturedCard } from '../components/FeaturedCard';
+import { openPlayedMissing } from './openHome';
 import { CleanInfoPanel } from '../components/CleanInfo';
 import { homeCleanStats } from '../logic/cleanInfo';
+import { pageInfoStats } from '../logic/slotStats';
 import type { GamepadEvent } from '@decky/ui';
-import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActionRow, LibraryActionRow, openGameActions } from './ActionRow';
 import { FeedSheet } from './FeedSheet';
 import { feedSpace, feedViewportInset } from './feedLayout';
@@ -13,7 +16,9 @@ import { pillInset, rowInset, sideInset } from './insets';
 import { isTvScreen } from '../styles/screenScale';
 import { focusElement, focusElementSettled, holdsFocus, openGame, openLibrary } from './homeNav';
 import { LOG_PREFIX } from '../constants';
-import { useSettings } from '../data/settings';
+import { settings, useSettings } from '../data/settings';
+import { effectiveAccent } from './accentChoice';
+import { homeMode } from './mode';
 import { recentsButton, selectionForButton, type Zone } from './focusZones';
 import { sheetSwipe } from './rowDrag';
 import { rowWheelTarget } from './mouse';
@@ -23,16 +28,24 @@ import { installCalmFilter } from '../styles/tokens';
 import { HeroBackground } from './HeroBackground';
 import { neighbourIds } from './heroLayers';
 import { HERO_PRELOAD_DELAY_MS, HERO_PRELOAD_RADIUS, RETURN_TIMINGS } from './motion';
-import { steamEnterOffCss } from '../styles/theme';
+import { playRow, steamEnterOffCss } from '../styles/theme';
+import { takeReturn } from './returnNote';
+import { endReturnGlide, startReturnGlide } from './returnGlide';
+import { applyClosing, CLOSING_ATTR } from './closeMotion';
+import { pageAtTop } from '../logic/feedbackScroll';
+import { viewportSize } from './openHome';
 import { legibleAccent } from './accent';
 import { shownAccent } from './shownAccent';
 import { solveRaiseDelta } from './raised';
 import { watchLegendHeight, legendReserve } from './legend';
-import { FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
+import { FEED_DIM, FEED_SHEET, giveWayVars, homeCss, homeStack } from './homeCss';
 import { noteHome, recentIndexFor, recentRefFor, takeRestore } from './homeMemory';
 import { eyebrowText, showEmptyMessage, usableSize } from './homeView';
 import { HomePills } from './HomePills';
 import { useFamilyCopies } from '../hooks/useFamilyCopies';
+import { PLAYERS_HOME_MAX_AGE_MS } from '../data/playerCount';
+import { usePlayerCount } from '../data/usePlayerCount';
+import { homePlayersLimit } from './openHome';
 import { loadStoreVersions, peekStoreVersions } from '../data/storeVersions';
 import { useAsync } from '../hooks/useAsync';
 import { GameStatusBar } from '../components/GameStatusBar';
@@ -44,7 +57,7 @@ import { canvasStyle, homeCanvas } from './scale';
 import { OpenExtras } from './OpenExtras';
 import { useUnifideckInstalled } from '../hooks/useUnifideckInstalled';
 import { useUnifideckSize } from '../hooks/useUnifideckSize';
-import { knownSizeLabel, sizeStat } from '../logic/sizeStat';
+import { installSizeText, knownSizeLabel, sizeStat } from '../logic/sizeStat';
 import { TitleBlock } from './TitleBlock';
 import { useBumperSelect, useDirectionSelect } from './useBumperSelect';
 import { useCloud } from './useCloud';
@@ -57,14 +70,13 @@ import { useHomeClaim } from './useHomeClaim';
 import { chromeFocus } from '../chrome/useChrome';
 import { launchPending } from '../data/launchIntent';
 import { keepSteamFocus } from './steamFocus';
+import { overFill } from './heroFit';
 
 /** How often Home checks whether Quick Access has closed, and how long it then lets Steam restore focus first. */
 const MENU_POLL_MS = 250;
 const MENU_SETTLE_MS = 300;
 
 /** Hero dim: none at rest (the art is shaded as on the game page, per Page shading: homeCss .gh-scrim-page), .45 while the feed sheet is up. */
-const DIM_REST = 0;
-const DIM_SHEET = 0.45;
 /** Two activations closer than this are one press (A and a touch both arriving); see onRecentsActivate. */
 const SAME_PRESS_MS = 300;
 
@@ -151,7 +163,8 @@ export function SpotlightHome() {
     const [restore] = useState(takeRestore);
     // Home is clean: the feed's tabs that are on (What's new, Friends, Recommended; settings feedTabs) are there (Down
     // reaches them) but stay out of sight until focus is in them. With none on Home has no feed.
-    const { homeStatusBar, gameLogo, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs } = useSettings();
+    const { homeStatusBar, gameLogo, titleSize, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, infoSlots: slots, storePill, familyPill, playerCountPill, accentMode, accentColor } = useSettings();
+    const titleK = titleScale(titleSize);
     const feedShown = useMemo(() => shownTabs(feedTabs), [feedTabs]);
     const hasFeed = feedShown.length > 0;
     const [resolved, setResolved] = useState(restore === null);
@@ -180,7 +193,8 @@ export function SpotlightHome() {
     const shownGame = shownAt === null ? null : data.games[shownAt] ?? null;
     const heldAccent = useRef(data.accent);
     if (!cycle.holding) heldAccent.current = data.accent;
-    const accent = heldAccent.current;
+    // The setting decides: the art's colour (adaptive) or the chosen one (home/accentChoice).
+    const accent = effectiveAccent(heldAccent.current, { accentMode, accentColor });
     useEffect(() => { shownAccent.set(accent); }, [accent]);
     useEffect(() => () => shownAccent.set(undefined), []);
     // The zone holding gamepad focus, as reported by each zone's focus events; tabs/feed raise the sheet.
@@ -510,7 +524,15 @@ export function SpotlightHome() {
     const game = data.focused;
     // A game from the family library: "Family Sharing · Lender" beside the store pill (data/family).
     const copies = useFamilyCopies(game?.appId ?? 0, !onLibrary && !cycle.holding);
-    const family = copies.label;
+    const family = familyPill ? copies.label : null;
+    // How many people play the focused game now (spec 2026-11-12-player-count-pill): Steam games, cached, refreshed at 5 min.
+    const playersApp = game && !game.shortcut && playerCountPill && !onLibrary && !cycle.holding ? game.appId : null;
+    const players = usePlayerCount(playersApp, { maxAgeMs: PLAYERS_HOME_MAX_AGE_MS, enabled: playersApp !== null });
+    // Any pill can be turned off (settings): nothing when all are, the family pill (or the player pill) in the store pill's place.
+    const pillSource = storePill || family || players !== null ? data.source : undefined;
+    // Home's fit line: the page's right-hand card from the page model (Home's own cards are hidden at rest), as the open's
+    // copy and the page use. HomePills attaches it to its holder element (styles/playersFit placePlayersOn).
+    const playersLimit = useCallback((root: HTMLElement) => homePlayersLimit(root, homeMode(settings.get()).cleanDetails ? 'clean' : 'spotlight', slots), [slots]);
     const fetchedVersions = useAsync(game && !onLibrary && !cycle.holding ? `store-versions:${game.appId}` : null, () => loadStoreVersions(game!.appId));
     const versions = (game ? peekStoreVersions(game.appId) : undefined) ?? fetchedVersions ?? [];
     const contentUp = measuredScale !== null && resolved;
@@ -550,12 +572,55 @@ export function SpotlightHome() {
         return keepSteamFocus(rootRef.current, RETURN_TIMINGS.hold);
     }, [contentUp, restore]);
 
+    // The way back's glide (spec docs/superpowers/specs/2026-11-12-page-return-glide-design.md): on the content's first
+    // frame, before it paints, Home starts at the page's places and glides to rest; any other case is the plain fade.
+    const glideFrom = useRef<{ index: number; sheet: boolean } | null>(null);
+    useLayoutEffect(() => {
+        if (!contentUp || !restore) return;
+        const root = rootRef.current;
+        const doc = root?.ownerDocument;
+        const win = doc?.defaultView;
+        try {
+            if (!root || !doc || !win) return;
+            const { way, look } = takeReturn({ appId: data.focused?.appId ?? null, zone: restore.zone, viewport: viewportSize(win), atTop: pageAtTop(doc, playRow()) });
+            if (way !== 'glide' || !look) return;
+            const started = startReturnGlide({
+                apply: () => applyClosing(root, look, slots),
+                release: () => root.setAttribute(CLOSING_ATTR, 'to'),
+                frame: (fn) => { win.requestAnimationFrame(fn); },
+                setTimer: (fn, ms) => win.setTimeout(fn, ms),
+                clearTimer: (id) => win.clearTimeout(id as number),
+                warn: (message, error) => console.warn(`${LOG_PREFIX} Home: ${message}`, error),
+            });
+            if (started) glideFrom.current = { index: recentIndex, sheet: sheetUp };
+        } catch (error) {
+            console.warn(`${LOG_PREFIX} Home: could not start the way back's glide`, error);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contentUp]);
+    // Home used during the glide (another game selected, the feed raised): everything at rest at once.
+    useEffect(() => {
+        const from = glideFrom.current;
+        if (from && (from.index !== recentIndex || from.sheet !== sheetUp)) {
+            glideFrom.current = null;
+            endReturnGlide();
+        }
+    }, [recentIndex, sheetUp]);
+    useEffect(() => () => endReturnGlide(), []);
+    // The glide's 'done' mark only keeps the way back's fade off while Home is "just back"; after that it goes, so a later
+    // cancelled open fades in as usual.
+    useEffect(() => {
+        if (!back && rootRef.current?.getAttribute(CLOSING_ATTR) === 'done') rootRef.current.removeAttribute(CLOSING_ATTR);
+    }, [back]);
+
     return (
-        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${heroFit === 'fit' ? ' gh-fit' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? DIM_SHEET : DIM_REST, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
+        <div ref={rootRef} className={`gh-root${back ? ' gh-back' : ''}${overFill(heroFit) ? ' gh-fit' : ''}${heroFit === 'expanded' ? ' gh-expanded' : ''}${pageShading === 'none' ? ' gh-shade-none' : ''}`} onPointerDown={onRootPointerDown} onPointerUp={onRootPointerUp} onPointerCancel={onRootPointerCancel} onWheel={onRootWheel} style={{ [TITLE_SCALE_VAR]: titleK, '--glance-accent': accent, '--glance-accent-text': legibleAccent(accent), '--gh-dim': sheetUp ? FEED_DIM.sheet : FEED_DIM.rest, '--gh-frost': sheetUp ? 1 : 0, '--gh-side': `${side}px`, '--gh-row': `${rowInset(side, tv)}px`, '--gh-pill': `${pillInset(tv)}px`, '--gh-bottom': `${legend}px`, '--gh-shift': `${stack.shift}px`, '--gh-raise': `${FEED_SHEET.raise + raiseDelta}px`, ...giveWayVars(give) } as CSSProperties}>
             <style>{css}</style>
             {enterOff && <style>{enterOff}</style>}
             {/* No game until the restore is applied (Home back on B): the first game's art would flash before the selected one's. */}
             <HeroBackground appId={resolved ? shownGame?.appId ?? null : null} detailsVersion={data.detailsVersion} neighbours={heroNeighbours} />
+            {/* The hero frosted while the feed sheet is up (under the opened game's hero, so that one opens sharp). */}
+            <div className="gh-scrim gh-scrim-frost" />
             {/* The opened game's hero (a feed card's, homeCss.openingRules), the feed sheet's dim, and the page's shading. */}
             <div className="gh-hero-open" />
             <div className="gh-scrim gh-scrim-dim" />
@@ -591,7 +656,7 @@ export function SpotlightHome() {
                                     {onLibrary ? (
                                         <TitleBlock eyebrow={eyebrowText(null, true)} title={tr('viewLibrary')} chips={data.libraryChips} />
                                     ) : (
-                                        <TitleBlock eyebrow={collectionEyebrow(data.rowCollection, eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew, data.rowCollection !== null))} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} resolve={!cycle.holding} />
+                                        <TitleBlock eyebrow={collectionEyebrow(data.rowCollection, eyebrowText(data.lastPlayedLabel, false, data.focusedIsNew, data.rowCollection !== null))} title={game.name} chips={data.chips} appId={game.appId} logo={gameLogo} version={data.detailsVersion} resolve={!cycle.holding} titleScale={titleK} />
                                     )}
                                     <ActionRow
                                         game={onLibrary ? null : game}
@@ -603,11 +668,17 @@ export function SpotlightHome() {
                                         cloud={onLibrary ? null : cloud}
                                         onBack={focusGames}
                                         unifideck={!onLibrary && typeof uniInstalled === 'boolean' ? { installed: uniInstalled } : null}
+                                        installSize={onLibrary || !game ? null : installSizeText({
+                                            installed: data.focused?.installed === true,
+                                            downloading: data.download !== null,
+                                            steamBytes: game.shortcut ? null : data.spaceRequired,
+                                            unifideck: uniShortcut && typeof uniInstalled === 'boolean' ? { installed: uniInstalled, bytes: uniBytes } : null,
+                                        }, data.locale)}
                                     />
                                 </section>
                                 {/* The selected game's store, as the game page's pill; not on the Library card. */}
-                                {!onLibrary && data.source && (
-                                    <HomePills appId={game.appId} source={data.source} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} />
+                                {!onLibrary && pillSource && (
+                                    <HomePills appId={game.appId} source={pillSource} family={family} count={copies.count} versions={versions} onFocus={onActionsFocus} onBack={focusGames} buttons={actionRowButtons} bare={!storePill} players={players} locale={data.locale} playersLimit={playersLimit} />
                                 )}
                                 <RecentsRow games={data.games} selected={focusIndex} geometry={geometry} nav={recentsNav} rowStyle={homeRowStyle} grayUninstalled={homeGrayUninstalled} viewport={rowViewport} expand={!cycle.narrow} snap={cycle.holding} />
                                 {hasFeed && <FeedSheet
@@ -633,16 +704,35 @@ export function SpotlightHome() {
                     </div>
                 </div>
             </div>
+            {/* The page's cards as the page draws them (its featured card too, from what Home knows; nothing featured: the info card alone, at its own width). */}
             {game && !cycle.holding && <div className="gh-normal-cards">
-                <InfoCardPanel prefix="gh-normal" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn).filter((s) => s.key !== 'hltb')} description={data.description} />
-                <HltbCard prefix="gh-normal" result={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} restyle />
+                <InfoCardPanel prefix="gh-normal" stats={pageInfoStats(homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots), slots)} description={data.description} />
+                <FeaturedCard
+                    prefix="gh-normal"
+                    featured={slots.featured}
+                    hltb={data.hltb}
+                    playedMinutes={data.playedMinutes}
+                    locale={data.locale}
+                    restyle
+                    proton={data.featuredFacts?.proton}
+                    achievements={data.featuredFacts?.achievements}
+                    playTime={data.featuredFacts?.playTime ?? { minutes: data.playedMinutes, twoWeeks: 0, lastPlayed: 0, icon: null, purchased: 0, reviews: null }}
+                    compat={data.featuredFacts?.compat}
+                    now={Math.floor(Date.now() / 1000)}
+                />
             </div>}
-            {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn)} />}
+            {game && !cycle.holding && <CleanInfoPanel className="gh-clean-info" prefix="gh-clean" stats={homeCleanStats(data.chips, data.playedMinutes, data.hltb, data.locale, sizeColumn, slots)} />}
             {/* Open transition: the page cards' crisp ring, outside the scaled canvas so it is drawn as the page draws it (homeCss .gh-open-ring). */}
             <div className="gh-open-ring" data-i="0" />
             <div className="gh-open-ring" data-i="1" />
+            {/* Likewise the page's focus ring on Play and the page circles' edges (homeCss .gh-open-play-ring, .gh-open-cring); the fourth is the Unifideck circle's. */}
+            <div className="gh-open-play-ring" />
+            <div className="gh-open-cring" data-i="0" />
+            <div className="gh-open-cring" data-i="1" />
+            <div className="gh-open-cring" data-i="2" />
+            {!onLibrary && uniInstalled === true && <div className="gh-open-cring" data-i="3" />}
             {/* Open transition: the page's parts Home draws as it turns into the page (hidden until opening; not built during a fast run). */}
-            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={data.source} family={family} familyMultiple={copies.count > 1} sourceMultiple={versions.length > 1} playedMissing={!data.chips.some((c) => c.key === 'played')} size={sizeColumn} />}
+            {game && !cycle.holding && <OpenExtras description={data.description} hltb={data.hltb} playedMinutes={data.playedMinutes} locale={data.locale} source={pillSource} sourceBare={!storePill} family={family} familyMultiple={copies.count > 1} players={players} sourceMultiple={versions.length > 1} playedMissing={openPlayedMissing(slots, data.chips.map((c) => c.key))} size={null} featured={slots.featured} />}
         </div>
     );
 }

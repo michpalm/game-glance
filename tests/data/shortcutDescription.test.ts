@@ -124,3 +124,14 @@ describe('shortcutDescriptionCached', () => {
         expect(await shortcutDescriptionCached({ name: '  ', heroic: null }, 'english', createCache(memoryKv()))).toBe(true);
     });
 });
+
+describe('cachedSteamAppId', () => {
+    it('reads the remembered match only: id, null for a miss, undefined when never asked', async () => {
+        const { cachedSteamAppId } = await import('../../src/data/shortcutDescription');
+        const store = new Map<string, unknown>([['steammatch:the messenger', { id: 764790 }], ['steammatch:pathologic', { id: null }]]);
+        const cache = { get: async (key: string) => (store.has(key) ? store.get(key) : null) } as never;
+        expect(await cachedSteamAppId('The Messenger ', cache)).toBe(764790);
+        expect(await cachedSteamAppId('Pathologic', cache)).toBeNull();
+        expect(await cachedSteamAppId('Unknown', cache)).toBeUndefined();
+    });
+});

@@ -1,5 +1,5 @@
 import * as ReactDOM from 'react-dom';
-import { findModule, findModuleExport } from '@decky/ui';
+import { findAllModules, findModule, findModuleExport } from '@decky/ui';
 import { Component, cloneElement, isValidElement, useLayoutEffect, useSyncExternalStore, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import type { Stop } from './model';
 import { prepareMenuPresentation } from './presentation';
@@ -178,13 +178,34 @@ export function retireMenuBackdrop(document: Document, backdrop: HTMLElement, vi
 }
 
 type ViewportRelease = ((closing?: boolean) => Stop | undefined) & { conceal(): Promise<void>; resume(): void; setFrostSession:NonNullable<HostAttachment['setFrostSession']>; clearFrost:NonNullable<HostAttachment['clearFrost']> };
+/** The rule that stretches Steam's menu placeholder, and with it the menu window, to the whole screen. */
+const viewportRule = (placeholder: string) => `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
+
+interface PlaceholderStyles { Container?: unknown; ViewPlaceholder?: unknown; Fullscreen?: unknown }
+/**
+ * The stretch in place before the first opening, as a close leaves it: without it Steam sizes the menu window to its narrow
+ * native placeholder (241 px on the PS5) for a frame, then to the whole screen when the opening's stretch lands, and the whole
+ * screen flickered on the first opening after a load. The placeholder is the candidate's that is on the page, once; anything
+ * else (none, two, a stretch already in place) does nothing. Returns its removal, which the first opening runs as it stretches.
+ */
+export function preStretchMenuViewport(document: Document, modules: readonly PlaceholderStyles[]): Stop | undefined {
+    if (document.querySelector('style[data-gg-menu-viewport]')) return undefined;
+    const present = modules.map(m => m?.ViewPlaceholder).filter((c): c is string => typeof c === 'string' && /^[-_a-zA-Z0-9]+$/.test(c) && document.getElementsByClassName(c).length === 1);
+    if (new Set(present).size !== 1 || present.length !== 1) return undefined;
+    const style = document.createElement('style');
+    style.dataset.ggMenuViewport = 'pre';
+    style.textContent = viewportRule(present[0]);
+    document.head.append(style);
+    return () => style.remove();
+}
+
 export function stretchMenuViewport(document: Document, classes: readonly string[], source?: Document, frostContext?:(environment?:NativeFrostEnvironment|null)=>ReturnType<typeof readFrostContext>, initialFrostSession:Parameters<NonNullable<HostAttachment['setFrostSession']>>[0]=null,frostOptions:FrostHostOptions={}): ViewportRelease {
     const styles = findModule(value => typeof value?.Container === 'string' && classes.includes(value.Container) && typeof value.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string');
     const placeholder = styles?.ViewPlaceholder;
     if (typeof placeholder !== 'string' || !/^[-_a-zA-Z0-9]+$/.test(placeholder) || document.getElementsByClassName(placeholder).length !== 1) throw new Error('Native menu viewport shape changed');
     const style = document.createElement('style');
     style.dataset.ggMenuViewport = 'true';
-    style.textContent = `.${placeholder}{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}`;
+    style.textContent = viewportRule(placeholder);
     const backdropStyle = document.createElement('style');
     backdropStyle.dataset.ggMenuBackdrop = 'true';
     // Steam's MainMenuBrowserView adds a separate 70%-black/8px-blur scrim.
@@ -302,6 +323,12 @@ export function registerDiscoveredMenuHost(): Stop | null {
             },
             install(get, subscribe, fault) {
                 read = get;
+                // The first opening then stretches as every later one does: its close-time release (this) runs as it starts.
+                if (!stopClosingBackdrop) {
+                    try {
+                        stopClosingBackdrop = preStretchMenuViewport(document!, findAllModules(value => typeof value?.ViewPlaceholder === 'string' && typeof value.Fullscreen === 'string' && typeof value.Container === 'string'));
+                    } catch { /* The first opening stretches as before. */ }
+                }
                 const releaseChromeSubscription = subscribe(() => {
                     try {
                         if (get().active) {

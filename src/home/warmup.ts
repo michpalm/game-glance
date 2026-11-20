@@ -1,4 +1,6 @@
 import type { HltbGame, HltbResult, PrefetchOutcome } from '../data/hltb';
+import type { ProtonResult } from '../data/protondb';
+import type { PlayerCount } from '../data/playerCount';
 
 /**
  * Background warm-up for Home, so a game's HowLongToBeat chip and Achievements chip are already known when it is selected
@@ -102,6 +104,94 @@ export async function warmHltb(games: HltbGame[], deps: HltbWarmDeps, isCancelle
         if (result && result.status !== 'unavailable') {
             rememberHltb(game.appId, result);
             onResult(game.appId);
+        }
+    }
+}
+
+// ---- ProtonDB ------------------------------------------------------------------------------------------------------
+
+/** Pause after each ProtonDB rating fetched online: one small summary each, but asked for a whole row. */
+export const PROTON_WARM_DELAY_MS = 500;
+
+export interface ProtonWarmDeps {
+    /** Whether the chip already knows the game (useProton's memo). */
+    known(appId: number): boolean;
+    /** The cached result (disk), or null; never goes online. */
+    readCached(appId: number): Promise<ProtonResult | null>;
+    /** Asks ProtonDB when nothing is cached or the answer is due, and says whether it went online. */
+    prefetch(appId: number): Promise<{ status: ProtonResult['status']; fetched: boolean }>;
+    /** Puts a result where the chip reads it; false when it is not one to keep (no details yet). */
+    seed(appId: number, result: ProtonResult): boolean;
+    /** Whether going online is allowed (the "pre-load in the background" setting). */
+    allowNetwork(): boolean;
+    sleep(ms: number): Promise<void>;
+}
+
+/**
+ * Fills the ProtonDB chip's memo for `appIds` (Steam games, already in the order to do them), as warmHltb does: the disk
+ * cache first, instantly; a game with nothing cached (or an old entry without the details) is asked online one at a
+ * time when the setting allows it, pausing after each. Stops when cancelled or when ProtonDB cannot be reached.
+ * The caller runs it only while ProtonDB is in a Game info slot. `onResult` is called for each game that got one.
+ */
+export async function warmProton(appIds: number[], deps: ProtonWarmDeps, isCancelled: () => boolean, onResult: (appId: number) => void = () => undefined): Promise<void> {
+    for (const appId of appIds) {
+        if (isCancelled()) return;
+        if (deps.known(appId)) continue;
+        const cached = await deps.readCached(appId);
+        if (isCancelled()) return;
+        if (cached && deps.seed(appId, cached)) {
+            onResult(appId);
+            continue;
+        }
+        if (!deps.allowNetwork()) continue;
+        const outcome = await deps.prefetch(appId);
+        if (outcome.status === 'unavailable') return;
+        const fresh = await deps.readCached(appId);
+        if (isCancelled()) return;
+        if (fresh && deps.seed(appId, fresh)) onResult(appId);
+        if (outcome.fetched) await deps.sleep(PROTON_WARM_DELAY_MS);
+    }
+}
+
+// ---- Player counts ------------------------------------------------------------------------------------------------
+
+/** Pause after each player count fetched online (Steam's API), as the ProtonDB warm-up does. */
+export const PLAYERS_WARM_DELAY_MS = 500;
+
+export interface PlayersWarmDeps {
+    /** Whether the pill already knows the game (usePlayerCount's memo). */
+    known(appId: number): boolean;
+    /** The cached count (disk), or null; never goes online. */
+    readCached(appId: number): Promise<PlayerCount | null>;
+    /** Asks Steam when nothing is cached or the count is older than Home's age, and says whether it went online. */
+    prefetch(appId: number): Promise<{ status: PlayerCount['status']; fetched: boolean }>;
+    /** Puts a count where the pill reads it; false for none. */
+    seed(appId: number, result: PlayerCount): boolean;
+    /** Whether going online is allowed (the "pre-load in the background" setting). */
+    allowNetwork(): boolean;
+    sleep(ms: number): Promise<void>;
+}
+
+/**
+ * Fills the player pill's memo for `appIds` (Steam games, in the order to do them), as warmProton does: the disk cache
+ * first; a game with nothing cached or an old count is asked online one at a time when allowed, pausing after each.
+ * Stops when cancelled or when Steam does not answer (a rate limit: the rest of the row waits for the next pass).
+ */
+export async function warmPlayers(appIds: number[], deps: PlayersWarmDeps, isCancelled: () => boolean, onResult: (appId: number) => void = () => undefined): Promise<void> {
+    for (const appId of appIds) {
+        if (isCancelled()) return;
+        if (deps.known(appId)) continue;
+        const cached = await deps.readCached(appId);
+        if (isCancelled()) return;
+        if (cached && deps.seed(appId, cached)) onResult(appId);
+        if (!deps.allowNetwork()) continue;
+        const outcome = await deps.prefetch(appId);
+        if (outcome.status === 'unavailable') return;
+        if (outcome.fetched) {
+            const fresh = await deps.readCached(appId);
+            if (isCancelled()) return;
+            if (fresh && deps.seed(appId, fresh)) onResult(appId);
+            await deps.sleep(PLAYERS_WARM_DELAY_MS);
         }
     }
 }

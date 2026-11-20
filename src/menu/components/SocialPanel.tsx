@@ -14,6 +14,8 @@ import { socialStyles } from '../socialStyles';
 import { advanceFriendHero, friendHeroUrls } from '../socialArt';
 import { captureChatAnchor, restoreChatAnchor, installFriendScroll, type ChatScrollAnchor } from '../socialScroll';
 import { MenuAction } from './MenuAction';
+import { MenuPicker } from './MenuPicker';
+import { PERSONA_OPTIONS, type PersonaService, type PersonaValue, type PersonaView } from '../steam/persona';
 import { MenuKeyboard, readSteamLayouts, type Layouts } from './MenuKeyboard';
 
 /** NavEntryPositionPreferences.MAINTAIN_Y in @decky/ui: entering from the friends list keeps the row, landing on the nearest control. */
@@ -28,6 +30,9 @@ function Avatar({ friend }: { friend: SocialFriend }) {
     </span>;
 }
 interface SocialContentsProps {
+    /** Your own status (steam/persona) and its setter: the pill after the Social heading; none while it can't be set. */
+    status?: PersonaView | null;
+    onStatus?(value: PersonaValue): void;
     snapshot: SocialSnapshot;
     social: SocialService;
     entered: boolean;
@@ -75,7 +80,7 @@ export function closeUnusableKeyboard(keyboard: KeyboardSession | undefined, lay
 }
 
 /** Stateless presentation; native operations are confined to explicit actions on the session. */
-export function SocialContents({ snapshot, social, entered, enter, handoff, loadMore, latest, atBottom = true, timelineRef, friendsRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null, keyboardMode = 'compact', ownsInput = () => true, radialUnavailable = () => {}, keyboardError = '' }: SocialContentsProps) {
+export function SocialContents({ status = null, onStatus, snapshot, social, entered, enter, handoff, loadMore, latest, atBottom = true, timelineRef, friendsRef, onScroll, joinArmed = false, armJoin = () => {}, keyboard, layouts, field = () => null, keyboardMode = 'compact', ownsInput = () => true, radialUnavailable = () => {}, keyboardError = '' }: SocialContentsProps) {
     const friend = snapshot.friends.find(f => f.steamId === (entered ? snapshot.enteredId : snapshot.selectedId));
     const native = () => handoff(entered && snapshot.enteredId ? { kind: 'friend-chat', steamId: snapshot.enteredId } : { kind: 'qam', tab: 'friends' });
     const pending = snapshot.messages.some(m => m.own && m.state === 'pending');
@@ -96,7 +101,7 @@ export function SocialContents({ snapshot, social, entered, enter, handoff, load
     const statusText = snapshot.status === 'loading' ? 'Loading friends…' : snapshot.status === 'offline' ? 'Connect to Steam to see your friends.' : snapshot.status === 'unavailable' ? 'Friends are unavailable in this Steam session.' : 'No friends to show.';
     return <div className="gg-social">
         <style>{socialStyles}</style>
-        <div className="gg-menu-heading"><h2>Social</h2><span>{counts}</span></div>
+        <div className="gg-menu-heading"><h2>Social</h2>{status && onStatus && <MenuPicker id="social:status" text={status.text} dot={status.dot} options={PERSONA_OPTIONS} selected={status.value} onPick={onStatus} />}<span>{counts}</span></div>
         <Focusable className="gg-social-split" flow-children="row">
             <div className="gg-social-friends">
                 <div className="gg-social-list-heading"><span>Friends</span></div>
@@ -153,9 +158,11 @@ export function focusComposeSoon(root: () => ParentNode | null, win: Pick<Window
     return () => clearTimeout(timer);
 }
 
-export function SocialPanel(props: { social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession; keyboardMode?: SocialKeyboardMode; ownsInput?(): boolean }) {
+export function SocialPanel(props: { persona?: PersonaService; social: SocialService; entered: boolean; enter(id: string): void; leave(): void; handoff(request: NativeRequest): void; keyboard?: KeyboardSession; keyboardMode?: SocialKeyboardMode; ownsInput?(): boolean }) {
     const { social, entered, keyboard } = props;
     const snapshot = useSyncExternalStore(social.subscribe, social.get);
+    const status = useSyncExternalStore(props.persona?.subscribe ?? NO_SUBSCRIBE, () => props.persona?.read() ?? null);
+    const onStatus = (value: PersonaValue) => { void props.persona?.set(value).catch(() => { /* The pill shows Steam's state, which did not change. */ }); };
     const [radialFailed,setRadialFailed] = useState(false);
     const previousMode = useRef(props.keyboardMode);
     useEffect(() => { if (previousMode.current !== props.keyboardMode) { keyboard?.close(); previousMode.current = props.keyboardMode; setRadialFailed(false); } }, [props.keyboardMode, keyboard]);
@@ -221,7 +228,7 @@ export function SocialPanel(props: { social: SocialService; entered: boolean; en
         focusedChat.current = snapshot.enteredId; bottom.current = true; historyAnchor.current = null;
         return focusComposeSoon(() => timeline.current?.parentElement ?? null, window);
     }, [entered, snapshot.enteredId, snapshot.loading]);
-    return <SocialContents {...props} keyboardMode={radialFailed ? 'compact' : props.keyboardMode} radialUnavailable={() => setRadialFailed(true)} keyboardError={radialFailed ? 'Radial keyboard unavailable. Using Compact for this opening.' : ''} snapshot={snapshot} layouts={layouts} field={field} friendsRef={friendsList} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
+    return <SocialContents {...props} status={status} onStatus={onStatus} keyboardMode={radialFailed ? 'compact' : props.keyboardMode} radialUnavailable={() => setRadialFailed(true)} keyboardError={radialFailed ? 'Radial keyboard unavailable. Using Compact for this opening.' : ''} snapshot={snapshot} layouts={layouts} field={field} friendsRef={friendsList} atBottom={atBottom} timelineRef={timeline} onScroll={syncVisibility} joinArmed={joinArmed} armJoin={() => setJoinArmed(true)}
         loadMore={() => { const element = timeline.current; if (element) { bottom.current = false; historyAnchor.current = captureChatAnchor(element); } void social.loadMore(); }}
         latest={() => { bottom.current = true; social.latest(); }} />;
 }

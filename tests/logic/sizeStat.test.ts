@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatBytes } from '../../src/logic/format';
-import { knownSizeLabel, rememberSizeLabel, resetSizeLabels, sizeStat, steamSpaceStat } from '../../src/logic/sizeStat';
+import { installSizeText, knownSizeLabel, rememberSizeLabel, resetSizeLabels, sizeStat, steamSpaceStat } from '../../src/logic/sizeStat';
 
 const GB = 1024 ** 3;
 
@@ -54,5 +54,22 @@ describe("a Steam game that is not installed: its space required", () => {
         expect(steamSpaceStat({ size_on_disk: '11058189790' }, 691079517, 'en', 'Space Required')).toBeNull();
         expect(steamSpaceStat({ appid: 1455840 }, undefined, 'en', 'Space Required')).toBeNull();
         expect(steamSpaceStat({ appid: 1455840 }, null, 'en', 'Space Required')).toBeNull();
+    });
+});
+
+describe('installSizeText (the Install pill\'s right end)', () => {
+    it("a Steam game that is not installed: Steam's size", () => {
+        expect(installSizeText({ installed: false, downloading: false, steamBytes: 2424009225 }, 'en-US')).toBe(formatBytes(2424009225, 'en-US'));
+    });
+    it('none while installed, downloading, or with the size unknown', () => {
+        expect(installSizeText({ installed: true, downloading: false, steamBytes: 2424009225 }, 'en-US')).toBeNull();
+        expect(installSizeText({ installed: false, downloading: true, steamBytes: 2424009225 }, 'en-US')).toBeNull();
+        expect(installSizeText({ installed: false, downloading: false, steamBytes: null }, 'en-US')).toBeNull();
+        expect(installSizeText({ installed: false, downloading: false, steamBytes: 0 }, 'en-US')).toBeNull();
+    });
+    it("a Unifideck game: Unifideck's own install state and size (Steam reads a shortcut as installed)", () => {
+        expect(installSizeText({ installed: true, downloading: false, steamBytes: null, unifideck: { installed: false, bytes: 3 * GB } }, 'en-US')).toBe(formatBytes(3 * GB, 'en-US'));
+        expect(installSizeText({ installed: true, downloading: false, steamBytes: null, unifideck: { installed: true, bytes: 3 * GB } }, 'en-US')).toBeNull();
+        expect(installSizeText({ installed: true, downloading: true, steamBytes: null, unifideck: { installed: false, bytes: 3 * GB } }, 'en-US')).toBeNull();
     });
 });

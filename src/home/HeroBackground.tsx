@@ -4,7 +4,7 @@ import { useSettings } from '../data/settings';
 import { browserStores, capsuleUrls, heroUrls } from './artwork';
 import { displayInfo, loadArt } from './artShrink';
 import { HeroLayer, nextHeroLayers, settledHeroLayers } from './heroLayers';
-import { HeroFit, STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
+import { HeroFit, STANDARD_HERO_ASPECT, fitMask, overFill, windowAspect } from './heroFit';
 import { heroSources, shouldMemoArt } from './homeView';
 import { HERO_FADE_MS, HERO_PRELOAD_DELAY_MS } from './motion';
 
@@ -138,14 +138,20 @@ const bg = (url: string) => ({ backgroundImage: `url("${url.replace(/"/g, '%22')
 
 /**
  * The full-art hero's style: the art, and in Fit the fade where it meets the art fill (heroFit.fitMask), for the art's
- * shape (the standard hero shape until it is known) in a box of `boxAspect`. Pure.
+ * shape (the standard hero shape until it is known) in a box of `boxAspect`. Expanded's fade is the same for any art
+ * (heroFit.EXPANDED_MASK, in homeCss). Pure.
  */
 export function heroFullStyle(url: string, fit: HeroFit, artAspect: number | null, boxAspect: number): CSSProperties {
-    if (fit === 'fill') return bg(url);
+    if (fit !== 'fit') return bg(url);
     return { ...bg(url), '--gh-hero-mask': fitMask(artAspect ?? STANDARD_HERO_ASPECT, boxAspect) } as CSSProperties;
 }
 
 const artAspects = new Map<string, number>();
+
+/** An art's width / height once Home has measured it (Fit), or null. */
+export function heroArtAspect(url: string): number | null {
+    return artAspects.get(url) ?? null;
+}
 
 /** The art's width / height once known (its file is already decoded by then, so this is quick); null before. */
 function useArtAspect(url: string | null): number | null {
@@ -195,7 +201,7 @@ function Layer({ art, settled }: { art: Art; settled: boolean }) {
     if (art.mode === 'full') {
         return (
             <div className={cls} ref={ref}>
-                <div className={`gh-hero-full${fit === 'fit' ? ' gh-hero-fit' : ''}`} style={heroFullStyle(art.url, fit, aspect, screen)} />
+                <div className={`gh-hero-full${overFill(fit) ? ' gh-hero-fit' : ''}${fit === 'expanded' ? ' gh-hero-expanded' : ''}`} style={heroFullStyle(art.url, fit, aspect, screen)} />
             </div>
         );
     }

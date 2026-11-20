@@ -1,9 +1,12 @@
 import { HOME_ROUTE } from '../../home/guard';
+import { STORAGE_ROUTE } from '../../storage/route';
 import type { NativeRequest, QamTab } from './runtime';
 export interface NativeTabs { Notifications:number; Friends:number; Settings:number; Perf:number; Help:number; Music:number; Decky:number }
 export interface RouteBindings {
     deactivate(): void; tabs: NativeTabs; openMain(): void; openQam(tab:number): void;
-    library(): void; navigate(path:string): void; finishNavigation(): void; power(): void;
+    library(): void; navigate(path:string): void; finishNavigation(): void; power(onCancel?:()=>void): void;
+    /** Back into the running game, as Steam's own menu's Resume. */
+    resumeGame?(): void;
     /** A Library tab by Steam's own name ("Soundtracks"), as Steam's Soundtrack tab opens it. */
     libraryTab?(tab:string): void;
     exitGame(gameId:string): void;
@@ -15,15 +18,21 @@ export interface RouteBindings {
 }
 // Steam's in-game overlay routes (sp.js AppOverlay: `/app/${appid}/overlay/...`).
 const GAME_PAGES: Record<string,(appId:number)=>string> = {
-    achievements:id=>`/app/${id}/overlay/achievements`, recordings:id=>`/app/${id}/overlay/gamerecording`,
+    achievements:id=>`/app/${id}/overlay/achievements`,
     guides:id=>`/app/${id}/overlay/guides`, controller:id=>`/app/${id}/overlay/controller`, 'game-page':id=>`/library/app/${id}`,
+    // Steam's own list from the library (no game running): where its game page and carousel go.
+    'achievements-list':id=>`/library/app/${id}/achievements/my/individual`,
 };
 // The two urls Steam's own friends menu opens for Join Game (home/join.ts builds them); nothing else.
 const JOIN_URL = /^steam:\/\/(rungame\/\d+\/\d{17}(\/[A-Za-z0-9%\-_.!~*'()]+)?|joinlobby\/\d+\/\d+\/\d{17})$/;
 // Notification links (Steam's account link table, invite urls): Steam pages or steam:// urls only.
 const NOTIFICATION_URL = /^(https:\/\/|steam:\/\/)\S+$/;
-export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'exit'] as const;
+export const GAME_ACTIONS = [...Object.keys(GAME_PAGES), 'recordings', 'exit', 'resume'] as const;
 const TAB_NAMES: Record<QamTab,keyof NativeTabs> = {notifications:'Notifications',friends:'Friends','quick-settings':'Settings',performance:'Perf',help:'Help',soundtrack:'Music',decky:'Decky'};
+/** Power opens Steam's power menu without handing the slot back to Steam's menu; backing out runs the request's onCancel. */
+export function opensOverMenu(request:NativeRequest):boolean {
+    return request.kind==='navigate'&&request.destination==='power';
+}
 /** The requests that end in finishNavigation: Steam's menu closes behind them, so the host leaves as if closing
  * (its native scrim stays hidden) instead of handing the slot back to Steam's own menu. */
 export function closesSteamMenu(request:NativeRequest):boolean {
@@ -36,6 +45,7 @@ export function closesSteamMenu(request:NativeRequest):boolean {
 }
 export function createRoutes(bindings:RouteBindings) {
     return { async open(request:NativeRequest):Promise<void> {
+        if(opensOverMenu(request)&&request.kind==='navigate'){bindings.power(request.onCancel);return;}
         bindings.deactivate();
         if(request.kind==='main-menu'){bindings.openMain();return;}
         if(request.kind==='qam'){
@@ -53,6 +63,10 @@ export function createRoutes(bindings:RouteBindings) {
                 case 'media':bindings.navigate('/media/grid');break;
                 case 'downloads':bindings.navigate('/library/downloads');break;
                 case 'settings':bindings.navigate('/settings');break;
+                // Steam's Internet page (sp.js: Settings.Internet() → `${settings}/internet`), for networks one password cannot join.
+                case 'settings-internet':bindings.navigate('/settings/internet');break;
+                // Game Glance's own Storage screen, a Decky route (src/storage/StoragePage).
+                case 'storage':bindings.navigate(STORAGE_ROUTE);break;
                 case 'power':bindings.power();return;
                 case 'profile':{
                     if(!bindings.profile.allowed())throw Error('Profile is unavailable offline or under the current parental restrictions');
@@ -94,6 +108,11 @@ export function createRoutes(bindings:RouteBindings) {
         if(request.kind==='game-action'){
             if(!Number.isInteger(request.appId)||request.appId<=0||!/^\d{1,20}$/.test(request.gameId))throw Error('This game is unavailable');
             if(request.actionId==='exit'){bindings.exitGame(request.gameId);return;}
+            if(request.actionId==='resume'){if(!bindings.resumeGame)throw Error('Steam cannot resume this game');bindings.resumeGame();bindings.finishNavigation();return;}
+            if(request.actionId==='recordings'){
+                bindings.navigate(`/media/grid?game=${encodeURIComponent(request.gameId)}`);
+                bindings.finishNavigation();return;
+            }
             const page=GAME_PAGES[request.actionId];
             if(!page)throw Error('This game destination is unavailable');
             bindings.navigate(page(request.appId));bindings.finishNavigation();return;

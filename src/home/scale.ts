@@ -1,4 +1,5 @@
 import { STACK_BOTTOM, GIVE_WAY } from './giveWay';
+import { isTvScreen } from '../styles/screenScale';
 
 export interface HomeCanvas {
     logicalWidth: number;
@@ -57,13 +58,25 @@ export function defaultGrowth(baseLogicalHeight: number): number {
 }
 
 /**
+ * Everything drawn a little smaller than the default growth alone (Michael, 2026-11-12: too big on a TV, a touch big on
+ * the handheld): on a TV (screenScale.isTvScreen, the page CSS's TV query) and on everything smaller (the Ally
+ * handheld, the Deck). The page's CSS d unit (themeCss --gg-size) and the menu (menu/menuScale) use the same factors.
+ */
+export const SIZE_FACTOR = { tv: 0.88, handheld: 0.94 } as const;
+
+/** The size factor for a Big Picture window of `width` x `height` CSS px; the handheld's for an unusable size. Pure. */
+export function sizeFactor(width: number, height: number): number {
+    return isTvScreen(width, height) ? SIZE_FACTOR.tv : SIZE_FACTOR.handheld;
+}
+
+/**
  * The canvas Home, the restyled page (themeCss pageDUnit), the status bar and the open transition are drawn on: the
- * authored canvas fitted to the window (baseCanvas), grown by defaultGrowth, so its logical size shrinks by the same
- * factor. A window of unknown size is not grown.
+ * authored canvas fitted to the window (baseCanvas), grown by defaultGrowth times sizeFactor, so its logical size
+ * changes by the inverse. A window of unknown size is not grown.
  */
 export function homeCanvas(width: number, height: number): HomeCanvas {
     const base = baseCanvas(width, height);
     if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) return base;
-    const g = defaultGrowth(base.logicalHeight);
+    const g = defaultGrowth(base.logicalHeight) * sizeFactor(width, height);
     return { logicalWidth: base.logicalWidth / g, logicalHeight: base.logicalHeight / g, scale: base.scale * g };
 }

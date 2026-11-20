@@ -1,6 +1,9 @@
 import { Navigation } from '@decky/ui';
 import { LOG_PREFIX } from '../constants';
 import type { HltbResult } from '../data/hltb';
+import type { FeaturedId } from '../logic/infoSlots';
+import { openMenuView } from '../menu/openView';
+import { achievementsView } from '../menu/views';
 import { focusElement } from '../home/homeNav';
 
 /**
@@ -42,4 +45,26 @@ export function openHltbPage(result: HltbResult | undefined): boolean {
         console.warn(`${LOG_PREFIX} game page: could not open HowLongToBeat`, error);
         return false;
     }
+}
+
+/** Your achievements for a game, where Steam's own game page and carousel go (Library.App.Achievements.My.Individual; the bare /achievements route draws an empty frame). */
+export const achievementsRoute = (appId: number) => `/library/app/${appId}/achievements/my/individual`;
+/** The game's ProtonDB page. */
+export const protonDbUrl = (appId: number) => `https://www.protondb.com/app/${appId}`;
+
+function go(what: string, run: () => void): boolean {
+    try { run(); return true; } catch (error) { console.warn(`${LOG_PREFIX} game page: could not open ${what}`, error); return false; }
+}
+
+/**
+ * What the featured card opens (Game info setting): HowLongToBeat's page when matched, Steam's achievements page,
+ * the game on ProtonDB. Nothing for play time (no page shows more), none chosen, or a Steam page for a non-Steam game.
+ */
+export function featuredPress(featured: FeaturedId | null, game: { appId: number; isShortcut: boolean; hltb: HltbResult | undefined }, openView: (viewId: string) => boolean = openMenuView): (() => boolean) | undefined {
+    if (featured === 'hltb') return hltbUrl(game.hltb) ? () => openHltbPage(game.hltb) : undefined;
+    if (game.isShortcut || !Number.isInteger(game.appId) || game.appId <= 0) return undefined;
+    // Game Glance's own Achievements page in the menu (Michael, 2026-11-18); Steam's list when the menu is off or not running.
+    if (featured === 'achievements') return () => openView(achievementsView(game.appId)) || go('the achievements page', () => Navigation.Navigate(achievementsRoute(game.appId)));
+    if (featured === 'protondb') return () => go('ProtonDB', () => Navigation.NavigateToExternalWeb(protonDbUrl(game.appId)));
+    return undefined;
 }

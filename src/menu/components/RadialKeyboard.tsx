@@ -14,7 +14,7 @@ import type {KeyboardSession} from '../keyboard/session';
 import {clearHeld,cursorOf,moveCursor,type TypingState} from '../keyboard/typing';
 import {installPhysicalKeys,nextLayout,physicalKey,type Layouts} from './MenuKeyboard';
 const EMPTY:RadialViewState={selection:[null,null],extra:[false,false],uppercase:false};
-export interface RadialKeyboardProps {context?:KeyboardContext;session:KeyboardSession;layouts:Layouts;draft:string;setDraft(text:string):void;canSend:boolean;send():void;field():HTMLElement|null;unavailable():void;ownsInput():boolean}
+export interface RadialKeyboardProps {context?:KeyboardContext;completionLabel?:string;session:KeyboardSession;layouts:Layouts;draft:string;setDraft(text:string):void;canSend:boolean;send():void;field():HTMLElement|null;unavailable():void;ownsInput():boolean}
 const point=(r:number,a:number)=>[50+r*Math.cos(a),50+r*Math.sin(a)];
 export function RadialKeyboardView({bounds,layout,state,short,type,completionLabel='Send',frost=true}:{completionLabel?:string;frost?:boolean;bounds:[WheelBounds,WheelBounds];layout:RadialLayout;state:RadialViewState;short:string;type(side:Side,index:number):void}){
  return <>{([0,1] as const).map(side=>{
@@ -84,5 +84,5 @@ function OpenRadialKeyboard(props:RadialKeyboardProps){
   return ()=>{stop();keys();};
  },[host,!!bounds,index,close,commit]);
  if(!host||!bounds||!feeds)return null;
- return createPortal(<><ControllerFeedGuard key={index} failed={()=>live.current.unavailable()}><ControllerFeed feeds={feeds} index={index} snapshot={onSnapshot}/></ControllerFeedGuard><RadialKeyboardView completionLabel={ctx.completionLabel} frost={!props.context} bounds={bounds} layout={layout} state={state} short={current.short} type={(side,i)=>{if(!live.current.ownsInput())return;const key=(stateRef.current.extra[side]?layoutRef.current.symbols:layoutRef.current.letters)[side][i];if(key)commit(applyRadialCommand(typing.current,{type:'key',key,uppercase:stateRef.current.uppercase}));}}/></>,host);
+ return createPortal(<><ControllerFeedGuard key={index} failed={()=>live.current.unavailable()}><ControllerFeed feeds={feeds} index={index} snapshot={onSnapshot}/></ControllerFeedGuard><RadialKeyboardView completionLabel={props.completionLabel??ctx.completionLabel} frost={!props.context} bounds={bounds} layout={layout} state={state} short={current.short} type={(side,i)=>{if(!live.current.ownsInput())return;const key=(stateRef.current.extra[side]?layoutRef.current.symbols:layoutRef.current.letters)[side][i];if(key)commit(applyRadialCommand(typing.current,{type:'key',key,uppercase:stateRef.current.uppercase}));}}/></>,host);
 }

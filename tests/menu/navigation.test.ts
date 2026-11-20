@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import { defaultMenuState, reduceMenu, type MenuEvent } from '../../src/menu/model';
-import { handleMenuButton, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey, focusPrefersBar, openFocusKey } from '../../src/menu/navigation';
+import { handleMenuButton, steamKeyboardShortcut, findMenuFocus, menuInputActive, installOutsideMenuClick, installKeyboardOutsideTap, keyboardTakesCancel, keyboardBelongs, keyboardHome, rememberFocusKey, focusPrefersBar, openFocusKey } from '../../src/menu/navigation';
 import { createKeyboardSession } from '../../src/menu/keyboard/session';
 describe('menu input boundary',()=>{
     it('moves shoulders over visible tabs and never replays held inputs after modal focus',()=>{
@@ -190,4 +190,33 @@ it('opens Soundtrack on play/pause and every other section on the control it rem
     expect(openFocusKey('soundtrack', undefined)).toBe('soundtrack:play');
     expect(openFocusKey('quick-settings', 'quick:wifi')).toBe('quick:wifi');
     expect(openFocusKey('navigate', undefined)).toBeUndefined();
+});
+
+import { pageTakesCancel } from '../../src/menu/navigation';
+describe('a page that claims B', () => {
+    it('gets B first and keeps it when it used it', () => {
+        expect(pageTakesCancel({ button: 2 }, true, () => true)).toBe(true);
+        expect(pageTakesCancel({ button: 2 }, true, () => false)).toBe(false);
+        expect(pageTakesCancel({ button: 2 }, true, null)).toBe(false);
+        expect(pageTakesCancel({ button: 2 }, false, () => true)).toBe(false);
+        expect(pageTakesCancel({ button: 4 }, true, () => true)).toBe(false);
+    });
+});
+
+describe('X opens Steam\'s keyboard from the menu (spec 2026-11-18-menu-keyboard-shortcut)',()=>{
+    it('X, while the menu owns input and its own keyboard is closed',()=>{
+        const session=createKeyboardSession();
+        expect(steamKeyboardShortcut({button:3},session,true)).toBe(true);
+    });
+    it('not other buttons, not a held repeat, not while a Steam dialog or keyboard owns input',()=>{
+        const session=createKeyboardSession();
+        expect(steamKeyboardShortcut({button:2},session,true)).toBe(false);
+        expect(steamKeyboardShortcut({button:3,is_repeat:true},session,true)).toBe(false);
+        expect(steamKeyboardShortcut({button:3},session,false)).toBe(false);
+    });
+    it('not while Game Glance\'s own keyboard is open: X is backspace there',()=>{
+        const session=createKeyboardSession();session.open({value:'',onChange:()=>{}} as never);
+        expect(session.get().open).toBe(true);
+        expect(steamKeyboardShortcut({button:3},session,true)).toBe(false);
+    });
 });

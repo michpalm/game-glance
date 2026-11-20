@@ -26,6 +26,21 @@ function scrollPort(element: HTMLElement): HTMLElement | null {
     return port;
 }
 
+/**
+ * The game page shows its top (Play row on screen) for the way back's glide (home/returnNote): its scroll port at 0
+ * (within a px), or no scroll port at all (a page that cannot scroll). False when Play is not found or reading throws.
+ */
+export function pageAtTop(doc: Document, playSelector: string | null): boolean {
+    try {
+        const play = playSelector ? doc.querySelector<HTMLElement>(playSelector) : null;
+        if (!play) return false;
+        const port = scrollPort(play);
+        return !port || port.scrollTop <= 1;
+    } catch {
+        return false;
+    }
+}
+
 /** Center the whole question and response row, using Steam's scroll controller when available. */
 export function centerFeedbackPanel(panel: HTMLElement): void {
     const port = scrollPort(panel);

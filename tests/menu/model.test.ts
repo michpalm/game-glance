@@ -77,3 +77,20 @@ it('selects no tab while Notifications is open', () => {
     expect(barSelection(state)).toBeNull();
     expect(barSelection(defaultMenuState())).toBe(selectedBarSection(defaultMenuState()));
 });
+
+describe('opening straight on a view (the game page\'s Achievements card, 2026-11-18)', () => {
+    it('opens on that view alone, and B closes the menu instead of showing the tab under it', () => {
+        const opened = events({ type: 'open', entry: 'home', view: 'achievements:292030' });
+        expect(opened).toMatchObject({ phase: 'custom-open', section: 'navigate', stack: ['achievements:292030'], direct: true });
+        expect(reduceMenu(opened, { type: 'back' })).toMatchObject({ phase: 'closed', stack: [], direct: false });
+    });
+    it('opens on the view even when the menu is already open, and never toggles it shut', () => {
+        const open = events({ type: 'open', entry: 'home' });
+        expect(reduceMenu(open, { type: 'open', entry: 'home', view: 'achievements:1' })).toMatchObject({ phase: 'custom-open', stack: ['achievements:1'], direct: true });
+    });
+    it('a view pushed on top of it backs out to it first; a normal opening is not direct', () => {
+        const deeper = events({ type: 'open', entry: 'home', view: 'achievements:1' }, { type: 'push', viewId: 'x' });
+        expect(reduceMenu(deeper, { type: 'back' })).toMatchObject({ phase: 'custom-open', stack: ['achievements:1'] });
+        expect(events({ type: 'open', entry: 'home' }).direct).toBeFalsy();
+    });
+});

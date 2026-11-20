@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import type { Entry, MenuEvent, MenuState, Stop } from './model';
 import type { HostAttachment, NativeBindings, NativeRequest } from './steam/runtime';
-import { closesSteamMenu } from './steam/routes';
+import { closesSteamMenu, opensOverMenu } from './steam/routes';
 
+/** How long after Power a Steam-side reopen of its main menu comes back to Game Glance. */
+export const POWER_RETURN_MS = 120_000;
 export function createMenuCoordinator(options: { bindings: NativeBindings; getState(): MenuState; dispatch(event: MenuEvent): void; render(): ReactNode }) {
     const { bindings, getState, dispatch, render } = options;
     let host: HostAttachment | null = null;
@@ -56,11 +58,18 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
         };
         const cleared=clearFrost();if(cleared)void cleared.then(conceal);else conceal();
     };
-    async function openWithFallback(entry: Entry, replay: () => void | Promise<void>) {
+    // After Power: one return to Game Glance, for a while (Steam may reopen its own main menu when a confirm is cancelled).
+    let powerReturn: ReturnType<typeof setTimeout> | null = null;
+    const armPowerReturn = () => { if (powerReturn) clearTimeout(powerReturn); powerReturn = setTimeout(() => { powerReturn = null; }, POWER_RETURN_MS); };
+    const takePowerReturn = () => { if (!powerReturn) return false; clearTimeout(powerReturn); powerReturn = null; return true; };
+    const reopenOnNavigate = () => void openWithFallback('home', () => bindings.openNative({ kind: 'main-menu' }))
+        .then(() => { if (getState().phase === 'custom-open') dispatch({ type: 'select', section: 'navigate' }); })
+        .catch(error => console.warn('[Game Glance] reopening after Power failed', error));
+    async function openWithFallback(entry: Entry, replay: () => void | Promise<void>, view?: string) {
         if (!alive) return;
         if(closing){closing=false;dispatch({type:'close'});}
         const ticket = ++generation;
-        dispatch({ type: 'open', entry });
+        dispatch({ type: 'open', entry, ...(view ? { view } : {}) });
         if (getState().phase !== 'custom-open') { host?.close(); bindings.closeMenuHost(); return; }
         try {
             frostGeneration=ticket;
@@ -105,16 +114,27 @@ export function createMenuCoordinator(options: { bindings: NativeBindings; getSt
                         void openWithFallback(entry, replayNative).catch(error => console.warn('[Game Glance] native menu fallback failed', error));
                     },
                     closed() { if (alive) { void clearFrost();generation++;closing=false; dispatch({ type: 'close' }); host?.close(); } },
+                    reclaim() { if (!alive || getState().phase === 'custom-open' || !takePowerReturn()) return false; reopenOnNavigate(); return true; },
                     suspended(value) { if (alive && value) { void clearFrost();generation++;closing=false; dispatch({ type: 'handoff' }); if (!leaving) host?.suspend(); } },
                 }));
                 return () => cleanup();
             } catch (error) { cleanup(true); throw error; }
         },
-        open(entry: Entry): Promise<void> {
-            return openWithFallback(entry, () => bindings.openNative(entry === 'home' ? { kind: 'main-menu' } : { kind: 'qam', tab: 'quick-settings' }));
+        /** `view`: open straight on it (the game page's Achievements card); B on it closes the menu. */
+        open(entry: Entry, view?: string): Promise<void> {
+            return openWithFallback(entry, () => bindings.openNative(entry === 'home' ? { kind: 'main-menu' } : { kind: 'qam', tab: 'quick-settings' }), view);
         },
         async handoff(request: NativeRequest): Promise<void> {
             if (!alive) return;
+            // Power: no flash of Steam's menu (the slot is not handed back). Steam shows the power menu in its main window and
+            // closes ours, as its own menu does. Backing out of it, or cancelling a confirm it opened (Steam then reopens its
+            // own main menu, reclaimed below), reopens Game Glance on Navigate, focus on the Power tile.
+            if (opensOverMenu(request) && request.kind === 'navigate') {
+                armPowerReturn();
+                const reopen = () => { if (takePowerReturn()) reopenOnNavigate(); };
+                await bindings.openNative({ ...request, onCancel: reopen });
+                return;
+            }
             const ticket=++generation;closing=false;
             dispatch({ type: 'handoff' });
             const leavesSteam=closesSteamMenu(request);

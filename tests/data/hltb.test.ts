@@ -44,7 +44,7 @@ describe('createHltbLookup', () => {
     it('returns parsed times and passes the Steam app id', async () => {
         const fetchStats = vi.fn(async () => STATS);
         const { lookup } = setup(fetchStats);
-        expect(await lookup(W3)).toEqual({ status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: 103.8, completionist: null } });
+        expect(await lookup(W3)).toEqual({ status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: 103.8, completionist: null }, rating: null });
         expect(fetchStats).toHaveBeenCalledWith(W3.name, 292030);
     });
     it('does not pass an app id for shortcuts', async () => {
@@ -132,7 +132,7 @@ describe('createHltbLookup keeps found times', () => {
         const { lookup, clock } = clocked(fetchStats);
         await lookup(W3);
         clock.t += 29 * DAY;
-        expect(await lookup(W3)).toEqual({ status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: 103.8, completionist: null } });
+        expect(await lookup(W3)).toEqual({ status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: 103.8, completionist: null }, rating: null });
         expect(fetchStats).toHaveBeenCalledTimes(1);
     });
     it('shows month-old times right away and refreshes them in the background', async () => {
@@ -279,5 +279,32 @@ describe('createHltbLookup: a request that never answers', () => {
     it('a reachability check that never answers counts as unreachable', async () => {
         const lookup = createHltbLookup({ fetchStats: vi.fn(async () => null), isReachable: vi.fn(never), cache: createCache(memoryKv()), overrides: { get: async () => null }, timeoutMs: 20 });
         expect(await lookup(W3)).toEqual({ status: 'unavailable' });
+    });
+});
+
+describe("createHltbLookup keeps HowLongToBeat's rating", () => {
+    it('keeps the rating the game page data has', async () => {
+        const { lookup } = setup(vi.fn(async () => ({ ...STATS, reviewScore: 73 })));
+        expect(await lookup(W3)).toMatchObject({ status: 'found', rating: 73 });
+    });
+    it('an entry cached before the rating was kept is shown at once and fetched again behind, once per session', async () => {
+        const fetchStats = vi.fn(async () => ({ ...STATS, reviewScore: 73 }));
+        const { lookup, cache } = setup(fetchStats);
+        await cache.put(hltbCacheKey(292030, null), { status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: 103.8, completionist: null }, fetchedAt: Date.now() }, TTL.hltbFound);
+        expect(await lookup(W3)).not.toHaveProperty('rating');
+        await vi.waitFor(() => expect(fetchStats).toHaveBeenCalledTimes(1));
+        await vi.waitFor(async () => expect(await lookup(W3)).toMatchObject({ rating: 73 }));
+        expect(fetchStats).toHaveBeenCalledTimes(1);
+    });
+    it('a failed refetch for the rating is not repeated on every visit', async () => {
+        const fetchStats = vi.fn(async () => null);
+        const { lookup, cache } = setup(fetchStats, false);
+        await cache.put(hltbCacheKey(292030, null), { status: 'found', gameId: 10270, times: { main: 51.7, mainExtras: null, completionist: null }, fetchedAt: Date.now() }, TTL.hltbFound);
+        await lookup(W3);
+        await vi.waitFor(() => expect(fetchStats).toHaveBeenCalled());
+        const calls = fetchStats.mock.calls.length;
+        await lookup(W3);
+        await lookup(W3);
+        expect(fetchStats.mock.calls.length).toBe(calls);
     });
 });

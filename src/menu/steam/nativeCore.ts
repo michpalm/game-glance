@@ -7,6 +7,7 @@ import type { NativeOwner, NativeRequest } from './runtime';
 import { HOME_ROUTE } from '../../home/guard';
 import { markLeaving } from '../../home/homeMemory';
 import type { RouteBindings } from './routes';
+import { createWifiBindings } from './wifi';
 interface Registration { unregister?():void; Unregister?():void }
 interface DisplaySettings { strDisplayName?:string; bDisplayIsExternal?:boolean; bDisplayIsUsingAutoScale?:boolean }
 interface CoreGlobals {
@@ -18,20 +19,20 @@ interface CoreGlobals {
     urlStore?:{ResolveURL(key:string):string};
     g_FriendsUIApp?:{m_bReadyToRender?:boolean;m_CMInterface?:{m_bConnected?:boolean;m_bLoggedOn?:boolean};FriendStore?:{m_self?:{m_unAccountID?:number};GetUserDoNotDisturb?():boolean;SetUserDoNotDisturb?(value:boolean):void}};
 }
-const globals=()=>globalThis as unknown as CoreGlobals;
+export const globals=()=>globalThis as unknown as CoreGlobals;
 const release=(r:Registration|undefined)=>{r?.unregister?.();r?.Unregister?.();};
 let parentalPolicy: { BIsFeatureBlocked(feature:number):boolean } | null | undefined;
 function parentalAllowed(feature:number):boolean {
     try {if(parentalPolicy===undefined)parentalPolicy=findModuleExport(value=>typeof value?.BIsFeatureBlocked==='function')??null;return !!parentalPolicy&&!parentalPolicy.BIsFeatureBlocked(feature);} catch{return false;}
 }
-function friendsOnline(root:CoreGlobals):boolean {const f=root.g_FriendsUIApp;return f?.m_bReadyToRender===true&&f.m_CMInterface?.m_bConnected===true&&f.m_CMInterface?.m_bLoggedOn===true;}
+export function friendsOnline(root:CoreGlobals):boolean {const f=root.g_FriendsUIApp;return f?.m_bReadyToRender===true&&f.m_CMInterface?.m_bConnected===true&&f.m_CMInterface?.m_bLoggedOn===true;}
 let displaySource: {settings?:DisplaySettings}|null|undefined;
 function displaySettings():DisplaySettings|undefined {
     try{if(displaySource===undefined)displaySource=findModuleExport(value=>typeof value?.settings?.bDisplayIsUsingAutoScale==='boolean')??null;return displaySource?.settings;}catch{return undefined;}
 }
 export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(request:NativeRequest)=>Promise<void>):RouteBindings {
     const root=globals();
-    const window=owner as NativeOwner&{Navigate?(path:string):void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
+    const window=owner as NativeOwner&{Navigate?(path:string):void;NavigateToRunningApp?():void;Navigator?:{LibraryTab?(tab?:string):void;ExternalWeb?(url:string):void}};
     const rememberHome = () => {
         if (owner.History?.location?.pathname === HOME_ROUTE) markLeaving();
     };
@@ -43,7 +44,10 @@ export function nativeRouteBindings(owner:NativeOwner,deactivate:Stop,fallback:(
     return {deactivate,tabs:QuickAccessTab,openMain(){owner.MenuStore.OpenMainMenu?owner.MenuStore.OpenMainMenu():owner.MenuStore.OpenSideMenu(1);},openQam:tab=>owner.MenuStore.OpenQuickAccessMenu(tab),
         library(){navigate('/library');},
         libraryTab(tab){if(typeof window.Navigator?.LibraryTab==='function'){rememberHome();window.Navigator.LibraryTab(tab);}else navigate('/library');},navigate,finishNavigation:()=>owner.MenuStore.CloseSideMenus(),
-        power(){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');Router.OpenPowerMenu();},
+        // As Steam's own main menu: in Big Picture's window (so backing out does not bring a side menu back), with our cancel.
+        power(onCancel){if(typeof Router?.OpenPowerMenu!=='function')throw Error('Steam Power menu is unavailable');(Router.OpenPowerMenu as (element?:Element,onCancel?:()=>void)=>void)((owner as {BrowserWindow?:Window}).BrowserWindow?.document?.documentElement,onCancel);},
+        // As Resume in Steam's own menu (it calls NavigateToRunningApp, then closes the menu).
+        resumeGame(){if(typeof window.NavigateToRunningApp!=='function')throw Error('Steam cannot resume this game');window.NavigateToRunningApp();},
         joinGame(url){const steamUrl=root.SteamClient?.URL;if(typeof steamUrl?.ExecuteSteamURL!=='function')throw Error('Steam cannot join this game');steamUrl.ExecuteSteamURL(url);},
         // As Steam's own notification list opens invite urls and account links.
         openUrl(url){const chat=root.SteamClient?.WebChat;if(typeof chat?.OpenURLInClient!=='function')throw Error('Steam cannot open this link');chat.OpenURLInClient(url,0,false);},
@@ -116,7 +120,14 @@ export function discoverQuickSettingsBindings():QuickSettingsBindings {
     }
     function stop(){alive=false;generation++;scanning=false;if(interval!==undefined)clearInterval(interval);interval=undefined;for(const r of registrations.splice(0)){try{release(r);}catch{}}}
     const bindings:QuickSettingsBindings={subscribe(listener){listeners.add(listener);if(listeners.size===1)start();return()=>{listeners.delete(listener);if(!listeners.size)stop();};},toggles};
+    if(net)bindings.wifi=createWifiBindings(net);
     if(audio?.GetDevices&&audio?.SetDeviceVolume)bindings.audio={read:()=>devices,async write(id,type,value){const ticket=generation,requestedAt=Date.now();const current=await audio.GetDevices();if(!alive||ticket!==generation||Date.now()-requestedAt>=3000)throw Error('Audio device confirmation expired. Try again.');devices=current;emit();if((type===1?current.activeOutputDeviceId:current.activeInputDeviceId)!==id)throw Error('Active audio device changed. Try again.');const result=await audio.SetDeviceVolume(id,type,value);if(result&&result.result!==1)throw Error(result.message||'Steam rejected the volume change');}};
+    // Which device plays and records (spec 2026-11-12-status-and-audio-pickers): Steam's own Sound settings calls; the list
+    // is read again after each so the pills and sliders follow the new active device.
+    if(bindings.audio&&typeof audio?.SetDefaultDeviceOverride==='function'&&typeof audio.ClearDefaultDeviceOverride==='function'){
+        bindings.audio.setOverride=async(id,type)=>{await audio.SetDefaultDeviceOverride(id,type);await scan();};
+        bindings.audio.clearOverride=async type=>{await audio.ClearDefaultDeviceOverride(type);await scan();};
+    }
     // Steam creates SystemStoragStore lazily, when its own Quick Access settings first
     // draws; until then the display API alone reads (on registration) and writes.
     const settingsStore=()=>root.SystemStoragStore;

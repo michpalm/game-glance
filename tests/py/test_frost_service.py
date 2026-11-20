@@ -1,5 +1,6 @@
 import asyncio
 import json
+import pytest
 from gameglance.frost.service import FrostService, session_environment
 
 
@@ -55,3 +56,18 @@ def test_unload_never_force_kills_a_native_callback_guard(tmp_path,monkeypatch):
         await service.close()
         assert calls==['terminate']
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("answer,expected", [
+    ({"hdr": False, "maxScale": 2}, {"hdr": False, "maxScale": 2}),
+    ({"hdr": False, "maxScale": 2, "steamShown": True}, {"hdr": False, "maxScale": 2, "steamShown": True}),
+    ({"hdr": False, "maxScale": 2, "steamShown": "yes"}, None),
+    ({"hdr": False, "maxScale": 2, "other": 1}, None),
+    ({"hdr": False}, None),
+])
+def test_environment_passes_the_worker_answer_with_or_without_steam_shown(tmp_path, answer, expected):
+    service = FrostService(str(tmp_path), str(tmp_path))
+    async def call(operation, args):
+        return answer
+    service._call = call
+    assert asyncio.run(service.environment()) == expected

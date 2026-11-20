@@ -37,6 +37,9 @@ uniform float Timer < source = "timer"; >;
 // above the knee, brightness rises at a third of the rate. Hue is kept.
 #define CalmKnee 0.45
 #define CalmSlope 0.35
+// The dim behind the menu (MENU_DIM in src/styles/tokens.ts): over the whole picture, under the menu's own drawing.
+#define DimColor (float3(@DIM_R@, @DIM_G@, @DIM_B@) / 255.0)
+#define DimAlpha @DIM_ALPHA@
 texture2D Scene : COLOR;
 sampler2D SceneSampler { Texture = Scene; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 texture2D BarD { Width = @BAR_W@; Height = @BAR_H@; Format = RGBA16F; };
@@ -60,6 +63,15 @@ texture2D KeyboardRightH { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_
 texture2D KeyboardV { Width = @KEYBOARD_W@; Height = @KEYBOARD_H@; Format = RGBA16F; };
 texture2D KeyboardLeftV { Width = @KEYBOARD_LEFT_W@; Height = @KEYBOARD_LEFT_H@; Format = RGBA16F; };
 texture2D KeyboardRightV { Width = @KEYBOARD_RIGHT_W@; Height = @KEYBOARD_RIGHT_H@; Format = RGBA16F; };
+#if DIM_BLUR
+// The dim's blur: the whole output at quarter resolution (spec 2026-11-12-menu-dim).
+texture2D DimD { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+texture2D DimH { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+texture2D DimV { Width = @DIM_W@; Height = @DIM_H@; Format = RGBA16F; };
+sampler2D DimDS { Texture = DimD; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D DimHS { Texture = DimH; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+sampler2D DimVS { Texture = DimV; MinFilter = LINEAR; MagFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
+#endif // DIM_BLUR
 // Render targets keep their contents between frames: the previous state is
 // copied aside, then updated, so the fade starts on the first visible frame.
 // RGBA32F, not RG32F: Gamescope can only create formats with a DRM equivalent.
@@ -96,13 +108,88 @@ float2 OutputUV(float2 inputUV) { return (Offset + inputUV * GameSize) / OutputS
 float2 InputUV(float2 outputUV) { return (outputUV * OutputSize - Offset) / GameSize; }
 float2 CropUV(float2 uv, float4 rect) { return InputUV(rect.xy - Pad + uv * (rect.zw + 2.0 * Pad)); }
 float2 TileUV(float2 uv, float4 rect) { return (uv - rect.xy + Pad) / (rect.zw + 2.0 * Pad); }
+// The game image's colour space (Gamescope passes ReShade's BUFFER_COLOR_SPACE: 1 sRGB, 2 scRGB, 3 HDR10 PQ). The effect
+// runs on the game's own image before Gamescope converts it for the display, so an SDR game on an HDR display is SDR here.
+// HDR images (spec 2026-11-18-hdr-frost, step 2) are read into SDR values for the frost (ToSdr) and its results written
+// back (FromSdr): all the blur, calm and glass maths below stays the SDR maths. Under the glass, HDR highlights are
+// compressed into the SDR range, so the menu reads as over an SDR game.
+#if defined(BUFFER_COLOR_SPACE) && (BUFFER_COLOR_SPACE == 2 || BUFFER_COLOR_SPACE == 3)
+#define HDR_IMAGE 1
+#else
+#define HDR_IMAGE 0
+#endif
+// SDR white inside HDR (ITU-R BT.2408), and scRGB's 1.0.
+#define RefWhiteNits 203.0
+#define ScRgbNits 80.0
+// SMPTE ST 2084 (PQ).
+#define PqM1 0.1593017578125
+#define PqM2 78.84375
+#define PqC1 0.8359375
+#define PqC2 18.8515625
+#define PqC3 18.6875
+// Highlights above this share of white roll off towards white instead of clipping.
+#define HdrKnee 0.8
+float3 SrgbEncode(float3 x) {
+    x = saturate(x);
+    return lerp(12.92 * x, 1.055 * pow(x, 1.0 / 2.4) - 0.055, step(0.0031308, x));
+}
+float3 SrgbDecode(float3 x) {
+    x = saturate(x);
+    return lerp(x / 12.92, pow((x + 0.055) / 1.055, 2.4), step(0.04045, x));
+}
+float3 PqToNits(float3 e) {
+    float3 p = pow(saturate(e), 1.0 / PqM2);
+    return 10000.0 * pow(max(p - PqC1, 0.0) / (PqC2 - PqC3 * p), 1.0 / PqM1);
+}
+float3 NitsToPq(float3 nits) {
+    float3 y = pow(saturate(nits / 10000.0), PqM1);
+    return pow((PqC1 + PqC2 * y) / (1.0 + PqC3 * y), PqM2);
+}
+// Linear-light primaries: HDR10 is BT.2020, scRGB and sRGB are Rec. 709.
+float3 Bt2020To709(float3 c) {
+    return float3(dot(float3(1.6605, -0.5876, -0.0728), c), dot(float3(-0.1246, 1.1329, -0.0083), c), dot(float3(-0.0182, -0.1006, 1.1187), c));
+}
+float3 Bt709To2020(float3 c) {
+    return float3(dot(float3(0.6274, 0.3293, 0.0433), c), dot(float3(0.0691, 0.9195, 0.0114), c), dot(float3(0.0164, 0.0880, 0.8956), c));
+}
+// Rolls everything above HdrKnee of white off smoothly towards white (by the brightest channel, so the hue is kept).
+float3 CompressHighlights(float3 c) {
+    float m = max(max(c.r, c.g), c.b);
+    if (m <= HdrKnee) return c;
+    float rolled = HdrKnee + (1.0 - HdrKnee) * (1.0 - exp(-(m - HdrKnee) / (1.0 - HdrKnee)));
+    return c * (rolled / m);
+}
+float4 ToSdr(float4 c) {
+#if HDR_IMAGE
+#if BUFFER_COLOR_SPACE == 2
+    float3 white = c.rgb * (ScRgbNits / RefWhiteNits);
+#else
+    float3 white = Bt2020To709(PqToNits(c.rgb)) / RefWhiteNits;
+#endif
+    return float4(SrgbEncode(CompressHighlights(max(white, 0.0))), c.a);
+#else
+    return c;
+#endif
+}
+float4 FromSdr(float4 c) {
+#if HDR_IMAGE
+    float3 nits = SrgbDecode(c.rgb) * RefWhiteNits;
+#if BUFFER_COLOR_SPACE == 2
+    return float4(nits / ScRgbNits, c.a);
+#else
+    return float4(NitsToPq(max(Bt709To2020(nits), 0.0)), c.a);
+#endif
+#else
+    return c;
+#endif
+}
 // Exact 8x8 output-pixel average: each bilinear tap sits between four pixels.
 float4 Box(float2 uv) {
     float2 px = 1.0 / GameSize;
     float4 c = 0;
     [unroll] for (int y = -3; y <= 3; y += 2)
         [unroll] for (int x = -3; x <= 3; x += 2)
-            c += tex2D(SceneSampler, uv + float2(x, y) * px);
+            c += ToSdr(tex2D(SceneSampler, uv + float2(x, y) * px));
     return c / 16.0;
 }
 // Gaussian with sigma = 16 CSS px at this display scale, in 1/8-resolution texels.
@@ -110,6 +197,22 @@ float4 Blur(sampler2D image, float2 uv, float2 texel) {
 @BLUR_TAPS@
     return c;
 }
+#if DIM_BLUR
+// Exact 4x4 output-pixel average for the dim's quarter-resolution screen.
+float4 Box4(float2 uv) {
+    float2 px = 1.0 / GameSize;
+    float4 c = 0;
+    [unroll] for (int y = -1; y <= 1; y += 2)
+        [unroll] for (int x = -1; x <= 1; x += 2)
+            c += ToSdr(tex2D(SceneSampler, uv + float2(x, y) * px));
+    return c / 4.0;
+}
+// Gaussian with sigma = 6 CSS px at this display scale, in quarter-resolution texels.
+float4 DimBlur(sampler2D image, float2 uv, float2 texel) {
+@DIM_BLUR_TAPS@
+    return c;
+}
+#endif // DIM_BLUR
 float Mask(float2 uv, float4 rect, float2 radiusNorm) {
     if (rect.z <= 0 || rect.w <= 0) return 0;
     float2 halfSize = rect.zw * OutputSize * 0.5;
@@ -130,6 +233,11 @@ float4 Track(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     if (previous.y > 0.5 && previous.x <= Timer) return float4(previous, 0, 0);
     return float4(Timer, 1, 0, 0);
 }
+#if DIM_BLUR
+float4 DimDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box4(InputUV(uv)); }
+float4 DimHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return DimBlur(DimDS, uv, float2(1.0 / @DIM_W@, 0.0)); }
+float4 DimVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return DimBlur(DimHS, uv, float2(0.0, 1.0 / @DIM_H@)); }
+#endif // DIM_BLUR
 float4 BarDown(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Box(CropUV(uv, Bar)); }
 float4 BarHorizontal(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarDS, uv, float2(1.0 / @BAR_W@, 0.0)); }
 float4 BarVertical(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return Blur(BarHS, uv, float2(0.0, 1.0 / @BAR_H@)); }
@@ -163,25 +271,39 @@ float4 Calm(float4 c) {
 }
 // The fade is one value per frame: read the state in the three vertices, not in
 // every output pixel, where that read cost ~20 ms a frame in game on the Ally.
-void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1) {
+// present: an area is shown (state .y). With every area empty the start time is 0 and the fade alone reads as fully in.
+void FadeVS(uint id : SV_VertexID, out float4 pos : SV_Position, out float2 uv : TEXCOORD0, out nointerpolation float fade : TEXCOORD1, out nointerpolation float present : TEXCOORD2) {
     VS(id, pos, uv);
-    fade = saturate((Timer - tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).x) / FadeMs);
+    float2 state = tex2Dlod(StateAS, float4(0.5, 0.5, 0, 0)).xy;
+    fade = saturate((Timer - state.x) / FadeMs);
+    present = state.y;
 }
-float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1) : SV_Target {
+float4 Composite(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation float fade : TEXCOORD1, nointerpolation float present : TEXCOORD2) : SV_Target {
+#if defined(BUFFER_COLOR_SPACE) && BUFFER_COLOR_SPACE != 1 && BUFFER_COLOR_SPACE != 2 && BUFFER_COLOR_SPACE != 3
+    // A colour space the frost does not know (HLG, unknown): untouched rather than wrong.
+    return tex2D(SceneSampler, uv);
+#else
     float4 color = tex2D(SceneSampler, uv);
     float2 outUV = OutputUV(uv);
+#if DIM_BLUR
+    // The blurred screen under everything, then the areas, then the dim.
+    color = lerp(color, FromSdr(tex2D(DimVS, outUV)), fade * present);
+#endif // DIM_BLUR
     float b = Mask(outUV, Bar, BarRadius) * fade, p = Mask(outUV, Panel, PanelRadius) * fade, n = Mask(outUV, Notifications, NotificationsRadius) * fade;
     float s = Mask(outUV, Status, StatusRadius) * fade;
     float k = Mask(outUV, Keyboard, KeyboardRadius) * fade;
     float kl = Mask(outUV, KeyboardLeft, KeyboardLeftRadius) * fade, kr = Mask(outUV, KeyboardRight, KeyboardRightRadius) * fade;
-    if (b > 0) color = lerp(color, Calm(tex2D(BarVS, TileUV(outUV, Bar))), b);
-    if (p > 0) color = lerp(color, Calm(tex2D(PanelVS, TileUV(outUV, Panel))), p);
-    if (n > 0) color = lerp(color, Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications))), n);
-    if (s > 0) color = lerp(color, Calm(tex2D(StatusVS, TileUV(outUV, Status))), s);
-    if (k > 0) color = lerp(color, Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard))), k);
-    if (kl > 0) color = lerp(color, Calm(tex2D(KeyboardLeftVS, TileUV(outUV, KeyboardLeft))), kl);
-    if (kr > 0) color = lerp(color, Calm(tex2D(KeyboardRightVS, TileUV(outUV, KeyboardRight))), kr);
+    if (b > 0) color = lerp(color, FromSdr(Calm(tex2D(BarVS, TileUV(outUV, Bar)))), b);
+    if (p > 0) color = lerp(color, FromSdr(Calm(tex2D(PanelVS, TileUV(outUV, Panel)))), p);
+    if (n > 0) color = lerp(color, FromSdr(Calm(tex2D(NotificationsVS, TileUV(outUV, Notifications)))), n);
+    if (s > 0) color = lerp(color, FromSdr(Calm(tex2D(StatusVS, TileUV(outUV, Status)))), s);
+    if (k > 0) color = lerp(color, FromSdr(Calm(tex2D(KeyboardVS, TileUV(outUV, Keyboard)))), k);
+    if (kl > 0) color = lerp(color, FromSdr(Calm(tex2D(KeyboardLeftVS, TileUV(outUV, KeyboardLeft)))), kl);
+    if (kr > 0) color = lerp(color, FromSdr(Calm(tex2D(KeyboardRightVS, TileUV(outUV, KeyboardRight)))), kr);
+    // The dim, after the areas: the menu's glass shows a dimmed game, as over Steam's context menus.
+    color.rgb = lerp(color.rgb, FromSdr(float4(DimColor, 1.0)).rgb, DimAlpha * fade * present);
     return color;
+#endif
 }
 technique QAMFrost {
     pass Remember { VertexShader = VS; PixelShader = Remember; RenderTarget = StateB; }
@@ -207,5 +329,10 @@ technique QAMFrost {
     pass KeyboardY { VertexShader = VS; PixelShader = KeyboardVertical; RenderTarget = KeyboardV; }
     pass KeyboardLeftY { VertexShader = VS; PixelShader = KeyboardLeftVertical; RenderTarget = KeyboardLeftV; }
     pass KeyboardRightY { VertexShader = VS; PixelShader = KeyboardRightVertical; RenderTarget = KeyboardRightV; }
+#if DIM_BLUR
+    pass DimDown { VertexShader = VS; PixelShader = DimDown; RenderTarget = DimD; }
+    pass DimX { VertexShader = VS; PixelShader = DimHorizontal; RenderTarget = DimH; }
+    pass DimY { VertexShader = VS; PixelShader = DimVertical; RenderTarget = DimV; }
+#endif // DIM_BLUR
     pass Output { VertexShader = FadeVS; PixelShader = Composite; }
 }

@@ -1,10 +1,11 @@
 import { sourcePillIcon, sourcePillLook } from '../../src/styles/sourcePill';
 import { describe, expect, it } from 'vitest';
-import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
-import { defaultGrowth, homeCanvas } from '../../src/home/scale';
+import { arrivalSelectors, buildAccentCss, buildArrivingCss, buildCleanCss, buildSteamEnterOffCss, steamFooterSelector, buildDownloadCss, buildInstallSizeCss, buildLaunchCss, buildRingCss, buildThemeCss, buildUnifideckCss, launchArtHostSelector, launchTargets, ThemeClasses } from '../../src/styles/themeCss';
+import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../../src/home/scale';
 import { CLOUD_GLYPH_URL } from '../../src/home/cloud';
 import { ART_FILL_FILTER } from '../../src/home/heroFit';
 import { SETTLE } from '../../src/home/openTwins';
+import { TITLE_SCALE_VAR } from '../../src/home/titleSize';
 import { cardMaxWidths, heroImageSelector, PAGE_LAYOUT, pageDUnit, pageScrimLayers, pageScrims, PAGE_TYPE, pageType, pillFocusScale, playRowSelector, ringBoost, STEAM_LEGEND_PX, twinTargets } from '../../src/styles/themeCss';
 
 const full: ThemeClasses = {
@@ -167,10 +168,15 @@ describe('buildThemeCss button spacing', () => {
         expect(ruleFor(css, '.rt_Buttons {')).toContain('margin-left: 0');
         expect(ruleFor(css, '.ps_Cloud {')).toContain('var(--gg-buttons, 2) * (var(--gg-icon) + var(--gg-gap))');
     });
-    it('counts Steam’s icon buttons to place the cloud after the last one', () => {
+    it('counts Steam’s icon buttons, not Game Glance’s music button, to place the cloud after the last one', () => {
         const css = buildThemeCss(full);
-        expect(ruleFor(css, '.rt_Play:has(.rt_Buttons > :nth-child(3):last-child) ~ .ps_Cloud {')).toContain('--gg-buttons: 3');
-        expect(ruleFor(css, '.rt_Play:has(.rt_Buttons > :nth-child(1):last-child) ~ .ps_Cloud {')).toContain('--gg-buttons: 1');
+        const steam = ':not(.gg-music-choice)';
+        expect(ruleFor(css, `.rt_Play:has(.rt_Buttons > :nth-child(3 of ${steam}):nth-last-child(1 of ${steam})) ~ .ps_Cloud {`)).toContain('--gg-buttons: 3');
+        expect(ruleFor(css, `.rt_Play:has(.rt_Buttons > :nth-child(1 of ${steam}):nth-last-child(1 of ${steam})) ~ .ps_Cloud {`)).toContain('--gg-buttons: 1');
+    });
+    it('keeps the music button after the cloud: one slot further when the page has a cloud (PS5, 2026-11-18)', () => {
+        const css = buildThemeCss(full);
+        expect(ruleFor(css, '.rt_Play:has(~ .ps_Cloud) .rt_Buttons > .gg-music-choice {')).toContain('margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important');
     });
 });
 
@@ -245,18 +251,45 @@ describe('buildLaunchCss (while a game launches)', () => {
         expect(overlay).toBe('.ln_Container');
         expect(hide).toEqual(['.gg-titleblock', '.gg-hero', '.hd_Box', '.hd_Title', '.hd_Svg', '.ad_Overview', '.rt_Tabs']);
         expect(hide).not.toContain('.hd_Top');
+        // Other plugins' badges beside Steam's header, never the header (the art) or the overlay.
+        const others = launchTargets({ ...withLaunch, details: { ...withLaunch.details, InnerContainer: 'ad_Inner', Header: 'ad_Header' } }).hide;
+        expect(others).toContain('.ad_Inner > :not(.ad_Header):not(.ln_Container):not(:has(.ln_Container))');
+        // And inside the header, all but Steam's image and Home's art.
+        const inHeader = launchTargets({ ...withLaunch, header: { ...withLaunch.header, TopCapsule: 'hd_Top', HeaderBackgroundImage: 'hd_Img' } }).hide;
+        expect(inHeader).toContain('.hd_Top > :not(.hd_Img):not(.gg-launch-art):not(.ln_Container):not(:has(.ln_Container))');
         const css = buildLaunchCss(withLaunch);
         expect(css).toContain(`${hide.join(', ')} { opacity: 0 !important; transition: opacity 200ms ease !important; }`);
     });
     it('lets more of the art through the overlay than its resting dim', () => {
         const css = buildLaunchCss(withLaunch);
-        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; }');
+        expect(css).toContain(':root .ln_Container { background: rgba(0, 0, 0, 0.55) !important; height: 100vh !important; padding-bottom: 40px !important; box-sizing: border-box !important; }');
+    });
+    it('keeps the dim as the overlay leaves, so the art never brightens before the game starts', () => {
+        const css = buildLaunchCss({ ...withLaunch, launch: { Container: 'ln_Container', FullscreenExitStart: 'ln_XS', FullscreenExitActive: 'ln_XA' } });
+        expect(css).toContain(':root .ln_Container.ln_XS, :root .ln_Container.ln_XA { opacity: 1 !important; transform: none !important; transition: none !important; }');
+        expect(buildLaunchCss(withLaunch)).not.toContain('opacity: 1 !important');
+    });
+    it('after Play on Home, Steam’s page-enter fade is off too, so the page is there at once', () => {
+        const classes = { ...withLaunch, transition: { TopLevelTransition: 'tl_Top', Enter: 'tl_E', EnterActive: 'tl_EA' } };
+        expect(buildLaunchCss(classes, true)).toContain(buildSteamEnterOffCss(classes));
+        // And Steam's header (the art) is shown before it has loaded, with Home's art in it.
+        const withHeader = { ...classes, details: { ...classes.details, Header: 'ad_Header' } };
+        expect(buildLaunchCss(withHeader, true)).toContain(':root .ad_Header { opacity: 1 !important; }');
+        expect(buildLaunchCss(withHeader)).not.toContain('.ad_Header { opacity');
+        expect(buildLaunchCss(classes)).not.toContain('tl_Top');
     });
     it('hides nothing when the overlay class is unknown; Steam classes that are missing are just left out', () => {
         expect(buildLaunchCss(full)).toBe('');
         expect(launchTargets({ ...full, launch: {} })).toEqual({ overlay: null, hide: [] });
         const none: ThemeClasses = { header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined, launch: { Container: 'ln_Container' } };
         expect(launchTargets(none).hide).toEqual(['.gg-titleblock', '.gg-hero']);
+    });
+});
+
+describe('launchArtHostSelector', () => {
+    it('is Steam’s header, where the art is', () => {
+        expect(launchArtHostSelector({ ...full, header: { TopCapsule: 'hd_Top' } })).toBe('.hd_Top');
+        expect(launchArtHostSelector({ ...full, header: {} })).toBeNull();
     });
 });
 
@@ -388,17 +421,50 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-cards { display: flex; gap: calc(14 * var(--gg-u)); align-items: stretch; }
           .gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
                       border-radius: calc(10 * var(--gg-u)); padding: calc(9 * var(--gg-u)) calc(12 * var(--gg-u)); backdrop-filter: blur(calc(10 * var(--gg-u))); }
-          .gg-card.gg-hltb { flex: 0.95 1 0; }
+          .gg-card.gg-featured { flex: 0.95 1 0; }
           .gg-label { font-size: calc(8.5 * var(--gg-u)); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }
           .gg-value { font-size: calc(17 * var(--gg-u)); font-weight: 700; white-space: nowrap; }
           .gg-stats { display: flex; gap: calc(18 * var(--gg-u)); margin-top: calc(2 * var(--gg-u)); }
           .gg-goal .gg-value { color: var(--gg-accent); }
           .gg-desc { margin: calc(6 * var(--gg-u)) 0 0; font-size: calc(10.5 * var(--gg-u)); line-height: 1.4; color: rgba(255, 255, 255, 0.85);
                       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }
           .gg-muted { margin-top: calc(8 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
           .gg-caption { margin-top: calc(5 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
+          .gg-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }
+          .gg-mark[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-mark[data-tone="gold"] { color: #cfb53b; }
+          .gg-mark[data-tone="silver"] { color: #a6a6a6; }
+          .gg-mark[data-tone="bronze"] { color: #cd7f32; }
+          .gg-mark[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
+          .gg-featured-text { min-width: 0; }
+          .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+          .gg-featured-mark { display: flex; align-items: center; justify-content: center; }
+          .gg-featured-mark > svg { width: 1.7em; height: 1.7em; }
+          .gg-featured-mark[data-tone="platinum"] { color: #b4c7dc; background: rgba(180, 199, 220, 0.16); }
+          .gg-featured-mark[data-tone="gold"] { color: #cfb53b; background: rgba(207, 181, 59, 0.16); }
+          .gg-featured-mark[data-tone="silver"] { color: #a6a6a6; background: rgba(166, 166, 166, 0.16); }
+          .gg-featured-mark[data-tone="bronze"] { color: #cd7f32; background: rgba(205, 127, 50, 0.16); }
+          .gg-featured-mark[data-tone="borked"] { color: #ff0000; background: rgba(255, 0, 0, 0.16); }
+          .gg-featured-text > .gg-value[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-featured-text > .gg-value[data-tone="gold"] { color: #cfb53b; }
+          .gg-featured-text > .gg-value[data-tone="silver"] { color: #a6a6a6; }
+          .gg-featured-text > .gg-value[data-tone="bronze"] { color: #cd7f32; }
+          .gg-featured-text > .gg-value[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-accent { color: var(--gg-accent); }
+          .gg-ladder { display: flex; gap: calc(3 * var(--gg-u)); height: calc(4 * var(--gg-u)); margin-top: calc(8 * var(--gg-u)); }
+          .gg-ladder > span { flex: 1 1 0; border-radius: calc(3 * var(--gg-u)); opacity: 0.22; }
+          .gg-ladder > span[data-lit] { opacity: 1; }
+          .gg-bar.gg-track { position: relative; background: none; overflow: visible; }
+          .gg-track > span { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-right: calc(2 * var(--gg-u)) solid transparent; background-clip: padding-box; border-radius: calc(3 * var(--gg-u)); background-color: rgba(255, 255, 255, 0.22); }
+          .gg-track > span:nth-of-type(2) { background-color: rgba(255, 255, 255, 0.14); }
+          .gg-track > span:nth-of-type(3) { background-color: rgba(255, 255, 255, 0.08); }
+          .gg-track > div { position: absolute; left: 0; top: 0; bottom: 0; min-width: calc(4 * var(--gg-u)); }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -433,11 +499,12 @@ describe('buildThemeCss 1.1.1 baseline', () => {
                       width: var(--gg-icon) !important; height: var(--gg-icon) !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important;
                       display: flex; align-items: center; justify-content: center; border-radius: 50%;
                       background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); color: var(--gg-ok) !important; }
-          .rt_Play:has(.rt_Buttons > :nth-child(1):last-child) ~ .ps_Cloud { --gg-buttons: 1; }
-          .rt_Play:has(.rt_Buttons > :nth-child(2):last-child) ~ .ps_Cloud { --gg-buttons: 2; }
-          .rt_Play:has(.rt_Buttons > :nth-child(3):last-child) ~ .ps_Cloud { --gg-buttons: 3; }
-          .rt_Play:has(.rt_Buttons > :nth-child(4):last-child) ~ .ps_Cloud { --gg-buttons: 4; }
-          .rt_Play:has(.rt_Buttons > :nth-child(5):last-child) ~ .ps_Cloud { --gg-buttons: 5; }
+          .rt_Play:has(.rt_Buttons > :nth-child(1 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 1; }
+          .rt_Play:has(.rt_Buttons > :nth-child(2 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 2; }
+          .rt_Play:has(.rt_Buttons > :nth-child(3 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 3; }
+          .rt_Play:has(.rt_Buttons > :nth-child(4 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 4; }
+          .rt_Play:has(.rt_Buttons > :nth-child(5 of :not(.gg-music-choice)):nth-last-child(1 of :not(.gg-music-choice))) ~ .ps_Cloud { --gg-buttons: 5; }
+          .rt_Play:has(~ .ps_Cloud) .rt_Buttons > .gg-music-choice { margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; }
           .ps_Cloud::before, .ps_Cloud::after { content: none !important; }
           .ps_Cloud svg { fill: currentColor !important; color: inherit !important;
                       width: calc(16 * var(--gg-u)) !important; height: calc(16 * var(--gg-u)) !important; margin: 0 calc(8 * var(--gg-u)) calc(4 * var(--gg-u)) !important; }
@@ -486,17 +553,50 @@ describe('buildThemeCss 1.1.1 baseline', () => {
           .gg-cards { display: flex; gap: calc(14 * var(--gg-u)); align-items: stretch; }
           .gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
                       border-radius: calc(10 * var(--gg-u)); padding: calc(9 * var(--gg-u)) calc(12 * var(--gg-u)); backdrop-filter: blur(calc(10 * var(--gg-u))); }
-          .gg-card.gg-hltb { flex: 0.95 1 0; }
+          .gg-card.gg-featured { flex: 0.95 1 0; }
           .gg-label { font-size: calc(8.5 * var(--gg-u)); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }
           .gg-value { font-size: calc(17 * var(--gg-u)); font-weight: 700; white-space: nowrap; }
           .gg-stats { display: flex; gap: calc(18 * var(--gg-u)); margin-top: calc(2 * var(--gg-u)); }
           .gg-goal .gg-value { color: var(--gg-accent); }
           .gg-desc { margin: calc(6 * var(--gg-u)) 0 0; font-size: calc(10.5 * var(--gg-u)); line-height: 1.4; color: rgba(255, 255, 255, 0.85);
                       display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }
+          .gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }
           .gg-muted { margin-top: calc(8 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
           .gg-bar { margin-top: calc(8 * var(--gg-u)); height: calc(4 * var(--gg-u)); border-radius: calc(2 * var(--gg-u)); background: rgba(255, 255, 255, 0.14); overflow: hidden; }
           .gg-bar > div { height: 100%; border-radius: calc(2 * var(--gg-u)); background: var(--gg-accent); }
           .gg-caption { margin-top: calc(5 * var(--gg-u)); font-size: calc(10 * var(--gg-u)); color: var(--gg-muted); }
+          .gg-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }
+          .gg-mark[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-mark[data-tone="gold"] { color: #cfb53b; }
+          .gg-mark[data-tone="silver"] { color: #a6a6a6; }
+          .gg-mark[data-tone="bronze"] { color: #cd7f32; }
+          .gg-mark[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }
+          .gg-featured-text { min-width: 0; }
+          .gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+          .gg-featured-mark { display: flex; align-items: center; justify-content: center; }
+          .gg-featured-mark > svg { width: 1.7em; height: 1.7em; }
+          .gg-featured-mark[data-tone="platinum"] { color: #b4c7dc; background: rgba(180, 199, 220, 0.16); }
+          .gg-featured-mark[data-tone="gold"] { color: #cfb53b; background: rgba(207, 181, 59, 0.16); }
+          .gg-featured-mark[data-tone="silver"] { color: #a6a6a6; background: rgba(166, 166, 166, 0.16); }
+          .gg-featured-mark[data-tone="bronze"] { color: #cd7f32; background: rgba(205, 127, 50, 0.16); }
+          .gg-featured-mark[data-tone="borked"] { color: #ff0000; background: rgba(255, 0, 0, 0.16); }
+          .gg-featured-text > .gg-value[data-tone="platinum"] { color: #b4c7dc; }
+          .gg-featured-text > .gg-value[data-tone="gold"] { color: #cfb53b; }
+          .gg-featured-text > .gg-value[data-tone="silver"] { color: #a6a6a6; }
+          .gg-featured-text > .gg-value[data-tone="bronze"] { color: #cd7f32; }
+          .gg-featured-text > .gg-value[data-tone="borked"] { color: #ff0000; }
+          .gg-featured-accent { color: var(--gg-accent); }
+          .gg-ladder { display: flex; gap: calc(3 * var(--gg-u)); height: calc(4 * var(--gg-u)); margin-top: calc(8 * var(--gg-u)); }
+          .gg-ladder > span { flex: 1 1 0; border-radius: calc(3 * var(--gg-u)); opacity: 0.22; }
+          .gg-ladder > span[data-lit] { opacity: 1; }
+          .gg-bar.gg-track { position: relative; background: none; overflow: visible; }
+          .gg-track > span { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-right: calc(2 * var(--gg-u)) solid transparent; background-clip: padding-box; border-radius: calc(3 * var(--gg-u)); background-color: rgba(255, 255, 255, 0.22); }
+          .gg-track > span:nth-of-type(2) { background-color: rgba(255, 255, 255, 0.14); }
+          .gg-track > span:nth-of-type(3) { background-color: rgba(255, 255, 255, 0.08); }
+          .gg-track > div { position: absolute; left: 0; top: 0; bottom: 0; min-width: calc(4 * var(--gg-u)); }
           .gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: calc(4 * var(--gg-u)); background: rgba(255, 255, 255, 0.12); }
           .gg-pill { position: absolute; right: 0; top: calc(-1 * calc(60 * var(--gg-u))); height: calc(24 * var(--gg-u)); display: inline-flex; align-items: center; padding: 0 calc(10 * var(--gg-u));
                       border-radius: 999px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); font-size: calc(11 * var(--gg-u)); }
@@ -519,6 +619,29 @@ describe('game page grammar (VDL Section 7)', () => {
             const body = rulesMatching(css, new RegExp(`^\\${sel}$`)).join(' ');
             expect(body, sel).toContain('border-radius: calc(12 * var(--gg-d))'); expect(body, sel).not.toContain('999px');
         }
+    });
+    it('the store pill holder stays in Steam\'s 3D scene and unglazed; its face carries the glass, as the family pill does', () => {
+        const css = buildThemeCss(full, { restyle: true }).slice(buildThemeCss(full).length);
+        const holder = rulesMatching(css, /^\.gg-pill\.gg-store-selectable$/).join(' ');
+        expect(holder).toContain('transform-style: preserve-3d'); expect(holder).toContain('backdrop-filter: none');
+        const face = rulesMatching(css, /^\.gg-store-face$/).join(' ');
+        expect(face).toContain('backdrop-filter'); expect(face).toContain('border-radius: calc(12 * var(--gg-d))');
+        expect(face).not.toContain('pointer-events: auto');
+    });
+    it("the player count pill: the family pill's look, left of the family pill in the row, right-aligned above it when it does not fit", () => {
+        const css = buildThemeCss(full, { restyle: true }).slice(buildThemeCss(full).length);
+        const pill = rulesMatching(css, /^\.gg-players$/).join(' ');
+        expect(pill).toContain('position: absolute'); expect(pill).toContain('right: calc(100% + calc(10 * var(--gg-d)))');
+        expect(pill).toContain('border-radius: calc(12 * var(--gg-d))'); expect(pill).toContain('backdrop-filter');
+        expect(rulesMatching(css, /^\.gg-pill:has\(> \.gg-family\) > \.gg-players$/).join(' ')).toContain('right: calc(100% + var(--gg-family-w, 0px) + calc(20 * var(--gg-d)))');
+        expect(rulesMatching(css, /^\.gg-pill-bare > \.gg-players$/).join(' ')).toContain('right: 0');
+        expect(rulesMatching(css, /^\.gg-pill-bare:has\(> \.gg-family\) > \.gg-players$/).join(' ')).toContain('right: calc(var(--gg-family-w, 0px) + calc(10 * var(--gg-d)))');
+        const above = rulesMatching(css, /^\.gg-pill\[data-players="above"\] > \.gg-players$/).join(' ');
+        for (const decl of ['right: 0', 'top: auto', 'bottom: calc(100% + calc(10 * var(--gg-d)))', 'transform: none']) expect(above, decl).toContain(decl);
+        const dot = rulesMatching(css, /^\.gg-players-dot$/).join(' ');
+        expect(dot).toContain('#5fd38d'); expect(dot).toContain('0.55em');
+        expect(rulesMatching(css, /^\.gg-native-playcount$/).join(' ')).toContain('visibility: hidden !important');
+        expect(rulesMatching(css, /^\.gg-players-choice$/).join(' ')).toContain('pointer-events: auto');
     });
     it("the 1.1.1 page's Unifideck focus stays in its own units; the restyle swaps it for the menu ring", () => {
         const plain = rulesMatching(buildUnifideckCss(full), /unifideck-play-btn\.gpfocus/).join(' ');
@@ -647,6 +770,15 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(box).toContain('isolation: isolate !important;');
         expect(box).toContain('overflow: clip !important;');
     });
+    it("hero Expanded: Steam's header image covers the header's top 70%, centred, fading into the same art fill", () => {
+        const expanded = buildThemeCss(steam, { restyle: true, heroFit: 'expanded' });
+        const img = rulesFor(expanded, '.hd_Top img:not([src*="_blur"])');
+        expect(img).toContain('height: 70% !important; object-fit: cover !important; object-position: center !important;');
+        expect(img).toContain('-webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%) !important;');
+        expect(img).not.toContain('50% 30%');
+        expect(rulesFor(expanded, '.hd_Top::before')).toContain('background: var(--gg-hero-fill, none) center / cover no-repeat !important;');
+        expect(rulesFor(expanded, '.hd_Top canvas')).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
+    });
     it('Fit also gates Steam canvas blur and its reflection with the full-hero readiness state', () => {
         const selector = '.hd_Top canvas';
         expect(rulesFor(buildThemeCss(steam, { restyle: true, heroFit: 'fit' }), selector)).toContain('visibility: var(--gg-hero-placeholder, visible) !important;');
@@ -686,8 +818,11 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         const dot = rulesFor(restyled, '.ps_Cloud::after');
         expect(dot).toContain('content: "" !important;');
         expect(dot).toContain('background: var(--gg-cloud-dot, var(--gg-ok)) !important;');
-        expect(dot).toContain('width: calc(12 * var(--gg-d)) !important;');
-        expect(dot).toContain('border: calc(2 * var(--gg-d)) solid rgba(0, 0, 0, 0.75) !important;');
+        // Unifideck's page dot as measured on the Ally (12 px with a 2 px ring at d 1.13), in the page's unit; the ring is a
+        // shadow outside the dot, so the dot sits on the circle's corner.
+        expect(dot).toContain('width: calc(10.5 * var(--gg-d)) !important;');
+        expect(dot).toContain('box-shadow: 0 0 0 calc(1.75 * var(--gg-d)) rgba(0, 0, 0, 0.75) !important;');
+        expect(dot).toContain('border: none !important;');
         expect(dot).toContain('border-radius: 50% !important;');
         // Steam's own ::after rule on this element sets left: 8px and a negative margin; ours replaces them.
         expect(dot).toContain('left: auto !important; bottom: auto !important; margin: 0 !important;');
@@ -701,9 +836,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('border-width: calc(1 * var(--gg-d)) !important;');
     });
     it("the glass rings are as bright as Home's: their colour is Home's times --gg-ring (ringBoost), 1 when not set", () => {
-        expect(rulesFor(restyled, '.ps_Menu')).toContain('border-color: rgba(255, 255, 255, calc(0.18 * var(--gg-ring, 1))) !important;');
-        expect(rulesFor(restyled, '.gg-card')).toContain('border-color: rgba(255, 255, 255, calc(0.12 * var(--gg-ring, 1)));');
-        expect(buildCleanCss(full)).toMatch(/\.gg-clean-info \{[^}]*border: calc\(1 \* var\(--gg-d\)\) solid rgba\(255, 255, 255, calc\(0\.12 \* var\(--gg-ring, 1\)\)\)/);
+        expect(rulesFor(restyled, '.ps_Menu')).toContain('border-color: rgba(182,199,224,.40) !important;');
+        expect(rulesFor(restyled, '.gg-card')).toContain('border-color: rgba(182,199,224,.40);');
+        expect(buildCleanCss(full)).toMatch(/\.gg-clean-info \{[^}]*border: calc\(1 \* var\(--gg-d\)\) solid rgba\(182,199,224,\.40\)/);
         expect(buildRingCss(1.15)).toBe(':root { --gg-ring: 1.15; }');
     });
     it("everything clickable takes the hover ring under a mouse (in d units), never when focused, ring only but the cards", () => {
@@ -863,8 +998,10 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ad_Inner')).toContain('transition: --glance-accent 500ms ease;');
         expect(rulesFor(restyled, ':where(html:not([data-gg-mouse])) .rt_PlayBtn > div:has(> [role="button"].gpfocus)')).toContain('outline:calc(2 * var(--gg-d)) solid #fff !important;');
         // handoff px scaled like Home: its 1440 canvas on 16:9, its 1280 canvas on 16:10
-        expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
-        expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
+        expect(restyled).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)} * var(--gg-size)); }`);
+        expect(restyled).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)} * var(--gg-size)); } }`);
+        expect(restyled).toContain(`:root { --gg-size: ${SIZE_FACTOR.handheld}; }`);
+        expect(restyled).toContain(`@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-size: ${SIZE_FACTOR.tv}; } }`);
         // eyebrow and 64px/800 title
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('color: #fff');
         expect(rulesFor(restyled, '.gg-eyebrow')).toContain('text-transform: uppercase');
@@ -895,7 +1032,9 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         // The cards are content-box: the cap is the outer width less the padding (2 x padX) and the 1 px borders.
         const content = (outer: number) => `max-width: calc(${outer - 2 * padX - 2} * var(--gg-d))`;
         expect(rulesFor(restyled, '.gg-card')).toContain(content(infoW));
-        const hltbRules = rulesFor(restyled, '.gg-card.gg-hltb');
+        // The right-hand card's shell is the featured card's (HowLongToBeat's card carries gg-featured too).
+        const hltbRules = rulesFor(restyled, '.gg-card.gg-featured');
+        expect(restyled).not.toContain('.gg-card.gg-hltb {');
         expect(hltbRules).toContain(content(hltbW));
         // Wider than 9:5 (21:9, 32:9) the description card is as wide as HowLongToBeat.
         expect(PAGE_LAYOUT.cards.equalFromAspect).toBe(1.8);
@@ -910,7 +1049,7 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.gg-card')).toContain('border-radius: calc(16 * var(--gg-d))');
         expect(rulesFor(restyled, '.gg-value')).toContain('font-size: calc(30 * var(--gg-d))');
         expect(rulesFor(restyled, '.gg-bar')).toContain('height: calc(6 * var(--gg-d))');
-        expect(restyled).toContain(':root { --gg-side: calc(56 * var(--gg-d)); }');
+        expect(restyled).toContain(':root { --gg-side: calc(28 * var(--gg-d)); }');
         expect(rulesFor(restyled, '.rt_Play')).toContain('padding-left: var(--gg-side) !important');
     });
     it('restyled Play row matches the handoff: pill 340x60 at H-386, cards at H-290, circles 60, gap 14', () => {
@@ -933,16 +1072,46 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(rulesFor(restyled, '.ps_Menu svg')).toContain('width: calc(24 * var(--gg-d)) !important');
         expect(rulesFor(restyled, '.ps_Cloud')).toContain('top: 0 !important');
     });
+    it('featured None keeps the two-column row: no rule widens the info card', () => {
+        expect(restyled).not.toContain('gg-cards-single');
+        // The featured cards share HowLongToBeat's column gap; the new ones end long text in an ellipsis.
+        expect(rulesFor(restyled, '.gg-featured .gg-stats')).toContain(`gap: calc(${PAGE_LAYOUT.stats.colGapHltb} * var(--gg-d))`);
+        expect(rulesFor(restyled, '.gg-featured:not(.gg-hltb) .gg-caption, .gg-featured:not(.gg-hltb) .gg-muted')).toContain('text-overflow: ellipsis');
+    });
+    it('the achievements icon row is styled by classes', () => {
+        expect(rulesFor(restyled, '.gg-featured-icon')).toContain('object-fit: cover');
+        expect(rulesFor(restyled, '.gg-featured-text > .gg-value')).toContain('text-overflow: ellipsis');
+    });
     it('restyled HLTB card: MAIN is always the accent, no goal-tier highlight', () => {
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div .gg-value')).toContain('color: inherit');
         expect(rulesFor(restyled, '.gg-hltb .gg-stats > div:first-child .gg-value')).toContain('color: var(--glance-accent-text, var(--gg-accent))');
+    });
+    it("restyled Play time card: its hours are HowLongToBeat Main's accent (the legible one the open's accent copy draws), no column is", () => {
+        expect(rulesFor(restyled, '.gg-featured-accent')).toContain('color: var(--glance-accent-text, var(--gg-accent)); transition: color');
+        expect(restyled).not.toContain('.gg-featured-played .gg-stats > div:first-child');
+    });
+    it('the dense card (tile row and columns) shrinks the tile and the column values to keep the card height', () => {
+        expect(rulesFor(restyled, '.gg-featured-dense .gg-featured-icon')).toContain('height: 2.2em');
+        expect(rulesFor(restyled, '.gg-featured-dense .gg-stats > [data-stat] .gg-value')).toContain('font-size: calc(18 * var(--gg-d))');
+    });
+    it("ProtonDB's tile, headline and ladder take the rating's colour; the ladder lights one step", () => {
+        expect(rulesFor(restyled, '.gg-featured-mark[data-tone="gold"]')).toContain('color: #cfb53b; background: rgba(207, 181, 59, 0.16)');
+        expect(rulesFor(restyled, '.gg-featured-text > .gg-value[data-tone="gold"]')).toContain('color: #cfb53b');
+        expect(rulesFor(restyled, '.gg-ladder > span[data-lit]')).toContain('opacity: 1');
+        expect(rulesFor(restyled, '.gg-ladder, .gg-track > div')).toContain(`height: calc(${PAGE_LAYOUT.cardText.bar} * var(--gg-d))`);
+    });
+    it("HowLongToBeat's track: stretches fainter the further, the fill on top", () => {
+        expect(rulesFor(restyled, '.gg-bar.gg-track')).toContain('background: none');
+        expect(rulesFor(restyled, '.gg-track > span:nth-of-type(3)')).toContain('rgba(255, 255, 255, 0.08)');
+        expect(rulesFor(restyled, '.gg-track > div')).toContain('position: absolute');
     });
     it('restyled layout hides the chevron hint and keeps the source pill, expanded, beside the Play row', () => {
         expect(rulesFor(restyled, '.gg-more')).toContain('display: none');
         expect(buildThemeCss(steam)).not.toContain('.gg-more { display: none');
         const pill = rulesFor(restyled, '.gg-pill');
         expect(pill).toContain('font-size: calc(15 * var(--gg-d))');
-        expect(pill).toContain('top: calc(-1 * calc(82 * var(--gg-d)))');
+        // Its bottom on the Play row's bottom line: 36 (the row's gap to the cards) + 32 (the pill's height).
+        expect(pill).toContain('top: calc(-1 * calc(68 * var(--gg-d)))');
         expect(pill).not.toContain('display: none');
         // One definition shared with Spotlight Home's pill.
         expect(pill).toContain(sourcePillLook((n) => `calc(${n} * var(--gg-d))`));
@@ -970,26 +1139,27 @@ describe('buildThemeCss restyle (Spotlight Home on)', () => {
         expect(restyled).not.toContain('top: calc(120 * var(--gg-d))');
         expect(restyled).not.toMatch(/@media[^{]*\{ \.\w+ > \.gg-titleblock/);
     });
-    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck keep 56', () => {
-        expect(restyled).toMatch(/:root \{ --gg-side: calc\(56 \* var\(--gg-d\)\); \}/);
+    it('a TV takes the tighter side inset (24 of the 1440 canvas, the status dot\'s centre line); the handheld and the Deck get 28, on the status bar\'s end', () => {
+        expect(restyled).toMatch(/:root \{ --gg-side: calc\(28 \* var\(--gg-d\)\); \}/);
         expect(restyled).toMatch(/@media \(min-width: 1408px\) and \(min-height: 793px\) \{ :root \{ --gg-side: calc\(24 \* var\(--gg-d\)\); \} \}/);
         // the media query comes after the default, so on a TV it wins; the thresholds are screenScale's 1.7x the handheld's 828x466
-        expect(restyled.indexOf('@media (min-width: 1408px)')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(56 * var(--gg-d))'));
+        expect(restyled.indexOf('@media (min-width: 1408px) and (min-height: 793px) { :root { --gg-side')).toBeGreaterThan(restyled.indexOf('--gg-side: calc(28 * var(--gg-d))'));
         expect(Math.ceil(828 * 1.7)).toBe(1408);
         expect(Math.ceil(466 * 1.7)).toBe(793);
     });
     it('restyle rules do nothing when their Steam classes are missing and never touch layout', () => {
-        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length).replace(/\.gg-native-store-switcher \{[^}]*\}/, '');
+        const extra = (classes: ThemeClasses) => buildThemeCss(classes, { restyle: true }).slice(buildThemeCss(classes).length).replace(/\.gg-native-store-switcher \{[^}]*\}/, '').replace(/\.gg-native-playcount \{[^}]*\}/, '');
 
         // No Steam classes at all: only our own elements and variables, no broken selectors.
         const none = extra({ header: undefined, details: undefined, overview: undefined, root: undefined, play: undefined });
         expect(none).not.toContain('undefined');
         expect(none).not.toMatch(/(^|[\s,])\.(\s|\{|,)/m);
-        expect(none.replace(/\.gg-native-store-switcher \{[^}]*\}/, '')).not.toContain('visibility: hidden');
+        // (other plugins' controls our pills stand in for are kept in the page but hidden: Unifideck's switch, PlayCount's badge)
+        expect(none.replace(/\.gg-native-store-switcher \{[^}]*\}/, '').replace(/\.gg-native-playcount \{[^}]*\}/, '')).not.toContain('visibility: hidden');
         expect(none).not.toContain('::after');
         expect(none).not.toContain('--gg-side:');
         // (our own family pill is positioned inside our own store pill; nothing of Steam's is)
-        expect(none.replace(/\.gg-family \{[^}]*\}/, '')).not.toContain('position: absolute');
+        expect(none.replace(/\.gg-family \{[^}]*\}/g, '').replace(/\.gg-players \{[^}]*\}/g, '')).not.toContain('position: absolute');
         expect(none).toContain('.gg-title {');
         expect(none).toContain('.gg-eyebrow {');
 
@@ -1070,6 +1240,26 @@ describe('buildAccentCss', () => {
     });
 });
 
+describe('buildInstallSizeCss (Space required at the Install pill)', () => {
+    it("shows the size at the main button's right end, faded, as a style (no element in Steam's button)", () => {
+        const css = buildInstallSizeCss(full, '2.3 GB');
+        expect(css).toContain('.rt_PlayBtn [role="button"]:first-child { position: relative !important; }');
+        // The label's ::after: the button's own is Steam's.
+        expect(css).toContain('.rt_PlayBtn [role="button"]:first-child > div::after {');
+        expect(css).toContain('content: "2.3 GB"');
+        expect(css).toContain(`right: calc(${PAGE_LAYOUT.pill.padX} * var(--gg-d))`);
+        expect(css).toContain('opacity: 0.72');
+    });
+    it('is empty without a size or without the pill class', () => {
+        expect(buildInstallSizeCss(full, null)).toBe('');
+        expect(buildInstallSizeCss(full, '  ')).toBe('');
+        expect(buildInstallSizeCss({ ...full, root: undefined }, '2.3 GB')).toBe('');
+    });
+    it('cannot end the CSS string early', () => {
+        expect(buildInstallSizeCss(full, '2 GB"; } x { color: red')).toContain('content: "2 GB; } x { color: red"');
+    });
+});
+
 describe('buildDownloadCss (restyled Play pill fill)', () => {
     it('fills the pill by the percent (Steam\'s bar is hidden by the restyle rules, not here)', () => {
         const css = buildDownloadCss(full, 41.6);
@@ -1099,13 +1289,13 @@ describe('buildDownloadCss (restyled Play pill fill)', () => {
 describe('the page layout constants', () => {
     it('pageDUnit follows --gg-d: a 1440 wide canvas on 16:9, 1280 on 16:10 and narrower', () => {
         // With Home's default growth (#55): 810 tall canvases x defaultGrowth(810), 800 tall x defaultGrowth(800).
-        expect(pageDUnit(1500, 844)).toBeCloseTo((1500 / 1440) * defaultGrowth(810));
-        expect(pageDUnit(1280, 800)).toBeCloseTo(defaultGrowth(800));
-        expect(pageDUnit(828, 466)).toBeCloseTo((828 / 1440) * defaultGrowth(810));
+        expect(pageDUnit(1500, 844)).toBeCloseTo((1500 / 1440) * defaultGrowth(810) * SIZE_FACTOR.tv);
+        expect(pageDUnit(1280, 800)).toBeCloseTo(defaultGrowth(800) * SIZE_FACTOR.handheld);
+        expect(pageDUnit(828, 466)).toBeCloseTo((828 / 1440) * defaultGrowth(810) * SIZE_FACTOR.handheld);
     });
     it('pageDUnit scales a screen wider than 16:9 by its height, as Home does (one rule keeps the open transition aligned)', () => {
-        expect(pageDUnit(1500, 643)).toBeCloseTo((643 / 810) * defaultGrowth(810));
-        expect(pageDUnit(2560, 1080)).toBeCloseTo((1080 / 810) * defaultGrowth(810));
+        expect(pageDUnit(1500, 643)).toBeCloseTo((643 / 810) * defaultGrowth(810) * SIZE_FACTOR.handheld);
+        expect(pageDUnit(2560, 1080)).toBeCloseTo((1080 / 810) * defaultGrowth(810) * SIZE_FACTOR.tv);
         for (const [w, h] of [[1920, 1080], [1280, 800], [1500, 844], [1500, 643], [2560, 1080], [3440, 1440], [1024, 768]]) {
             expect(pageDUnit(w, h)).toBeCloseTo(homeCanvas(w, h).scale, 10);
         }
@@ -1155,6 +1345,10 @@ describe('page shading (spec 2026-10-30-page-shading)', () => {
 
 describe('the page arriving after the open transition', () => {
     const play = full.play as Record<string, string>;
+    it("the player pill arrives unless Home's moved in (extra.players)", () => {
+        expect(buildArrivingCss(full, 'spotlight', 'parts')).toContain('.gg-players');
+        expect(buildArrivingCss(full, 'spotlight', 'parts', false, { players: true })).not.toContain('.gg-players');
+    });
     it("'parts' hides only what Home had no counterpart for (Spotlight)", () => {
         const css = buildArrivingCss(full, 'spotlight', 'parts');
         for (const sel of ['.gg-desc', '.gg-hltb > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-caption', '.gg-muted', '.gg-hltb .gg-bar', '.gg-family', '[data-stat="size"]']) {
@@ -1206,6 +1400,15 @@ describe('the page arriving after the open transition', () => {
         expect(desc).toContain('.gg-muted');
         // The other new parts still arrive.
         for (const sel of ['.gg-family', '[data-stat="size"]']) expect(buildArrivingCss(full, 'spotlight', 'parts', false, { desc: true, hltb: true }), sel).toContain(sel);
+    });
+    it("another featured card's caption and empty line are there at once (Home's copy drew the whole card); HowLongToBeat's still arrive", () => {
+        const css = buildArrivingCss(full, 'spotlight', 'parts');
+        const arriving = css.split('\n').find((line) => line.includes('opacity: 0 !important'))!;
+        const selectors = arriving.slice(0, arriving.indexOf('{')).split(',').map((sel) => sel.trim());
+        expect(selectors).not.toContain('.gg-caption');
+        expect(selectors).not.toContain('.gg-muted');
+        expect(selectors).toContain('.gg-hltb .gg-caption');
+        expect(selectors).toContain('.gg-hltb .gg-muted');
     });
     it("a stat column Home did not show arrives with the new parts (a new game's Play time: Home had its Added chip)", () => {
         for (const look of ['spotlight', 'clean'] as const) {
@@ -1358,8 +1561,8 @@ describe('the page takes the default growth (#55)', () => {
     it('gives the page the same unit as Home', () => expect(pageDUnit(1920, 1080)).toBeCloseTo(homeCanvas(1920, 1080).scale, 10));
     it('multiplies the page unit by Home\'s growth for each canvas shape', () => {
         const css = buildThemeCss(full, { restyle: true });
-        expect(css).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)}); }`);
-        expect(css).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)}); } }`);
+        expect(css).toContain(`:root { --gg-d: calc(min(calc(100vw / 1440), calc(100vh / 810)) * ${defaultGrowth(810)} * var(--gg-size)); }`);
+        expect(css).toContain(`@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / 1280), calc(100vh / 800)) * ${defaultGrowth(800)} * var(--gg-size)); } }`);
     });
 });
 
@@ -1385,7 +1588,9 @@ describe('Page shading None: contrast on the page (spec "Contrast in None mode")
         for (const sel of ['.ps_Menu', '.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info']) {
             const body = exact(none, sel);
             expect(body, sel).toContain(`background: ${GLASS} !important`);
-            expect(body, sel).toContain('border-color: rgba(255, 255, 255, calc(0.16 * var(--gg-ring, 1))) !important');
+            expect(body, sel).toContain(['.ps_Menu', '.gg-card', '.gg-clean-info'].includes(sel)
+                ? 'border-color: rgba(182,199,224,.40) !important'
+                : 'border-color: rgba(255, 255, 255, calc(0.16 * var(--gg-ring, 1))) !important');
             expect(body, sel).toContain('color: #fff !important');
         }
         for (const sel of ['.gg-label', '.gg-value']) expect(exact(none, sel), sel).toContain(`text-shadow: 0 ${D(1)} ${D(3)} #000b !important`);
@@ -1422,4 +1627,11 @@ it('an arriving page inherits the final accent without replaying the eyebrow and
         const css = buildArrivingCss(full, 'spotlight', 'parts', revealed);
         expect(css).toContain('.ad_Inner { transition: none !important; }');
     }
+});
+
+describe('Title size (home/titleSize)', () => {
+    it("the page's title multiplies its type size by the title-size variable", () => {
+        const css = buildThemeCss(full, { restyle: true });
+        expect(css).toMatch(new RegExp(`\\.gg-title \\{[^}]*font-size: calc\\(calc\\(${PAGE_TYPE.title.size} \\* var\\(--gg-d\\)\\) \\* var\\(${TITLE_SCALE_VAR}, 1\\)\\)`));
+    });
 });

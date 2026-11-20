@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CONTROLLER_CHANGE_DELAY_MS, CONTROLLER_POLL_MS, CONTROLLER_REPLY_TIMEOUT_MS, startStatus, statusState, stopStatus, subscribeStatus } from '../../src/home/statusStore';
+import { CONTROLLER_CHANGE_DELAY_MS, CONTROLLER_POLL_MS, CONTROLLER_REPLY_TIMEOUT_MS, startStatus, STATUS_HANDOVER_MS, statusState, stopStatus, subscribeStatus } from '../../src/home/statusStore';
 
 const fetchControllers = vi.hoisted(() => vi.fn(async (): Promise<unknown> => []));
 vi.mock('@decky/api', () => ({ callable: () => () => fetchControllers() }));
@@ -139,7 +139,24 @@ describe('controller batteries', () => {
         await flush();
         expect(statusState().controllers).toHaveLength(1);
         off();
+        // Not at once: a bar taking over (the menu closing onto Home's) keeps it; forgotten once none has for a moment.
+        expect(statusState().controllers).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(STATUS_HANDOVER_MS);
         expect(statusState().controllers).toEqual([]);
+    });
+    it('keeps the list when one status bar hands over to another (the menu closing: the battery must not blink)', async () => {
+        vi.useFakeTimers();
+        fetchControllers.mockResolvedValue([{ name: 'A', percent: 48 }]);
+        const menuCopy = subscribeStatus(() => {});
+        await flush();
+        const seen: number[] = [];
+        menuCopy();
+        const home = subscribeStatus(() => seen.push(statusState().controllers.length));
+        seen.push(statusState().controllers.length);
+        await vi.advanceTimersByTimeAsync(STATUS_HANDOVER_MS * 2);
+        expect(seen.every((n) => n === 1)).toBe(true);
+        expect(statusState().controllers).toHaveLength(1);
+        home();
     });
     it('drops a disconnected controller on the next poll', async () => {
         vi.useFakeTimers();
@@ -248,8 +265,13 @@ describe('controller batteries: reading on a controller change', () => {
         await flush();
         steam.fire();
         off();
+        // After the hand-over grace (another bar may take over), not at once.
+        expect(steam.reg.unregister).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(STATUS_HANDOVER_MS);
         expect(steam.reg.unregister).toHaveBeenCalled();
-        await vi.advanceTimersByTimeAsync(CONTROLLER_CHANGE_DELAY_MS * 2);
-        expect(fetchControllers).toHaveBeenCalledTimes(1);
+        const reads = fetchControllers.mock.calls.length;
+        steam.fire();
+        await vi.advanceTimersByTimeAsync(CONTROLLER_CHANGE_DELAY_MS * 2 + CONTROLLER_POLL_MS);
+        expect(fetchControllers).toHaveBeenCalledTimes(reads);
     });
 });

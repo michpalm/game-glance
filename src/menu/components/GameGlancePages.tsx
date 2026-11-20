@@ -2,15 +2,19 @@ import { PROFILE_STYLES, PROFILE_STYLE_LABELS } from '../../data/settings';
 import { Focusable, NavEntryPositionPreferences } from '@decky/ui';
 import type { ReactElement } from 'react';
 import { LuArrowUpRight, LuChevronRight, LuPlay } from 'react-icons/lu';
-import { everyPageAvailable, homeRows, ROW_STYLE_LABELS, statusRows, type CategoryId } from '../../data/settingsCategories';
+import { everyPageAvailable, GAME_INFO_NOTE, homeRows, ROW_STYLE_LABELS, slotChoices, slotLabel, slotValue, slotValueLabel, statusRows, type CategoryId } from '../../data/settingsCategories';
 import { ROW_SORTS, rowSortLabel, sortByLabel, type RowSort } from '../../home/collections';
-import { HERO_FIT_COPY, HERO_FITS, type HeroFit } from '../../home/heroFit';
+import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, type HeroFit } from '../../home/heroFit';
+import { RECOMMENDED_ROW_COPY, RECOMMENDED_ROW_LABELS, RECOMMENDED_ROWS, type RecommendedRow } from '../../home/recommendedRow';
 import { PAGE_SHADING_COPY, PAGE_SHADINGS, type PageShading } from '../../home/pageShading';
+import { TITLE_SIZE_COPY, TITLE_SIZES, type TitleSize } from '../../home/titleSize';
 import { ROW_STYLES, type RowStyle } from '../../home/recentsLayout';
-import { HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
-import type { PageProps } from './gameGlanceTypes';
+import { SLOT_INDEXES } from '../../logic/infoSlots';
+import { GAME_INFO_VIEW, HOME_ROW_VIEW, VERSIONS_VIEW } from '../views';
+import type { PageProps, SlotPickerProps } from './gameGlanceTypes';
 import { MenuAction } from './MenuAction';
-import { Crumb, SegmentRow, ToggleRow } from './SettingRows';
+import { Crumb, SegmentRow, ColorRow, ToggleRow } from './SettingRows';
+import { ACCENT_MODE_COPY, ACCENT_MODE_LABELS, ACCENT_SWATCHES, type AccentMode } from '../../home/accentChoice';
 
 const rows = (children: ReactElement[] | ReactElement) => <Focusable className="gg-plugin-rows" flow-children="column">{children}</Focusable>;
 const error = (text: string) => text ? <p className="gg-menu-error" role="alert">{text}</p> : null;
@@ -44,6 +48,9 @@ export function HomePage({ v, a }: PageProps) {
                 checked={s.feedTabs.friends} onChange={value => a.run(a.store.setFeedTab('friends', value))} />}
             {has('recommended') && <ToggleRow id="gg:home:recommended" label="Recommended" description="Games from your library to play next."
                 checked={s.feedTabs.recommended} onChange={value => a.run(a.store.setFeedTab('recommended', value))} />}
+            {has('recommendedRow') && <SegmentRow<RecommendedRow> id="gg:home:recommendedRow" label="Recommended row" options={RECOMMENDED_ROWS}
+                labels={RECOMMENDED_ROW_LABELS} description={RECOMMENDED_ROW_COPY[s.recommendedRow]}
+                value={s.recommendedRow} onSelect={value => a.run(a.store.setRecommendedRow(value))} />}
             {has('wishlistDeals') && <ToggleRow id="gg:home:wishlistDeals" label="Show wishlist deals"
                 description="Sends your Steam ID to Steam's public store to find games on sale from your wishlist. Off by default."
                 checked={s.wishlistDeals} onChange={value => a.run(a.store.setWishlistDeals(value))} />}
@@ -62,14 +69,30 @@ export function HomeRowPicker({ v, a }: PageProps) {
     </>;
 }
 
+export function GameInfoPicker({ v, a, slot }: SlotPickerProps) {
+    const current = slotValue(v.settings, slot);
+    return <>
+        <Crumb parent="Game page" title={slotLabel(slot)} />
+        <Focusable className="gg-plugin-list" flow-children="column">{slotChoices(slot).map(choice =>
+            <MenuAction key={choice ?? 'none'} id={`${GAME_INFO_VIEW}:${slot}:${choice ?? 'none'}`} className="gg-plugin-picker" selected={choice === current}
+                onAction={() => { a.run(a.store.setInfoSlot(slot, choice)); a.back(); }}>{slotValueLabel(choice)}</MenuAction>)}
+        </Focusable>
+    </>;
+}
+
 export function GamePage({ v, a }: PageProps) {
     const game = v.game;
     return <>
         <Crumb parent="Game Glance" title="Game page" />
         {rows(<>
             <SegmentRow<'full' | 'clean'> id="gg:game-page:look" label="Look" options={['full', 'clean']} labels={{ full: 'Full', clean: 'Clean' }}
-                description="Full: description and HowLongToBeat cards. Clean: one row at the bottom over the full art."
+                description="Full: description and featured cards. Clean: one row at the bottom over the full art."
                 value={v.settings.cleanPage ? 'clean' : 'full'} onSelect={value => a.run(a.store.setCleanPage(value === 'clean'))} />
+            <h3>Game info</h3>
+            <p className="gg-plugin-note">{GAME_INFO_NOTE}</p>
+            {SLOT_INDEXES.map(slot => <MenuAction key={slot} id={`gg:game-page:slot:${slot}`} className="gg-plugin-picker" onAction={() => a.open(`${GAME_INFO_VIEW}:${slot}`)}>
+                <span>{slotLabel(slot)}</span><span className="gg-plugin-value">{slotValueLabel(slotValue(v.settings, slot))}<LuChevronRight aria-hidden="true" /></span>
+            </MenuAction>)}
             <h3>HowLongToBeat match</h3>
             {game ? <div className="gg-plugin-card">
                 <div className="gg-plugin-card-title"><span>{game.name}</span><span className="gg-plugin-dim">{game.match}</span></div>
@@ -113,7 +136,7 @@ export function MenuPage({ v, a }: PageProps) {
         {rows(<>
             <ToggleRow id="gg:menu:enabled" label="Game Glance menu" description="Replaces the Home and quick access menus. Off closes this menu and returns Steam's own."
                 checked={v.menuEnabled} disabled={!v.menuReady} onChange={value => a.run(a.setMenuEnabled(value))} />
-            <ToggleRow id="gg:menu:restyle-steam-settings" label="Restyle Steam Settings" description="Apply the Game Glance theme to Steam Settings."
+            <ToggleRow id="gg:menu:restyle-steam-settings" label="Restyle Steam's menus" description="Apply the Game Glance theme to Steam's context menus."
                 checked={v.restyleSteamSettings} disabled={!v.menuReady || !v.menuEnabled} onChange={value => a.run(a.setRestyleSteamSettings(value))} />
             <h3>Social</h3>
             <SegmentRow<'compact' | 'radial'> id="gg:menu:keyboard" label="Keyboard" description="The keyboard for the message field."
@@ -154,11 +177,28 @@ export function GeneralPage({ v, a }: PageProps) {
         {rows(<>
             <ToggleRow id="gg:general:enabled" label="Game Glance" description="Off turns Game Glance off everywhere: game page, Home, menu and screensaver."
                 checked={s.enabled} onChange={value => a.run(a.store.setEnabled(value))} />
+            <ToggleRow id="gg:general:libraryPage" label="Library page (in progress)" description="Game Glance's Library is in progress and unavailable for now."
+                checked={false} disabled onChange={() => {}} />
+            <ToggleRow id="gg:general:settingsPage" label="Settings page (in progress)" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
+                checked={s.settingsPage} onChange={value => a.run(a.store.setSettingsPage(value))} />
             <h3>Look on Home and the game page</h3>
             <ToggleRow id="gg:general:gameLogo" label="Game logo" description="The game's logo instead of its name. A game without one keeps its name."
                 checked={s.gameLogo} onChange={value => a.run(a.store.setGameLogo(value))} />
+            <SegmentRow<TitleSize> id="gg:general:titleSize" label="Title size" description={TITLE_SIZE_COPY[s.titleSize].description}
+                options={TITLE_SIZES} labels={{ small: TITLE_SIZE_COPY.small.label, medium: TITLE_SIZE_COPY.medium.label, large: TITLE_SIZE_COPY.large.label }}
+                value={s.titleSize} onSelect={value => a.run(a.store.setTitleSize(value))} />
+            <SegmentRow<AccentMode> id="gg:general:accentMode" label="Accent color" description={ACCENT_MODE_COPY[s.accentMode]}
+                options={['adaptive', 'custom']} labels={ACCENT_MODE_LABELS} value={s.accentMode} onSelect={value => a.run(a.store.setAccent({ accentMode: value }))} />
+            <ColorRow id="gg:general:accentColor" label={s.accentMode === 'custom' ? 'Your color' : 'Color when the art has none'} swatches={ACCENT_SWATCHES}
+                value={s.accentColor} onSelect={color => a.run(a.store.setAccent({ accentColor: color }))} />
+            <ToggleRow id="gg:general:storePill" label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row. Off also hides the store version choice it opens."
+                checked={s.storePill} onChange={value => a.run(a.store.setStorePill(value))} />
+            <ToggleRow id="gg:general:familyPill" label="Family Sharing pill" description="Whose library a shared game comes from. Off also hides the choice of copy it opens."
+                checked={s.familyPill} onChange={value => a.run(a.store.setFamilyPill(value))} />
+            <ToggleRow id="gg:general:playerCountPill" label="Player count" description="How many people are playing now, from Steam."
+                checked={s.playerCountPill} onChange={value => a.run(a.store.setPlayerCountPill(value))} />
             <SegmentRow<HeroFit> id="gg:general:heroFit" label="Hero art" description={HERO_FIT_COPY[s.heroFit]} options={HERO_FITS}
-                labels={{ fill: 'Fill', fit: 'Fit' }} value={s.heroFit} onSelect={value => a.run(a.store.setHeroFit(value))} />
+                labels={HERO_FIT_LABELS} value={s.heroFit} onSelect={value => a.run(a.store.setHeroFit(value))} />
             <SegmentRow<PageShading> id="gg:general:pageShading" label="Page shading" description={PAGE_SHADING_COPY[s.pageShading].description}
                 options={PAGE_SHADINGS} labels={{ bottom: PAGE_SHADING_COPY.bottom.label, none: PAGE_SHADING_COPY.none.label }}
                 value={s.pageShading} onSelect={value => a.run(a.store.setPageShading(value))} />

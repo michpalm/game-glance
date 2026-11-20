@@ -15,6 +15,8 @@ export const TTL = {
     friendLast: 3650 * DAY_MS, // a friend's last game stays until they play something else
     wishlist: 6 * 3_600_000,
     wishlistEmpty: 30 * 60_000, // private, empty or no discounts: retry soon, but not on every Home open
+    calendar: 6 * 3_600_000, // Steam's Personal Calendar (Recommended row 1)
+    calendarApp: 7 * DAY_MS, // a calendar game's name and header art
 };
 
 const CACHE_PREFIX = 'cache:';

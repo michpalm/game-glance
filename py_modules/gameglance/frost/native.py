@@ -21,6 +21,9 @@ class NativeState:
     technique: int | None
 
 
+# Steam's own app id in Gamescope's focus properties (Steam's UI, not a game).
+STEAM_APP_ID = 769
+
 def protocol_description():
     return ("gamescope_reshade", 1, ("destroy", "set_effect", "enable_effect", "set_uniform_variable", "disable_effect"))
 
@@ -174,6 +177,8 @@ class NativeConnection:
         self.x.XSelectInput(self.xdisplay,self.root,1<<22)  # PropertyChangeMask
         self.x.XSync(self.xdisplay,0)
         self.hdr_output_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_HDR_OUTPUT_FEEDBACK", 0)
+        self.focused_gfx_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_FOCUSED_APP_GFX", 0)
+        self.supports_hdr_atom = self.x.XInternAtom(self.xdisplay, b"GAMESCOPE_DISPLAY_SUPPORTS_HDR", 0)
         import os
         self.max_scale = read_max_scale(Path("/proc"), os.getuid())
         self._sync()
@@ -225,7 +230,32 @@ class NativeConnection:
         # flags. Treat advertised HDR as unsupported even if content-driven
         # output is currently idling in SDR; missing feedback fails closed.
         hdr = self._property(self.hdr_output_atom)
-        return {"hdr": bool(hdr), "maxScale": self.max_scale} if type(hdr) is int and hdr in (0, 1) else None
+        if hdr is None:
+            # Some Gamescope builds (the Steam Deck on Anatase) publish no output feedback. A display that cannot show
+            # HDR at all is SDR for certain; anything else (HDR possible, unknown, unreadable) still fails closed.
+            supports_hdr_atom = getattr(self, "supports_hdr_atom", None)
+            try:
+                supports = self._property(supports_hdr_atom) if supports_hdr_atom is not None else None
+            except OSError:
+                return None
+            if type(supports) is int and supports == 0:
+                hdr = 0
+        if not (type(hdr) is int and hdr in (0, 1)):
+            return None
+        # Gamescope draws Steam itself as the picture the effect applies to until the game has a window (the Steam logo
+        # while a game loads: about 17 s for The Witcher 3 on the Ally). The effect would then blur Steam's screen, menu
+        # included, so the menu frosts as on Home until the game's window takes over. Unknown reads as the game.
+        steam_shown = None
+        focused_gfx_atom = getattr(self, "focused_gfx_atom", None)
+        if focused_gfx_atom is not None:
+            try:
+                steam_shown = self._property(focused_gfx_atom) == STEAM_APP_ID
+            except OSError:
+                steam_shown = None
+        result = {"hdr": bool(hdr), "maxScale": self.max_scale}
+        if steam_shown is not None:
+            result["steamShown"] = steam_shown
+        return result
 
     def select_technique(self, index):
         self._snapshot_cache=None

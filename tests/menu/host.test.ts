@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { createElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, stretchMenuViewport, holdPageStatus, pageFooterHoldEnabled, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
+import { createNativeHost, renderMenuSlot, wrapMenuPortals, installMenuPortalHook, preStretchMenuViewport, stretchMenuViewport, holdPageStatus, pageFooterHoldEnabled, hideNativeMenuChrome, type HostSnapshot } from '../../src/menu/host';
 const css = vi.hoisted(() => ({ Container: 'nativeContainer', ViewPlaceholder: 'nativePlaceholder', Fullscreen: 'nativeFull', BackgroundGlass: 'nativeBackdrop', Visible: 'nativeVisible', DrawBackground: 'nativeDraw', Blur: 'nativeBlur' }));
 vi.mock('@decky/ui',()=>({findModuleExport:()=>undefined, findModule:(predicate:(value:unknown)=>boolean)=>predicate(css)?css:undefined}));
 function nativeTree(){return createElement('native-tree',{navID:'MainNavMenuContainer',navTreeRef:{current:{}},onActivated:vi.fn(),onDeactivated:vi.fn(),enabled:true,className:'native',children:createElement('native-provider',{},'Native content')});}
@@ -198,4 +198,34 @@ it('restyles the page footer only when opted in, over Steam UI and restorable',(
     expect(pageFooterHoldEnabled(on,false,true)).toBe(false);
     expect(pageFooterHoldEnabled(on,true,false)).toBe(false);
     for(const k of Object.keys(on))expect(pageFooterHoldEnabled({...on,[k]:false},true,true)).toBe(false);
+});
+
+// The first opening after a load: without the stretch already in place, Steam sizes the menu window to its narrow native
+// placeholder (241 px on the PS5) for a frame, then to full screen once the stretch lands: the whole screen flickered.
+describe('stretching the menu viewport before the first opening',()=>{
+    const other={Container:'otherContainer',ViewPlaceholder:'otherPlaceholder',Fullscreen:'otherFull'};
+    const ours={Container:'nativeContainer',ViewPlaceholder:'nativePlaceholder',Fullscreen:'nativeFull'};
+    const page=()=>parseHTML('<html><head></head><body><div class="nativeBackdrop"><div class="nativePlaceholder"></div></div></body></html>').document as unknown as Document;
+    it('stretches the placeholder that is on the page, with the same rule as an opening',()=>{
+        const document=page();
+        const stop=preStretchMenuViewport(document,[other,ours]);
+        expect(stop).toBeTypeOf('function');
+        const pre=document.querySelector('style[data-gg-menu-viewport]')!;
+        const opened=stretchMenuViewport(page(),['nativeContainer']);
+        expect(pre.textContent).toBe('.nativePlaceholder{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important}');
+        opened();
+        stop!();expect(document.querySelector('style[data-gg-menu-viewport]')).toBeNull();
+    });
+    it('does nothing when no placeholder, or more than one candidate, is on the page',()=>{
+        const document=page();
+        expect(preStretchMenuViewport(document,[other])).toBeUndefined();
+        expect(preStretchMenuViewport(document,[ours,{...ours,Container:'twin'}])).toBeUndefined();
+        expect(document.querySelector('style[data-gg-menu-viewport]')).toBeNull();
+    });
+    it('does nothing when a stretch is already in place (a menu opened before)',()=>{
+        const document=page();const opened=stretchMenuViewport(document,['nativeContainer']);
+        expect(preStretchMenuViewport(document,[ours])).toBeUndefined();
+        expect(document.querySelectorAll('style[data-gg-menu-viewport]').length).toBe(1);
+        opened();
+    });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { memoryKv } from '../../src/data/kv';
 import { createSettingsStore } from '../../src/data/settings';
+import { DEFAULT_SLOTS } from '../../src/logic/infoSlots';
 import { SCREENSAVER_DEFAULTS } from '../../src/screensaver/options';
 
 describe('settings', () => {
@@ -8,7 +9,7 @@ describe('settings', () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
         const listener = vi.fn();
         store.subscribe(listener);
         await store.setEnabled(false);
@@ -23,7 +24,7 @@ describe('settings', () => {
         await kv.set('settings', 'nonsense');
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
     });
 });
 
@@ -35,16 +36,16 @@ describe('settings: automatic pre-load', () => {
         await store.setAutoPreload(false);
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
-        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(reloaded.get()).toEqual({ enabled: true, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
     });
     it('keeps the other setting when one changes, including settings saved before this option existed', async () => {
         const kv = memoryKv();
         await kv.set('settings', { enabled: false });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: true, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
         await store.setAutoPreload(false);
-        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: false, autoPreload: false, spotlightHome: false, wishlistDeals: false, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
     });
 });
 
@@ -80,7 +81,7 @@ describe('settings: the removed Home switches', () => {
         await kv.set('settings', { enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, homeFeed: false, cleanHome: true });
         const store = createSettingsStore(kv);
         await store.load();
-        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, profileStyle: 'dot', gameLogo: false, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, screensaver: SCREENSAVER_DEFAULTS });
+        expect(store.get()).toEqual({ enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: true, cleanPage: false, homeStatusBar: true, homeExpandedControls: false, chromeEveryPage: false, libraryPage: false, mediaPage: true, settingsPage: true, statusAvatar: false, profileStyle: 'dot', gameLogo: false, titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae', storePill: true, familyPill: true, playerCountPill: true, homeRow: 'recent', homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', feedTabs: { news: true, friends: true, recommended: true }, infoSlots: DEFAULT_SLOTS, screensaver: SCREENSAVER_DEFAULTS, achievementPins: {}, recommendedRow: 'playNext' });
     });
 });
 
@@ -120,6 +121,20 @@ describe('settings: Games row', () => {
         await reloaded.load();
         expect(reloaded.get().homeRowStyle).toBe('steam');
     });
+    it('shows Play next in the Recommended row by default, remembers the calendar; anything else reads as Play next', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().recommendedRow).toBe('playNext');
+        await store.setRecommendedRow('calendar');
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().recommendedRow).toBe('calendar');
+        expect(await kv.get('settings')).toMatchObject({ recommendedRow: 'calendar' });
+        await kv.set('settings', { recommendedRow: 'weekly' });
+        await reloaded.load();
+        expect(reloaded.get().recommendedRow).toBe('playNext');
+    });
     it('fills the screen with the hero art by default, and remembers Fit; anything else reads as Fill', async () => {
         const kv = memoryKv();
         const store = createSettingsStore(kv);
@@ -130,9 +145,43 @@ describe('settings: Games row', () => {
         await reloaded.load();
         expect(reloaded.get().heroFit).toBe('fit');
         expect(await kv.get('settings')).toMatchObject({ heroFit: 'fit' });
+        await reloaded.setHeroFit('expanded');
+        await store.load();
+        expect(store.get().heroFit).toBe('expanded');
         await kv.set('settings', { heroFit: 'whole' });
         await reloaded.load();
         expect(reloaded.get().heroFit).toBe('fill');
+    });
+    it('draws the title at Large by default, and remembers Small or Medium; anything else reads as Large', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().titleSize).toBe('large');
+        await store.setTitleSize('small');
+        expect(store.get().titleSize).toBe('small');
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().titleSize).toBe('small');
+        expect(await kv.get('settings')).toMatchObject({ titleSize: 'small' });
+        await kv.set('settings', { titleSize: 'huge' });
+        await reloaded.load();
+        expect(reloaded.get().titleSize).toBe('large');
+    });
+    it('follows the art by default; remembers Custom and its colour; junk reads as Adaptive and teal', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get()).toMatchObject({ accentMode: 'adaptive', accentColor: '#5fd1ae' });
+        await store.setAccent({ accentMode: 'custom', accentColor: '#A78BFA' });
+        expect(store.get()).toMatchObject({ accentMode: 'custom', accentColor: '#a78bfa' });
+        await store.setAccent({ accentColor: '#f87171' });
+        expect(store.get()).toMatchObject({ accentMode: 'custom', accentColor: '#f87171' });
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get()).toMatchObject({ accentMode: 'custom', accentColor: '#f87171' });
+        await kv.set('settings', { accentMode: 'neon', accentColor: 'blue' });
+        await reloaded.load();
+        expect(reloaded.get()).toMatchObject({ accentMode: 'adaptive', accentColor: '#5fd1ae' });
     });
     it('shades the bottom half by default, and remembers None; settings saved before it and anything else read as Bottom half', async () => {
         const kv = memoryKv();
@@ -198,6 +247,36 @@ describe('settings: game logo instead of the title', () => {
         const reloaded = createSettingsStore(kv);
         await reloaded.load();
         expect(reloaded.get().gameLogo).toBe(true);
+    });
+});
+
+describe('settings: the store and Family Sharing pills', () => {
+    it('the player count pill is on by default and remembers being turned off', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().playerCountPill).toBe(true);
+        await store.setPlayerCountPill(false);
+        expect(store.get().playerCountPill).toBe(false);
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().playerCountPill).toBe(false);
+        expect(reloaded.get().familyPill).toBe(true);
+    });
+    it('are on by default, and each remembers being turned off on its own', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect([store.get().storePill, store.get().familyPill]).toEqual([true, true]);
+        await store.setStorePill(false);
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect([reloaded.get().storePill, reloaded.get().familyPill]).toEqual([false, true]);
+        await reloaded.setFamilyPill(false);
+        await reloaded.setStorePill(true);
+        const again = createSettingsStore(kv);
+        await again.load();
+        expect([again.get().storePill, again.get().familyPill]).toEqual([true, false]);
     });
 });
 
@@ -366,5 +445,90 @@ describe('On every page opt-in', () => {
         const store = createSettingsStore(kv);
         await store.load();
         expect(store.get().chromeEveryPage).toBe(false);
+    });
+});
+
+describe('settings: game info slots', () => {
+    it('defaults to the default slots and a change is remembered', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().infoSlots).toEqual(DEFAULT_SLOTS);
+        await store.setInfoSlot(2, 'protondb');
+        const reloaded = createSettingsStore(kv);
+        await reloaded.load();
+        expect(reloaded.get().infoSlots).toEqual({ stats: ['played', 'achievements', 'protondb'], featured: 'hltb' });
+    });
+    it('swaps with the slot that holds the stat', async () => {
+        const store = createSettingsStore(memoryKv());
+        await store.load();
+        await store.setInfoSlot(0, 'hltb');
+        expect(store.get().infoSlots).toEqual({ stats: ['hltb', 'achievements', null], featured: 'played' });
+    });
+    it("keeps a newer version's keys when a slot changes", async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { infoSlots: { stats: ['played', 'size', 'achievements'], featured: 'hltb', later: 1 } });
+        const store = createSettingsStore(kv);
+        await store.load();
+        await store.setInfoSlot(1, 'protondb');
+        expect(await kv.get('settings')).toMatchObject({ infoSlots: { stats: ['played', 'protondb', 'achievements'], featured: 'hltb', later: 1 } });
+    });
+});
+
+describe('settings: pinned achievements (2026-11-18)', () => {
+    it('saves a set\'s pins and reads them back after a restart; an empty list removes the set', async () => {
+        const kv = memoryKv();
+        const store = createSettingsStore(kv);
+        await store.load();
+        await store.setAchievementPins('7:0', [3, 2]);
+        await store.setAchievementPins('7:2', [10]);
+        const again = createSettingsStore(kv);
+        await again.load();
+        expect(again.get().achievementPins).toEqual({ '7:0': [3, 2], '7:2': [10] });
+        await again.setAchievementPins('7:0', []);
+        expect(again.get().achievementPins).toEqual({ '7:2': [10] });
+        expect(again.get().enabled).toBe(true);
+    });
+    it('reads only well-formed pins (an older build\'s file, or a broken value, gives none)', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { achievementPins: { '7:0': [3, 'x', 2.5, 4, 5], '8:0': 'no', '9:1': [] } });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().achievementPins).toEqual({ '7:0': [4, 5] }); // the newest two, as togglePin keeps
+        await kv.set('settings', { achievementPins: [1] });
+        await store.load();
+        expect(store.get().achievementPins).toEqual({});
+    });
+    it('keeps the Library page off while it is in progress (4.0.0-rc.4)', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { libraryPage: true, future: 'retained' });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().libraryPage).toBe(false);
+        await store.setLibraryPage(true);
+        expect(store.get().libraryPage).toBe(false);
+        expect(await kv.get('settings')).toMatchObject({ libraryPage: false, future: 'retained' });
+    });
+    it('keeps Game Glance Media always on (4.0.0-rc.4)', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { mediaPage: false, future: 'retained' });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().mediaPage).toBe(true);
+        await store.setMediaPage(false);
+        expect(store.get().mediaPage).toBe(true);
+        expect(await kv.get('settings')).toMatchObject({ mediaPage: true, future: 'retained' });
+    });
+    it('keeps the Settings page setting, on by default', async () => {
+        const kv = memoryKv();
+        await kv.set('settings', { future: 'retained' });
+        const store = createSettingsStore(kv);
+        await store.load();
+        expect(store.get().settingsPage).toBe(true);
+        await store.setSettingsPage(false);
+        expect(await kv.get('settings')).toMatchObject({ settingsPage: false, future: 'retained' });
+        const next = createSettingsStore(kv);
+        await next.load();
+        expect(next.get().settingsPage).toBe(false);
     });
 });

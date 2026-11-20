@@ -14,7 +14,7 @@ const validId=(v:unknown):v is string=>typeof v==='string'&&/^[a-zA-Z0-9_:.-]{1,
 export function createFrostBridge():FrostBridge {
     return {
         async present(id,frame){try{const r=await present(id,frame);return r?.status==='active'&&validId(r.token)?r:unavailable;}catch{return unavailable;}},
-        async environment(){try{const r=await environment();return typeof r?.hdr==='boolean'&&(r.maxScale===null||typeof r.maxScale==='number'&&Number.isFinite(r.maxScale)&&r.maxScale>0&&r.maxScale<=16384)?r:null;}catch{return null;}},
+        async environment(){try{const r=await environment();return typeof r?.hdr==='boolean'&&(r.maxScale===null||typeof r.maxScale==='number'&&Number.isFinite(r.maxScale)&&r.maxScale>0&&r.maxScale<=16384)&&(r.steamShown===undefined||typeof r.steamShown==='boolean')?r:null;}catch{return null;}},
         async prepare(id,frame){try{const r=await prepare(id,frame);return r?.status==='ready'&&validId(r.key)?r:unavailable;}catch{return unavailable;}},
         async activate(id,key,sequence,frame){try{const r=await activate(id,key,sequence,frame);return r?.status==='active'&&validId(r.token)?r:unavailable;}catch{return unavailable;}},
         async update(token,sequence,frame){try{return await update(token,sequence,frame)===true;}catch{return false;}},

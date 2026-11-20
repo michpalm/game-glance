@@ -802,6 +802,8 @@ export async function fetchHltbGameStats(
                         ? (gameData.comp_all / 60 / 60).toFixed(1)
                         : '--',
                 gameId: gameData.game_id,
+                // game-glance local patch: the players' rating, from the same page data (no extra request).
+                reviewScore: typeof gameData.review_score === 'number' && gameData.review_score > 0 ? gameData.review_score : null,
                 lastUpdatedAt: new Date(),
             };
         }

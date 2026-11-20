@@ -1,5 +1,5 @@
 
-import { defaultGrowth } from '../home/scale';
+import { defaultGrowth, sizeFactor } from '../home/scale';
 import { frostFilter, frostSurface, labelText } from '../styles/tokens';
 
 /**
@@ -42,11 +42,11 @@ export function screensaverBaseCanvas(width: number, height: number): Screensave
     return { logicalWidth: width / scale, logicalHeight: height / scale, scale };
 }
 
-/** The screensaver's canvas grown by Home's default growth (home/scale defaultGrowth, #55); a window of unknown size is not grown. */
+/** The screensaver's canvas grown by Home's default growth and size factor (home/scale defaultGrowth, #55; sizeFactor); a window of unknown size is not grown. */
 export function screensaverCanvas(width: number, height: number): ScreensaverCanvas {
     const base = screensaverBaseCanvas(width, height);
     if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) return base;
-    const g = defaultGrowth(SS_CANVAS.height);
+    const g = defaultGrowth(SS_CANVAS.height) * sizeFactor(width, height);
     return { logicalWidth: base.logicalWidth / g, logicalHeight: base.logicalHeight / g, scale: base.scale * g };
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { DETAILS_MEMO_MAX, memoAchievements, memoCloud, memoDetails, memoPlaytime, memoSpaceRequired, noteDetails, resetDetailsMemo, withKnownAchievements } from '../../src/home/detailsMemo';
+import { achievementsComplete, DETAILS_MEMO_MAX, keptUnlocked, knownAchievementFacts, memoAchievements, memoCloud, memoDetails, memoPlaytime, memoSpaceRequired, noteDetails, resetDetailsMemo, seedAchievements, spaceRequiredOf, setAchievementSink, withKnownAchievements } from '../../src/home/detailsMemo';
 
 describe('detailsMemo', () => {
     afterEach(resetDetailsMemo);
@@ -113,5 +113,79 @@ describe('details memo: play time', () => {
         expect(memoPlaytime(4203820957)).toBe(25);
         for (const junk of [0, -1, 'x', NaN, null]) noteDetails(5, { nPlaytimeForever: junk });
         expect(memoPlaytime(5)).toBeUndefined();
+    });
+});
+
+describe('remembered achievements: the latest and rarest, kept and never erased by a thinner answer', () => {
+    afterEach(() => resetDetailsMemo());
+    const ach = (id: string, unlockedAt: number, pct: number) => ({ strID: id, strName: id.toUpperCase(), strImage: `${id}.jpg`, bAchieved: true, rtUnlocked: unlockedAt, flAchieved: pct });
+    const full = { achievements: { nTotal: 115, nAchieved: 3, vecHighlight: [ach('a', 100, 50), ach('b', 300, 57.5), ach('c', 200, 4.2)], vecAchievedHidden: [] } };
+
+    it('keeps the counts and only the two the card shows: the latest unlocked and the rarest', () => {
+        noteDetails(475150, full);
+        const known = memoAchievements(475150)!;
+        expect(known.achieved).toBe(3);
+        expect(known.unlocked!.map((u) => u.id)).toEqual(['b', 'c']);
+        expect(achievementsComplete(475150)).toBe(true);
+    });
+    it('the latest and the rarest being the same one keeps one', () => {
+        expect(keptUnlocked([{ id: 'x', name: 'X', image: '', unlockedAt: 9, globalPct: 1 }, { id: 'y', name: 'Y', image: '', unlockedAt: 1, globalPct: 9 }]).map((u) => u.id)).toEqual(['x']);
+    });
+    it('an answer with the counts but no list keeps the list already known', () => {
+        noteDetails(475150, full);
+        noteDetails(475150, { achievements: { nTotal: 115, nAchieved: 3 } });
+        expect(memoAchievements(475150)!.unlocked!.map((u) => u.id)).toEqual(['b', 'c']);
+    });
+    it('counts only are not complete (the warm-up asks Steam once more); none unlocked is', () => {
+        noteDetails(1, { achievements: { nTotal: 10, nAchieved: 2 } });
+        expect(achievementsComplete(1)).toBe(false);
+        noteDetails(2, { achievements: { nTotal: 10, nAchieved: 0 } });
+        expect(achievementsComplete(2)).toBe(true);
+        expect(achievementsComplete(3)).toBe(false);
+    });
+    it('persists the list, and only when something changed', () => {
+        const writes: unknown[] = [];
+        setAchievementSink((_id, known) => writes.push(known));
+        noteDetails(475150, full);
+        noteDetails(475150, full);
+        noteDetails(475150, { achievements: { nTotal: 115, nAchieved: 3 } });
+        expect(writes).toHaveLength(1);
+        expect((writes[0] as { unlocked: unknown[] }).unlocked).toHaveLength(2);
+    });
+    it('seeds a persisted list (and an old entry with counts only), never over a fresher one', () => {
+        seedAchievements(5, { achieved: 1, total: 4, unlocked: [{ id: 'q', name: 'Q', image: 'q.jpg', unlockedAt: 7, globalPct: 3 }, { junk: true }] });
+        expect(memoAchievements(5)).toEqual({ achieved: 1, total: 4, unlocked: [{ id: 'q', name: 'Q', image: 'q.jpg', unlockedAt: 7, globalPct: 3 }] });
+        seedAchievements(6, { achieved: 1, total: 4 });
+        expect(memoAchievements(6)).toEqual({ achieved: 1, total: 4 });
+        seedAchievements(5, { achieved: 0, total: 4, unlocked: [] });
+        expect(memoAchievements(5)!.achieved).toBe(1);
+    });
+    it("the card: Steam's facts when complete, else the remembered ones; a thinner answer never replaces them", () => {
+        noteDetails(475150, full);
+        const remembered = knownAchievementFacts(475150, undefined)!;
+        expect(remembered.unlocked.map((u) => u.id)).toEqual(['b', 'c']);
+        // Steam has the details but not the record yet (it reads as "no achievements"): the remembered ones.
+        expect(knownAchievementFacts(475150, { achieved: 0, total: 0, unlocked: [] })).toEqual(remembered);
+        // Newer counts without the list: the counts from Steam, the list from memory.
+        const newer = knownAchievementFacts(475150, { achieved: 4, total: 115, unlocked: [] })!;
+        expect(newer.achieved).toBe(4);
+        expect(newer.unlocked.map((u) => u.id)).toEqual(['b', 'c']);
+        // A complete answer wins.
+        const steam = { achieved: 4, total: 115, unlocked: [{ id: 'd', name: 'D', image: '', unlockedAt: 400, globalPct: 1 }] };
+        expect(knownAchievementFacts(475150, steam)).toBe(steam);
+        // Nothing remembered: Steam's, loading included.
+        expect(knownAchievementFacts(9, undefined)).toBeUndefined();
+    });
+});
+
+describe('spaceRequiredOf: the Install pill and the page read the same size', () => {
+    afterEach(() => resetDetailsMemo());
+    it("Steam's details first (Home had no size for games whose details callback it never got), else the noted one", () => {
+        expect(spaceRequiredOf(1392820, { lDiskSpaceRequiredBytes: 331241105 })).toBe(331241105);
+        expect(spaceRequiredOf(1392820, undefined)).toBeUndefined();
+        noteDetails(1392820, { lDiskSpaceRequiredBytes: 300 });
+        expect(spaceRequiredOf(1392820, undefined)).toBe(300);
+        expect(spaceRequiredOf(1392820, { lDiskSpaceRequiredBytes: 0 })).toBe(300);
+        expect(spaceRequiredOf(1392820, { lDiskSpaceRequiredBytes: 500 })).toBe(500);
     });
 });

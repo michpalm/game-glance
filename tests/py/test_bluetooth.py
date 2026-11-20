@@ -2,7 +2,7 @@ import json
 import subprocess
 from types import SimpleNamespace
 
-from gameglance.bluetooth import parse_controllers, read_controllers
+from gameglance.bluetooth import parse_controllers, parse_paired, read_controllers, read_paired
 
 
 def device(name, connected, icon, battery=None):
@@ -113,3 +113,50 @@ def test_the_name_you_set_wins_over_the_device_name():
     renamed["org.bluez.Device1"]["Alias"] = {"type": "s", "data": "Living room pad"}
     assert parse_controllers({"/d": renamed})[0]["name"] == "Living room pad"
     assert parse_controllers({"/d": device("8BitDo Ultimate 2C Wireless", True, "input-gaming", 40)})[0]["name"] == "8BitDo Ultimate 2C Wireless"
+
+
+def paired(name, paired_flag, connected, icon, battery=None):
+    d = device(name, connected, icon, battery)
+    d["org.bluez.Device1"]["Paired"] = {"type": "b", "data": paired_flag}
+    return d
+
+
+PAIRED = {
+    "/org/bluez/hci0": {"org.bluez.Adapter1": {}},
+    "/org/bluez/hci0/dev_H": paired("Headphones", True, False, "audio-headphones"),
+    "/org/bluez/hci0/dev_D": paired("DualSense Wireless Controller", True, True, "input-gaming", 12),
+    "/org/bluez/hci0/dev_X": paired("Stranger", False, False, "phone"),
+}
+
+
+def test_paired_devices_connected_first_with_kind_and_battery():
+    assert parse_paired(PAIRED) == [
+        {"name": "DualSense Wireless Controller", "connected": True, "kind": "gamepad", "percent": 12},
+        {"name": "Headphones", "connected": False, "kind": "audio"},
+    ]
+
+
+def test_unpaired_devices_are_left_out_and_other_icons_are_other():
+    only = {"/a": paired("Phone", True, False, "phone"), "/b": paired("Nope", False, True, "input-gaming")}
+    assert parse_paired(only) == [{"name": "Phone", "connected": False, "kind": "other"}]
+
+
+def test_read_paired_is_empty_when_busctl_fails():
+    reasons = []
+    run = lambda *a, **k: SimpleNamespace(returncode=1, stdout="")
+    assert read_paired(run=run, environ={}, log=reasons.append) == []
+    assert reasons == ["busctl exited with 1"]
+
+
+def test_read_paired_parses_busctl_output():
+    run = lambda *a, **k: SimpleNamespace(returncode=0, stdout=json.dumps({"type": "a{oa{sa{sv}}}", "data": [PAIRED]}))
+    assert [d["name"] for d in read_paired(run=run, environ={})] == ["DualSense Wireless Controller", "Headphones"]
+
+
+def test_an_alias_that_is_the_address_never_leaves_the_backend():
+    d = paired(None, True, False, "audio-headset")
+    d["org.bluez.Device1"]["Alias"] = {"type": "s", "data": "AA-BB-CC-DD-EE-FF"}
+    assert parse_paired({"/x": d}) == [{"name": "Device", "connected": False, "kind": "audio"}]
+    named = paired("Buds", True, False, "audio-headset")
+    named["org.bluez.Device1"]["Alias"] = {"type": "s", "data": "aa:bb:cc:dd:ee:ff"}
+    assert parse_paired({"/y": named})[0]["name"] == "Buds"

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cleanStats, homeCleanStats } from '../../src/logic/cleanInfo';
+import { pageInfoStats } from '../../src/logic/slotStats';
 
 const game = { playedMinutes: 108, achievements: { achieved: 4, total: 31 } };
 const found = { status: 'found' as const, gameId: 1, times: { main: 12, mainExtras: 15, completionist: 22 } };
@@ -26,11 +27,8 @@ describe('cleanStats (the Clean look\'s info card)', () => {
 });
 
 describe('cleanStats with a Unifideck size', () => {
-    it('puts the size right after Played (Played stays first in every game, Michael), with the same shape; absent without one', () => {
-        const withSize = cleanStats(game, found, 'en-US', { key: 'size', label: 'Installed size', value: '3.2 GB' });
-        expect(withSize.map((s) => s.key)).toEqual(['played', 'size', 'achievements', 'hltb']);
-        expect(withSize[1]).toEqual({ key: 'size', label: 'Installed size', value: '3.2 GB' });
-        expect(cleanStats(game, found, 'en-US', null).map((s) => s.key)).toEqual(['played', 'achievements', 'hltb']);
+    it('leaves the size out: no slot holds it (Space required is at the Install pill)', () => {
+        expect(cleanStats(game, found, 'en-US', { key: 'size', label: 'Installed size', value: '3.2 GB' }).map((s) => s.key)).toEqual(['played', 'achievements', 'hltb']);
     });
 });
 
@@ -42,5 +40,30 @@ describe('Home uses the same Clean content', () => {
             const chips = [{ key: 'added', label: 'Added', value: 'Today' }, { key: 'achievements', label: 'Achievements', value: '4 / 31', progress: 4 / 31 }];
             expect(homeCleanStats(chips, 108, hltb, 'en-US', size)).toEqual(cleanStats(game, hltb, 'en-US', size));
         }
+    });
+});
+
+describe('cleanStats by slots', () => {
+    it('the slots order them, ProtonDB with its tone, an empty featured slot drops HLTB', () => {
+        const slots = { stats: ['hltb', 'played', 'protondb'], featured: null } as never;
+        const stats = cleanStats(game, found, 'en-US', null, slots, { status: 'found', tier: 'gold' });
+        expect(stats.map((s) => s.key)).toEqual(['hltb', 'played', 'protondb']);
+        expect(stats[2]).toMatchObject({ value: 'Gold', tone: 'gold' });
+    });
+    it('Home matches the page with slots and ProtonDB', () => {
+        const slots = { stats: ['protondb', 'played', null], featured: 'hltb' } as never;
+        const chips = [{ key: 'protondb', label: 'ProtonDB', value: 'Gold', tone: 'gold' }];
+        expect(homeCleanStats(chips, 108, found, 'en-US', null, slots)).toEqual(cleanStats({ ...game, achievements: null }, found, 'en-US', null, slots, { status: 'found', tier: 'gold' }));
+    });
+});
+
+describe('the Full look info card with HLTB in a stat slot', () => {
+    it('the page and Home twin both show played, hltb', () => {
+        const slots = { stats: ['played', 'hltb', null], featured: null } as never;
+        const page = pageInfoStats(cleanStats(game, found, 'en-US', null, slots), slots);
+        const twin = pageInfoStats(homeCleanStats([], 108, found, 'en-US', null, slots), slots);
+        expect(page.map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(twin).toEqual(page);
+        expect(pageInfoStats(cleanStats(game, undefined, 'en-US', null, slots), slots)[1].value).toBe('…');
     });
 });

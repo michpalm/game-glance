@@ -1,3 +1,4 @@
+import { actionRadius } from '../styles/tokens';
 import { PAGE_LAYOUT, pillFocusScale } from '../styles/themeCss';
 import { HOME_PILL, TITLE_BLOCK } from './homeCss';
 import { cardAround } from './openTargets';
@@ -24,6 +25,7 @@ export interface HomeRects {
     titleText?: boolean;
     eyebrow: Box;
     play: Box;
+    playBorder?: { left: number; top: number };
     circles: Box[];
     /** Index in `circles` of the info button (the page has none: it fades), or null. */
     infoCircle: number | null;
@@ -57,12 +59,28 @@ const union = (boxes: Box[]): Box => {
 
 const isStat = (key: string, page: PageTargets): key is StatKey => Object.prototype.hasOwnProperty.call(page.stats, key);
 
+/** The Spotlight page's featured stat (PageTargets.featured; absent: HowLongToBeat, the default slots). */
+export const featuredOf = (page: PageTargets): StatKey | null => (page.featured === undefined ? 'hltb' : page.featured);
+/** The featured cards that draw their first value in the accent: HowLongToBeat's Main and Play time's Total. */
+export const accentFirst = (key: StatKey | null): boolean => key === 'hltb' || key === 'played';
+
 export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, canvasScale: number, focused = true): MotionVar[] {
     const s = canvasScale;
     // Home's canvas and the page share one scale rule (home/scale.ts, themeCss --gg-d), so the page's d unit is s; the
     // page's own when the targets have it (the measured s is a float: 1.04165954 on the Ally docked, for 1500 / 1440).
     const d = page.d ?? s;
     const out: Record<string, string> = {};
+    // The root's origin: the rings and extras outside the scaled canvas are placed in its px.
+    const rx = home.root?.x ?? 0;
+    const ry = home.root?.y ?? 0;
+    // A page box where Chromium draws it, on whole device px (as openTargets snaps the cards): a ring placed there, outside
+    // the canvas and styled as the page styles it, is rounded by the browser exactly as the page's is.
+    const snap = (v: number) => (page.dpr && page.dpr > 0 ? Math.round(v * page.dpr) / page.dpr : v);
+    const pageBox = (b: Box): Box => {
+        const x = snap(b.x);
+        const y = snap(b.y);
+        return { x, y, w: snap(b.x + b.w) - x, h: snap(b.y + b.h) - y };
+    };
 
     // From the top-left origin, scaled by k: the title's bottom ends at y + h * k, which must be the page's bottom.
     const tk = home.titleText ? PAGE_LAYOUT.titleBlock.title / TITLE_BLOCK.titleSize : 1;
@@ -79,9 +97,32 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // pill's size about that centre line, so the label never stretches.
     out['--gho-play-bg'] = `${translate(0, (home.play.h - to.h) / 2 / s)} scale(${k(to.w / home.play.w)}, ${k(to.h / home.play.h)})`;
     // The page pill's exact box in the pill's own px (its round ends: the stretched layer's are oval), for the settle.
-    out['--gho-play-sx'] = k(to.w / home.play.w);
-    out['--gho-play-sy'] = k(to.h / home.play.h);
+    const border = (value: number | undefined) => value !== undefined && Number.isFinite(value) ? value : HOME_PILL.border;
+    out['--gho-play-inset-x'] = px(-border(home.playBorder?.left));
+    out['--gho-play-inset-y'] = px(-border(home.playBorder?.top));
+    out['--gho-play-home-w'] = px(home.play.w / s);
+    out['--gho-play-home-h'] = px(home.play.h / s);
+    out['--gho-play-page-w'] = px(to.w / s);
+    out['--gho-play-page-h'] = px(to.h / s);
+    const radius = actionRadius(PAGE_LAYOUT.icon, 'action') * to.h / PAGE_LAYOUT.icon / s;
+    out['--gho-play-page-radius'] = px(radius);
+    if (focused) {
+        // The page's focus ring (.gh-open-play-ring): the page's own outline on the page pill's box, outside the canvas.
+        // Drawn inside the canvas (a picture, or an outline scaled with it) it kept the unrounded 2 d gap, where the page's
+        // is rounded down to whole device px, and sat on fractional px: 1.5 device px further out, top and left (Ally).
+        const ring = pageBox(to);
+        out['--gho-pring-x'] = k(ring.x - rx);
+        out['--gho-pring-y'] = k(ring.y - ry);
+        out['--gho-pring-w'] = k(ring.w);
+        out['--gho-pring-h'] = k(ring.h);
+        out['--gho-pring-from'] = mapBox(ring, home.play, 1);
+        // The page's corner (themeCss R_PLAY: this share of --gg-icon), at the focused pill's size.
+        out['--gho-pring-r'] = px(+(actionRadius(PAGE_LAYOUT.icon, 'action') / PAGE_LAYOUT.icon).toFixed(4) * PAGE_LAYOUT.icon * d * pf.y);
+        out['--gho-pring-on'] = '1';
+    }
     out['--gho-play-dy'] = px((home.play.h - to.h) / 2 / s);
+    // The exact-shape settle layer starts at Home's size and grows on the same timeline.
+    out['--gho-play-settle-from'] = `${translate(0, (to.h - home.play.h) / 2 / s)} scale(${k(home.play.w / to.w)}, ${k(home.play.h / to.h)})`;
     out['--gho-play-fg'] = translate((to.x - home.play.x) / s, (to.y + to.h / 2 - (home.play.y + home.play.h / 2)) / s);
     // Inside it (origin: its left edge and centre line), the glyph and the label grow to the page's and move to its insets
     // (scaled with the focused pill).
@@ -93,11 +134,37 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // A game on more than one device: Home's "Play from" segment, at the pill's right end (origin: its right edge and
     // centre line), moves with the pill's growth and grows onto the page's segment (its width, the page pill's height).
     out['--gho-play-arrow'] = `${translate((to.w - home.play.w) / s, 0)} scale(${k((PAGE_LAYOUT.playArrow.w * pf.x) / HOME_PILL.arrow)}, ${k(to.h / home.play.h)})`;
+    // An Install pill's size (homeCss .gh-btn-size): drawn at the page's exact font size for the whole open, starting
+    // shrunk to Home's (--gho-play-size-from) and ending at scale 1, so its last frame is text laid out at the page's size,
+    // as the page draws it. Scaled up from Home's 16 px instead, its digits landed about a device px lower than the page's
+    // and stepped up at the hand-over (Deck). Its right edge moves with the pill's right end, from Home's inset (inside its
+    // border) to the page's; with a "Play from" arrow, to just before the arrow's segment on both.
+    const sizeFont = (pill.sizeFont * pf.x * d) / s;
+    out['--gho-play-size-font'] = font(sizeFont);
+    out['--gho-play-size-from'] = `scale(${k(HOME_PILL.sizeFont / sizeFont)})`;
+    out['--gho-play-size'] = translate((to.w - home.play.w) / s - (pill.padX * pf.x - homeInset), 0);
+    out['--gho-play-size-arrow'] = translate((to.w - home.play.w) / s - ((pill.padX + PAGE_LAYOUT.playArrow.w) * pf.x - (HOME_PILL.arrow + HOME_PILL.padX)), 0);
+    /**
+     * The crisp edge of page circle `slot` (.gh-open-cring), outside the canvas in the root's px: Home's circle draws its
+     * 1 canvas px edge scaled (1.26 device px, soft, on the Ally), the page's is 1 whole device px. `source`: Home's circle
+     * it grows from, or null when Home has none (the Unifideck circle: it stays at its place).
+     */
+    const circleRing = (slot: number, target: Box, source: Box | null) => {
+        const ring = pageBox(target);
+        out[`--gho-cring-${slot}-x`] = k(ring.x - rx);
+        out[`--gho-cring-${slot}-y`] = k(ring.y - ry);
+        out[`--gho-cring-${slot}-w`] = k(ring.w);
+        out[`--gho-cring-${slot}-h`] = k(ring.h);
+        out[`--gho-cring-${slot}-from`] = source ? mapBox(ring, source, 1) : `${translate(0, 0)} scale(1, 1)`;
+        out[`--gho-cring-${slot}-o`] = '1';
+    };
     let slot = 0;
     home.circles.forEach((circle, i) => {
         if (i === home.infoCircle) return;
-        const to = page.circles[slot++];
+        const pageSlot = slot++;
+        const to = page.circles[pageSlot];
         if (!to) return;
+        circleRing(pageSlot, to, circle);
         out[`--gho-circle-${i}`] = mapBox(circle, to, s, true);
         // Its icon is already the page's size (homeCss): it shrinks as the circle grows, to stay that size.
         out[`--gho-circle-icon-${i}`] = `scale(${k(circle.w / to.w)})`;
@@ -109,14 +176,19 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         out['--gho-circle-extra-x'] = k((extra.x - home.canvas.x) / s);
         out['--gho-circle-extra-y'] = k((extra.y - home.canvas.y) / s);
         out['--gho-circle-extra-w'] = k(extra.w / s);
+        circleRing(3, extra, null);
     }
+    // The page circles' corner (themeCss R_TILE), in the page's unit.
+    out['--gho-cring-r'] = px(+(actionRadius(PAGE_LAYOUT.icon, 'icon') / PAGE_LAYOUT.icon).toFixed(4) * PAGE_LAYOUT.icon * d);
     if (home.store) out['--gho-store'] = translate((page.store.x - home.store.x) / s, (page.store.y - home.store.y) / s);
 
     const labelScale = PAGE_LAYOUT.stats.label / HOME_CHIP_FONTS.label;
     const valueScale = (look === 'clean' ? PAGE_LAYOUT.cleanInfo.value : PAGE_LAYOUT.stats.value) / HOME_CHIP_FONTS.value;
     // The page's labels have more leading: their glyphs sit this much lower in their box than Home's do in theirs.
     const labelLead = ((PAGE_LABEL_LINE - HOME_LABEL_LINE) / 2) * PAGE_LAYOUT.stats.label * d;
-    const shellOf = (key: StatKey) => (look === 'spotlight' && key === 'hltb' ? 1 : 0);
+    // Spotlight: the featured stat's chip grows into the right-hand card (shell 1), the others into the info card.
+    const featured = look === 'spotlight' ? featuredOf(page) : null;
+    const shellOf = (key: StatKey) => (key === featured ? 1 : 0);
     const sources: Box[][] = page.shells.map(() => []);
     home.chips.forEach((chip, i) => {
         if (!isStat(chip.key, page)) {
@@ -125,9 +197,10 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
         }
         const to = page.stats[chip.key]!;
         out[`--gho-chip-${i}-o`] = '1';
-        // Spotlight's HowLongToBeat card names its column "Main" under its own title (it arrives with the card) and draws
-        // the time in the accent: Home's "HLTB main" fades as it moves, and an accent copy of the time fades in.
-        if (look === 'spotlight' && chip.key === 'hltb') {
+        // A featured card whose first value is in the accent (HowLongToBeat's Main, Play time's Total) names it under its
+        // own title (it arrives with the card): Home's label ("HLTB main") fades as it moves, and an accent copy of the
+        // value fades in. Any other chip (ProtonDB keeps its rating's colour) moves as it is.
+        if (chip.key === featured && accentFirst(featured)) {
             out[`--gho-chip-${i}-label-o`] = '0';
             out[`--gho-chip-${i}-accent`] = '1';
         }
@@ -154,8 +227,6 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
     // The cards' crisp ring (.gh-open-ring), outside the scaled canvas in the root's px: it crossfades in over the morph as
     // the panel's soft canvas ring fades out, so the page's ring (whole device px, brightened by --gg-ring) is already
     // there at the hand-over. Width and brightness are the page's (openTargets border, ring), unrounded so it snaps alike.
-    const rx = home.root?.x ?? 0;
-    const ry = home.root?.y ?? 0;
     page.shells.forEach((shell, i) => {
         out[`--gho-ring-${i}-x`] = k(shell.x - rx);
         out[`--gho-ring-${i}-y`] = k(shell.y - ry);
@@ -210,8 +281,11 @@ export function openMotion(home: HomeRects, page: PageTargets, look: PageLook, c
             out[`--gho-x-${name}-w`] = px(b.w);
         };
         at('desc', page.extras.desc);
-        at('hltb', page.extras.hltbTitle);
-        inCard('hltb', page.extras.hltbTitle);
+        // HowLongToBeat's card inside, when it is the featured card (Home draws no other card's parts).
+        if (page.extras.hltbTitle) {
+            at('hltb', page.extras.hltbTitle);
+            inCard('hltb', page.extras.hltbTitle);
+        }
     }
 
     return Object.keys(out).sort().map((name) => ({ name, value: out[name] }));

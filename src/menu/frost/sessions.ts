@@ -1,5 +1,6 @@
 import type { HostAttachment } from '../steam/runtime';
 import type { FrostWarmup } from './controller';
+import { menuOverHome } from './context';
 import type { FrostBridge,FrostFrame,NativeFrostEnvironment } from './types';
 
 type Session=Parameters<NonNullable<HostAttachment['setFrostSession']>>[0];
@@ -8,7 +9,7 @@ type Surface=Required<Pick<HostAttachment,'setFrostSession'|'clearFrost'>>;
 /** Native input callbacks may be synchronous cross-context calls. This manager
  * uses only cached plain data there; every surface operation runs in a later
  * task, after the originating native call has returned. */
-export function createFrostSessions(bridge:FrostBridge,schedule:(callback:()=>void)=>void=fn=>{setTimeout(fn,0);}) {
+export function createFrostSessions(bridge:FrostBridge,schedule:(callback:()=>void)=>void=fn=>{setTimeout(fn,0);},overHome:()=>boolean=()=>menuOverHome()) {
     let session:Session=null,surface:Surface|null=null,cachedFrame:FrostFrame|undefined,warmup:FrostWarmup|null=null,disposed=false;
     let environment:NativeFrostEnvironment|null=null,warming=false;
     const safe=(fn:()=>Promise<unknown>)=>{try{return fn().catch(()=>undefined);}catch{return Promise.resolve();}};
@@ -32,7 +33,9 @@ export function createFrostSessions(bridge:FrostBridge,schedule:(callback:()=>vo
             if(disposed)return;
             if(warmup)void safe(()=>bridge.cancel(warmup!.requestId));
             warmup=null;session=value;
-            if(value?.enabled&&cachedFrame?.context.background==='game'){
+            // The last in-game frame is a head start only over a game: on Home or in the library it would arm a shader the
+            // opening never uses.
+            if(value?.enabled&&cachedFrame?.context.background==='game'&&!overHome()){
                 const frame={...cachedFrame,generation:value.generation};
                 const nonce=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 const requestId=`early:${nonce}:${value.generation}`;

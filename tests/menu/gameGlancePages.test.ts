@@ -1,7 +1,8 @@
 import { type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
+import { CATEGORY_PAGES, GamePage, GeneralPage, HomePage, GameInfoPicker, HomeRowPicker, MenuPage, ScreensaverPage, StatusBarPage, VersionPicker } from '../../src/menu/components/GameGlancePages';
 import type { GgActions, GgValues } from '../../src/menu/components/gameGlanceTypes';
+import { DEFAULT_SLOTS } from '../../src/logic/infoSlots';
 import type { Settings } from '../../src/data/settings';
 
 vi.mock('@decky/ui', () => ({ Focusable: 'div', DialogButton: 'button', ToggleField: 'toggle-field', NavEntryPositionPreferences: {} }));
@@ -15,8 +16,9 @@ function tree(node: ReactNode): ReactElement<Record<string, any>>[] {
 const settings: Settings = {
     enabled: true, autoPreload: true, spotlightHome: true, wishlistDeals: false, cleanPage: false, homeStatusBar: true,
     homeExpandedControls: false, chromeEveryPage: false, statusAvatar: false, gameLogo: false, homeRow: 'recent',
-    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom',
+    homeRowSort: 'lastPlayed', homeRowStyle: 'steam', homeGrayUninstalled: true, heroFit: 'fill', pageShading: 'bottom', titleSize: 'large', accentMode: 'adaptive', accentColor: '#5fd1ae',
     feedTabs: { news: true, friends: true, recommended: true },
+    infoSlots: DEFAULT_SLOTS,
     screensaver: { enabled: true, logo: true, statusBar: true, stats: false } as Settings['screensaver'],
 };
 function values(change: Partial<GgValues> = {}): GgValues {
@@ -44,7 +46,7 @@ const byId = (node: ReactNode, id: string) => tree(node).find(n => n.props.id ==
 
 describe('Home', () => {
     it('shows every row with Spotlight Home on, in order', () => {
-        expect(ids(HomePage({ v: values(), a: actions() }))).toEqual(['gg:home:spotlightHome', 'gg:home:games', 'gg:home:rowStyle', 'gg:home:grayUninstalled', 'gg:home:news', 'gg:home:friends', 'gg:home:recommended', 'gg:home:wishlistDeals']);
+        expect(ids(HomePage({ v: values(), a: actions() }))).toEqual(['gg:home:spotlightHome', 'gg:home:games', 'gg:home:rowStyle', 'gg:home:grayUninstalled', 'gg:home:news', 'gg:home:friends', 'gg:home:recommended', 'gg:home:recommendedRow', 'gg:home:wishlistDeals']);
     });
     it('adds the sort for a collection row', () => {
         expect(ids(HomePage({ v: values({ collectionRow: true }), a: actions() }))).toContain('gg:home:sort');
@@ -91,13 +93,13 @@ describe('Game page', () => {
     it('shows the match card with its buttons', () => {
         const a = actions();
         const page = GamePage({ v: values(), a });
-        expect(ids(page)).toEqual(['gg:game-page:look', 'gg:game-page:change', 'gg:game-page:open']);
+        expect(ids(page)).toEqual(['gg:game-page:look', 'gg:game-page:slot:0', 'gg:game-page:slot:1', 'gg:game-page:slot:2', 'gg:game-page:slot:featured', 'gg:game-page:change', 'gg:game-page:open']);
         byId(page, 'gg:game-page:change').props.onAction();
         expect(a.changeMatch).toHaveBeenCalledTimes(1);
     });
     it('offers Remove override while one is set, and nothing to open without a match', () => {
         const v = values({ game: { name: 'X', match: 'Override: HowLongToBeat #5', matched: false, override: true } });
-        expect(ids(GamePage({ v, a: actions() }))).toEqual(['gg:game-page:look', 'gg:game-page:change', 'gg:game-page:remove']);
+        expect(ids(GamePage({ v, a: actions() }))).toEqual(['gg:game-page:look', 'gg:game-page:slot:0', 'gg:game-page:slot:1', 'gg:game-page:slot:2', 'gg:game-page:slot:featured', 'gg:game-page:change', 'gg:game-page:remove']);
     });
     it('asks for a game page first without a current game', () => {
         const nodes = tree(GamePage({ v: values({ game: null }), a: actions() }));
@@ -148,9 +150,17 @@ describe('Screensaver', () => {
 });
 
 describe('General', () => {
+    it('offers the player count pill after the Family Sharing pill, and writes it through the store', () => {
+        const a = actions();
+        const row = byId(GeneralPage({ v: values(), a }), 'gg:general:playerCountPill');
+        expect(row.props.label).toBe('Player count');
+        expect(row.props.description).toBe('How many people are playing now, from Steam.');
+        row.props.onChange(false);
+        expect(a.store.setPlayerCountPill).toHaveBeenCalledWith(false);
+    });
     it('lists Game Glance, the look, data and updates', () => {
         const page = GeneralPage({ v: values(), a: actions() });
-        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:gameLogo', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
+        expect(ids(page)).toEqual(['gg:general:enabled', 'gg:general:libraryPage', 'gg:general:settingsPage', 'gg:general:gameLogo', 'gg:general:titleSize', 'gg:general:accentMode', 'gg:general:accentColor', 'gg:general:storePill', 'gg:general:familyPill', 'gg:general:playerCountPill', 'gg:general:heroFit', 'gg:general:pageShading', 'gg:general:autoPreload', 'gg:general:preload', 'gg:general:clearCache', 'gg:general:check', 'gg:general:versions']);
     });
     it('offers the update when one is available', () => {
         const a = actions();
@@ -200,4 +210,34 @@ describe('Choose version', () => {
 
 it('maps every category to its page', () => {
     expect(Object.keys(CATEGORY_PAGES)).toEqual(['home', 'game-page', 'status-bar', 'menu', 'screensaver', 'general']);
+});
+
+describe('Game info slots', () => {
+    it('shows each slot value and opens its picker', () => {
+        const a = actions();
+        const page = GamePage({ v: values({ settings: { ...settings, infoSlots: { stats: ['played', null, 'protondb'], featured: 'hltb' } } }), a });
+        const text = (id: string) => JSON.stringify(byId(page, id).props.children);
+        expect(text('gg:game-page:slot:0')).toContain('Play time');
+        expect(text('gg:game-page:slot:1')).toContain('None');
+        expect(text('gg:game-page:slot:2')).toContain('ProtonDB');
+        expect(text('gg:game-page:slot:featured')).toContain('HowLongToBeat');
+        byId(page, 'gg:game-page:slot:featured').props.onAction();
+        expect(a.open).toHaveBeenCalledWith('gg:game-page:info:featured');
+    });
+    it('picker for Featured leaves out Space required, sets the slot and goes back', () => {
+        const a = actions();
+        const page = GameInfoPicker({ v: values(), a, slot: 'featured' });
+        expect(ids(page)).toEqual(['gg:game-page:info:featured:hltb', 'gg:game-page:info:featured:protondb', 'gg:game-page:info:featured:achievements', 'gg:game-page:info:featured:played', 'gg:game-page:info:featured:none']);
+        expect(byId(page, 'gg:game-page:info:featured:hltb').props.selected).toBe(true);
+        byId(page, 'gg:game-page:info:featured:protondb').props.onAction();
+        expect(a.store.setInfoSlot).toHaveBeenCalledWith('featured', 'protondb');
+        expect(a.back).toHaveBeenCalledTimes(1);
+    });
+    it('picker for a stat slot lists every stat (Space required is not one: it is at the Install button) and None', () => {
+        const a = actions();
+        const page = GameInfoPicker({ v: values(), a, slot: 1 });
+        expect(ids(page)).toHaveLength(5);
+        byId(page, 'gg:game-page:info:1:none').props.onAction();
+        expect(a.store.setInfoSlot).toHaveBeenCalledWith(1, null);
+    });
 });

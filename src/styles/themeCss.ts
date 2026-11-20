@@ -1,14 +1,20 @@
+import { CONTROL_EDGE } from './tokens';
+import { PROTON_COLOURS, PROTON_TIERS } from '../logic/protonTier';
 import { DOWNLOAD_FILL_COLOR, DOWNLOAD_FILL_MS } from './downloadFill';
 import { hoverRing, MOUSE_ATTR, NOT_MOUSE } from '../home/mouseMode';
 import { DEFAULT_ACCENT, legibleAccent } from '../home/accent';
 import { CLOUD_COLOURS, CLOUD_DOT, CLOUD_GLYPH_URL } from '../home/cloud';
-import { ART_FILL_FILTER, FIT_FADE, HeroFit, STANDARD_HERO_ASPECT } from '../home/heroFit';
+import { ART_FILL_FILTER, EXPANDED_HEIGHT, EXPANDED_MASK, FIT_FADE, HeroFit, overFill, STANDARD_HERO_ASPECT } from '../home/heroFit';
 import type { PageShading } from '../home/pageShading';
-import { defaultGrowth, homeCanvas } from '../home/scale';
+import { SIZE_FACTOR, defaultGrowth, homeCanvas } from '../home/scale';
+import { TITLE_SCALE_VAR } from '../home/titleSize';
 import { LOGO_BOX } from './logoBox';
+import { LAUNCH_ART_CLASS } from './launchArt';
 import { SCALE_UNIT_CSS } from './screenScale';
 import { sourcePillIcon, sourcePillLook } from './sourcePill';
 import { actionRadius, focusRing, frostSurface, labelText, TOKENS } from './tokens';
+/** A button of Steam's own in the Play row's group (not Game Glance's music button). */
+const STEAM_BUTTON = ':not(.gg-music-choice)';
 
 export type ClassMap = Record<string, string | undefined> | undefined;
 
@@ -150,7 +156,8 @@ export const PAGE_LAYOUT = {
     canvas: { wide: 1440, wideHeight: 810, deck: 1280, deckHeight: 800, deckMaxAspect: 1.7 },
     /** The TV media query (CSS px). */
     tvQuery: { minWidth: 1408, minHeight: 793 },
-    side: { base: 56, tv: 24 },
+    /** Home's insets (home/insets.SIDE_INSET): the handheld's 28 lines the page up with the status bar, as Home. */
+    side: { base: 28, tv: 24 },
     playW: 340,
     icon: 60,
     gap: 14,
@@ -172,7 +179,7 @@ export const PAGE_LAYOUT = {
     /** The title block: the gap between title and eyebrow, and the eyebrow's type size. */
     titleBlock: { gap: 14, eyebrow: 12, title: 64 },
     /** Inside the Play pill: its glyph's inset, the glyph, the gap to the label, the label's type size. */
-    pill: { padX: 24, icon: 20, iconGap: 14, font: 22 },
+    pill: { padX: 24, icon: 20, iconGap: 14, font: 22, sizeFont: 19 },
     /** The Play pill's "Play from" arrow (a game on more than one device): its segment's width and glyph, at the pill's right end. */
     playArrow: { w: 56, glyph: 14 },
     /** The glyph in the controller and gear circles. */
@@ -184,8 +191,11 @@ export const PAGE_LAYOUT = {
     cleanInfo: { padX: 24, padY: 14, colGap: 28, value: 22, barW: 96, barH: 4, barTop: 2 },
     /** Inside the Spotlight cards: the description's type size, line height and lines (clamped), the caption's type size, the HowLongToBeat bar's height. */
     cardText: { desc: 15, descLine: 1.5, descLines: 3, caption: 15, bar: 6 },
-    /** The store pill's top above the cards block (.gg-hero), Spotlight look. */
-    storePillTop: 82,
+    /**
+     * The store pill's top above the cards block (.gg-hero), Spotlight look: the Play row ends 36 above the cards and the
+     * pill is 32 tall (SOURCE_PILL.height), so its bottom sits on the row's bottom line, as the Play pill's and the circles'.
+     */
+    storePillTop: 68,
 } as const;
 
 /** Section 7: Play's corner and the round buttons' (now soft tiles) as shares of the icon height (22 and 18 of 60), in either layout. */
@@ -379,9 +389,11 @@ export function buildThemeCss(classes: ThemeClasses, options: ThemeOptions = {})
             width: var(--gg-icon) !important; height: var(--gg-icon) !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important;
             display: flex; align-items: center; justify-content: center; border-radius: 50%;
             background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); color: var(--gg-ok) !important; `),
+        // Steam's buttons only: Game Glance's music button (ThemeMusicButton) sits in the same group but goes after the cloud.
         ...[1, 2, 3, 4, 5].map((n) =>
-            rule(playSection && appButtons && cloud && `${playSection}:has(${appButtons} > :nth-child(${n}):last-child) ~ ${cloud}`, ` --gg-buttons: ${n}; `),
+            rule(playSection && appButtons && cloud && `${playSection}:has(${appButtons} > :nth-child(${n} of ${STEAM_BUTTON}):nth-last-child(1 of ${STEAM_BUTTON})) ~ ${cloud}`, ` --gg-buttons: ${n}; `),
         ),
+        rule(playSection && appButtons && cloud && `${playSection}:has(~ ${cloud}) ${appButtons} > .gg-music-choice`, ` margin-left: calc(var(--gg-icon) + var(--gg-gap)) !important; `),
         rule(cloud && [`${cloud}::before`, `${cloud}::after`], ` content: none !important; `),
         rule(cloud && `${cloud} svg`, ` fill: currentColor !important; color: inherit !important;
             width: ${u(16)} !important; height: ${u(16)} !important; margin: 0 ${u(8)} ${u(4)} !important; `),
@@ -544,23 +556,64 @@ const TV_CARDS_GAP = PAGE_LAYOUT.playTop.tvGap;
 const CLEAN_MIN_BELOW_ROW = PAGE_LAYOUT.clean.minBelowRow;
 const CLEAN_GAP = PAGE_LAYOUT.clean.gap;
 
+/** ProtonDB's mark before its rating (the same mark and colours as Home's chip), for a stats block with this class prefix. */
+/** `#rrggbb` as rgba at `alpha`. */
+function tint(hex: string, alpha: number): string {
+    const n = Number.parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+function protonMarkCss(prefix: string): string {
+    return [
+        `.${prefix}-mark { display: inline-flex; vertical-align: -0.1em; margin-right: 0.35em; line-height: 1; }`,
+        ...PROTON_TIERS.map((tier) => `.${prefix}-mark[data-tone="${tier}"] { color: ${PROTON_COLOURS[tier]}; }`),
+    ].join('\n');
+}
+
 /** The native card content rules, shared by the page and its non-interactive Home copy. */
 export function cardBaseCss(prefix: string, unit: (n: number) => string): string {
     return [
         `.gg-cards { display: flex; gap: ${unit(14)}; align-items: stretch; }`,
         `.gg-card { flex: 1 1 0; min-width: 0; background: var(--gg-glass); border: 1px solid var(--gg-border);
             border-radius: ${unit(10)}; padding: ${unit(9)} ${unit(12)}; backdrop-filter: blur(${unit(10)}); }`,
-        `.gg-card.gg-hltb { flex: 0.95 1 0; }`,
+        `.gg-card.gg-featured { flex: 0.95 1 0; }`,
         `.gg-label { font-size: ${unit(8.5)}; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gg-muted); white-space: nowrap; }`,
         `.gg-value { font-size: ${unit(17)}; font-weight: 700; white-space: nowrap; }`,
         `.gg-stats { display: flex; gap: ${unit(18)}; margin-top: ${unit(2)}; }`,
         `.gg-goal .gg-value { color: var(--gg-accent); }`,
         `.gg-desc { margin: ${unit(6)} 0 0; font-size: ${unit(10.5)}; line-height: 1.4; color: rgba(255, 255, 255, 0.85);
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }`,
+        // Text that doesn't fit (components/scrollText): a rolling description keeps its three lines' height, clipped instead
+        // of "…", and steps smoothly; a sliding line clips too, and its span moves.
+        `.gg-desc[data-gg-roll] { display: block; -webkit-line-clamp: unset; max-height: 3lh; overflow: hidden; scroll-behavior: smooth; }`,
+        `.gg-card [data-gg-scroll="line"][data-gg-marquee] { text-overflow: clip; }`,
+        `.gg-card [data-gg-scroll="line"][data-gg-marquee] > span { display: inline-block; }`,
         `.gg-muted { margin-top: ${unit(8)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
         `.gg-bar { margin-top: ${unit(8)}; height: ${unit(4)}; border-radius: ${unit(2)}; background: rgba(255, 255, 255, 0.14); overflow: hidden; }`,
         `.gg-bar > div { height: 100%; border-radius: ${unit(2)}; background: var(--gg-accent); }`,
         `.gg-caption { margin-top: ${unit(5)}; font-size: ${unit(10)}; color: var(--gg-muted); }`,
+        protonMarkCss('gg'),
+        // The achievements card's latest unlock: its icon, then its name ending in an ellipsis.
+        `.gg-featured-icon { height: 2.6em; aspect-ratio: 1; border-radius: 0.3em; object-fit: cover; }`,
+        `.gg-featured-text { min-width: 0; }`,
+        `.gg-featured-text > .gg-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }`,
+        // ProtonDB's tile: its mark in the rating's colour on a tint of it, and the rating as the headline in that colour.
+        `.gg-featured-mark { display: flex; align-items: center; justify-content: center; }`,
+        `.gg-featured-mark > svg { width: 1.7em; height: 1.7em; }`,
+        ...PROTON_TIERS.map((tier) => `.gg-featured-mark[data-tone="${tier}"] { color: ${PROTON_COLOURS[tier]}; background: ${tint(PROTON_COLOURS[tier], 0.16)}; }`),
+        ...PROTON_TIERS.map((tier) => `.gg-featured-text > .gg-value[data-tone="${tier}"] { color: ${PROTON_COLOURS[tier]}; }`),
+        // A headline in the accent (Play time's hours), as HowLongToBeat's Main.
+        `.gg-featured-accent { color: var(--gg-accent); }`,
+        // ProtonDB's ladder: one step per rating, worst first, only the rating's lit.
+        `.gg-ladder { display: flex; gap: ${unit(3)}; height: ${unit(4)}; margin-top: ${unit(8)}; }`,
+        `.gg-ladder > span { flex: 1 1 0; border-radius: ${unit(3)}; opacity: 0.22; }`,
+        `.gg-ladder > span[data-lit] { opacity: 1; }`,
+        // HowLongToBeat's whole-game track: Main, + Extras and 100% as stretches, fainter the further, a gap between.
+        `.gg-bar.gg-track { position: relative; background: none; overflow: visible; }`,
+        `.gg-track > span { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-right: ${unit(2)} solid transparent; background-clip: padding-box; border-radius: ${unit(3)}; background-color: rgba(255, 255, 255, 0.22); }`,
+        `.gg-track > span:nth-of-type(2) { background-color: rgba(255, 255, 255, 0.14); }`,
+        `.gg-track > span:nth-of-type(3) { background-color: rgba(255, 255, 255, 0.08); }`,
+        `.gg-track > div { position: absolute; left: 0; top: 0; bottom: 0; min-width: ${unit(4)}; }`,
         `.gg-skeleton { display: inline-block; width: 3.2em; height: 1em; border-radius: ${unit(4)}; background: rgba(255, 255, 255, 0.12); }`,
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
@@ -571,18 +624,21 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
     return [
         `.gg-cards { display: grid; grid-template-columns: minmax(0, ${PAGE_LAYOUT.cards.split[0]}fr) minmax(0, ${PAGE_LAYOUT.cards.split[1]}fr); gap: ${unit(PAGE_LAYOUT.cards.gridGap)}; }`,
         `.gg-card { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.cards.colGap)}; padding: ${unit(PAGE_LAYOUT.cards.padY)} ${unit(PAGE_LAYOUT.cards.padX)}; border-radius: ${unit(16)};
-            ${frostSurface(unit(16))}; border-color: ${ring(0.12)}; border-style: solid; border-width: ${unit(1)};
+            ${frostSurface(unit(16))}; border-color: ${CONTROL_EDGE}; border-style: solid; border-width: ${unit(1)};
             min-height: ${unit(PAGE_LAYOUT.playTop.tvCards - 2 * PAGE_LAYOUT.cards.padY - 2)}; max-width: ${cardContentMax(cardMaxWidths()[0])}; }`,
         // (One height for every game: three description lines' worth, as The Witcher's (its content: stats, gap and three
         // lines, 136 of the 178 the cards take with their padding and border; measured 179 on the Ally with Steam's border); a short description, or none, left
         // them shorter, which the open transition's panels (openTargets, the same height) then shrank to after the hand-over.)
-        `.gg-card.gg-hltb { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
+        // The right-hand card (the featured stat: HowLongToBeat's card or another, components/FeaturedCard) in HowLongToBeat's shell.
+        `.gg-card.gg-featured { gap: ${unit(PAGE_LAYOUT.cards.hltbGap)}; width: ${CARD_FILL_WIDTH}; max-width: ${cardContentMax(cardMaxWidths()[1])}; justify-self: end; }`,
         // (9/5: cards.equalFromAspect as a media query ratio.)
         `@media (min-aspect-ratio: 9/5) { .gg-card { max-width: ${cardContentMax(cardMaxWidths(PAGE_LAYOUT.cards.equalFromAspect)[0])}; } }`,
         `.gg-label { ${pageType('label', unit)} ${labelText(unit)}; }`,
         `.gg-value { ${pageType('value', unit)} }`,
         `.gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapInfo)}; margin-top: 0; }`,
-        `.gg-hltb .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
+        `.gg-featured .gg-stats { gap: ${unit(PAGE_LAYOUT.stats.colGapHltb)}; }`,
+        // The new featured cards keep one line each, so they stay HowLongToBeat's height (HowLongToBeat's own text is unchanged).
+        `.gg-featured:not(.gg-hltb) .gg-caption, .gg-featured:not(.gg-hltb) .gg-muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }`,
         `.gg-stats > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }`,
         `.gg-desc { margin: 0; font-size: ${unit(PAGE_LAYOUT.cardText.desc)}; line-height: ${PAGE_LAYOUT.cardText.descLine}; color: rgba(255, 255, 255, 0.84); }`,
         `.gg-bar { margin-top: 0; height: ${unit(PAGE_LAYOUT.cardText.bar)}; border-radius: ${unit(3)}; }`,
@@ -591,18 +647,28 @@ export function normalCardsCss(prefix: string, unit: (n: number) => string): str
         // HLTB: MAIN is always the accent (handoff), not the tier the player is working toward.
         `.gg-hltb .gg-stats > div .gg-value { color: inherit; }`,
         `.gg-hltb .gg-stats > div:first-child .gg-value { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
+        // Play time's hours too, in the same legible accent (the open's accent copy draws it so; .gg-goal's is the raw accent).
+        `.gg-featured-accent { color: var(--glance-accent-text, var(--gg-accent)); transition: color ${ACCENT_MS}ms; }`,
+        `.gg-ladder, .gg-track > div { height: ${unit(PAGE_LAYOUT.cardText.bar)}; }`,
+        `.gg-ladder { margin-top: 0; }`,
+        `.gg-track > div { min-width: ${unit(PAGE_LAYOUT.cardText.bar)}; }`,
+        // A tile row and columns together (Play time) fit the card's height with a smaller tile and smaller values.
+        `.gg-featured-dense .gg-featured-icon { height: 2.2em; }`,
+        `.gg-featured-dense .gg-stats { gap: ${unit(28)}; }`,
+        `.gg-featured-dense .gg-stats > [data-stat] .gg-value { font-size: ${unit(18)}; line-height: 1.15; }`,
     ].join('\n').split('.gg-').join(`.${prefix}-`);
 }
 
 /** The actual Clean card skin and flex layout, shared with its moving Home copy. */
 export function cleanInfoCss(panel: string, unit: (n: number) => string, prefix = 'gg'): string {
     return `
-${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${ring(.12)}; ${frostSurface(unit(16))}; color: #fff; }
+${panel} { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: flex-start; gap: ${unit(PAGE_LAYOUT.cleanInfo.colGap)}; padding: ${unit(PAGE_LAYOUT.cleanInfo.padY)} ${unit(PAGE_LAYOUT.cleanInfo.padX)}; border-radius: ${unit(16)}; border: ${unit(1)} solid ${CONTROL_EDGE}; ${frostSurface(unit(16))}; color: #fff; }
 ${panel} > div { display: flex; flex-direction: column; gap: ${unit(PAGE_LAYOUT.stats.rowGap)}; }
 ${panel} .${prefix}-label { ${pageType('label', unit)} line-height: normal; white-space: nowrap; ${labelText(unit)}; }
 ${panel} .${prefix}-value { ${pageType('cleanValue', unit)} white-space: nowrap; }
 ${panel} .${prefix}-bar { width: ${unit(PAGE_LAYOUT.cleanInfo.barW)}; height: ${unit(PAGE_LAYOUT.cleanInfo.barH)}; margin-top: ${unit(PAGE_LAYOUT.cleanInfo.barTop)}; border-radius: ${unit(3)}; background: rgba(255,255,255,.14); overflow: hidden; }
 ${panel} .${prefix}-bar > div { height: 100%; border-radius: ${unit(3)}; background: var(--gg-accent); }
+${protonMarkCss(prefix)}
 `;
 }
 
@@ -662,7 +728,7 @@ export function twinTargets({ root }: ThemeClasses, look: 'spotlight' | 'clean' 
     const playButton = cls(root, 'ActionButtonAndStatusPanel');
     if (playButton) out.play = `${playButton} [role="button"] > div`;
     const scope = look === 'clean' ? '.gg-clean-info' : '.gg-hero';
-    for (const k of ['size', 'played', 'achievements', 'hltb']) {
+    for (const k of ['size', 'played', 'achievements', 'protondb', 'hltb']) {
         out[`label-${k}`] = `${scope} [data-stat="${k}"] .gg-label`;
         out[`value-${k}`] = `${scope} [data-stat="${k}"] .gg-value`;
         out[SETTLE.statLabel(k)] = `${scope} [data-stat="${k}"] .gg-label`;
@@ -701,18 +767,31 @@ export function playRowSelector({ root, play, shared }: ThemeClasses): string | 
 
 /**
  * What hides while Steam's launch overlay is up: `overlay`, the overlay's selector (null: unknown, nothing hides), and
- * `hide`, everything on the page with text on it (our title and cards, Steam's logo and title, its Play row and tabs).
+ * `hide`, everything on the page with text on it (our title and cards, Steam's logo and title, its Play row and tabs,
+ * other plugins' badges).
  * Steam's art (the header itself) is not in the list, so only the game's art is left under the overlay.
  */
 export function launchTargets({ header, details, root, launch }: ThemeClasses): { overlay: string | null; hide: string[] } {
     const overlay = cls(launch, 'Container');
     if (!overlay) return { overlay: null, hide: [] };
+    // Everything else on the page beside Steam's header (the art), whatever added it: other plugins' badges, such as a
+    // ProtonDB or a player count badge, flashed over the art before the launch screen and stayed on it. Hidden by where
+    // they are, not by name, so a plugin this list has never heard of is hidden too. Never the overlay, nor what holds it.
+    const inner = cls(details, 'InnerContainer');
+    const art = cls(details, 'Header');
+    const others = inner && art ? `${inner} > :not(${art}):not(${overlay}):not(:has(${overlay}))` : null;
+    // And inside the header, everything but Steam's image and Home's art (launchArt): a plugin can add its badge there too.
+    const topCapsule = cls(header, 'TopCapsule');
+    const image = cls(header, 'HeaderBackgroundImage');
+    const inHeader = topCapsule && image ? `${topCapsule} > :not(${image}):not(.${LAUNCH_ART_CLASS}):not(${overlay}):not(:has(${overlay}))` : null;
     const hide = present([
         cls(header, 'BoxSizer'),
         cls(header, 'TitleImageContainer'),
         cls(header, 'SVGTitle'),
         cls(details, 'AppDetailsOverviewPanel'),
         cls(root, 'AppDetailsContainer'),
+        others,
+        inHeader,
     ]);
     return { overlay, hide: ['.gg-titleblock', '.gg-hero', ...hide] };
 }
@@ -721,21 +800,39 @@ export function launchTargets({ header, details, root, launch }: ThemeClasses): 
  * While a game launches (only while the overlay is shown, see launchOverlay.launchOverlayShown): the page's text fades
  * away and the overlay dims the art less than its resting dim, so Steam's launch screen sits on the game's art alone
  * (Reddit feedback: the page's text bled through the overlay's). '' when the overlay's class is unknown.
+ * The overlay keeps its dim as it leaves: Steam fades it out over 400 ms as the game starts, which showed the bright art
+ * for a moment before the game's black screen (filmed on the Ally, 2026-11-12).
+ * `fromHome` (Play on Spotlight Home, data/launchIntent): Steam's page-enter fade is off too, so the page (with Home's art
+ * on it, launchArt) is there at once instead of fading in from black.
  */
-export function buildLaunchCss(classes: ThemeClasses): string {
+export function buildLaunchCss(classes: ThemeClasses, fromHome = false): string {
     const { overlay, hide } = launchTargets(classes);
     if (!overlay) return '';
+    const leaving = present([cls(classes.launch, 'FullscreenExitStart'), cls(classes.launch, 'FullscreenExitActive')]).map((c) => `:root ${overlay}${c}`);
+    // Steam keeps the page's header (the art) at opacity 0 until it has loaded (Header without HeaderLoaded), 300 to 700 ms
+    // after the page opens: after Play on Home it shows at once, with Home's art in it (launchArt).
+    const header = cls(classes.details, 'Header');
     return [
         `${hide.join(', ')} { opacity: 0 !important; transition: opacity ${LAUNCH_FADE_MS}ms ease !important; }`,
-        `:root ${overlay} { background: rgba(0, 0, 0, 0.55) !important; }`,
-    ].join('\n');
+        // The dim reaches the screen's bottom, behind the footer: Steam's overlay stops 40 px short of it (its height is
+        // 100vh - 40px), which left an undimmed strip behind the footer. Its content stays centred where it was.
+        `:root ${overlay} { background: rgba(0, 0, 0, 0.55) !important; height: 100vh !important; padding-bottom: 40px !important; box-sizing: border-box !important; }`,
+        fromHome && header ? `:root ${header} { opacity: 1 !important; }` : '',
+        leaving.length ? `${leaving.join(', ')} { opacity: 1 !important; transform: none !important; transition: none !important; }` : '',
+        fromHome ? buildSteamEnterOffCss(classes) : '',
+    ].filter((r) => r.length > 0).join('\n');
+}
+
+/** Steam's header on the game page, where the launch art layer goes (launchArt); null when its class is unknown. */
+export function launchArtHostSelector({ header }: ThemeClasses): string | null {
+    return cls(header, 'TopCapsule');
 }
 
 /**
  * Spotlight Home's details look (handoff "2. Game Glance (details)"), appended after the 1.1.1 rules so they win
  * without touching them. Same defensive pattern: a rule needing a Steam class that is missing is skipped. On Steam's
  * elements it only sets colours, the focus glow, the scrim, the logo's visibility (its box stays in place) and the
- * Play row's side padding (the handoff's 56 px insets); everything else styles our own `.gg-*` elements.
+ * Play row's side padding (28 px on the handheld, 24 on a TV); everything else styles our own `.gg-*` elements.
  * The eyebrow/title block is shown only with the full-screen layout, where the logo was; otherwise (a renamed Steam
  * class) it stays hidden and Steam's logo is left alone, so the page never shows two titles.
  */
@@ -773,15 +870,18 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The game's accent (buildAccentCss sets it on the page container) becomes the theme's accent:
         // the Play pill, the HLTB goal value and bar. Registered so it can animate, as on Home.
         `@property --glance-accent { syntax: '<color>'; inherits: true; initial-value: ${DEFAULT_ACCENT}; }`,
-        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)}); }`,
-        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)}); } }`,
+        // Home's size factor (home/scale sizeFactor): smaller on a TV (TV_QUERY is isTvScreen's threshold).
+        `:root { --gg-size: ${SIZE_FACTOR.handheld}; }`,
+        `${TV_QUERY} { :root { --gg-size: ${SIZE_FACTOR.tv}; } }`,
+        `:root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.wide}), calc(100vh / ${PAGE_LAYOUT.canvas.wideHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.wideHeight)} * var(--gg-size)); }`,
+        `@media (max-aspect-ratio: 17/10) { :root { --gg-d: calc(min(calc(100vw / ${PAGE_LAYOUT.canvas.deck}), calc(100vh / ${PAGE_LAYOUT.canvas.deckHeight})) * ${defaultGrowth(PAGE_LAYOUT.canvas.deckHeight)} * var(--gg-size)); } }`,
         rule(inner, ` --gg-accent: var(--glance-accent); transition: --glance-accent ${ACCENT_MS}ms ease; `),
 
-        // Side insets 56: Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
+        // Side insets (28 handheld): Steam's Play row (2.8vw of its own) and everything placed by --gg-side move together,
         // so the cloud icon's position (counted from --gg-side) stays right.
         playSection ? `:root { --gg-side: ${d(PAGE_LAYOUT.side.base)}; }` : '',
         // A TV (screenScale.isTvScreen: 1.7x the handheld's 828x466 or more: 1408 x 793) takes the status dot's centre line (1.7vw, 24 canvas px) instead of 3.9vw:
-        // 56 read too far from the edge on a big screen. The handheld and the Deck keep 56. (Home does the same: home/insets.)
+        // 56 read too far from the edge on a big screen. The handheld and the Deck get 28, on the status bar's end. (Home does the same: home/insets.)
         playSection ? `${TV_QUERY} { :root { --gg-side: ${d(PAGE_LAYOUT.side.tv)}; } }` : '',
         rule(playSection, ` padding-left: var(--gg-side) !important; padding-right: var(--gg-side) !important; `),
 
@@ -807,7 +907,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rule(playButton && `${playButton} > div:has(> [role="button"])`, ` border-radius: ${R_PLAY} !important; `),
         rule(menuButton, ` border-radius: ${R_TILE} !important; `),
         rule(cloud, ` border-radius: ${R_TILE} !important; `),
-        rule(menuButton, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important; ${actionTransition} `),
+        rule(menuButton, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${CONTROL_EDGE} !important; ${actionTransition} `),
         rule(menuButton && `${NOT_MOUSE} ${menuButton}.gpfocus`, ` background: ${TOKENS.strong} !important; color: #ffffff !important; ${actionFocused} `),
         // (Each focus look here also under DOM focus: after a tap or a click Steam keeps focus but drops gpfocus, and a page
         // opened that way has its Play focused without it, which the open transition lands on.)
@@ -817,7 +917,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // The cloud status is the same circle as the others (Steam's own row background, and the lighter 1.1.1 fill, gave it
         // a lighter tinted disc); its icon keeps the state colour, re-tuned for the dark fill (CLOUD_COLOURS, shared with
         // Home) with a dark halo for bright art. Focus keeps the state colour and adds Home’s ring.
-        rule(cloud, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${ring(0.18)} !important;
+        rule(cloud, ` ${important(frostSurface(d(16)))} border-width: ${d(1)} !important; border-color: ${CONTROL_EDGE} !important;
             box-shadow: none !important; ${actionTransition}
             --gg-ok: ${CLOUD_COLOURS.ok}; --gg-warn: ${CLOUD_COLOURS.busy}; --gg-bad: ${CLOUD_COLOURS.bad}; --gg-off: ${CLOUD_COLOURS.off}; `),
         rule(cloud && `${cloud} svg`, ` filter: drop-shadow(0 0 ${d(1.5)} rgba(0, 0, 0, 0.7)) !important; `),
@@ -838,7 +938,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         rule(cloud && `${cloud}::after`, ` content: "" !important; position: absolute !important; top: ${d(CLOUD_DOT.inset)} !important; right: ${d(CLOUD_DOT.inset)} !important;
             left: auto !important; bottom: auto !important; margin: 0 !important;
             width: ${d(CLOUD_DOT.size)} !important; height: ${d(CLOUD_DOT.size)} !important; box-sizing: content-box !important; border-radius: 50% !important;
-            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: ${d(CLOUD_DOT.ring)} solid ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
+            background: var(--gg-cloud-dot, var(--gg-ok)) !important; border: none !important; box-shadow: 0 0 0 ${d(CLOUD_DOT.ring)} ${CLOUD_DOT.ringColour} !important; pointer-events: none !important; `),
         rule(cloud && `${NOT_MOUSE} ${cloud}.gpfocus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
         rule(cloud && `${NOT_MOUSE} ${cloud}:focus`, ` background: ${TOKENS.strong} !important; ${actionFocused} `),
 
@@ -877,7 +977,7 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         // Keep the native fallback until the mirrored reason exists; never hide the only explanation.
         rule(layout && inner && cls(play, 'StatusAndStats') && cls(play, 'PermanentlyUnavailable') ? `${inner}:has(> .gg-titleblock .gg-availability) ${cls(play, 'StatusAndStats')}${cls(play, 'PermanentlyUnavailable')}` : null, ` display: none !important; `),
         // The clip gets a bleed for descenders and the shadow; equal negative margins keep the box at two lines.
-        `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)}
+        `.gg-title { margin: calc(-1 * ${d(16)}); padding: ${d(16)}; ${pageType('title', d)} font-size: calc(${d(PAGE_TYPE.title.size)} * var(${TITLE_SCALE_VAR}, 1));
             text-wrap: balance; text-shadow: 0 ${d(4)} ${d(30)} rgba(0, 0, 0, 0.4); overflow-wrap: anywhere;
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }`,
 
@@ -918,7 +1018,12 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         `.gg-copy-pill { cursor: pointer; pointer-events: auto; ${actionTransition} }`,
         `.gg-native-store-switcher { visibility: hidden !important; pointer-events: none !important; }`,
         `.gg-native-store-switcher > [role="combobox"] { width: 100% !important; min-width: 0 !important; height: 100% !important; }`,
-        `.gg-pill.gg-store-selectable { padding: 0; border: 0; background: transparent; backdrop-filter: none; }`,
+        // The holder of the store pill's face and the family pill: unglazed, and part of Steam's 3D scene (as .gg-hero), so the
+        // glass in it sees the art. A blurred or flat holder showed the family pill's art sharp (probed on the Ally).
+        `.gg-pill.gg-store-selectable { padding: 0; border: 0; background: transparent; backdrop-filter: none; transform-style: preserve-3d; }`,
+        `.gg-store-face { display: inline-flex; align-items: center; border: 1px solid; color: #fff; ${sourcePillLook(d)} }`,
+        // The store pill turned off (settings.storePill): the family pill alone, ending where the store pill would.
+        `.gg-pill-bare .gg-family { right: 0; }`,
         `.gg-store-choice { display: inline-flex; align-items: center; border: 1px solid; cursor: pointer; pointer-events: auto; color: #fff; ${sourcePillLook(d)} ${actionTransition} }`,
         `${NOT_MOUSE} .gg-store-choice:is(.gpfocus, .gg-store-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionFocused} }`,
         `${HOVER} .gg-store-choice:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
@@ -928,13 +1033,28 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
         `.gg-family { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
             margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
         `.gg-family-icon { flex: 0 0 auto; ${sourcePillIcon(d)} }`,
+        // How many people play now (spec 2026-11-12-player-count-pill): the family pill's look, left of the family pill
+        // (styles/playersFit writes --gg-family-w), or right-aligned above the pills when the row would reach past the
+        // right-hand stat card (data-players="above").
+        `.gg-players { position: absolute; right: calc(100% + ${d(10)}); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center;
+            margin: 0; border: 1px solid; color: #fff; line-height: 1; white-space: nowrap; ${sourcePillLook(d)} }`,
+        `.gg-pill:has(> .gg-family) > .gg-players { right: calc(100% + var(--gg-family-w, 0px) + ${d(20)}); }`,
+        `.gg-pill-bare > .gg-players { right: 0; }`,
+        `.gg-pill-bare:has(> .gg-family) > .gg-players { right: calc(var(--gg-family-w, 0px) + ${d(10)}); }`,
+        `.gg-pill[data-players="above"] > .gg-players { right: 0; top: auto; bottom: calc(100% + ${d(10)}); transform: none; }`,
+        `.gg-players-dot { flex: 0 0 auto; width: 0.55em; height: 0.55em; margin-right: 0.55em; border-radius: 50%; background: #5fd38d; box-shadow: 0 0 0.5em #5fd38d; }`,
+        `.gg-players-choice { cursor: pointer; pointer-events: auto; ${actionTransition} }`,
+        `${NOT_MOUSE} .gg-players-choice:is(.gpfocus, .gg-players-focus, :focus) { background: rgba(12, 16, 22, 0.4) !important; color: #fff !important; ${actionRing} }`,
+        `${HOVER} .gg-players-choice:hover { box-shadow: ${hoverRing(d(2))} !important; }`,
+        // PlayCount's own badge while ours stands in for it: kept in the page (its button opens PlayCount's chart).
+        `.gg-native-playcount { visibility: hidden !important; pointer-events: none !important; }`,
     ];
 
     if (layout) {
         rules.push(
             // Steam's header crops the hero at 50% 50%, Home at 50% 30%: the same image then sits the same on both screens,
             // so the open transition's hand-over shows no jump (identical for standard heroes; taller custom art differs).
-            ...(heroFit === 'fit'
+            ...(overFill(heroFit)
                 ? [
                       // Fit (home/heroFit): the whole art at the top centre, fading (--gg-hero-mask) into the art fill under it, a
                       // blurred copy of the same image (--gg-hero-fill; both set by GameHero), as Home draws it. This replaces the
@@ -948,8 +1068,12 @@ function restyleRules({ header, details, root, play, shared }: ThemeClasses, lay
                       // Steam draws its low-resolution blur as an image or a canvas (including custom heroes). Keep both only as loading fallbacks.
                       rule(topCapsule && `${topCapsule} img[src*="_blur"]`, ` visibility: var(--gg-hero-placeholder, visible) !important; `),
                       rule(topCapsule && `${topCapsule} canvas`, ` visibility: var(--gg-hero-placeholder, visible) !important; `),
-                      // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
-                      rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` object-fit: contain !important; object-position: center top !important;
+                      heroFit === 'expanded'
+                          ? // Expanded: the art covers the top of the header, centred, fading into the fill at its box's bottom (Home's .gh-hero-expanded).
+                            rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` height: ${EXPANDED_HEIGHT * 100}% !important; object-fit: cover !important; object-position: center !important;
+                          -webkit-mask-image: ${EXPANDED_MASK} !important; mask-image: ${EXPANDED_MASK} !important; `)
+                          : // Until GameHero has set the art's own fade, the standard hero's (wide art: its height is 100vw / 3.1).
+                            rule(topCapsule && `${topCapsule} img:not([src*="_blur"])`, ` object-fit: contain !important; object-position: center top !important;
                           -webkit-mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; mask-image: var(--gg-hero-mask, ${STANDARD_FIT_MASK}) !important; `),
                   ]
                 : [rule(topCapsule && `${topCapsule} img`, ` object-position: 50% 30% !important; `)]),
@@ -991,9 +1115,10 @@ function shadeNoneRules({ root, play }: ThemeClasses): string[] {
     const glass = ` background: ${S.glass} !important; border-color: ${ring(Number(S.edge))} !important; color: #fff !important; `;
     const pill = playButton && `${playButton} > div:has(> [role="button"])`;
     return [
-        rule(menuButton, glass),
-        rule(cloud, glass),
-        ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass}}`),
+        rule(menuButton, `${glass} border-color: ${CONTROL_EDGE} !important;`),
+        rule(cloud, `${glass} border-color: ${CONTROL_EDGE} !important;`),
+        ...['.gg-pill:not(.gg-store-selectable)', '.gg-family', '.gg-store-choice', '.gg-store-face', '.gg-players'].map((sel) => `${sel} {${glass}}`),
+        ...['.gg-card', '.gg-clean-info'].map((sel) => `${sel} {${glass} border-color: ${CONTROL_EDGE} !important; }`),
         `.gg-label { text-shadow: ${S.labelShadow(d)} !important; }`,
         `.gg-value { text-shadow: ${S.labelShadow(d)} !important; }`,
         // A colour only: the download fill is the pill's background image (buildDownloadCss). The page pill has no border,
@@ -1016,7 +1141,7 @@ const ARRIVE_RISE_PX = 14;
  */
 export function buildArrivingCss(
     classes: ThemeClasses, look: 'spotlight' | 'clean', mode: 'parts' | 'all', revealed = false,
-    extra: { cloud?: boolean; bars?: string[]; desc?: boolean; hltb?: boolean; family?: boolean; missing?: string[]; size?: boolean; uninstall?: boolean } = {},
+    extra: { cloud?: boolean; bars?: string[]; desc?: boolean; hltb?: boolean; family?: boolean; players?: boolean; missing?: string[]; size?: boolean; uninstall?: boolean } = {},
 ): string {
     const { header, details, root, play } = classes;
     if (!(cls(header, 'TopCapsule') && cls(details, 'InnerContainer') && cls(details, 'AppDetailsOverviewPanel') && cls(root, 'AppDetailsContainer'))) return '';
@@ -1032,11 +1157,12 @@ export function buildArrivingCss(
     // there at once under the copy (arriving after the copy had faded, it flickered).
     const buttons = cls(root, 'AppButtons');
     const uninstall = buttons && !extra.uninstall ? [`${UNIFIDECK_PAGE} ${buttons}:has(> :nth-child(4)) > :nth-child(n+4)`] : [];
-    const shared = [...(extra.size ? [] : ['[data-stat="size"]']), ...uninstall, ...missing, ...(extra.family ? [] : ['.gg-family']), ...(cloud ? [cloud] : []), ':has(> .DialogDropDown_CurrentDisplay)'];
+    const shared = [...(extra.size ? [] : ['[data-stat="size"]']), ...uninstall, ...missing, ...(extra.family ? [] : ['.gg-family']), ...(extra.players ? [] : ['.gg-players']), ...(cloud ? [cloud] : []), ':has(> .DialogDropDown_CurrentDisplay)'];
     // Spotlight: the description and the HowLongToBeat card's rest, unless Home drew them as it opened (`extra.desc`,
-    // `extra.hltb`: home/OpenExtras), when the page's are there at once under Home's copy.
+    // `extra.hltb`: home/OpenExtras), when the page's are there at once under Home's copy. Another featured card's caption
+    // and empty line are there at once: Home's normal copy draws that whole card.
     const desc = extra.desc ? [] : ['.gg-desc'];
-    const hltb = extra.hltb ? [] : ['.gg-hltb > .gg-label', '.gg-hltb [data-stat="hltb"] > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-caption', '.gg-hltb .gg-bar', '.gg-muted'];
+    const hltb = extra.hltb ? [] : ['.gg-hltb > .gg-label', '.gg-hltb [data-stat="hltb"] > .gg-label', '.gg-hltb [data-stat="mainExtras"]', '.gg-hltb [data-stat="completionist"]', '.gg-hltb .gg-caption', '.gg-hltb .gg-bar', '.gg-hltb .gg-muted'];
     const parts = look === 'spotlight'
         ? [...desc, ...hltb, ...shared]
         : [...shared, cleanBarsArriving(extra.bars)];
@@ -1118,6 +1244,26 @@ const DOWNLOAD_FILL = DOWNLOAD_FILL_COLOR;
  * the fill is ours. Nothing without a usable percent, or without the pill's class.
  * Separate from buildThemeCss, whose output (and its baseline test) is untouched. Pure.
  */
+/**
+ * Space required at the restyled Install pill's right end (`size`: formatted, e.g. "2.3 GB"; null: none), faded like a
+ * price tag, where a playable game's "Play from" arrow would be (an Install pill never has one). A style, not an element:
+ * Steam's button is Steam's to redraw. The page passes a size only while the game is not installed and not downloading.
+ */
+export function buildInstallSizeCss({ root }: ThemeClasses, size: string | null): string {
+    const text = size?.replace(/["\\\n]/g, '').trim();
+    if (!text) return '';
+    const playButton = cls(root, 'ActionButtonAndStatusPanel');
+    if (!playButton) return '';
+    const button = `${playButton} [role="button"]:first-child`;
+    return [
+        rule(button, ` position: relative !important; `),
+        // On the label's ::after, placed against the button (the label is not positioned): the button's own ::after is
+        // Steam's (a hidden animation whose rule outranks ours; seen on the Deck).
+        rule(`${button} > div::after`, ` content: "${text}"; position: absolute; right: ${d(PAGE_LAYOUT.pill.padX)}; top: 50%; transform: translateY(-50%);
+            font-size: ${d(PAGE_LAYOUT.pill.sizeFont)}; font-weight: 500; color: #ffffff; opacity: 0.72; white-space: nowrap; pointer-events: none; `),
+    ].join('\n');
+}
+
 export function buildDownloadCss({ root }: ThemeClasses, percent: number | null): string {
     if (percent === null || !Number.isFinite(percent)) return '';
     const playButton = cls(root, 'ActionButtonAndStatusPanel');

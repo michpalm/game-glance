@@ -15,6 +15,7 @@ function deps(over: Partial<PrefetchGameDeps> = {}): PrefetchGameDeps {
         steamDescription: vi.fn(async () => 'Steam text'),
         shortcutDescription: vi.fn(async () => 'Shortcut text'),
         shortcutCached: vi.fn(async () => false),
+        proton: null,
         ...over,
     };
 }
@@ -51,5 +52,30 @@ describe('prefetchGameData', () => {
     it('still reports the times when the description fails', async () => {
         const d = deps({ steamDescription: vi.fn(async () => { throw new Error('store down'); }) });
         expect(await prefetchGameData(NORCO, 'english', d)).toEqual({ status: 'found', fetched: true });
+    });
+});
+
+describe('prefetchGameData: ProtonDB', () => {
+    it("caches a Steam game's rating when ProtonDB is in a slot, and counts going online", async () => {
+        const proton = vi.fn(async () => ({ fetched: true }));
+        const d = deps({ proton, hltb: vi.fn(async () => ({ status: 'found' as const, fetched: false })) });
+        await d.cache.put('desc:2032010:english', { text: 'x' }, 1e9);
+        expect(await prefetchGameData(NORCO, 'english', d)).toEqual({ status: 'found', fetched: true });
+        expect(proton).toHaveBeenCalledWith(NORCO);
+    });
+    it('a cached rating costs nothing', async () => {
+        const d = deps({ proton: vi.fn(async () => ({ fetched: false })), hltb: vi.fn(async () => ({ status: 'found' as const, fetched: false })) });
+        await d.cache.put('desc:2032010:english', { text: 'x' }, 1e9);
+        expect(await prefetchGameData(NORCO, 'english', d)).toEqual({ status: 'found', fetched: false });
+    });
+    it('for a non-Steam game too (its Steam match is asked), never when ProtonDB is in no slot (null)', async () => {
+        const proton = vi.fn(async () => ({ fetched: true }));
+        await prefetchGameData(DIABLO, 'english', deps({ proton }));
+        expect(proton).toHaveBeenCalledWith(DIABLO);
+        expect((await prefetchGameData(NORCO, 'english', deps({ proton: null }))).status).toBe('found');
+    });
+    it('a ProtonDB failure does not fail the game', async () => {
+        const d = deps({ proton: vi.fn(async () => { throw new Error('down'); }) });
+        expect((await prefetchGameData(NORCO, 'english', d)).status).toBe('found');
     });
 });

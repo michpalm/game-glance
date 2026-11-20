@@ -1,5 +1,5 @@
 import { parseHTML } from 'linkedom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { captureChatAnchor, restoreChatAnchor } from '../../src/menu/socialScroll';
 
 it('preserves the visible message when a bounded history window changes without changing total height', () => {
@@ -75,5 +75,73 @@ describe('Notifications page scrolling', () => {
         p.panel.scrollTop = 100; row.getBoundingClientRect = () => ({ top: 400, bottom: 496, height: 96 } as DOMRect);
         p.focus('b'); p.tick(); p.tick(); expect(p.panel.scrollTop).toBe(126);
         p.panel.scrollTop = 100; p.focus('mark'); stop(); p.tick(); p.tick(); expect(p.panel.scrollTop).toBe(100);
+    });
+});
+
+afterEach(() => vi.useRealTimers());
+/** A settings panel; `settle()` lets the scroll go still (QUIET_MS) so the correction runs; `scrollTo` glides (smooth). */
+function panelOf(html: string) {
+    vi.useFakeTimers();
+    const { document, window } = parseHTML(html);
+    const panel = document.querySelector('.gg-menu-panel') as unknown as HTMLElement;
+    Object.defineProperties(panel, { clientHeight: { value: 200 }, scrollHeight: { value: 600 } });
+    panel.getBoundingClientRect = () => ({ top: 100, bottom: 500, height: 400 } as DOMRect);
+    const glides: ScrollToOptions[] = [];
+    panel.scrollTo = ((options: ScrollToOptions) => { glides.push(options); panel.scrollTop = options.top ?? panel.scrollTop; }) as typeof panel.scrollTo;
+    const settle = () => vi.advanceTimersByTime(200);
+    const focus = (id: string) => document.getElementById(id)!.dispatchEvent(new window.Event('focusin', { bubbles: true }) as unknown as Event);
+    const scroll = (to: number) => { panel.scrollTop = to; panel.dispatchEvent(new window.Event('scroll') as unknown as Event); };
+    return { document, panel, settle, focus, scroll, glides };
+}
+
+describe('settings page scrolling', () => {
+    const page = () => panelOf('<div class="gg-menu-panel"><div class="gg-menu-heading"><h2>Game page</h2></div><div class="gg-menu-setting"><button id="full"></button><button id="clean"></button></div><button id="mid"></button><button id="last"></button></div>');
+    it('shows the heading for any button on the first row, once Steam’s focus scroll is still', async () => {
+        const { installPageScroll } = await import('../../src/menu/socialScroll');
+        const p = page(), stop = installPageScroll(p.panel);
+        p.panel.scrollTop = 44; p.focus('full'); expect(p.panel.scrollTop).toBe(44); p.settle(); expect(p.panel.scrollTop).toBe(0);
+        p.panel.scrollTop = 44; p.focus('clean'); p.settle(); expect(p.panel.scrollTop).toBe(0);
+        stop();
+    });
+    it('shows the notes under the last row, and keeps middle rows clear of the edges', async () => {
+        const { installPageScroll } = await import('../../src/menu/socialScroll');
+        const p = page(), stop = installPageScroll(p.panel);
+        p.panel.scrollTop = 44; p.focus('last'); p.settle(); expect(p.panel.scrollTop).toBe(400);
+        const mid = p.document.getElementById('mid') as unknown as HTMLElement;
+        mid.getBoundingClientRect = () => ({ top: 400, bottom: 496, height: 96 } as DOMRect);
+        p.panel.scrollTop = 100; p.focus('mid'); p.settle(); expect(p.panel.scrollTop).toBe(126);
+        p.panel.scrollTop = 100; p.focus('full'); stop(); p.settle(); expect(p.panel.scrollTop).toBe(100);
+    });
+});
+
+describe('Quick settings scrolling (Steam Focusables, not buttons)', () => {
+    const page = () => panelOf(`<div class="gg-menu-panel"><div class="gg-menu-heading"><h2>Quick settings</h2></div>
+        <div class="gg-menu-quick-sliders Focusable"><div class="gg-menu-setting"><div class="Focusable" id="brightness"></div></div>
+        <div class="gg-menu-setting"><div class="Focusable" id="volume"></div></div><div class="gg-menu-device"><div class="Focusable" id="output"></div></div></div>
+        <div class="gg-menu-switches Focusable"><div class="gg-menu-setting"><div class="Focusable" id="wifi"></div></div><div class="gg-menu-setting"><div class="Focusable" id="dnd"></div></div></div></div>`);
+    it("waits for Steam's own focus scroll to go still, then glides once (smoothly) to the bottom; later scrolling is left alone", async () => {
+        const { installPageScroll, QUICK_FOCUSABLES } = await import('../../src/menu/socialScroll');
+        const p = page(); let clock = 1000;
+        const stop = installPageScroll(p.panel, QUICK_FOCUSABLES, { now: () => clock });
+        p.panel.scrollTop = 0; p.focus('dnd');
+        clock += 100; vi.advanceTimersByTime(30); p.scroll(0.4);
+        clock += 90; vi.advanceTimersByTime(30); p.scroll(0.9);
+        expect(p.glides).toHaveLength(0); // never during Steam's animation: that fight was the choppiness
+        p.settle();
+        expect(p.panel.scrollTop).toBe(400);
+        expect(p.glides).toEqual([{ top: 400, behavior: 'smooth' }]);
+        p.scroll(250); p.settle(); // our own glide's scroll events: no second correction
+        expect(p.glides).toHaveLength(1);
+        clock += 2000; p.scroll(120); p.settle(); expect(p.panel.scrollTop).toBe(120);
+        stop();
+    });
+    it('Brightness (the first row) shows the heading; the device row keeps clear of the edges', async () => {
+        const { installPageScroll, QUICK_FOCUSABLES } = await import('../../src/menu/socialScroll');
+        const p = page(), stop = installPageScroll(p.panel, QUICK_FOCUSABLES);
+        p.panel.scrollTop = 120; p.focus('brightness'); p.settle(); expect(p.panel.scrollTop).toBe(0);
+        const output = p.document.getElementById('output') as unknown as HTMLElement;
+        output.getBoundingClientRect = () => ({ top: 400, bottom: 496, height: 96 } as DOMRect);
+        p.panel.scrollTop = 100; p.focus('output'); p.settle(); expect(p.panel.scrollTop).toBe(126);
+        stop();
     });
 });

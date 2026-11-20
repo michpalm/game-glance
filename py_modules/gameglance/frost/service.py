@@ -2,7 +2,11 @@
 import asyncio
 import json
 import os
-import pwd
+try:
+    import pwd
+except ImportError:
+    # Windows (Playhub): Frost needs Gamescope, so it reports itself unavailable; the rest of the backend runs.
+    pwd = None
 import re
 import stat
 from pathlib import Path
@@ -78,6 +82,8 @@ class FrostService:
                     await asyncio.wait_for(self.process.wait(), 1.5)
                 else:
                     return
+            if pwd is None or not hasattr(os, "geteuid"):
+                raise OSError("frost is Linux-only")
             env = await asyncio.to_thread(discover_session, self.home)
             account = pwd.getpwuid(Path(self.home).stat().st_uid)
             if os.geteuid() not in (0, account.pw_uid):
@@ -146,7 +152,10 @@ class FrostService:
 
     async def environment(self):
         result = await self._call("environment", {})
-        return result if isinstance(result, dict) and set(result) == {"hdr", "maxScale"} else None
+        if not isinstance(result, dict) or set(result) - {"steamShown"} != {"hdr", "maxScale"}:
+            return None
+        # steamShown is left out when Gamescope's focus can't be read; when present it must be a boolean.
+        return result if "steamShown" not in result or type(result["steamShown"]) is bool else None
 
     async def present(self,request_id,frame):
         return await self._call("present",{"request_id":request_id,"frame":frame})

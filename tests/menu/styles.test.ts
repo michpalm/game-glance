@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { menuStyles } from '../../src/menu/styles';
 import { socialStyles } from '../../src/menu/socialStyles';
+import { achievementsStyles } from '../../src/menu/achievementsStyles';
 import { focusRing, labelText, TOKENS, tokenCss } from '../../src/styles/tokens';
 const rule=(selector:string)=>menuStyles.split('\n').find(line=>line.startsWith(selector+'{'))??'';
 describe('menu glass and reveal motion',()=>{
@@ -51,7 +52,7 @@ describe('menu glass and reveal motion',()=>{
         expect(rule('.gg-menu')).toMatch(/transition:[^;}]*opacity var\(--gg-fast\) linear/);
         expect(rule('.gg-menu-status-host')).toContain('transition:opacity var(--gg-fast) linear');
     });
-    const all = [...menuStyles.split('\n'), ...socialStyles.split('\n')];
+    const all = [...menuStyles.split('\n'), ...socialStyles.split('\n'), ...achievementsStyles.split('\n')];
     it('draws options in the bar and tracks as full-height slices in a card track', () => {
         expect(rule('.gg-menu-tabs')).toMatch(/padding:0[;}]/);
         expect(rule('.gg-menu-tabs')).toMatch(/gap:0[;}]/);
@@ -68,7 +69,7 @@ describe('menu glass and reveal motion',()=>{
     });
     it('uses pills only where the round shape is the control', () => {
         const pills = all.filter(line => line.includes('--gg-r-pill'));
-        for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-social-avatar|gh-status-pill/);
+        for (const line of pills) expect(line, line.slice(0, 90)).toMatch(/SliderTrack|SliderHandle|role=checkbox|gg-ingame-bar|gg-ingame-progress|gg-ingame-set|gg-ach-bar|gg-ach-progress|gg-social-avatar|gh-status-pill/);
     });
     it('marks every selected item with a shade and edge, never an accent fill', () => {
         const selected = all.flatMap(line => line.match(/[^{}]*\[aria-pressed=true\][^{}]*\{[^}]*\}/g) ?? [])
@@ -216,8 +217,111 @@ describe('Notifications page states', () => {
     });
 });
 
-it('draws Social’s friends/chat dividers in the active edge, clear over bright art', () => {
+it('draws Social’s friends and chat dividers with the shared menu edge', () => {
     const line = (selector: string) => socialStyles.split('\n').find(l => l.startsWith(selector + '{')) ?? '';
-    expect(line('.gg-social-friends')).toContain('border-right:1px solid var(--gg-edge-active)');
-    expect(line('.gg-social-chat-heading')).toContain('border-bottom:1px solid var(--gg-edge-active)');
+    expect(line('.gg-social-friends')).toContain('border-right:1px solid var(--gg-menu-detail-edge)');
+    expect(line('.gg-social-chat-heading')).toContain('border-bottom:1px solid var(--gg-menu-detail-edge)');
+});
+
+describe('Quick settings step rows', () => {
+    it('draws the Wi-Fi row as a tile the height of the toggles, label first and a chevron last', () => {
+        const step = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-setting-step.DialogButton');
+        expect(step).toContain('display:flex');
+        expect(step).toContain('justify-content:space-between');
+        expect(step).toContain('min-height:56px');
+        expect(step).toContain('background:transparent');
+        expect(rule('.gg-menu .gg-menu-setting-step-text')).toContain('flex-direction:column');
+        expect(rule('.gg-menu .gg-menu-setting-step-state')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('the Wi-Fi page', () => {
+    it('draws networks as full-width rows with lit signal bars, and dims the ones Steam must set up', () => {
+        const row = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-network.DialogButton');
+        expect(row).toContain('width:100%');
+        expect(row).toContain('justify-content:flex-start');
+        expect(row).toContain('background:transparent');
+        expect(rule('.gg-menu .gg-menu-wifi-bars>span[data-lit]')).toContain('background:var(--gg-text)');
+        expect(rule('.gg-menu .gg-menu-row-dim')).toContain('opacity:');
+        expect(rule('.gg-menu .gg-menu-wifi-heading')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('the Wi-Fi password view', () => {
+    it('draws the field as a glass line with Show beside it', () => {
+        expect(rule('.gg-menu .gg-menu-wifi-password-row')).toContain('display:flex');
+        const field = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-password-field.DialogButton');
+        expect(field).toContain('flex:1');
+        expect(field).toContain('justify-content:flex-start');
+        expect(rule('.gg-menu .gg-menu-wifi-password-placeholder')).toContain('color:var(--gg-text-dim)');
+    });
+});
+
+describe('a network\'s page', () => {
+    it('shows its facts in three tiles and its actions as rows, not pills', () => {
+        expect(rule('.gg-menu .gg-menu-wifi-facts')).toContain('grid-template-columns:repeat(3,minmax(0,1fr))');
+        expect(rule('.gg-menu .gg-menu-wifi-chevron')).toContain('color:var(--gg-text-dim)');
+        const step = rule('.gg-menu-native-host .gg-menu button.gg-menu-action.gg-menu-wifi-step.DialogButton');
+        expect(step).toContain('width:100%');
+        expect(step).toContain('border:0');
+        expect(step).toContain('background:transparent');
+        expect(step).toContain('justify-content:flex-start');
+    });
+});
+
+it('keeps the toggle and slider knobs white whatever the accent (text on a light accent turns dark, knobs do not)', async () => {
+    const { menuStyles } = await import('../../src/menu/styles');
+    for (const sel of ['.SliderHandle{', '[role=checkbox]>:last-child{']) {
+        const rule = menuStyles.slice(menuStyles.indexOf(sel)).split('}')[0];
+        expect(rule, sel).toContain('background:#fff');
+        expect(rule, sel).not.toContain('--gg-on-accent');
+    }
+});
+
+it('leaves the picker\'s pill, list and options their own glass inside a setting row, and opens the colour list in place', async () => {
+    const { menuStyles } = await import('../../src/menu/styles');
+    const reset = menuStyles.split('\n').find(line => line.startsWith('.gg-menu .gg-menu-setting .Panel:not('))!;
+    for (const kept of ['.gg-menu-picker', '.gg-menu-picker-list', '.gg-menu-picker-option']) expect(reset).toContain(`:not(${kept})`);
+    expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker-list\{[^}]*position:static/);
+    expect(menuStyles).toMatch(/\.gg-menu-setting-color \.gg-menu-picker\{[^}]*width:100%/);
+});
+
+it('the Achievements page fills the panel and scrolls each column on its own', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-page\{height:100%/);
+    expect(achievementsStyles).toMatch(/\.gg-ach\{flex:1;min-height:0/);
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)\{overflow-y:auto/);
+});
+
+it('keeps every row of the Achievements columns at its own height (a fixed-height column would squash them)', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)>\*\{flex:none\}/);
+});
+
+it('the Achievements sort list opens over the list, under its pill and right-aligned with it; the page never moves and the list dims behind it', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).not.toMatch(/\.gg-ach-list-head \.gg-menu-picker-list\{position:static/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-list-head \.gg-menu-picker-list\{[^}]*left:auto;right:0/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-right:has\(\.gg-menu-picker-list\) \.gg-ach-list\{[^}]*opacity:\.35/);
+});
+
+it('the Achievements list keeps a gap under its header and fades only the edges with more to scroll', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-list\{[^}]*margin-top:0/);
+    expect(achievementsStyles).toMatch(/\[data-more-above\][^{]*\{[^}]*mask-image/);
+    expect(achievementsStyles).toMatch(/\[data-more-below\][^{]*\{[^}]*mask-image/);
+});
+
+it('the Achievements headers share one row height and sit on the cards\' left edge, like the crumb', async () => {
+    const { achievementsStyles } = await import('../../src/menu/achievementsStyles');
+    expect(achievementsStyles).toMatch(/\.gg-ach-head\{[^}]*min-height:36px/);
+    expect(achievementsStyles).toMatch(/\.gg-ach-head h3\{[^}]*margin:0[;}]/);
+    expect(achievementsStyles).toMatch(/:is\(\.gg-ach-sets,\.gg-ach-list\)\{[^}]*margin:0 -6px -6px/);
+});
+it('the Resume art has no focus ring: the play button and a brighter art show it (Michael, 2026-11-19: the square looked ugly)', () => {
+    expect(menuStyles).not.toContain('.gg-ingame-hero.DialogButton:is(.gpfocus,:focus-visible)::before{opacity:1}');
+    expect(menuStyles).not.toMatch(/gg-ingame-hero\.DialogButton[^{]*::before\{[^}]*border:3px solid #fff/);
+    expect(rule('.gg-menu .gg-ingame-art')).toContain('filter:brightness(.82)');
+    expect(menuStyles).toMatch(/gg-ingame-hero\.DialogButton:is\(\.gpfocus,:focus-visible\) \.gg-ingame-art\{filter:brightness\(1\)\}/);
+    expect(menuStyles).toMatch(/gg-ingame-hero\.DialogButton:is\(\.gpfocus,:focus-visible\) \.gg-ingame-play\{background:#fff/);
 });

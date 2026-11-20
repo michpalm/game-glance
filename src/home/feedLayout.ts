@@ -25,6 +25,10 @@ export function feedViewportInset(side: number, tv = false): number {
 export const FEED_CARD_H = 260;
 
 const WIDTH: Record<FeedTab, number> = { news: 320, friends: 230, recommended: Math.round(FEED_CARD_H * 0.72) };
+/** A friend in game: a double card, two friend cards and the gap between them (design A3, 2026-11-19). */
+export const FRIEND_WIDE_W = 2 * WIDTH.friends + FEED_GAP;
+/** A friend card's art band: Steam's header art (460 x 215) at the card's width, so it is never cut (Michael, 2026-11-19). */
+export const FRIEND_BAND_H = Math.round((WIDTH.friends * 215) / 460);
 /**
  * Steam's event capsule art, the featured news card's image: 800 x 450 (16:9). The featured card is exactly as wide as
  * that image at the card's height, so the image fills it whole (any other shape still fits, over its blurred copy).
@@ -166,6 +170,9 @@ export type FeedOpen =
     | { kind: 'news'; appId: number; gid: string };
 
 /** One card as the feed draws it. */
+/** One line under a friend's name; empty lines are never made. */
+export type FriendLine = { text: string; tone: 'status-online' | 'status-away' | 'status-offline' | 'detail' | 'meta' | 'achievement' };
+
 export interface FeedItem {
     key: string;
     /** 0: the first row; 1: the second (small, wide cards). */
@@ -201,6 +208,75 @@ export interface FeedItem {
     /** Small avatars of friends who play the game (trending cards), and how many more ("+N"). */
     friends?: Array<{ url: string | null; initial: string }>;
     moreFriends?: number;
+    /** A Personal Calendar day column (Recommended row 1): its heading and games, drawn by DayColumn instead of a card. */
+    day?: CalendarDayItem;
+    /** The item a row starts on (the calendar's today); missing = the row starts at its first item. */
+    start?: true;
+    /**
+     * A friend card's layout (design A3): `wide` for a friend in game (hero art, text from the top left), `band` for
+     * the others (wide game art across the top, text under it); `grey` offline; `lines` under the name, at most 4.
+     */
+    friendCard?: { layout: 'wide' | 'band'; grey: boolean; lines: FriendLine[] };
+    /** Played over the art while the card has focus (a calendar game's microtrailer); missing = none. */
+    motion?: CardMotionSource;
+}
+
+/** A calendar day column as the feed draws it: a heading, then its games stacked, each `cardW` x `cardH`. */
+export interface CalendarDayItem {
+    weekday: string;
+    date: string;
+    today: boolean;
+    cardW: number;
+    cardH: number;
+    games: Array<{ appId: number; name: string; art: string[]; opens: FeedOpen; motion: CardMotionSource }>;
+}
+
+/** What a focused card plays over its art (home/CardMotion): the microtrailer, or the screenshots it cycles instead. */
+export interface CardMotionSource {
+    clip: string | null;
+    shots: string[];
+}
+
+/** One calendar day for the feed (home/calendar's day, labelled, with each game's name and header art when known). */
+export interface CalendarColumn {
+    key: string;
+    weekday: string;
+    date: string;
+    today: boolean;
+    /** The day the row starts on. */
+    start: boolean;
+    games: Array<{ appId: number; name: string; art: string | null; clip?: string | null; shots?: string[] }>;
+}
+
+/** A day column's heading line, the room around its cards, and the gap between them. */
+const CAL_HEADING = 30;
+const CAL_PAD = 8;
+const CAL_GAP = 8;
+
+/** A day column's size at row height `h`: two library-header cards (460:215) under the heading, padded. */
+export function calendarColumn(h: number): { width: number; cardW: number; cardH: number } {
+    const cardH = Math.round((h - CAL_HEADING - CAL_GAP - CAL_PAD) / 2);
+    const cardW = Math.round(cardH * FEED_WIDE_ASPECT);
+    return { width: cardW + 2 * CAL_PAD, cardW, cardH };
+}
+
+/** The index a row starts on: its `start` item, else 0. */
+export function rowStart(items: FeedItem[]): number {
+    return Math.max(0, items.findIndex((i) => i.start));
+}
+
+/**
+ * Where a row's selection goes when the row's cards change (the calendar arriving, a day dropping off the front): the
+ * selected card's new index by its key, else -1 (the row's start). Nothing chosen (`key` null) stays -1.
+ */
+export function keptSelection(key: string | null, items: FeedItem[]): number {
+    return key === null ? -1 : items.findIndex((i) => i.key === key);
+}
+
+/** A row's selected index: `at` < 0 means nothing chosen yet (the row's start); a chosen index is clamped to the row. */
+export function selectedIndex(at: number, items: FeedItem[]): number {
+    if (!(at >= 0)) return rowStart(items);
+    return Math.min(Math.floor(at), Math.max(0, items.length - 1));
 }
 
 /** A piece of a card's sub line: `struck` draws it struck through (a sale's full price, instead of the word "was"). */
@@ -219,6 +295,10 @@ export interface FeedData {
     trending?: TrendingCard[];
     friends: FriendCard[];
     recommended: RecommendedCard[];
+    /** Recommended, first row instead of Play next (the setting): Personal Calendar days; missing or empty = Play next. */
+    calendar?: CalendarColumn[];
+    /** Each friend's achievement line, worded ("Hole in One · 12 min ago"), by steamid; missing = none. */
+    friendActivity?: Record<string, string>;
     /** Friends online now (the Friends tab badge); missing = 0. */
     friendsOnline?: number;
 }
@@ -238,6 +318,12 @@ function wideArt(a: ReturnType<FeedArt>): string[] {
 
 function initial(name: string): string {
     return Array.from(name.trim())[0] ?? '?';
+}
+
+/** The fields the sheet's cards read (FeedSheet memoises on these), so one Home field is never left out (the friends' achievement lines once were). */
+export function sheetData(data: FeedData): FeedData {
+    const { news, updated, friends, trending, recommended, deals, calendar, friendActivity } = data;
+    return { news, updated, friends, trending, recommended, deals, calendar, friendActivity };
 }
 
 /** Whether a tab has a second row now: What's new with recently updated games, Friends with trending games, Recommended with wishlist sales. */
@@ -304,13 +390,21 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
         const cards: FeedItem[] = data.friends.map((c) => {
             const inGame = c.state === 'ingame' && c.appId !== null;
             const artId = inGame ? c.appId : c.lastAppId ?? null;
+            const tone: FriendLine['tone'] = c.state === 'away' ? 'status-away' : c.state === 'offline' ? 'status-offline' : 'status-online';
+            const lines: FriendLine[] = [
+                { text: c.status ?? c.sub, tone },
+                { text: c.detail ?? '', tone: 'detail' as const },
+                { text: c.meta ?? '', tone: 'meta' as const },
+                { text: data.friendActivity?.[c.steamId] ?? '', tone: 'achievement' as const },
+            ].filter((l) => l.text !== '');
             return {
                 key: `friend-${c.steamId}`,
                 row: 0,
-                width: feedCardWidth('friends', false),
+                width: inGame ? FRIEND_WIDE_W : feedCardWidth('friends', false),
                 height: rows.row1,
                 featured: false,
-                art: artId !== null && artId > 0 ? art(artId).capsule : [],
+                art: artId === null || !(artId > 0) ? [] : inGame ? art(artId).hero : wideArt(art(artId)),
+                friendCard: { layout: inGame ? 'wide' : 'band', grey: c.state === 'offline', lines },
                 backdrop: { url: c.avatarUrl, tone: friendRing(c.state) },
                 pill: inGame ? (c.joinUrl ? tr('join') : tr('inGame')) : '',
                 title: c.name,
@@ -345,7 +439,28 @@ function feedItemsRaw(tab: FeedTab, data: FeedData, art: FeedArt, space: number)
         })) : [];
         return [...cards, ...trending];
     }
-    const playNext: FeedItem[] = data.recommended.map((c) => ({
+    const calendar = data.calendar ?? [];
+    const column = calendarColumn(rows.row1);
+    const days: FeedItem[] = calendar.map((d) => ({
+        key: `cal-${d.key}`,
+        row: 0,
+        width: column.width,
+        height: rows.row1,
+        featured: false,
+        art: [],
+        pill: '',
+        title: `${d.weekday} ${d.date}`,
+        sub: '',
+        accentAppId: null,
+        opens: d.games[0] ? { kind: 'store', appId: d.games[0].appId } : null,
+        avatar: null,
+        ...(d.start ? { start: true as const } : {}),
+        day: {
+            weekday: d.weekday, date: d.date, today: d.today, cardW: column.cardW, cardH: column.cardH,
+            games: d.games.map((g) => ({ appId: g.appId, name: g.name, art: g.art ? [g.art] : [], opens: { kind: 'store' as const, appId: g.appId }, motion: { clip: g.clip ?? null, shots: g.shots ?? [] } })),
+        },
+    }));
+    const playNext: FeedItem[] = days.length > 0 ? days : data.recommended.map((c) => ({
         key: `recommended-${c.appId}`,
         row: 0,
         width: feedCardWidthAt('recommended', false, rows.row1),

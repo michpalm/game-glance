@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Box, cardBorder, ExtraColumn, Measure, pageTargets, PageLook, PageStat, StatKey } from '../../src/home/openTargets';
 import { PAGE_LAYOUT, pageDUnit, ringBoost } from '../../src/styles/themeCss';
-import { baseCanvas, defaultGrowth } from '../../src/home/scale';
+import { SIZE_FACTOR, baseCanvas, defaultGrowth } from '../../src/home/scale';
 
 interface Fixture {
     screen: { width: number; height: number };
@@ -66,14 +66,17 @@ for (const look of ['spotlight', 'clean'] as const) {
             const r = f.rects;
             // The fixtures' games had a bar (captions "7.3 h left in main story", "7.2 h left in main story").
             const extras = { columns: extraColumns(f), bar: true };
-            const t = pageTargets(look, { ...f.screen, grow: 1 }, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
+            // Recorded with the handheld's old 56 side inset (a TV's 24 is unchanged).
+            const t = pageTargets(look, { ...f.screen, grow: 1, side: size === '828x466' ? 56 : undefined }, pageStats(look, f), measureFrom(look, f), { w: r.store.w, h: r.store.h }, extras);
             nearBox(t.play, r.play, 'play');
             // The circles the page drew (three for an installed game, two before it is installed).
             const circles = Object.keys(r).filter((k) => /^circle\d$/.test(k));
             expect(circles.length).toBeGreaterThanOrEqual(2);
             for (let i = 0; i < circles.length; i++) nearBox(t.circles[i], r[`circle${i}`], `circle${i}`);
             near(t.store.x, r.store.x, 'store.x');
-            near(t.store.y, r.store.y, 'store.y');
+            // Recorded with the pill centred on the Play row (82 above the cards); it now sits on the row's bottom line (68).
+            const pillMoved = look === 'spotlight' ? (82 - PAGE_LAYOUT.storePillTop) * t.d : 0;
+            near(t.store.y, r.store.y + pillMoved, 'store.y');
             // The title block grows upward: its eyebrow sits at the bottom, the title above it.
             near(t.eyebrowBottomLeft.x, r.eyebrow.x, 'eyebrow x');
             near(t.eyebrowBottomLeft.y, r.eyebrow.y + r.eyebrow.h, 'eyebrow bottom');
@@ -204,7 +207,7 @@ describe('pageTargets at a fractional pixel ratio', () => {
     // The Ally handheld (2.32 device px per CSS px), measured on the device: Ori's page in the Spotlight look, then with a
     // 1 px ring (drawn 2 device px, 0.862 CSS px). The ring is now 1 d unit (0.575 CSS px), drawn 1 device px (0.431):
     // everything inside the cards sits 0.431 px further up and left, and each card is 0.862 px narrower and shorter.
-    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1 }; // recorded before Home's default growth
+    const screen = { width: 828.0172, height: 466.3793, dpr: 2.32, grow: 1, side: 56 }; // recorded before Home's default growth and the 28 side inset
     const d = baseCanvas(screen.width, screen.height).scale;
     // Measured: rings of 2 / 2.32 inside widths that allowed 2 px for them. Now: 1 / 2.32 inside widths allowing 2 d units.
     const was = 2 / 2.32;
@@ -259,12 +262,12 @@ describe('pageTargets at a fractional pixel ratio', () => {
 });
 
 describe('pageTargets with Home\'s default growth (#55)', () => {
-    it('sizes the page in the grown unit', () => {
+    it('sizes the page in the grown unit (with the TV size factor)', () => {
         const measure: Measure = (text) => text.length * 10;
         const played: PageStat = { key: 'played', label: 'Play Time', value: '1 h' };
         const grown = pageTargets('spotlight', { width: 1920, height: 1080 }, [played], measure, { w: 100, h: 34 });
         const base = pageTargets('spotlight', { width: 1920, height: 1080, grow: 1 }, [played], measure, { w: 100, h: 34 });
-        expect(grown.d! / base.d!).toBeCloseTo(defaultGrowth(810), 6);
+        expect(grown.d! / base.d!).toBeCloseTo(defaultGrowth(810) * SIZE_FACTOR.tv, 6);
     });
 });
 
@@ -274,5 +277,53 @@ describe('the page cards\' ring for the open transition', () => {
         const t = pageTargets('spotlight', screen, [], (text) => text.length * 10, { w: 100, h: 34 });
         expect(t.border).toBeCloseTo(cardBorder(1.28, t.d!), 10);
         expect(t.ring).toBe(ringBoost(1.28, 1500, 844));
+    });
+});
+
+describe('pageTargets follows the Game info slots (Spotlight)', () => {
+    const screen = { width: 1500, height: 844, dpr: 1.28, grow: 1 };
+    const measure: Measure = (text) => text.length * 10;
+    const store = { w: 100, h: 34 };
+    const inside = (b: Box, card: Box) => b.x >= card.x - 1 && b.y >= card.y - 1 && b.x + b.w <= card.x + card.w + 1 && b.y + b.h <= card.y + card.h + 1;
+    const stats: PageStat[] = [
+        { key: 'played', label: 'Play Time', value: '1 h' },
+        { key: 'achievements', label: 'Achievements', value: '3 / 40' },
+        { key: 'protondb', label: 'Rating', value: 'Gold' },
+    ];
+    it('a featured ProtonDB stat lands in the right-hand card, the others in the info card', () => {
+        const t = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, 'protondb');
+        expect(t.featured).toBe('protondb');
+        expect(t.shells).toHaveLength(2);
+        expect(inside(t.stats.protondb!.value, t.shells[1])).toBe(true);
+        expect(inside(t.stats.played!.value, t.shells[0])).toBe(true);
+        expect(inside(t.stats.achievements!.value, t.shells[0])).toBe(true);
+        // As HowLongToBeat's Main: the card's first column, under its title.
+        const main = pageTargets('spotlight', screen, [{ key: 'hltb', label: 'Main', value: '1 h' }], measure, store).stats.hltb!;
+        expect(t.stats.protondb!.label.x).toBeCloseTo(main.label.x, 6);
+        expect(t.stats.protondb!.label.y).toBeCloseTo(main.label.y, 6);
+    });
+    it('HowLongToBeat in a stat slot is an info card column', () => {
+        const t = pageTargets('spotlight', screen, [{ key: 'hltb', label: 'HLTB main', value: '9 h' }, ...stats.slice(0, 2)], measure, store, undefined, undefined, 'achievements');
+        expect(inside(t.stats.hltb!.value, t.shells[0])).toBe(true);
+        expect(t.stats.hltb!.label.x).toBeLessThan(t.stats.played!.label.x);
+    });
+    it('nothing featured: the info card alone, at the width it has beside a featured card', () => {
+        const t = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, null);
+        const withFeatured = pageTargets('spotlight', screen, stats, measure, store, undefined, undefined, 'hltb');
+        const d = 1500 / 1440;
+        const side = PAGE_LAYOUT.side.tv * d;
+        expect(t.featured).toBeNull();
+        expect(t.shells).toHaveLength(1);
+        expect(t.shells[0]).toEqual(withFeatured.shells[0]);
+        expect(t.shells[0].x).toBeCloseTo(side, 0);
+        for (const key of ['played', 'achievements', 'protondb'] as const) expect(inside(t.stats[key]!.value, t.shells[0]), key).toBe(true);
+    });
+    it('Clean with no stat to show: no panel to grow into', () => {
+        const t = pageTargets('clean', screen, [], measure, store);
+        expect(t.shells).toEqual([]);
+        expect(t.cards).toEqual([]);
+    });
+    it('the default is HowLongToBeat featured', () => {
+        expect(pageTargets('spotlight', screen, stats, measure, store).featured).toBe('hltb');
     });
 });

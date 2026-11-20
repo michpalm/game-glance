@@ -113,6 +113,27 @@ describe('twinSpecs', () => {
         expect(t['label-hltb']).toBeUndefined();
         expect(t['value-hltb']).toMatchObject({ accent: true, text: '30 h' });
     });
+    it('follows the featured card: the accent and the swapped label only where its first value is in the accent', () => {
+        const at = (key: 'protondb' | 'played', featured: PageTargets['featured']) => {
+            const home = homeRects();
+            home.chips = [{ ...home.chips[1] }, { ...home.chips[2], key }];
+            const p: PageTargets = { ...page(), featured, stats: { achievements: page().stats.achievements, [key]: page().stats.hltb } };
+            const words: PageStat[] = [stats[1], { key, label: key === 'played' ? 'Total' : 'Rating', value: key === 'played' ? '12 h' : 'Gold' }];
+            return byName(twinSpecs(home, p, texts, words, 'spotlight', true, s));
+        };
+        // ProtonDB: its label moves; its value is Home's own (the mark and the rating's colour), so it has no twin.
+        const proton = at('protondb', 'protondb');
+        expect(proton['label-protondb']).toMatchObject({ text: 'Rating', accent: false });
+        expect(proton['value-protondb']).toBeUndefined();
+        // Play time: as HowLongToBeat's Main (the card names it; its Total is in the accent).
+        const played = at('played', 'played');
+        expect(played['label-played']).toBeUndefined();
+        expect(played['value-played']).toMatchObject({ accent: true, text: '12 h' });
+        // HowLongToBeat in a stat slot: an info card column, with its label and no accent.
+        const t = byName(twinSpecs(homeRects(), { ...page(), featured: 'achievements' }, texts, [stats[0], stats[1], { key: 'hltb', label: 'HLTB main', value: '30 h' }], 'spotlight', true, s));
+        expect(t['label-hltb']).toBeDefined();
+        expect(t['value-hltb'].accent).toBe(false);
+    });
     it('no twin for a chip the page has no column for', () => {
         expect(Object.keys(byName(twinSpecs(homeRects(), page(), texts, stats, 'spotlight', true, s))).some((n) => n.endsWith('added'))).toBe(false);
     });

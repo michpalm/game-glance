@@ -17,12 +17,16 @@ interface Props {
     version?: number;
     /** False while Home cycles fast through games (home/fastCycle): only a logo already known is drawn, else the name; nothing is looked up. */
     resolve?: boolean;
+    /** Settings titleSize (home/titleSize.titleScale): the logo's box is scaled by it; the name's type by the CSS variable. */
+    scale?: number;
 }
 
 /** The logo cropped to its visible part and sized by area (home/logo.logoFit). */
-function logoStyle(choice: LogoChoice, unit: (n: number) => string): CSSProperties {
+export function logoStyle(choice: LogoChoice, unit: (n: number) => string, scale = 1): CSSProperties {
     const fit = logoFit(choice.trim, choice.natural);
-    const style: CSSProperties = { width: unit(fit.width), height: unit(fit.height), maxWidth: 'none', maxHeight: 'none' };
+    const k = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    const size = (n: number) => unit(Math.round(n * k * 10) / 10);
+    const style: CSSProperties = { width: size(fit.width), height: size(fit.height), maxWidth: 'none', maxHeight: 'none' };
     if (fit.viewBox) (style as Record<string, string>).objectViewBox = fit.viewBox;
     return style;
 }
@@ -33,7 +37,7 @@ function logoStyle(choice: LogoChoice, unit: (n: number) => string): CSSProperti
  * one still loading leaves the slot empty, so the name never flashes before it. The name is the fallback: no logo listed,
  * none loading, or no app id (Home's library tile). Shared by Home and the game page.
  */
-export function GameTitle({ appId, name, logo, className, logoClassName, unit, version = 0, resolve = true }: Props) {
+export function GameTitle({ appId, name, logo, className, logoClassName, unit, version = 0, resolve = true, scale = 1 }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const list = useMemo(() => (logo ? logoList(appId) : { urls: [], key: '' }), [logo, appId, version]);
     const known = logo ? knownLogo(appId, list.key) : null;
@@ -61,7 +65,7 @@ export function GameTitle({ appId, name, logo, className, logoClassName, unit, v
         <img
             key={`${appId}:${choice.url}`}
             className={logoClassName}
-            style={logoStyle(choice, unit)}
+            style={logoStyle(choice, unit, scale)}
             src={choice.src ?? choice.url}
             alt={name}
             crossOrigin="anonymous"

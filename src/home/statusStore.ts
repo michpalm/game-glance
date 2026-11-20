@@ -165,6 +165,7 @@ function stopControllerPolling() {
 
 /** Unsubscribes and forgets everything (plugin unload). */
 export function stopStatus() {
+    if (handover) { clearTimeout(handover); handover = null; }
     stopControllerPolling();
     controllers = [];
     for (const r of registrations ?? []) guard('unsubscribe', () => r?.unregister?.());
@@ -177,11 +178,21 @@ export function stopStatus() {
 
 export const statusState = (): StatusState => state;
 
+/**
+ * How long the controllers' list outlives the last status bar: one bar handing over to another (the Game Glance menu's
+ * copy closing onto Home's) unsubscribes before the next subscribes, and a stop there forgot the list for a frame (the
+ * battery blinked on every menu close, PS5 2026-11-18).
+ */
+export const STATUS_HANDOVER_MS = 1000;
+let handover: ReturnType<typeof setTimeout> | null = null;
+
 export function subscribeStatus(listener: () => void): () => void {
     listeners.add(listener);
+    if (handover) { clearTimeout(handover); handover = null; }
     if (listeners.size === 1) startControllerPolling();
     return () => {
         listeners.delete(listener);
-        if (listeners.size === 0) stopControllerPolling();
+        if (listeners.size > 0 || handover) return;
+        handover = setTimeout(() => { handover = null; if (listeners.size === 0) stopControllerPolling(); }, STATUS_HANDOVER_MS);
     };
 }

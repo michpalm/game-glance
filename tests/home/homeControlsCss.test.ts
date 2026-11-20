@@ -11,7 +11,7 @@ describe('footer keycaps', () => {
         const cap = rule(controls.homeControlsCss, '[data-gh-footer-side]>:first-child');
         expect(cap).toContain('border-radius:50%');
         expect(cap).toContain('background:rgba(255,255,255,.16)');
-        expect(cap).toContain('box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)');
+        expect(cap).toContain('box-shadow:inset 0 0 0 1px rgba(182,199,224,.40)');
         expect(cap).not.toContain('accent');
     });
     it('turns Steam’s own glyph white on the keycap, whether it is an svg or an image', () => {

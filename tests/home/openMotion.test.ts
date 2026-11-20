@@ -319,20 +319,51 @@ describe('openMotion', () => {
         expect(a.sy).toBeCloseTo(pageH / r.pill.h, 3);
     });
 
+    it("an Install pill's size: drawn at the page's font size, shrunk to Home's at the start, it ends at scale 1 at the page's inset", () => {
+        const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        const z = parse(v['--gho-play-size']);
+        // Origin: the size's right edge and centre line. Home's sits 22 inside the pill's 1 px border, the page's 24 in.
+        expect(z.tx).toBeCloseTo((pageW - r.pill.w) / s - (PAGE_LAYOUT.pill.padX * pf.x - (HOME_PILL.padX + HOME_PILL.border)), 1);
+        expect(z.ty).toBe(0);
+        // Its last frame is text laid out at the page's size, not Home's 16 px scaled up (its digits landed a device px low).
+        expect(z.sx).toBe(1);
+        const fontPx = parseFloat(v['--gho-play-size-font']);
+        expect(fontPx * s).toBeCloseTo(PAGE_LAYOUT.pill.sizeFont * pf.x * (spotlight().d ?? s), 6);
+        expect(v['--gho-play-size-from']).toBe(`scale(${Math.round((HOME_PILL.sizeFont / fontPx) * 10000) / 10000})`);
+    });
+
+    it("an Install pill that also has a \"Play from\" arrow: its size ends before the arrow's segment, on Home and on the page", () => {
+        const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
+        const z = parse(v['--gho-play-size-arrow']);
+        // Home's ends padX before its 50 wide segment; the page's padX before its 56 wide one (its first segment's end).
+        expect(z.tx).toBeCloseTo((pageW - r.pill.w) / s - ((PAGE_LAYOUT.pill.padX + PAGE_LAYOUT.playArrow.w) * pf.x - (HOME_PILL.arrow + HOME_PILL.padX)), 1);
+        expect(z.sx).toBe(1);
+    });
+
     it("opened with a mouse, it lands on the page's pill unfocused (mouse mode hides the focus look and its growth)", () => {
         const page = spotlight();
         const v = vars(openMotion(homeRects(), page, 'spotlight', s, false));
-        expect(Number(v['--gho-play-sx'])).toBeCloseTo(page.play.w / r.pill.w, 3);
-        expect(Number(v['--gho-play-sy'])).toBeCloseTo(page.play.h / r.pill.h, 3);
+        expect(parseFloat(v['--gho-play-page-w'])).toBeCloseTo(page.play.w / s, 3);
+        expect(parseFloat(v['--gho-play-page-h'])).toBeCloseTo(page.play.h / s, 3);
         const fg = parse(v['--gho-play-fg']);
         expect(fg.tx).toBeCloseTo((page.play.x - r.pill.x) / s, 1);
         const a = parse(v['--gho-play-arrow']);
         expect(a.sx).toBeCloseTo(PAGE_LAYOUT.playArrow.w / HOME_PILL.arrow, 3);
     });
+    it("keeps Home's measured border as the Play layers' inset", () => {
+        const page = { ...spotlight(), d: 1.1316, dpr: 1.28 };
+        const home = { ...homeRects(), playBorder: { left: 0.78125, top: 0.78125 } };
+        const v = vars(openMotion(home, page, 'spotlight', 1.1316));
+        expect(parseFloat(v['--gho-play-inset-x'])).toBeCloseTo(-0.78125, 4);
+        expect(parseFloat(v['--gho-play-inset-y'])).toBeCloseTo(-0.78125, 4);
+        // The ring is no longer a picture inside the scaled canvas (it landed up to 1.5 device px off the page's, Ally).
+        expect(v['--gho-play-ring-image']).toBeUndefined();
+        expect(v['--gho-play-ring-pad']).toBeUndefined();
+    });
     it("the page's focused pill's exact box (round ends, unlike the stretched layer), relative to Home's pill", () => {
         const v = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
-        expect(Number(v['--gho-play-sx'])).toBeCloseTo(pageW / r.pill.w, 3);
-        expect(Number(v['--gho-play-sy'])).toBeCloseTo(pageH / r.pill.h, 3);
+        expect(parseFloat(v['--gho-play-page-w'])).toBeCloseTo(pageW / s, 3);
+        expect(parseFloat(v['--gho-play-page-h'])).toBeCloseTo(pageH / s, 3);
         expect(parseFloat(v['--gho-play-dy'])).toBeCloseTo((r.pill.h - pageH) / 2 / s, 1);
         expect(v['--gho-play-dy']).toMatch(/px$/);
     });
@@ -417,5 +448,130 @@ describe('the cards\' crisp ring crossfades in over the morph (soft canvas ring 
         const none = vars(openMotion(homeRects(), spotlight(), 'spotlight', s));
         expect(none['--gho-ring-w']).toBe('1px');
         expect(none['--gho-ring-boost']).toBe('1');
+    });
+});
+
+describe("the page's own rings at the hand-over: Play's focus ring and the circles' edges, outside the scaled canvas", () => {
+    const dpr = 1.28;
+    const page = { ...spotlight(), d: 1.1316, dpr, border: 0.78125 };
+    const home = { ...homeRects(), root: box(10, 20, 1500, 844) };
+    const v = vars(openMotion(home, page, 'spotlight', s));
+    const snap = (n: number) => Math.round(n * dpr) / dpr;
+    const pf = pillFocusScale(PAGE_LAYOUT.playW, PAGE_LAYOUT.icon);
+    const to = { x: 25 - (354.2 * (pf.x - 1)) / 2, y: 493.1 - (62.5 * (pf.y - 1)) / 2, w: 354.2 * pf.x, h: 62.5 * pf.y };
+
+    it("puts Play's ring on the page pill's box, on whole device px, in the root's px", () => {
+        expect(Number(v['--gho-pring-x'])).toBeCloseTo(snap(to.x) - 10, 4);
+        expect(Number(v['--gho-pring-y'])).toBeCloseTo(snap(to.y) - 20, 4);
+        expect(Number(v['--gho-pring-w'])).toBeCloseTo(snap(to.x + to.w) - snap(to.x), 4);
+        expect(Number(v['--gho-pring-h'])).toBeCloseTo(snap(to.y + to.h) - snap(to.y), 4);
+        expect((Number(v['--gho-pring-x']) + 10) * dpr).toBeCloseTo(Math.round(to.x * dpr), 3);
+        expect(v['--gho-pring-on']).toBe('1');
+    });
+    it("gives it the page pill's corner, in the page's unit", () => {
+        expect(parseFloat(v['--gho-pring-r'])).toBeCloseTo((22 / 60) * PAGE_LAYOUT.icon * 1.1316 * pf.y, 2);
+    });
+    it("starts it on Home's pill, so it grows with the pill", () => {
+        const from = parse(v['--gho-pring-from']);
+        expect(from.tx).toBeCloseTo(r.pill.x - snap(to.x), 2);
+        expect(from.ty).toBeCloseTo(r.pill.y - snap(to.y), 2);
+        expect(from.sx).toBeCloseTo(r.pill.w / Number(v['--gho-pring-w']), 3);
+        expect(from.sy).toBeCloseTo(r.pill.h / Number(v['--gho-pring-h']), 3);
+    });
+    it('draws no Play ring when opened with a mouse (the page shows none)', () => {
+        const mouse = vars(openMotion(home, page, 'spotlight', s, false));
+        expect(mouse['--gho-pring-on']).toBeUndefined();
+        expect(mouse['--gho-cring-0-o']).toBe('1');
+    });
+    it('puts a ring on each page circle a Home circle moves to (the info circle has none), on whole device px', () => {
+        const slots: Array<[number, Box, Box]> = [[0, page.circles[0], r.circle0], [1, page.circles[1], r.circle1], [2, page.circles[2], r.circle3]];
+        for (const [slot, target, source] of slots) {
+            const w = snap(target.x + target.w) - snap(target.x);
+            expect(Number(v[`--gho-cring-${slot}-x`])).toBeCloseTo(snap(target.x) - 10, 4);
+            expect(Number(v[`--gho-cring-${slot}-y`])).toBeCloseTo(snap(target.y) - 20, 4);
+            expect(Number(v[`--gho-cring-${slot}-w`])).toBeCloseTo(w, 4);
+            // Its own height: a circle's box is not always square in device px (86 x 87 on the Ally).
+            expect(Number(v[`--gho-cring-${slot}-h`])).toBeCloseTo(snap(target.y + target.h) - snap(target.y), 4);
+            expect(v[`--gho-cring-${slot}-o`]).toBe('1');
+            const from = parse(v[`--gho-cring-${slot}-from`]);
+            expect(from.tx).toBeCloseTo(source.x - snap(target.x), 2);
+            expect(from.ty).toBeCloseTo(source.y - snap(target.y), 2);
+            expect(from.sx).toBeCloseTo(source.w / w, 3);
+        }
+    });
+    it("leaves the Unifideck circle's ring at its place: Home has no circle it could grow from", () => {
+        expect(Number(v['--gho-cring-3-x'])).toBeCloseTo(snap(625) - 10, 4);
+        expect(v['--gho-cring-3-o']).toBe('1');
+        const from = parse(v['--gho-cring-3-from']);
+        expect([from.tx, from.ty, from.sx]).toEqual([0, 0, 1]);
+    });
+    it('has no ring for a page circle no Home circle moves to', () => {
+        const two = vars(openMotion({ ...home, circles: [r.circle0, r.circle1], infoCircle: null }, page, 'spotlight', s));
+        expect(two['--gho-cring-1-o']).toBe('1');
+        expect(two['--gho-cring-2-o']).toBeUndefined();
+    });
+    it("gives them the page circles' corner, in the page's unit", () => {
+        expect(parseFloat(v['--gho-cring-r'])).toBeCloseTo(0.3 * PAGE_LAYOUT.icon * 1.1316, 3);
+    });
+});
+
+describe('openMotion follows the Game info slots (Spotlight)', () => {
+    /** Home's chips with the third one's key changed (its stat), and the page with that stat featured. */
+    const withFeatured = (key: 'protondb' | 'played' | 'achievements', featured: PageTargets['featured']) => {
+        const home = homeRects();
+        home.chips[2] = { ...home.chips[2], key };
+        const page: PageTargets = { ...spotlight(), featured, stats: { ...spotlight().stats, [key]: spotlight().stats.hltb } };
+        return { home, page };
+    };
+    it('a featured ProtonDB chip grows into the right-hand card, keeps its own colour (no accent copy) and its label', () => {
+        const home = homeRects();
+        home.chips = [home.chips[0], home.chips[1], { ...home.chips[2], key: 'protondb' }];
+        const { hltb, ...rest } = spotlight().stats;
+        const page: PageTargets = { ...spotlight(), featured: 'protondb', stats: { ...rest, protondb: hltb } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+        expect(v['--gho-chip-2-label-o']).toBeUndefined();
+        expect(v['--gho-chip-2-o']).toBe('1');
+        // Shell 1 starts on the ProtonDB chip alone; shell 0 on the other two.
+        expect(parse(v['--gho-shell-1-from']).sx).toBeCloseTo(r['chip:chip2'].w / 681.6, 3);
+        expect(v['--gho-shell-1-o0']).toBe('1');
+        const union = r['chip:chip1'].x + r['chip:chip1'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 749.7, 3);
+    });
+    it('a featured Play time chip swaps to the accent, as HowLongToBeat does (its Total is in the accent)', () => {
+        const home = homeRects();
+        home.chips = [{ ...home.chips[1] }, { ...home.chips[0] }];
+        const page: PageTargets = { ...spotlight(), featured: 'played', stats: { achievements: spotlight().stats.achievements, played: spotlight().stats.hltb } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-1-label-o']).toBe('0');
+        expect(v['--gho-chip-1-accent']).toBe('1');
+        expect(v['--gho-chip-0-accent']).toBeUndefined();
+        expect(v['--gho-shell-1-o0']).toBe('1');
+    });
+    it('HowLongToBeat in a stat slot goes to the info card, without the accent', () => {
+        const { home, page } = withFeatured('achievements', 'achievements');
+        home.chips[1] = { ...home.chips[1], key: 'hltb' };
+        page.stats = { played: spotlight().stats.played, hltb: spotlight().stats.achievements, achievements: spotlight().stats.hltb };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(v['--gho-chip-1-accent']).toBeUndefined();
+        expect(v['--gho-chip-1-label-o']).toBeUndefined();
+        // The info card's shell starts on the played and HLTB chips; the featured one on the achievements chip.
+        const union = r['chip:chip1'].x + r['chip:chip1'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 749.7, 3);
+        expect(parse(v['--gho-shell-1-from']).sx).toBeCloseTo(r['chip:chip2'].w / 681.6, 3);
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+    });
+    it('nothing featured: one shell, no variables for a second', () => {
+        // HowLongToBeat in a stat slot: its chip grows into the info card (the one shell) as the others do, without the accent.
+        const home = homeRects();
+        const page: PageTargets = { ...spotlight(), featured: null, shells: [box(25, 593.1, 1450, 185.4)], stats: { played: spotlight().stats.played, achievements: spotlight().stats.achievements, hltb: { label: box(289, 614.7, 77.5, 17.2), value: box(289, 636.1, 77.5, 37.5) } } };
+        const v = vars(openMotion(home, page, 'spotlight', s));
+        expect(Object.keys(v).filter((name) => name.startsWith('--gho-shell-1-') || name.startsWith('--gho-ring-1-'))).toEqual([]);
+        expect(v['--gho-shell-count']).toBe('1');
+        expect(v['--gho-shell-0-o0']).toBe('1');
+        const union = r['chip:chip2'].x + r['chip:chip2'].w - r['chip:chip0'].x;
+        expect(parse(v['--gho-shell-0-from']).sx).toBeCloseTo(union / 1450, 3);
+        expect(v['--gho-chip-2-accent']).toBeUndefined();
+        expect(v['--gho-chip-2-label-o']).toBeUndefined();
     });
 });

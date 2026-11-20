@@ -1,6 +1,7 @@
-import { menuScale } from '../menuScale';
+import { openSteamKeyboard } from '../steam/keyboard';
+import { menuScale, menuWindowSize } from '../menuScale';
 import { Focusable, type GamepadEvent } from '@decky/ui';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { LuArrowUpRight, LuBell } from 'react-icons/lu';
 import { pickMenuAccent, resolveMenuAccent } from '../accent';
 import { shownAccent } from '../../home/shownAccent';
@@ -10,14 +11,19 @@ import { accentMemo } from '../../home/accentMemo';
 import { takeSteamFocus } from '../../home/steamFocus';
 import { type MenuEvent, type MenuState, type SectionId } from '../model';
 import { createKeyboardSession } from '../keyboard/session';
-import { findMenuFocus, focusPrefersBar, handleMenuButton, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
+import { findMenuFocus, focusPrefersBar, handleMenuButton, steamKeyboardShortcut, installOutsideMenuClick, keyboardHome, keyboardTakesCancel, pageTakesCancel, radialOwnsButton, leaveSocialConversation, openSocialChat, rememberFocusKey, openFocusKey } from '../navigation';
 import type { createMenuPreferences } from '../preferences';
 import type { NativeRequest, QamTab } from '../steam/runtime';
 import { menuStyles } from '../styles';
 import { GameStatusBar } from '../../components/GameStatusBar';
 import { MenuAction } from './MenuAction';
 import { MenuBar, SECTION_LABELS } from './MenuBar';
+import { GameGlanceSection } from './GameGlanceSection';
+import { ACHIEVEMENTS_VIEW, parseAchievementsView, GAME_GLANCE_VIEW, parseWifiNetworkView, WIFI_VIEW, wifiNetworkView } from '../views';
+import { WifiNetworkPage } from './WifiNetworkPage';
+import { WifiPage } from './WifiPage';
 import { NavigatePanel } from './NavigatePanel';
+import { storageAvailable } from '../steam/storage';
 import { QuickSettingsPanel } from './QuickSettingsPanel';
 import { PerformancePanel } from './PerformancePanel';
 import type { createPerformance } from '../steam/performance';
@@ -26,16 +32,22 @@ import type { createNotificationBadge, createNotificationList } from '../steam/n
 import { MorePanel } from './MorePanel';
 import { SocialPanel } from './SocialPanel';
 import { InGamePanel } from './InGamePanel';
+import { AchievementsPage, libraryName, pageGame } from './AchievementsPage';
 import { NotificationsPanel } from './NotificationsPanel';
 import { PluginsSection } from './PluginsSection';
 import { pluginStyles } from '../pluginStyles';
 import { soundtrackStyles } from '../soundtrackStyles';
+import { achievementsStyles } from '../achievementsStyles';
 import { SoundtrackSection } from './SoundtrackSection';
+import { installScreensaverWakeGuard, useScreensaverActive } from '../../screensaver/steamScreensaver';
 import type { SoundtrackService } from '../steam/soundtrack';
 import type { SocialService } from '../steam/social';
+import type { PersonaService } from '../steam/persona';
 import type { NotificationReads } from '../notificationReads';
 import { unreadCount as countUnread, type TrayRow } from '../notificationsList';
 import type { NotificationActions } from '../steam/notificationActions';
+import { useSettings } from '../../data/settings';
+import { effectiveAccent, onAccentFor } from '../../home/accentChoice';
 const NATIVE_TABS: Partial<Record<SectionId, QamTab>> = { 'quick-settings': 'quick-settings', performance: 'performance', social: 'friends', plugins: 'decky', help: 'help', soundtrack: 'soundtrack' };
 export interface MenuShellProps {
     state: MenuState;
@@ -52,6 +64,7 @@ export interface MenuShellProps {
     notificationActions?: NotificationActions;
     performance?: ReturnType<typeof createPerformance>;
     social?: SocialService;
+    persona?: PersonaService;
     soundtrack?: SoundtrackService;
     panels?: Partial<Record<SectionId, ReactNode>>;
 }
@@ -60,7 +73,7 @@ const EMPTY_ROWS: TrayRow[] = [];
 const NO_ROWS = () => EMPTY_ROWS;
 const EMPTY_READS: ReadonlySet<string> = new Set();
 const NO_READS = () => EMPTY_READS;
-export function MenuShell({ state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack, panels = {} }: MenuShellProps) {
+export function MenuShell({ persona, state, preferences, dispatch, handoff, close, inputActive = () => true, unreadCount = 0, quickSettings, notificationBadge, notifications, notificationReads, notificationActions, performance, social, soundtrack, panels = {} }: MenuShellProps) {
     const root = useRef<HTMLDivElement>(null);
     const menuPreference = useSyncExternalStore(preferences.subscribe, preferences.get);
     const [error, setError] = useState('');
@@ -71,12 +84,26 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     // The bell keeps a notification until it is read; Steam's unviewed count only when the tray cannot be read.
     const badgeCount = notifications ? countUnread(trayRows, remembered) : unviewed;
     const active = state.phase === 'custom-open';
+    const screensaverActive = useScreensaverActive();
     const appId = state.game?.appId;
     const homeAccent = useSyncExternalStore(shownAccent.subscribe, shownAccent.get);
+    const { accentMode, accentColor } = useSettings();
+    const accentChoice = { accentMode, accentColor };
     useLayoutEffect(() => {
         const document = root.current?.ownerDocument;
         return active && document ? installMouseMode(document) : undefined;
     }, [active]);
+    useLayoutEffect(() => {
+        const document = root.current?.ownerDocument;
+        return active && screensaverActive && document ? installScreensaverWakeGuard([document]) : undefined;
+    }, [active, screensaverActive]);
+    useEffect(() => {
+        if (active && screensaverActive) close();
+    }, [active, screensaverActive, close]);
+    useLayoutEffect(() => {
+        const document = root.current?.ownerDocument;
+        return active && screensaverActive && document ? installScreensaverWakeGuard([document]) : undefined;
+    }, [active, screensaverActive]);
     useEffect(() => {
         if (!active || !appId) return;
         let alive = true;
@@ -107,7 +134,13 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         if (!element || !view || !active) return;
         // Steam changes CSS viewport/DPR between Home and the in-game overlay.
         // Normalize against the approved 829px handheld viewport instead of switching layouts.
-        const resize = () => element.style.setProperty('--gg-menu-scale', String(menuScale(view.innerWidth)));
+        // The panel is drawn smaller by Home's size factor (menuWindowSize): the same logical canvas, a smaller scale
+        // (--gg-menu-scale) and a smaller box (--gg-menu-size, styles), kept around the same centre.
+        const resize = () => {
+            const size = menuWindowSize(view);
+            element.style.setProperty('--gg-menu-scale', String(menuScale(view.innerWidth, size)));
+            element.style.setProperty('--gg-menu-size', String(size));
+        };
         resize(); view.addEventListener('resize', resize);
         return () => view.removeEventListener('resize', resize);
     }, [active]);
@@ -117,6 +150,10 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
         return installOutsideMenuClick(element, close, inputActive);
     }, [active, close, inputActive]);
     const keyboard = useMemo(createKeyboardSession, []);
+    // A page that uses B itself (the Wi-Fi page) claims it here, at the root: an inner onCancel would not stop this
+    // root's own cancel handler, so one press would both close the page's view and go back.
+    const pageBack = useRef<(() => boolean) | null>(null);
+    const claimBack = useCallback((claim: () => boolean) => { pageBack.current = claim; return () => { if (pageBack.current === claim) pageBack.current = null; }; }, []);
     // Only an open menu follows the chat: subscribing may start the social service.
     const enteredId = useSyncExternalStore(active && social ? social.subscribe : NO_SUBSCRIBE, () => active ? social?.get().enteredId ?? null : null);
     const keyboardFriend = keyboardHome(state, active, enteredId);
@@ -125,7 +162,10 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     const onButton = (event: GamepadEvent, cancel = false) => {
         if (inputActive() && radialOwnsButton(event.detail, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
         if (event.detail.button === 2 && !cancel) return;
+        // X: Steam's keyboard, as Steam + X (which some controllers have no chord for); Steam closes this menu as it opens.
+        if (!cancel && steamKeyboardShortcut(event.detail, keyboard, inputActive()) && openSteamKeyboard()) { event.preventDefault(); event.stopPropagation(); return; }
         if (keyboardTakesCancel(event.detail, cancel, keyboard)) { event.preventDefault(); event.stopPropagation(); return; }
+        if (pageTakesCancel(event.detail, cancel, pageBack.current)) { event.preventDefault(); event.stopPropagation(); return; }
         const next: MenuEvent[] = [];
         if (!handleMenuButton(event.detail, state, value => next.push(value), inputActive())) return;
         event.preventDefault(); event.stopPropagation();
@@ -137,29 +177,41 @@ export function MenuShell({ state, preferences, dispatch, handoff, close, inputA
     };
     const color = appId ? accentMemo.get(appId) ?? (cachedAccent?.appId === appId ? cachedAccent.color : undefined) : undefined;
     const owner = (globalThis as unknown as { SteamUIStore?: { WindowStore?: { GamepadUIMainWindowInstance?: { BIsOverlayPath?(): boolean } } } }).SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance;
-    const accent = pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true);
+    const accent = effectiveAccent(pickMenuAccent(color, homeAccent, owner?.BIsOverlayPath?.() === true), accentChoice);
     const showingNotifications = state.stack[state.stack.length - 1] === 'notifications';
     let content = showingNotifications && notifications ? <NotificationsPanel list={notifications} reads={notificationReads} actions={notificationActions} handoff={handoff} close={close}
         openChat={steamId => openSocialChat(social, dispatch, steamId)} social={social} failed={() => setError('Could not open Steam’s view. Use the menu button to return.')} /> : panels[state.section];
-    if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} />;
-    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} />;
-    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} />;
+    const inGameTop = state.section === 'in-game' ? state.stack[state.stack.length - 1] : undefined;
+    if (content === undefined && inGameTop === ACHIEVEMENTS_VIEW && state.game) content = <AchievementsPage game={state.game} handoff={enterNative} />;
+    // Any game's Achievements page, opened straight from its game page's card (menu/openView).
+    const achievementsApp = parseAchievementsView(state.stack[state.stack.length - 1]);
+    if (achievementsApp !== null && !showingNotifications) { const target = pageGame(achievementsApp, state.game, libraryName); content = <AchievementsPage key={achievementsApp} game={target.game} steamList={target.steamList} handoff={enterNative} />; }
+    if (content === undefined && state.section === 'in-game' && state.game) content = <InGamePanel game={state.game} handoff={enterNative} openAchievements={() => dispatch({ type: 'push', viewId: ACHIEVEMENTS_VIEW })} />;
+    // Navigate's Game Glance tile opens Game Glance's settings in place: any view on Navigate's stack is one of theirs.
+    const navigateTop = state.section === 'navigate' ? state.stack[state.stack.length - 1] : undefined;
+    if (content === undefined && navigateTop !== undefined) content = <GameGlanceSection top={navigateTop} dispatch={dispatch} handoff={enterNative} close={close} />;
+    if (content === undefined && state.section === 'navigate') content = <NavigatePanel handoff={enterNative} openGameGlance={() => dispatch({ type: 'push', viewId: GAME_GLANCE_VIEW })} storage={storageAvailable((globalThis as { SteamClient?: unknown }).SteamClient)} />;
+    const quickTop = state.section === 'quick-settings' ? state.stack[state.stack.length - 1] : undefined;
+    const wifiNetwork = parseWifiNetworkView(quickTop);
+    if (content === undefined && wifiNetwork !== null && quickSettings?.wifi) content = <WifiNetworkPage key={wifiNetwork} wifi={quickSettings.wifi} networkKey={wifiNetwork} leave={() => dispatch({ type: 'back' })} />;
+    if (content === undefined && quickTop === WIFI_VIEW && quickSettings?.wifi) content = <WifiPage wifi={quickSettings.wifi} openNetwork={key => dispatch({ type: 'push', viewId: wifiNetworkView(key) })} openSteamInternet={() => enterNative({ kind: 'navigate', destination: 'settings-internet' })} keyboard={{ session: keyboard, mode: menuPreference.socialKeyboard, ownsInput: inputActive }} claimBack={claimBack} />;
+    if (content === undefined && state.section === 'quick-settings' && quickSettings) content = <QuickSettingsPanel controls={quickSettings.controls} devices={quickSettings.devices} wifi={quickSettings.wifi} openWifi={() => dispatch({ type: 'push', viewId: WIFI_VIEW })} />;
     if (content === undefined && state.section === 'performance' && performance) content = <PerformancePanel performance={performance} />;
-    if (content === undefined && state.section === 'social' && social) content = <SocialPanel social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
+    if (content === undefined && state.section === 'social' && social) content = <SocialPanel persona={persona} social={social} entered={state.stack[state.stack.length - 1] === 'social-chat'} keyboard={keyboard} keyboardMode={menuPreference.socialKeyboard} ownsInput={inputActive}
         enter={id => { if (state.stack[state.stack.length - 1] !== 'social-chat') dispatch({ type: 'push', viewId: 'social-chat' }); void social.enter(id); }}
         leave={() => { leaveSocialConversation(state, social, dispatch); }} handoff={enterNative} />;
-    if (content === undefined && state.section === 'plugins') content = <PluginsSection state={state} dispatch={dispatch} handoff={enterNative} close={close} />;
+    if (content === undefined && state.section === 'plugins') content = <PluginsSection handoff={enterNative} />;
     if (content === undefined && state.section === 'soundtrack' && soundtrack) content = <SoundtrackSection service={soundtrack} handoff={enterNative} />;
     if (state.section === 'more' && !showingNotifications) content = <MorePanel state={state} preferences={preferences} handoff={enterNative} dispatch={dispatch} />;
     if (content === undefined) {
         const tab = NATIVE_TABS[state.section];
         content = <div className="gg-menu-heading"><h2>{state.section === 'in-game' ? state.game?.name || 'Running game' : SECTION_LABELS[state.section]}</h2><MenuAction id={`native:${state.section}`} onAction={() => enterNative(tab ? { kind: 'qam', tab } : { kind: 'main-menu' })}><LuArrowUpRight aria-hidden="true" />Open in Steam</MenuAction></div>;
     }
-    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onFocusCapture={event => {
+    return <Focusable ref={root} className="gg-menu" style={{ '--gg-accent': accent, '--gg-accent-text': legibleAccent(accent), '--gg-on-accent': onAccentFor(accentChoice) } as CSSProperties} flow-children="column" onButtonDown={event => onButton(event)} onCancelButton={event => onButton(event, true)} onSecondaryActionDescription="Keyboard" onFocusCapture={event => {
         const key = (event.target as HTMLElement).closest?.<HTMLElement>('[data-gg-focus]')?.dataset.ggFocus;
         if (rememberFocusKey(key)) dispatch({ type: 'focus', section: state.section, key });
     }}>
-        <style>{menuStyles + pluginStyles + soundtrackStyles}</style>
+        <style>{menuStyles + pluginStyles + soundtrackStyles + achievementsStyles}</style>
         <GameStatusBar menuOverlay />
         <header><div className="gg-menu-caption-actions"><MenuAction id="notifications" className="gg-menu-notifications" frostRegion="notifications" ariaLabel={badgeCount > 0 ? `${badgeCount} unread notifications` : 'Notifications'} selected={showingNotifications} onAction={() => notifications ? dispatch(showingNotifications ? { type: 'back' } : { type: 'push', viewId: 'notifications' }) : enterNative({ kind: 'qam', tab: 'notifications' })}><span className="gg-menu-notification-count" aria-hidden="true">{badgeCount > 99 ? '99+' : badgeCount > 0 ? badgeCount : ''}</span><LuBell aria-hidden="true" /></MenuAction></div></header>
         <MenuBar state={state} dispatch={dispatch} />

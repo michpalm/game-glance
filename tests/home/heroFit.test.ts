@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { ART_FILL_FILTER, FIT_FADE, HERO_FITS, STANDARD_HERO_ASPECT, fitMask, heroFitOf, windowAspect } from '../../src/home/heroFit';
+import { ART_FILL_FILTER, EXPANDED_HEIGHT, EXPANDED_INSET, EXPANDED_MASK, FIT_FADE, HERO_FIT_LABELS, HERO_FITS, STANDARD_HERO_ASPECT, fitMask, heroFitOf, overFill, windowAspect } from '../../src/home/heroFit';
 
 describe('heroFitOf', () => {
-    it('reads fill and fit, anything else as fill', () => {
+    it('reads fill, expanded and fit, anything else as fill', () => {
         expect(heroFitOf('fit')).toBe('fit');
+        expect(heroFitOf('expanded')).toBe('expanded');
         for (const v of ['fill', 'whole', undefined, null, 3]) expect(heroFitOf(v)).toBe('fill');
-        expect(HERO_FITS).toEqual(['fill', 'fit']);
+        expect(HERO_FITS).toEqual(['fill', 'expanded', 'fit']);
+        expect(HERO_FITS.map((f) => HERO_FIT_LABELS[f])).toEqual(['Fill', 'Expanded', 'Fit']);
+    });
+    it('Expanded and Fit draw the art over the fill; Fill alone covers the screen', () => {
+        expect(HERO_FITS.map(overFill)).toEqual([false, true, true]);
+    });
+});
+
+describe('Expanded (the art covering the top 70%, fading into the fill)', () => {
+    it("its box is the screen's top 70%, and its fade the box's last 22%, as Fit fades the art", () => {
+        expect(EXPANDED_HEIGHT).toBe(0.7);
+        expect(EXPANDED_INSET).toBe('0 0 30% 0');
+        expect(EXPANDED_MASK).toBe('linear-gradient(180deg, #000 78%, transparent 100%)');
     });
 });
 

@@ -1,7 +1,10 @@
 import { MenuPreferences } from '../menu/components/MenuPreferences';
 import { toaster } from '@decky/api';
-import { HERO_FIT_COPY, HERO_FITS, HeroFit } from '../home/heroFit';
+import { HERO_FIT_COPY, HERO_FIT_LABELS, HERO_FITS, HeroFit } from '../home/heroFit';
+import { RECOMMENDED_ROW_COPY, RECOMMENDED_ROW_LABELS, RECOMMENDED_ROWS, RecommendedRow } from '../home/recommendedRow';
 import { PAGE_SHADINGS, PAGE_SHADING_COPY, PageShading } from '../home/pageShading';
+import { TITLE_SIZES, TITLE_SIZE_COPY, TitleSize } from '../home/titleSize';
+import { ACCENT_MODE_COPY, ACCENT_MODE_LABELS, ACCENT_SWATCHES, AccentMode } from '../home/accentChoice';
 import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { cache, overrides } from '../data/cache';
@@ -9,7 +12,8 @@ import { useCurrentGame } from '../data/currentGame';
 import { fetchAll, useFetchAll } from '../data/fetchAll';
 import { PROFILE_STYLES, PROFILE_STYLE_LABELS, settings, useSettings } from '../data/settings';
 import { UpdatesSection } from './UpdatesSection';
-import { everyPageAvailable, homeRows, HomeRow, matchLine, StatusRow, statusRows } from '../data/settingsCategories';
+import { everyPageAvailable, GAME_INFO_NOTE, homeRows, HomeRow, matchLine, slotChoices, slotLabel, slotValue, slotValueLabel, StatusRow, statusRows } from '../data/settingsCategories';
+import { SLOT_INDEXES, type StatId } from '../logic/infoSlots';
 import { checkOverride } from '../logic/hltbId';
 import { PLUGIN_NAME } from '../constants';
 import { RECENT_ROW, ROW_SORTS, RowSort, rowSortLabel, sortByLabel, steamHomeCollections } from '../home/collections';
@@ -18,7 +22,7 @@ import { tr } from '../i18n/steamText';
 import { previewScreensaver, screensaverAvailable } from '../screensaver/steamScreensaver';
 
 export function SettingsPanel() {
-    const { enabled, autoPreload, spotlightHome, wishlistDeals, cleanPage, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver } = useSettings();
+    const { enabled, autoPreload, settingsPage, spotlightHome, wishlistDeals, cleanPage, infoSlots, homeStatusBar, homeExpandedControls, chromeEveryPage, profileStyle, statusAvatar, gameLogo, titleSize, accentMode, accentColor, storePill, familyPill, playerCountPill, homeRow, homeRowSort, homeRowStyle, homeGrayUninstalled, heroFit, pageShading, feedTabs, screensaver, recommendedRow } = useSettings();
     // Read when the panel opens, so a collection made since shows up.
     const collections = useMemo(steamHomeCollections, []);
     const rowChosen = collections.some((c) => c.id === homeRow) ? homeRow : RECENT_ROW;
@@ -67,7 +71,7 @@ export function SettingsPanel() {
         gamesRow: (
             <DropdownItem
                 label="Games row"
-                description="Your recent games (with games new to your library, as on Steam's Home), or one of your collections."
+                description="Your recent games, All installed games (Steam and non-Steam together), or one of your collections."
                 menuLabel="Games row"
                 rgOptions={[{ data: RECENT_ROW, label: tr('recentGames') }, ...collections.map((c) => ({ data: c.id, label: `${c.name} (${c.count})` }))]}
                 selectedOption={rowChosen}
@@ -99,6 +103,16 @@ export function SettingsPanel() {
                 description="Shows uninstalled Steam games in gray until selected. Turn off to keep their artwork in color."
                 checked={homeGrayUninstalled}
                 onChange={(value) => settings.setHomeGrayUninstalled(value)}
+            />
+        ),
+        recommendedRow: (
+            <DropdownItem
+                label="Recommended row"
+                description={RECOMMENDED_ROW_COPY[recommendedRow]}
+                menuLabel="Recommended row"
+                rgOptions={RECOMMENDED_ROWS.map((row) => ({ data: row, label: RECOMMENDED_ROW_LABELS[row] }))}
+                selectedOption={recommendedRow}
+                onChange={(option) => settings.setRecommendedRow(option.data as RecommendedRow)}
             />
         ),
         wishlistDeals: (
@@ -167,6 +181,16 @@ export function SettingsPanel() {
 
     return (
         <>
+            <PanelSection title="Pages">
+                <PanelSectionRow>
+                    <ToggleField label="Library page (in progress)" description="Game Glance's Library is in progress and unavailable for now."
+                        checked={false} disabled />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Settings page (in progress)" description="Game Glance's Settings in place of Steam's. Steam's pages stay one button away."
+                        checked={settingsPage} onChange={(value) => settings.setSettingsPage(value)} />
+                </PanelSectionRow>
+            </PanelSection>
             <PanelSection title="Home">
                 {homeRows({ spotlightHome, feedTabs }, rowChosen !== RECENT_ROW).map((row) => (
                     <PanelSectionRow key={row}>{homeRowControl[row]}</PanelSectionRow>
@@ -182,6 +206,25 @@ export function SettingsPanel() {
                             onChange={(value) => settings.setCleanPage(value)}
                         />
                     </PanelSectionRow>
+                )}
+                {enabled && (
+                    <>
+                        <PanelSectionRow>
+                            <div style={{ fontWeight: 'bold' }}>Game info</div>
+                            <div style={{ opacity: 0.7, fontSize: '12px' }}>{GAME_INFO_NOTE}</div>
+                        </PanelSectionRow>
+                        {SLOT_INDEXES.map((slot) => (
+                            <PanelSectionRow key={slot}>
+                                <DropdownItem
+                                    label={slotLabel(slot)}
+                                    menuLabel={slotLabel(slot)}
+                                    rgOptions={slotChoices(slot).map((id) => ({ data: id ?? 'none', label: slotValueLabel(id) }))}
+                                    selectedOption={slotValue({ infoSlots }, slot) ?? 'none'}
+                                    onChange={(option) => settings.setInfoSlot(slot, option.data === 'none' ? null : (option.data as StatId))}
+                                />
+                            </PanelSectionRow>
+                        ))}
+                    </>
                 )}
                 {game ? (
                     <>
@@ -281,11 +324,49 @@ export function SettingsPanel() {
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>
+                    <ToggleField label="Store pill" description="The game's store (Steam, GOG, Epic...) beside the Play row, on Home and the game page." checked={storePill} onChange={(value) => settings.setStorePill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Family Sharing pill" description="Whose library a shared game comes from, on Home and the game page." checked={familyPill} onChange={(value) => settings.setFamilyPill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <ToggleField label="Player count" description="How many people are playing now, from Steam." checked={playerCountPill} onChange={(value) => settings.setPlayerCountPill(value)} />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Title size"
+                        description={TITLE_SIZE_COPY[titleSize].description}
+                        menuLabel="Title size"
+                        rgOptions={TITLE_SIZES.map((size) => ({ data: size, label: TITLE_SIZE_COPY[size].label }))}
+                        selectedOption={titleSize}
+                        onChange={(option) => settings.setTitleSize(option.data as TitleSize)}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Accent color"
+                        description={ACCENT_MODE_COPY[accentMode]}
+                        menuLabel="Accent color"
+                        rgOptions={(['adaptive', 'custom'] as const).map((mode) => ({ data: mode, label: ACCENT_MODE_LABELS[mode] }))}
+                        selectedOption={accentMode}
+                        onChange={(option) => settings.setAccent({ accentMode: option.data as AccentMode })}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DropdownItem
+                        label={accentMode === 'custom' ? 'Your color' : 'Color when the art has none'}
+                        menuLabel="Color"
+                        rgOptions={ACCENT_SWATCHES.map((swatch) => ({ data: swatch.color, label: swatch.name }))}
+                        selectedOption={accentColor}
+                        onChange={(option) => settings.setAccent({ accentColor: option.data as string })}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
                     <DropdownItem
                         label="Hero art"
                         description={HERO_FIT_COPY[heroFit]}
                         menuLabel="Hero art"
-                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: fit === 'fill' ? 'Fill' : 'Fit' }))}
+                        rgOptions={HERO_FITS.map((fit) => ({ data: fit, label: HERO_FIT_LABELS[fit] }))}
                         selectedOption={heroFit}
                         onChange={(option) => settings.setHeroFit(option.data as HeroFit)}
                     />

@@ -1,5 +1,8 @@
 import { ConfirmModal, Focusable, showModal } from '@decky/ui';
-import { CSSProperties, useRef } from 'react';
+import { CSSProperties, useRef, useState } from 'react';
+import { FaTrophy } from 'react-icons/fa';
+import { CardMotion } from './CardMotion';
+import { microtrailersOff } from './calendar';
 import { LOG_PREFIX } from '../constants';
 import type { FeedItem } from './feedLayout';
 import { openGame, openNews, openSteamUrl, openStorePage } from './homeNav';
@@ -50,9 +53,11 @@ function confirmJoin(url: string, question: string, from: HTMLElement | null) {
  * its own art; a wishlist deal's store page, or a news event (the article alone, in Steam's web view), without it
  * (homeNav.openStorePage / openNews).
  */
-export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hoverKey, hover = false }: {
+export function FeedCard({ item, left, top, accent, preferred, onFocused, setRef, hoverKey, hover = false }: {
     item: FeedItem;
     left: number;
+    /** Down from the row's top (a calendar day's games), as --gh-card-top: Home's card rule pins `top` itself. */
+    top?: number;
     accent: string;
     preferred: boolean;
     onFocused(): void;
@@ -63,6 +68,13 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
 }) {
     const last = useRef(0);
     const self = useRef<HTMLDivElement | null>(null);
+    // A calendar game's clip plays only while the card has focus (as Steam's calendar), so nothing loads for cards passed over.
+    const [live, setLive] = useState(false);
+    const focused = () => {
+        if (item.motion) setLive(true);
+        onFocused();
+    };
+    const blurred = () => setLive(false);
     const press = () => {
         const now = Date.now();
         if (now - last.current < REPEAT_GUARD_MS) return;
@@ -83,6 +95,8 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
     if (item.fit) classes.push('gh-card-fitted');
     if (item.avatar?.inGame) classes.push('gh-card-ingame');
     if (item.avatar) classes.push(item.avatar.ring ? `gh-card-ring-${item.avatar.ring}` : 'gh-card-offline');
+    if (item.friendCard) classes.push(`gh-card-friend-${item.friendCard.layout}`);
+    if (item.friendCard?.grey) classes.push('gh-fc-grey');
     if (hover) classes.push('gh-card-hover');
     return (
         <Focusable
@@ -94,9 +108,11 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
             focusClassName="gh-card-focus"
             noFocusRing
             preferredFocus={preferred}
-            style={{ left: `${left}px`, width: `${item.width}px`, '--gh-card-h': `${item.height}px`, '--gh-card-accent': accent } as CSSProperties}
-            onFocus={onFocused}
-            onGamepadFocus={onFocused}
+            style={{ left: `${left}px`, ...(top !== undefined ? { '--gh-card-top': `${top}px` } : {}), width: `${item.width}px`, '--gh-card-h': `${item.height}px`, '--gh-card-accent': accent } as CSSProperties}
+            onFocus={focused}
+            onGamepadFocus={focused}
+            onBlur={blurred}
+            onGamepadBlur={blurred}
             onActivate={press}
             onClick={press}
             role="button"
@@ -111,6 +127,7 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
                 </>
             )}
             {item.art.length > 0 && <div className="gh-card-art" style={backgrounds(item.art)} />}
+            {live && item.motion && <CardMotion clip={item.motion.clip} shots={item.motion.shots} off={microtrailersOff()} />}
             {item.fit && (
                 // News art shown whole: a blurred copy fills the card (and covers the hero art once it loads), the image
                 // itself is fitted inside it, never cropped.
@@ -132,6 +149,21 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
                     {(item.moreFriends ?? 0) > 0 && <div className="gh-card-friend gh-card-friend-more">+{item.moreFriends}</div>}
                 </div>
             )}
+            {item.friendCard ? (
+                // A friend card (design A3): the pill in the top right, the name and its lines (each one line, empty ones never made).
+                <>
+                    {item.pill && <span className="gh-pill gh-fc-pill">{item.pill}</span>}
+                    <div className="gh-card-text gh-fc-text">
+                        <div className="gh-card-title">{item.title}</div>
+                        {item.friendCard.lines.map((line, i) => (
+                            <div key={i} className={`gh-fc-line gh-fc-${line.tone}`}>
+                                {line.tone === 'achievement' && <FaTrophy aria-hidden="true" />}
+                                {line.text}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
             <div className="gh-card-text">
                 {item.pill && <span className="gh-pill">{item.pill}</span>}
                 <div className="gh-card-title">{item.title}</div>
@@ -143,6 +175,7 @@ export function FeedCard({ item, left, accent, preferred, onFocused, setRef, hov
                     item.sub && <div className="gh-card-sub">{item.sub}</div>
                 )}
             </div>
+            )}
         </Focusable>
     );
 }

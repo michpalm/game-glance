@@ -14,32 +14,31 @@ const plugins = [{ name: 'Unifideck', version: '0.7.6', icon }, { name: 'Game Gl
 
 it('lists each plugin by name and version under Plugins, with Open in Steam in the heading', () => {
     const openDecky = vi.fn();
-    const nodes = tree(PluginsList({ plugins, openGameGlance: vi.fn(), openOther: vi.fn(), openDecky }));
+    const nodes = tree(PluginsList({ plugins, openOther: vi.fn(), openDecky }));
     expect(nodes.find(n => n.type === 'h2')!.props.children).toBe('Plugins');
     const ids = nodes.map(n => n.props.id).filter((id): id is string => typeof id === 'string' && id.startsWith('plugins:'));
-    expect(ids).toEqual(['plugins:native', 'plugins:Unifideck', 'plugins:Game Glance']);
+    // Game Glance's settings are a Navigate tile (NavigatePanel), not a plugin row.
+    expect(ids).toEqual(['plugins:native', 'plugins:Unifideck']);
     nodes.find(n => n.props.id === 'plugins:native')!.props.onAction();
     expect(openDecky).toHaveBeenCalledTimes(1);
 });
 
-it('opens Game Glance inside the menu and any other plugin in Decky', () => {
-    const openGameGlance = vi.fn(), openOther = vi.fn();
-    const nodes = tree(PluginsList({ plugins, openGameGlance, openOther, openDecky: vi.fn() }));
-    nodes.find(n => n.props.id === 'plugins:Game Glance')!.props.onAction();
-    expect(openGameGlance).toHaveBeenCalledTimes(1);
+it('opens every listed plugin in Decky', () => {
+    const openOther = vi.fn();
+    const nodes = tree(PluginsList({ plugins, openOther, openDecky: vi.fn() }));
     nodes.find(n => n.props.id === 'plugins:Unifideck')!.props.onAction();
     expect(openOther).toHaveBeenCalledWith('Unifideck');
 });
 
 it('says where each plugin opens and keeps the plugin’s own icon', () => {
-    const nodes = tree(PluginsList({ plugins, openGameGlance: vi.fn(), openOther: vi.fn(), openDecky: vi.fn() }));
+    const nodes = tree(PluginsList({ plugins, openOther: vi.fn(), openDecky: vi.fn() }));
     const ends = nodes.filter(n => n.props.className === 'gg-plugin-end').map(n => n.props.children[0]);
-    expect(ends).toEqual(['Opens in Steam', 'Settings']);
+    expect(ends).toEqual(['Opens in Steam']);
     expect(nodes.some(n => n.props.id === 'own-icon')).toBe(true);
 });
 
 it('says so when the list cannot be read', () => {
-    const nodes = tree(PluginsList({ plugins: null, openGameGlance: vi.fn(), openOther: vi.fn(), openDecky: vi.fn() }));
+    const nodes = tree(PluginsList({ plugins: null, openOther: vi.fn(), openDecky: vi.fn() }));
     expect(nodes.find(n => n.props.className === 'gg-plugin-note')!.props.children).toBe('Plugins could not be listed.');
     expect(nodes.some(n => n.props.id === 'plugins:native')).toBe(true);
 });

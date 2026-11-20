@@ -1,17 +1,19 @@
+import { HOME_CIRCLE } from '../../src/home/circles';
 import { SETTLE_WIDEN_MS } from '../../src/home/fastCycle';
 import { CLOUD_COLOURS, CLOUD_DOT } from '../../src/home/cloud';
-import { ART_FILL_FILTER } from '../../src/home/heroFit';
+import { ART_FILL_FILTER, EXPANDED_INSET, EXPANDED_MASK } from '../../src/home/heroFit';
 import { describe, expect, it } from 'vitest';
+import { SOURCE_PILL } from '../../src/styles/sourcePill';
 import {
-    statusCss, HOME_GLASS, HOME_PILL,
-    FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
+    closingRules, CLOSING_MOVES, openingRules, statusCss, HOME_GLASS, HOME_PILL, PILL_CHIPS_GAP,
+    FEED_DIM, FEED_SHEET, giveWayVars, hexAlpha, homeCss, homeStack, MAX_STACK_SHIFT, sourcePillTop, stackShift, TITLE_BLOCK, titleBlockBottom, titleBlockLayout,
 } from '../../src/home/homeCss';
 import { sourcePillLook } from '../../src/styles/sourcePill';
 import { NOT_MOUSE } from '../../src/home/mouseMode';
 import { labelText } from '../../src/styles/tokens';
 import { normalCardsCss } from '../../src/styles/themeCss';
-import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
-import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, OPEN_TIMINGS, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
+import { PAGE_LAYOUT, pageScrims, pageType, pillFocusScale, SHADE_NONE, STEAM_PLAY_LINE } from '../../src/styles/themeCss';
+import { ACCENT_MS, CAP_ART_FADE_MS, CAP_STATE_MS, HERO_FADE_MS, MORPH_EASE, OPEN_TIMINGS, RETURN_GLIDE, RETURN_TIMINGS, SHEET_MS, SLIDE_MS } from '../../src/home/motion';
 import { CARD_SCALE_DOCKED, CARD_SCALE_HANDHELD, recentsGeometry, recentsGlowTop } from '../../src/home/recentsLayout';
 
 /** Splits a selector list at the commas outside parentheses (`:is(a, b)` stays one selector). */
@@ -84,9 +86,9 @@ describe('action row (VDL Section 7)', () => {
     it('the opening Play layers keep the soft corner and the ring, never the glow', () => {
         const layers = rulesMatching(css, /data-action="play"\]::(before|after)$/).join(' ');
         expect(layers).not.toContain('999px'); expect(layers).not.toMatch(/14px 40px -8px/);
-        expect(layers).toContain('outline:2px solid #fff');
+        expect(css).not.toContain('--gho-play-ring-image');
         // The page's corner (22 of its 60) at the growing layer's height.
-        expect(layers).toContain('border-radius: calc(var(--gho-play-sy) * 19.8px)');
+        expect(layers).toContain('border-radius: var(--gho-play-page-radius)');
     });
 });
 
@@ -151,6 +153,33 @@ describe('frost and labels (VDL Section 7)', () => {
     });
 });
 
+describe('hero frost while the feed sheet is up (Michael, 2026-11-19)', () => {
+    const css = homeCss();
+    it('a 24px frost over the hero fades in with the sheet (its 500ms and easing) and is off at rest', () => {
+        const frost = ruleFor(css, '.gh-scrim-frost');
+        expect(frost).toContain('backdrop-filter: blur(24px)');
+        expect(frost).toContain('opacity: var(--gh-frost)');
+        expect(frost).toContain(`transition: opacity ${SHEET_MS}ms`);
+        expect(ruleFor(css, '.gh-root')).toContain('--gh-frost: 0');
+    });
+    it('the page shading (shadow) leaves with the sheet up, in step with the frost, and is back while a game opens', () => {
+        const page = ruleFor(css, '.gh-scrim-page');
+        expect(page).toContain('opacity: calc(1 - var(--gh-frost))');
+        expect(page).toContain(`transition: opacity ${SHEET_MS}ms`);
+        expect(ruleFor(css, '.gh-root[data-gh-opening] .gh-scrim-page')).toContain('opacity: 1');
+    });
+});
+
+describe('feed contrast with the sheet up (Michael, 2026-11-19: dark cards were hard to tell from the background)', () => {
+    const css = homeCss();
+    it('the sheet dims the frosted hero less (the frost calms it now): 25%, none at rest', () => {
+        expect(FEED_DIM).toEqual({ rest: 0, sheet: 0.25 });
+    });
+    it('every feed card has a faint light edge inside it, so a dark card\'s outline shows', () => {
+        expect(ruleFor(css, '.gh-card')).toContain('box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 6px 20px -10px rgba(0,0,0,.6)');
+    });
+});
+
 describe('final review fixes (VDL Section 7)', () => {
     const css = homeCss();
     it("the opening Play drops Home's focus ring; only the page-size ring (::after) shows", () => {
@@ -159,15 +188,38 @@ describe('final review fixes (VDL Section 7)', () => {
     it("the end tabs follow the strip's corners, so their focus ring is not clipped", () => {
         expect(ruleFor(css, '.gh-tab:first-child')).toContain('border-radius: 12px 0 0 12px');
         expect(ruleFor(css, '.gh-tab:last-child')).toContain('border-radius: 0 12px 12px 0');
+        // One tab enabled (What's New, Friends or Recommended alone): it is first and last, and takes all four corners,
+        // after the end tabs' rules, so its focus ring is not square on one side (Michael, Ally).
+        expect(ruleFor(css, '.gh-tab:only-child')).toContain('border-radius: 12px');
+        expect(css.indexOf('.gh-tab:only-child')).toBeGreaterThan(css.indexOf('.gh-tab:last-child'));
     });
 });
 
 describe('status bar and chips match the menu (VDL Section 7)', () => {
+    it("the player pill: the family pill's look on Home and in the open copy, placed in the row or above, never a button", () => {
+        const css = homeCss();
+        const pill = ruleFor(css, '.gh-players');
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(pill).not.toContain('pointer-events: auto');
+        expect(HOME_GLASS).toContain('.gh-players');
+        expect(css).toMatch(/\.gh-source:has\(> \.gh-family\) > \.gh-players\s*\{[^}]*right: calc\(100% \+ var\(--gg-family-w, 0px\) \+ 20px\)/);
+        expect(css).toMatch(/\.gh-source\[data-players="above"\] > \.gh-players\s*\{[^}]*bottom: calc\(100% \+ 10px\)/);
+        expect(css).toMatch(/\.gh-x-pill\[data-players="above"\] > \.gh-x-players\s*\{[^}]*--gh-players-y: translateY\(0\)/);
+        expect(ruleFor(css, '.gh-players-dot')).toContain('#5fd38d');
+        expect(ruleFor(css, '.gh-x-players')).toContain('backdrop-filter');
+    });
+    it("the store pill's face is glass that fades with Home's glass, and is no focus target", () => {
+        const css = homeCss();
+        expect(ruleFor(css, '.gh-store-face')).toContain('backdrop-filter');
+        expect(ruleFor(css, '.gh-x-store-face')).toContain('backdrop-filter');
+        expect(HOME_GLASS).toContain('.gh-store-face');
+        expect(ruleFor(css, '.gh-store-face')).not.toContain('pointer-events: auto');
+    });
     it("the status bar, store and family chips take the cards' edge and bold text, as the menu's top bar", () => {
         const css = homeCss();
-        for (const sel of ['.gh-status-pill', '.gh-source', '.gh-family', '.gh-store-choice']) {
+        for (const sel of ['.gh-status-pill', '.gh-family', '.gh-store-choice', '.gh-store-face']) {
             const r = ruleFor(css, sel);
-            expect(r, sel).toContain('border-color: rgba(255,255,255,.12)');
+            expect(r, sel).toContain('border-color: rgba(182,199,224,.40)');
             expect(r, sel).not.toMatch(/font-weight: 600/);
             expect(r, sel).toContain('font-weight: 700');
         }
@@ -275,12 +327,16 @@ describe('homeCss', () => {
         // Action row 379.4..433.4 -> centre 406.4; pill 32 tall -> top 390.4.
         expect(sourcePillTop()).toBeCloseTo(390.4, 5);
         const pill = css.match(/\.gh-source\s*\{[^}]*\}/)?.[0] ?? '';
-        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*56px\)\s*!important/);
+        expect(pill).toMatch(/right:\s*var\(--gh-pill,\s*28px\)\s*!important/);
         expect(pill).toMatch(/top:\s*calc\(390\.4px - var\(--gh-top\)\)/);
         expect(pill).toMatch(/border-radius:\s*12px/);
         expect(pill).toMatch(/pointer-events:\s*none/);
-        // The same look as the game page: one definition.
-        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        // The holder: the pill's size and shape, never its glass (the face beside the family pill carries it, SourcePill).
+        for (const decl of sourcePillLook((n) => `${n}px`, false).split(';').map((d) => d.trim()).filter(Boolean)) expect(pill).toContain(`${decl} !important`);
+        expect(pill).not.toMatch(/backdrop-filter|background:/);
+        // The same look as the game page: one definition, on the face.
+        const face = ruleFor(css, '.gh-store-face');
+        for (const decl of sourcePillLook((n) => `${n}px`).split(';').map((d) => d.trim()).filter(Boolean)) expect(face).toContain(`${decl} !important`);
         expect(css).toMatch(/\.gh-source-icon\s*\{[^}]*width:\s*16px[^}]*margin-right:\s*8px/);
         // The old icon-only chip badge is gone; the chip row keeps its fixed height.
         expect(css).not.toMatch(/\.gh-source\s*\{[^}]*var\(--gh-r-card\)/);
@@ -312,11 +368,11 @@ describe('homeCss', () => {
         // (The ring is drawn by its ::before, which fades out as the page's crisp ring, outside the canvas, fades in; the
         // panel keeps a transparent 1px border so its box and edges stay the page card's.)
         expect(css).toMatch(/\.gh-open-shell \{[^}]*border: 1px solid transparent/);
-        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*inset: -1px[^}]*border: 1px solid rgba\(182,199,224,\.40\)/);
         expect(css).not.toContain('--gho-x-border');
         // The pill's layers that grow into the page pill start at its outer edge (its 1px border), as openMotion's scales assume.
-        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: -1px[^}]*top: -1px[^}]*width: calc\(100% \+ 2px\)[^}]*height: calc\(100% \+ 2px\)/);
-        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::after \{[^}]*left: -1px[^}]*top: calc\(var\(--gho-play-dy\) - 1px\)[^}]*width: calc\(\(100% \+ 2px\) \* var\(--gho-play-sx\)\)[^}]*height: calc\(\(100% \+ 2px\) \* var\(--gho-play-sy\)\)/);
+        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::before \{[^}]*left: var\(--gho-play-inset-x\)[^}]*top: var\(--gho-play-inset-y\)[^}]*width: var\(--gho-play-home-w\)[^}]*height: var\(--gho-play-home-h\)/);
+        expect(css).toMatch(/\.gh-btn\[data-action="play"\]::after \{[^}]*left: var\(--gho-play-inset-x\)[^}]*top: calc\(var\(--gho-play-dy\) \+ var\(--gho-play-inset-y\)\)[^}]*width: var\(--gho-play-page-w\)[^}]*height: var\(--gho-play-page-h\)/);
     });
     it('never marks transform or opacity !important: Chromium will not run an animation of an !important property on its compositor', () => {
         // (compositeFailed 262144, kAffectsImportantProperty, probed on the Ally: the open transition's motion then ran on the
@@ -412,7 +468,7 @@ describe('homeCss', () => {
         expect(title).toMatch(/flex:\s*0 0 auto\s*!important/);
         expect(title).toMatch(/text-wrap:\s*balance/);
         expect(title).toMatch(/text-shadow:\s*0 4px 30px rgba\(0,0,0,\.4\)/);
-        expect(title).toMatch(/font-size:\s*58px/);
+        expect(title).toMatch(/font-size:\s*calc\(58px \* var\(--gg-title-scale, 1\)\)/);
         // Room for descenders and the shadow inside the clip, cancelled by equal negative margins (layout stays 116 tall).
         expect(title).toMatch(/padding:\s*16px\s*!important/);
         expect(title).toMatch(/margin:\s*-16px\s*!important/);
@@ -420,14 +476,25 @@ describe('homeCss', () => {
         expect(TITLE_BLOCK.maxTitleLines).toBe(3);
     });
     describe('title block: fixed from the eyebrow down, the title grows upward', () => {
-        it('order is title slot, eyebrow, chips, actions, each 18 apart (actions add their 8 margin)', () => {
+        it('left column: title slot, eyebrow, actions, each 18 apart (actions add their 8 margin), lower by the chip row and its gap', () => {
             const two = titleBlockLayout(2);
-            expect(two.slotTop).toBe(118);
-            expect(two.titleTop).toBe(118);
-            expect(two.eyebrowTop).toBe(118 + 116 + 18); // 252
-            expect(two.chipsTop).toBeCloseTo(252 + 14.4 + 18, 5); // 284.4
-            expect(two.actionsTop).toBeCloseTo(284.4 + 69 + 18 + 8, 5); // 379.4
+            expect(two.slotTop).toBe(118 + 69 + 18); // 205: the chip row (69) and its gap moved to the right
+            expect(two.titleTop).toBe(205);
+            expect(two.eyebrowTop).toBe(205 + 116 + 18); // 339
+            expect(two.actionsTop).toBeCloseTo(339 + 14.4 + 18 + 8, 5); // 379.4: where it always was
             expect(two.bottom).toBeCloseTo(433.4, 5);
+        });
+        it('the chips sit at the right with their bottom level with the actions', () => {
+            const two = titleBlockLayout(2);
+            expect(two.chipsTop + 69).toBeCloseTo(two.bottom, 5);
+            const css = homeCss();
+            expect(css).toMatch(/\.gh-chips\s*\{[^}]*position:\s*absolute[^}]*right:\s*0[^}]*top:\s*159\.4px/); // 433.4 - 69 - 205
+        });
+        it('the store pill sits above the chips, or on the action row when the game shows none', () => {
+            const two = titleBlockLayout(2);
+            expect(sourcePillTop(true)).toBeCloseTo(two.chipsTop - PILL_CHIPS_GAP - SOURCE_PILL.height, 5);
+            expect(sourcePillTop()).toBeCloseTo(two.actionsTop + 27 - SOURCE_PILL.height / 2, 5);
+            expect(homeCss()).toContain(`.gh-page:has(.gh-chips > .gh-chip) .gh-source {`);
         });
         it('a one-line title only moves the title down inside its slot: eyebrow, chips and actions do not move', () => {
             const one = titleBlockLayout(1);
@@ -467,7 +534,7 @@ describe('homeCss', () => {
         });
     });
     it('the tallest title block (2-line title) ends above the recents glow at both card scales', () => {
-        // 118 + eyebrow 14.4 + 18 + title 2 x 58 + 18 + chips 69 + 18 + 8 + 54 = 433.4
+        // 118 + chip row 69 + 18 (now at the right) + title 2 x 58 + 18 + eyebrow 14.4 + 18 + 8 + 54 = 433.4
         expect(titleBlockBottom()).toBeCloseTo(433.4, 5);
         // Glow top = row top - 12 x scale (blur 40 - offset 16 - spread 12) - the 1px ring.
         const hand = recentsGlowTop(recentsGeometry(CARD_SCALE_HANDHELD));
@@ -478,7 +545,7 @@ describe('homeCss', () => {
         expect(titleBlockBottom()).toBeLessThan(hand);
         // The CSS uses the same metrics.
         const css = homeCss();
-        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(118px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
+        expect(css).toMatch(/\.gh-title-block\s*\{[^}]*top:\s*calc\(205px - var\(--gh-top\)\)[^}]*gap:\s*18px/);
         expect(css).toMatch(/\.gh-actions\s*\{[^}]*margin:\s*8px 0 0 0/);
         expect(css).toMatch(/\.gh-btn\s*\{[^}]*height:\s*54px/);
         expect(homeCss(CARD_SCALE_DOCKED)).toMatch(/\.gh-cap\.gh-cap-focus\s*\{[^}]*0 14px 28px -12px rgba\(0,0,0,\.75\)/);
@@ -560,6 +627,17 @@ describe('homeCss', () => {
         for (const part of ['background-image: var(--gho-hero', 'background-size: contain', 'background-position: center top', '-webkit-mask-image: var(--gho-hero-mask)']) expect(art).toContain(part);
         expect(body('.gh-hero-open')).toContain('background-size: cover');
     });
+    it("hero Expanded: Home's art and another game's arriving one cover the top 70%, centred, fading into the fill", () => {
+        const css = homeCss();
+        const body = (sel: string) => (css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.()[\]:]/g, '\\$&')}\\s*\\{([^}]*)\\}`)) ?? [])[2] ?? '';
+        for (const sel of ['.gh-hero-full.gh-hero-expanded::after', '.gh-expanded .gh-hero-open::after']) {
+            const art = body(sel);
+            for (const part of [`inset: ${EXPANDED_INSET}`, 'background-size: cover', 'background-position: center', `-webkit-mask-image: ${EXPANDED_MASK}`]) expect(art).toContain(part);
+        }
+        // After Fit's rules, so its box and fade win over Fit's (Expanded also has gh-hero-fit / gh-fit, for the fill).
+        expect(css.indexOf('.gh-hero-full.gh-hero-expanded::after')).toBeGreaterThan(css.indexOf('.gh-hero-full.gh-hero-fit::after'));
+        expect(css.indexOf('.gh-expanded .gh-hero-open::after')).toBeGreaterThan(css.indexOf('.gh-fit .gh-hero-open::after'));
+    });
     it("Steam's own controller and gear icons are drawn at the page's size", () => {
         expect(homeCss()).toMatch(new RegExp(`\\.gh-steam-icon svg\\s*\\{[^}]*width:\\s*${PAGE_LAYOUT.circleIcon}px[^;]*;\\s*height:\\s*${PAGE_LAYOUT.circleIcon}px`));
     });
@@ -575,9 +653,12 @@ describe('homeCss', () => {
         expect(css).toMatch(/\.gh-btn-cloud\s*\{[^}]*position:\s*relative/);
         expect(css).toMatch(
             new RegExp(
-                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*border:\\s*${CLOUD_DOT.ring}px solid ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
+                `\\.gh-btn-cloud::after\\s*\\{[^}]*content:\\s*""[^}]*top:\\s*${CLOUD_DOT.inset}px[^}]*right:\\s*${CLOUD_DOT.inset}px[^}]*width:\\s*${CLOUD_DOT.size}px[^}]*height:\\s*${CLOUD_DOT.size}px[^}]*border-radius:\\s*50%[^}]*background:\\s*var\\(--gh-cloud-dot\\)[^}]*box-shadow:\\s*0 0 0 ${CLOUD_DOT.ring}px ${CLOUD_DOT.ringColour.replace(/[().]/g, '\\$&')}`,
             ),
         );
+        // The dark ring hangs outside the dot (a shadow, taking no room), so the dot itself sits on the circle's corner: the
+        // look of Unifideck's page, Michael's pick on the Ally (2026-11-10). A border pushed the dot 2 units in.
+        expect(ruleFor(css, '.gh-btn-cloud::after')).not.toMatch(/border:\s*[\d.]+px solid/);
     });
     it('feed rows: card height from the row (inline variable), rows and their header placed inline, compact wide cards', () => {
         const css = homeCss();
@@ -707,9 +788,9 @@ describe('homeCss open transition', () => {
         expect(all.some(([sel, b]) => sel.includes('.gh-open-shell::') && b.includes('backdrop-filter'))).toBe(false);
         // The pill: the page's focused pill at its exact size, faded in as the stretched layer stops.
         const pill = body((sel) => sel.includes('data-gh-opening="morph"') && !sel.includes('data-gh-phase') && sel.endsWith('[data-action="play"]::after'));
-        expect(pill).toContain('width: calc((100% + 2px) * var(--gho-play-sx))');
-        expect(pill).toContain('height: calc((100% + 2px) * var(--gho-play-sy))');
-        expect(pill).toContain('top: calc(var(--gho-play-dy) - 1px)');
+        expect(pill).toContain('width: var(--gho-play-page-w)');
+        expect(pill).toContain('height: var(--gho-play-page-h)');
+        expect(pill).toContain('top: calc(var(--gho-play-dy) + var(--gho-play-inset-y))');
         expect(pill).not.toContain('transform: var(--gho-play-bg)');
         expect(body((sel) => sel.includes('data-gh-phase="to"') && sel.endsWith('[data-action="play"]::after'))).toContain(`animation: gh-open-settle ${OPEN_TIMINGS.morph}ms linear both`);
         expect(css).toContain(`@keyframes gh-open-settle { 0%, ${settleAt}% { opacity: 0; animation-timing-function: ease-in-out; } 100% { opacity: 1; } }`);
@@ -724,6 +805,18 @@ describe('homeCss open transition', () => {
         expect(copy?.[1]).toMatch(/opacity:\s*0/);
         const lit = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-chip:nth-child(3) .gh-chip-value::after'));
         expect(lit?.[1]).toContain('opacity: var(--gho-chip-2-accent, 0)');
+    });
+    it("an Install pill ends in the game's size, faded, at the pill's padding like the page's", () => {
+        const seg = rules(css).find(([sel]) => sel === '.gh-btn-play > .gh-btn-size');
+        expect(seg?.[1]).toContain(`right: ${HOME_PILL.padX}px`);
+        expect(seg?.[1]).toContain('opacity: 0.72');
+        expect(seg?.[1]).toContain('position: absolute');
+    });
+    it('with a "Play from" arrow too, the size ends a padding before the arrow\'s segment, and travels to the page\'s first segment', () => {
+        const all = rules(css);
+        const seg = all.find(([sel]) => sel === '.gh-btn-play:has(> .gh-play-arrow) > .gh-btn-size');
+        expect(seg?.[1]).toContain(`right: ${HOME_PILL.arrow - HOME_PILL.border + HOME_PILL.padX}px`);
+        expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith(':has(> .gh-play-arrow) > .gh-btn-size') && body.includes('transform: var(--gho-play-size-arrow)'))).toBe(true);
     });
     it("a game that can be streamed: the Play pill ends in the page's arrow segment (Home's size), and a focusable arrow over it", () => {
         const all = rules(css);
@@ -746,6 +839,11 @@ describe('homeCss open transition', () => {
         expect(tint?.[1]).toMatch(/background: rgba\(255,255,255,\.28\)/);
         // Opening: the segment moves with the pill and grows onto the page's (openMotion --gho-play-arrow), about its right end.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-play-arrow') && body.includes('transform: var(--gho-play-arrow)'))).toBe(true);
+        // An Install pill's size moves the same way (openMotion --gho-play-size), about its right end.
+        expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-size') && body.includes('transform: var(--gho-play-size)'))).toBe(true);
+        expect(all.some(([sel, body]) => sel.endsWith('.gh-btn-size') && body.includes('transform-origin: 100% 50%'))).toBe(true);
+        // Drawn at the page's font size for the open, shrunk to Home's at its start (openMotion --gho-play-size-font, -from).
+        expect(all.some(([sel, body]) => sel.endsWith('.gh-btn-size') && body.includes('font-size: var(--gho-play-size-font, 16px)') && body.includes('transform: var(--gho-play-size-from, none)'))).toBe(true);
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-play-arrow') && /transform-origin:\s*100% 50%/.test(body))).toBe(true);
         // The arrow button itself fades with the info button.
         expect(all.some(([sel, body]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-stream') && /opacity:\s*0/.test(body))).toBe(true);
@@ -753,15 +851,23 @@ describe('homeCss open transition', () => {
     it("the cloud's state badge takes its circle's counter-scale about its top-right corner, so it stays the page's size and on the corner (#64)", () => {
         const all = rules(css);
         for (const i of [0, 1, 2, 3]) {
-            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of .gh-btn-circle).gh-btn-cloud::after`));
+            const badge = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE}).gh-btn-cloud::after`));
             expect(badge?.[1]).toContain(`transform: var(--gho-circle-icon-${i}, none)`);
         }
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.endsWith('.gh-btn-cloud::after') && /transform-origin:\s*100% 0/.test(body))).toBe(true);
     });
+    it("counts only Home's own circles: NonSteamLaunchers' cloned buttons in the row never shift a circle's transform", () => {
+        expect(HOME_CIRCLE).toBe('.gh-btn-circle:not([id^="my-custom-"])');
+        const all = rules(css);
+        for (const i of [0, 1, 2, 3]) {
+            expect(all.some(([sel, body]) => sel.endsWith(`.gh-btn-circle:nth-child(${i + 1} of ${HOME_CIRCLE})`) && body.includes(`var(--gho-circle-${i}, none)`))).toBe(true);
+        }
+        expect(css).not.toContain('of .gh-btn-circle)');
+    });
     it("a circle's icon takes the counter-scale about its centre while the circle grows", () => {
         const all = rules(css);
         // Picked among the circles (openHome measures .gh-btn-circle in order), so the stream arrow before them shifts nothing.
-        const icon = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith('.gh-btn-circle:nth-child(2 of .gh-btn-circle) > .gh-btn-icon'));
+        const icon = all.find(([sel]) => sel.includes('data-gh-phase="to"') && sel.endsWith(`.gh-btn-circle:nth-child(2 of ${HOME_CIRCLE}) > .gh-btn-icon`));
         expect(icon?.[1]).toContain('transform: var(--gho-circle-icon-1, none)');
         expect(all.some(([sel, body]) => sel.includes('data-gh-opening') && !sel.includes('data-gh-phase') && sel.includes('.gh-btn-circle > .gh-btn-icon') && /transform-origin:\s*50% 50%/.test(body))).toBe(true);
         // The cloud's icon is the page's size too (PAGE_LAYOUT.cloudIcon, on both).
@@ -778,8 +884,11 @@ describe('homeCss open transition', () => {
         expect(page?.[1]).not.toMatch(/opacity:\s*0/);
         // Home's own gradients are gone, and nothing about the shading changes while opening.
         expect(all.some(([sel]) => sel.includes('.gh-scrim-v') || sel.includes('.gh-scrim-l'))).toBe(false);
-        expect(all.some(([sel]) => sel.includes('data-gh-opening') && sel.includes('.gh-scrim-page'))).toBe(false);
-        // No dimming at rest (the page has none); the feed sheet still dims (SpotlightHome's DIM_SHEET).
+        // The one opening rule on it brings back the shading the raised feed sheet faded out (opacity only), so the page
+        // arrives with its own shading; the shading itself (its background) never changes while opening.
+        const opening = all.filter(([sel]) => sel.includes('data-gh-opening') && sel.includes('.gh-scrim-page'));
+        expect(opening.map(([, body]) => body.trim().replace(/;$/, ''))).toEqual(['opacity: 1']);
+        // No dimming at rest (the page has none); the feed sheet still dims (FEED_DIM.sheet).
         expect(all.find(([sel]) => sel === '.gh-root')?.[1]).toMatch(/--gh-dim:\s*0;/);
     });
     it("the extras layer (the description, the HowLongToBeat card's rest) is hidden at rest and shown, part by part, only by a morph", () => {
@@ -912,13 +1021,14 @@ describe('homeCss Play pill while opening', () => {
     it("takes on the page's focused look as the morph settles (Steam focuses Play there): a ring layer at the page pill's exact size", () => {
         const css = homeCss();
         const after = /\.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(after).toContain('outline:2px solid #fff');
-        expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; }');
+        expect(after).not.toContain('outline:');
+        expect(css).not.toContain('--gho-play-ring-image');
+        expect(css).toContain('.gh-root[data-gh-opening="morph"] .gh-actions > .gh-btn[data-action="play"]::after { opacity: 0; transform-origin: 0 0; transform: var(--gho-play-settle-from, none); }');
         // The page's focused Play keeps its accent fill, as Home's (no lighter overlay any more).
         expect(after).toContain('background: var(--glance-accent)');
         expect(after).not.toContain('rgba(255,255,255,.28)');
         const to = /\[data-gh-phase="to"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{([^}]*)\}/.exec(css)?.[1] ?? '';
-        expect(to).not.toContain('transform');
+        expect(to).toContain('transform: translate(0, 0) scale(1, 1)');
         // Faded in by the late-fade animation, which holds it at 1 (its own value stays 0: see "delayed fades").
         expect(to).toContain('animation: gh-open-settle');
     });
@@ -944,18 +1054,18 @@ describe('the way back (B from a page)', () => {
         expect(css).not.toMatch(/\.gh-back \.gh-safe\s*\{/);
         const glass = HOME_GLASS.join(', ');
         // The glass fades itself; around it, the largest parts that hold no glass fade, each once.
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
-        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\):not\\(\\[data-gh-closing\\]\\) \\.gh-safe :is\\(${esc(glass)}\\)[,\\s]`));
+        expect(css).toMatch(new RegExp(`\\.gh-root:is\\(\\.gh-back, \\[data-gh-return\\]\\):not\\(\\.gh-bridge\\):not\\(\\[data-gh-opening\\]\\):not\\(\\[data-gh-closing\\]\\) :is\\(\\.gh-safe, \\.gh-safe :has\\(${esc(glass)}\\)\\) > :not\\(:has\\(${esc(glass)}\\)\\):not\\(${esc(glass)}\\)`));
     });
     it('a cancelled open (data-gh-return, openCancel.showCancelReturn) fades in exactly as the way back does', () => {
-        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\) \.gh-safe :is\(/);
+        expect(css).toMatch(/\.gh-root:is\(\.gh-back, \[data-gh-return\]\):not\(\.gh-bridge\):not\(\[data-gh-opening\]\):not\(\[data-gh-closing\]\) \.gh-safe :is\(/);
         expect(css).not.toMatch(/\.gh-root\.gh-back:not\(\.gh-bridge\)/);
     });
-    it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, and the status bar, are outside .gh-safe)", () => {
+    it("HOME_GLASS lists every part of Home with a backdrop blur (the open transition's panels and extras, the status bar and the hero frost are outside .gh-safe)", () => {
         const blurred = [...css.matchAll(/([^{}]+)\{[^}]*backdrop-filter: blur/g)].map((m) => m[1].trim());
         expect(blurred.length).toBeGreaterThan(0);
         for (const sel of blurred) {
-            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status'].some((outside) => sel.includes(outside))) continue;
+            if (['.gh-x-pill', '.gh-x-store-choice', '.gh-x-family', '.gh-normal-card', '.gh-clean-info', '.gh-open-shell', '.gh-open-extras', '.gh-open-circle', '.gh-status', '.gh-scrim-frost'].some((outside) => sel.includes(outside))) continue;
             const last = sel.split(',').map((p) => p.trim().split(/[\s>+~]+/).pop()!);
             for (const compound of last) expect(HOME_GLASS.some((g) => compound.includes(g)), sel).toBe(true);
         }
@@ -1056,7 +1166,7 @@ describe('homeCss mouse hover', () => {
         expect(css).toMatch(new RegExp(`\\.gh-cap\\.gh-cap-hover[^{]*\\{[^}]*box-shadow: ${ring.replace(/[().]/g, '\\$&')}`));
     });
     it("opened with a mouse, the growing Play pill has no focus ring (the page shows none then)", () => {
-        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-actions > \.gh-btn\[data-action="play"\]::after \{[^}]*outline: none !important/);
+        expect(css).toMatch(/html\[data-gg-mouse\] \.gh-root\[data-gh-opening="morph"\] \.gh-open-play-ring \{[^}]*display: none !important/);
     });
     it('no hover look without mouse mode: every :hover rule is under html[data-gg-mouse]', () => {
         for (const sel of css.match(/[^{}]*:hover[^{]*\{/g) ?? []) expect(sel).toContain('html[data-gg-mouse]');
@@ -1154,6 +1264,13 @@ describe('homeCss open transition: text twins', () => {
             expect(body(`${MT}[data-gh-twins~="value-${k}"] .gh-chip[data-chip="${k}"] .gh-chip-value`), k).toContain(out);
         }
     });
+    it("ProtonDB's chip text fades out under its twins too (a ProtonDB slot)", () => {
+        const out = `animation: gh-twin-out ${OPEN_TIMINGS.morph}ms linear both`;
+        const B = '.gh-root.gh-bridge[data-gh-opening][data-gh-phase]';
+        expect(body(`${MT}[data-gh-twins~="label-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-label`)).toContain(out);
+        expect(body(`${MT}[data-gh-twins~="value-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-value`)).toContain(out);
+        expect(body(`${B}[data-gh-twins~="label-protondb"] .gh-chip[data-chip="protondb"] .gh-chip-label`)).toContain('opacity: 0');
+    });
     it("title twin keeps the page's max width (and wraps as the page's does)", () => {
         const t = body('.gh-twin[data-role="title"]');
         expect(t).toContain(`max-width: ${dd(640)}`);
@@ -1207,15 +1324,55 @@ describe('the stack under the default growth (#55)', () => {
 describe('the cards\' crisp ring in the open transition', () => {
     const css = homeCss();
     it('draws it as the page\'s card ring, outside the canvas', () => {
-        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(255,255,255,calc\(\.12 \* var\(--gho-ring-boost, 1\)\)\)/);
+        expect(css).toMatch(/\.gh-open-ring \{[^}]*display: none[^}]*position: absolute[^}]*border-radius: var\(--gho-ring-r, 16px\)[^}]*border: var\(--gho-ring-w, 1px\) solid rgba\(182,199,224,\.40\)/);
     });
     it('starts on the chips, transparent, and grows to the card as it fades in', () => {
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\] \.gh-open-ring\[data-i="0"\] \{[^}]*display: block[^}]*transform: var\(--gho-ring-0-from\)[^}]*opacity: 0/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-ring\[data-i="0"\] \{[^}]*transform: none[^}]*opacity: 1[^}]*transition: transform/);
     });
     it('fades the panel\'s soft canvas ring out as the crisp one fades in', () => {
-        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(255,255,255,\.12\)/);
+        expect(css).toMatch(/\.gh-open-shell::before \{[^}]*border: 1px solid rgba\(182,199,224,\.40\)/);
         expect(css).toMatch(/\.gh-root\[data-gh-opening="morph"\]\[data-gh-phase="to"\] \.gh-open-shell\[data-i="0"\]::before \{[^}]*opacity: 0[^}]*transition: opacity/);
+    });
+});
+
+describe("the page's own Play ring and circle edges in the open transition", () => {
+    const css = homeCss();
+    const M = '\\.gh-root\\[data-gh-opening="morph"\\]';
+    const MT = `${M}\\[data-gh-phase="to"\\]`;
+    it("draws Play's ring with the page's own outline, outside the canvas, so the browser rounds it as it rounds the page's", () => {
+        const ring = ruleFor(css, '.gh-open-play-ring');
+        expect(ring).toContain('display: none');
+        expect(ring).toContain('outline: calc(var(--gho-pring-on, 0) * 2px * var(--gho-x-d)) solid #fff');
+        expect(ring).toContain('outline-offset: calc(2px * var(--gho-x-d))');
+        expect(ring).toContain('border-radius: var(--gho-pring-r, 0px)');
+        expect(ring).not.toContain('background: var(');
+    });
+    it("starts it on Home's pill and lets it settle in as the pill comes to rest", () => {
+        expect(css).toMatch(new RegExp(`${M} \\.gh-open-play-ring \\{[^}]*display: block[^}]*left: calc\\(var\\(--gho-pring-x, 0\\) \\* 1px\\)[^}]*transform: var\\(--gho-pring-from, none\\)[^}]*opacity: 0`));
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-open-play-ring \\{[^}]*animation: gh-open-settle[^}]*transform: none[^}]*transition: transform`));
+        expect(css).toMatch(/\.gh-root\.gh-bridge\[data-gh-opening\]\[data-gh-phase\] \.gh-open-play-ring \{[^}]*opacity: 1[^}]*animation: none/);
+    });
+    it("draws each circle's edge as the page's: its width in device px and the shared edge colour", () => {
+        const ring = ruleFor(css, '.gh-open-cring');
+        expect(ring).toContain('display: none');
+        expect(ring).toContain('border: var(--gho-ring-w, 1px) solid rgba(182,199,224,.40)');
+        expect(ring).toContain('border-radius: var(--gho-cring-r, 0px)');
+    });
+    it("crossfades it in over the morph as the canvas circle's soft edge fades out", () => {
+        for (const i of [0, 1, 2]) {
+            expect(css).toMatch(new RegExp(`${M} \\.gh-open-cring\\[data-i="${i}"\\] \\{[^}]*display: block[^}]*left: calc\\(var\\(--gho-cring-${i}-x, 0\\) \\* 1px\\)[^}]*height: calc\\(var\\(--gho-cring-${i}-h, 0\\) \\* 1px\\)[^}]*transform: var\\(--gho-cring-${i}-from, none\\)[^}]*opacity: 0`));
+            expect(css).toMatch(new RegExp(`${MT} \\.gh-open-cring\\[data-i="${i}"\\] \\{[^}]*transform: none[^}]*opacity: var\\(--gho-cring-${i}-o, 0\\)[^}]*transition: transform`));
+        }
+        // The soft edge is a layer on the circle that fades by opacity (a border colour is never animated while opening).
+        expect(css).toMatch(new RegExp(`${M} \\.gh-actions > \\.gh-btn-circle \\{[^}]*border-color: transparent[^}]*transition: none`));
+        expect(css).toMatch(new RegExp(`${M} \\.gh-actions > \\.gh-btn-circle::before \\{[^}]*inset: -1px[^}]*border: 1px solid rgba\\(182,199,224,\\.40\\)[^}]*opacity: 1`));
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-actions > \\.gh-btn-circle::before \\{[^}]*opacity: 0[^}]*transition: opacity`));
+    });
+    it("the Unifideck circle's ring fades in late with its circle, which draws no edge of its own", () => {
+        expect(css).toMatch(new RegExp(`${MT} \\.gh-open-cring\\[data-i="3"\\] \\{[^}]*animation: gh-open-extras-in`));
+        expect(css).toMatch(/\.gh-open-circle \{[^}]*border: 1px solid transparent/);
+        expect(css).toMatch(/\.gh-root\.gh-bridge\[data-gh-opening\]\[data-gh-phase\] \.gh-open-cring\[data-i="3"\] \{[^}]*opacity: 1[^}]*animation: none/);
     });
 });
 
@@ -1284,8 +1441,7 @@ describe('Page shading None: contrast on the art (spec "Contrast in None mode")'
         for (const sel of ['.gh-open-shell', '.gh-open-circle', '.gh-normal-card', '.gh-clean-info', '.gh-x-pill:not(.gh-x-selectable)', '.gh-x-family', '.gh-x-store-choice']) {
             expect(none(sel), sel).toContain(`background: ${GLASS} !important`);
         }
-        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(255,255,255,.16) !important');
-        expect(none('.gh-open-ring')).toContain('border-color: rgba(255,255,255,calc(.16 * var(--gho-ring-boost, 1))) !important');
+        expect(none('.gh-open-shell::before')).toContain('border-color: rgba(182,199,224,.40) !important');
         for (const sel of ['.gh-normal-label', '.gh-normal-value', '.gh-clean-label', '.gh-clean-value']) expect(none(sel), sel).toContain('text-shadow:');
         const eyebrowTwin = ruleFor(css, '.gh-twin[data-role="eyebrow"]');
         expect(eyebrowTwin).toContain('color: #fff');
@@ -1339,5 +1495,102 @@ describe('shared status cell geometry',()=>{
         for(const value of ['min-width: 24px','min-height: 24px','justify-content: center','border-radius: 6px']) expect(item).toContain(value);
         const avatar=ruleFor(statusCss(),'.gh-status-avatar');
         expect(avatar).toContain('min-width: 24px');expect(avatar).toContain('min-height: 24px');
+    });
+});
+
+describe('ProtonDB chip', () => {
+    const css = homeCss();
+    const all = rules(css);
+    it("the chip's mark wears the rating's colour, ProtonDB's own", () => {
+        const colours = { platinum: '#b4c7dc', gold: '#cfb53b', silver: '#a6a6a6', bronze: '#cd7f32', borked: '#ff0000' };
+        for (const [tier, colour] of Object.entries(colours)) {
+            const mark = all.find(([sel]) => sel.some((s) => s.endsWith(`.gh-chip[data-tone="${tier}"] .gh-chip-mark`)));
+            expect(mark?.[1], tier).toContain(`color: ${colour}`);
+        }
+    });
+    it('five chips are wider than the title block: each keeps its own width and its label on one line (seen squeezed on the Deck)', () => {
+        expect(ruleFor(css, '.gh-chip')).toContain('flex-shrink: 0');
+        expect(ruleFor(css, '.gh-chip-label')).toContain('white-space: nowrap');
+    });
+    it('a fifth chip (Played, Space, Achievements, HLTB, ProtonDB) fades with the others while opening', () => {
+        const label = all.find(([sel]) => sel.some((s) => s.includes('data-gh-phase="to"') && s.endsWith('.gh-chip:nth-child(5) .gh-chip-label')));
+        const value = all.find(([sel]) => sel.some((s) => s.includes('data-gh-phase="to"') && s.endsWith('.gh-chip:nth-child(5) .gh-chip-value')));
+        expect(label?.[1]).toContain('var(--gho-chip-4-o, 0)');
+        expect(value?.[1]).toContain('opacity: var(--gho-chip-4-o, 0)');
+    });
+});
+
+describe('closingRules (the way back glide)', () => {
+    const css = () => closingRules().join('\n');
+    const F = '.gh-root[data-gh-closing="from"]';
+    const T = '.gh-root[data-gh-closing="to"]';
+
+    it("starts each shared part at the page's place, with no transition, and glides it to rest", () => {
+        for (const [selector, variable] of CLOSING_MOVES) {
+            expect(css()).toContain(`${F} ${selector} { transform: var(${variable}); transition: none !important; }`);
+            expect(css()).toContain(`${T} ${selector} { transition: transform ${RETURN_GLIDE.glide}ms ${MORPH_EASE} !important; }`);
+        }
+    });
+
+    it("'cut' stops every glide transition at once (the round buttons' own 250 ms one kept them moving after an early end)", () => {
+        for (const [selector] of CLOSING_MOVES) expect(css()).toContain(`.gh-root[data-gh-closing="cut"] ${selector} { transition: none !important; }`);
+    });
+
+    it("moves the same parts by the same variables as the open's morph", () => {
+        const opening = openingRules().join('\n');
+        for (const [selector, variable] of CLOSING_MOVES) expect(opening).toContain(`[data-gh-phase="to"] ${selector} { transform: var(${variable});`);
+    });
+
+    it('raises the game row and fades in the chips, the info button and the stream arrow', () => {
+        expect(css()).toContain('@keyframes gh-close-row { from { opacity: 0; } }');
+        expect(css()).toContain(`@keyframes gh-close-rise { from { translate: 0 ${OPEN_TIMINGS.leaveDrop}px; } }`);
+        expect(css()).toMatch(new RegExp(`@keyframes gh-close-chip \\{ from \\{ opacity: 0; transform: translateY\\(${RETURN_GLIDE.chipRise}px\\); \\} \\}`));
+        expect(css()).toContain(`${T} .gh-recents { animation: gh-close-row ${RETURN_GLIDE.row}ms ease-out ${RETURN_GLIDE.rowDelay}ms backwards !important; }`);
+        expect(css()).toContain(`${T} .gh-recents-track { animation: gh-close-rise ${RETURN_GLIDE.row}ms ease-out ${RETURN_GLIDE.rowDelay}ms backwards !important; }`);
+        // Not !important, as transform and opacity: important animated properties left the compositor (homeCss ANIMATED).
+        expect(css()).toContain(`${F} .gh-recents-track { translate: 0 ${OPEN_TIMINGS.leaveDrop}px; }`);
+        expect(css()).toContain(`animation: gh-close-chip ${RETURN_GLIDE.chips}ms ease ${RETURN_GLIDE.chipsDelay}ms backwards !important;`);
+        expect(css()).toContain('.gh-actions > .gh-btn-circle[data-action="info"]');
+        expect(css()).toContain('.gh-actions > .gh-btn-stream');
+    });
+
+    // Steam focuses the row as Home comes back: a row box dropped below the screen made it scroll Steam's whole UI
+    // (BasicUI, over the leaving page's overflow) by 10 px, which snapped back when the page unmounted (Ally, docked).
+    // Only the track drops (the separate translate property, beside its inline translateX); the focused box stays put.
+    it("never moves the focused row's own box", () => {
+        for (const line of css().split('\n').filter((l) => /\.gh-recents \{/.test(l))) expect(line).not.toMatch(/transform|translate/);
+        expect(css()).toContain(`${F} .gh-recents { opacity: 0; }`);
+    });
+
+    it('animates nothing but transform and opacity', () => {
+        for (const block of css().match(/transition: [^;]+/g) ?? []) expect(block).toMatch(/^transition: (none|transform \d+ms)/);
+    });
+
+    it("the way back's plain fade stays out of a glide", () => {
+        const rule = homeCss().split('\n').find((line) => line.includes('animation: gh-return-in'))!;
+        for (const part of topLevelCommas(rule.slice(0, rule.indexOf('{')))) expect(part).toContain(':not([data-gh-closing])');
+    });
+
+    it("once the glide is done ('done'), none of its rules apply, and the way back's fade still stays off", () => {
+        for (const sel of selectors(css())) for (const part of topLevelCommas(sel)) expect(part).not.toMatch(/\[data-gh-closing\](?!=)/);
+        // Only Play takes its own fill back at once (Home's buttons fade their fill over ACCENT_MS: the pill dipped, Ally).
+        expect(css().match(/data-gh-closing="done"/g)).toHaveLength(1);
+        expect(css()).toContain('.gh-root[data-gh-closing="done"] .gh-actions > .gh-btn[data-action="play"] { transition: none !important; }');
+    });
+
+    it("with page shading off, Play's gliding fill is Home's own shade-none pill (it showed brighter, then settled; Ally)", () => {
+        expect(homeCss()).toContain(`.gh-shade-none:is([data-gh-closing="from"], [data-gh-closing="to"]) .gh-actions > .gh-btn[data-action="play"]::before { background: ${SHADE_NONE.pill} !important;`);
+    });
+
+    it('is part of Home\'s stylesheet', () => {
+        expect(homeCss()).toContain(css());
+    });
+});
+
+describe('calendar day columns', () => {
+    it('a day\'s games sit at their own top, under the heading (the card rule pins top to 0)', async () => {
+        const { homeCss } = await import('../../src/home/homeCss');
+        const css = typeof homeCss === 'function' ? (homeCss as () => string)() : String(homeCss);
+        expect(css).toMatch(/\.gh-cal-day \.gh-card\s*\{[^}]*top:\s*var\(--gh-card-top, 0px\)/);
     });
 });

@@ -3,6 +3,11 @@ import { LOG_PREFIX } from '../constants';
 import { attempt } from '../data/attempt';
 import { cache, TTL } from '../data/cache';
 import { lookupHltb } from '../data/hltb';
+import { protonGames } from '../data/protonGame';
+import { protonKnown, seedProton } from '../data/useProton';
+import { lookupPlayers, PLAYERS_HOME_MAX_AGE_MS } from '../data/playerCount';
+import { playersKnown, seedPlayers } from '../data/usePlayerCount';
+import { usesStat } from '../logic/infoSlots';
 import { settings } from '../data/settings';
 import { getShortcutDescription } from '../data/shortcutDescription';
 import { getDescription, getSteamLanguage } from '../data/steam';
@@ -13,8 +18,8 @@ import type { HeroicRef } from '../logic/heroic';
 import { artKnown, resolveArt } from './HeroBackground';
 import { rowShowsWideCards } from './recentsLayout';
 import { cardArtKnown, warmCardArt } from './wideCardArt';
-import { memoAchievements, noteDetails, seedAchievements, setAchievementSink } from './detailsMemo';
-import { ArtWarmDeps, DescriptionWarmDeps, DetailsWarmDeps, HltbWarmDeps, warmAchievements, warmArt, warmDescriptions, warmHltb, warmOrder } from './warmup';
+import { achievementsComplete, memoAchievements, noteDetails, seedAchievements, setAchievementSink } from './detailsMemo';
+import { warmPlayers, ArtWarmDeps, DescriptionWarmDeps, DetailsWarmDeps, HltbWarmDeps, ProtonWarmDeps, warmAchievements, warmArt, warmDescriptions, warmHltb, warmOrder, warmProton } from './warmup';
 
 /**
  * The network and Steam-details warming waits this long after Home is up, so the first paint and the selected game's own
@@ -34,6 +39,19 @@ export interface WarmGame {
     name: string;
 }
 
+/** Steps a caller can leave out (all on for Home): the Library shows no pills, wide cards, descriptions or player counts. */
+export interface WarmParts { pills?: boolean; cardArt?: boolean; descriptions?: boolean; players?: boolean }
+
+/** Which optional steps run: the caller's parts, then the settings that already turn a step off for Home. */
+export function warmSteps(parts: WarmParts | undefined, s: { playerCountPill: boolean; cleanPage: boolean; homeRowStyle: Parameters<typeof rowShowsWideCards>[0] }) {
+    return {
+        pills: parts?.pills ?? true,
+        cardArt: (parts?.cardArt ?? true) && rowShowsWideCards(s.homeRowStyle),
+        descriptions: (parts?.descriptions ?? true) && !s.cleanPage,
+        players: (parts?.players ?? true) && s.playerCountPill,
+    };
+}
+
 /** What the warm-up needs to know of a game beyond its id: a non-Steam shortcut, and Heroic's reference for it. */
 export interface WarmInfo {
     isShortcut: boolean;
@@ -49,10 +67,10 @@ export interface WarmInfo {
  * WARMUP_DELAY_MS after Home is up. Starts again when the list of games changes;
  * stops on unmount. `onChange` is called as results come in, so the selected game refreshes. Never throws.
  */
-export function useWarmup(games: WarmGame[], centre: number, ready: boolean, info: (appId: number) => WarmInfo, onChange: () => void) {
+export function useWarmup(games: WarmGame[], centre: number, ready: boolean, info: (appId: number) => WarmInfo, onChange: () => void, parts?: WarmParts) {
     const idsKey = games.map((g) => g.appId).join(',');
-    const latest = useRef({ games, centre, info, onChange });
-    latest.current = { games, centre, info, onChange };
+    const latest = useRef({ games, centre, info, onChange, parts });
+    latest.current = { games, centre, info, onChange, parts };
     useEffect(() => {
         setAchievementSink((appId, counts) => {
             void attempt('achievements cache write', () => cache.put(achievementKey(appId), counts, TTL.achievements), undefined);
@@ -67,11 +85,12 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
             // One tick first: Home's restored selection (back on B) is applied by then, so the order starts from what is shown.
             await sleep(0);
             if (cancelled) return;
-            const { games: list, centre: at, info: infoOf, onChange: changed } = latest.current;
+            const { games: list, centre: at, info: infoOf, onChange: changed, parts: wanted } = latest.current;
+            const steps = warmSteps(wanted, settings.get());
             const shortcut = (appId: number) => infoOf(appId).isShortcut;
             const ordered = warmOrder(list, at);
             // These are local metadata reads, independent of online preloading. Keep them ahead of selection.
-            const pills = (async () => {
+            const pills = steps.pills ? (async () => {
                 for (const game of ordered) {
                     if (cancelled) return;
                     const meta = infoOf(game.appId);
@@ -81,21 +100,20 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
                     ]);
                 }
                 if (!cancelled) changed();
-            })().catch((error) => console.warn(`${LOG_PREFIX} Home: pill warm-up failed`, error));
+            })().catch((error) => console.warn(`${LOG_PREFIX} Home: pill warm-up failed`, error)) : undefined;
             // The art at once, from the game shown outward (Home's own load of the shown game's art is shared, not repeated):
             // its hero, and the wide card's own art.
             const ids = ordered.map((g) => g.appId);
             const artDeps: ArtWarmDeps = { has: artKnown, resolve: resolveArt, sleep };
             const cardDeps: ArtWarmDeps = { has: cardArtKnown, resolve: warmCardArt, sleep };
             // Minimal draws no wide card: no wide card art to warm (a later switch to Steam or Spotlight loads it as shown).
-            const wideCards = rowShowsWideCards(settings.get().homeRowStyle);
-            const art = Promise.all([warmArt(ids, artDeps, isCancelled), wideCards ? warmArt(ids, cardDeps, isCancelled) : undefined]);
+            const art = Promise.all([warmArt(ids, artDeps, isCancelled), steps.cardArt ? warmArt(ids, cardDeps, isCancelled) : undefined]);
             // The persisted counts first: no delay, so the chip is there on the very first selection after a restart.
             let seeded = false;
             for (const game of ordered) {
                 if (cancelled) return;
                 if (memoAchievements(game.appId)) continue;
-                const stored = await attempt('achievements cache read', () => cache.get<{ achieved: number; total: number }>(achievementKey(game.appId)), null);
+                const stored = await attempt('achievements cache read', () => cache.get<unknown>(achievementKey(game.appId)), null);
                 if (stored) {
                     seedAchievements(game.appId, stored);
                     seeded = true;
@@ -111,7 +129,8 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
                 sleep,
             };
             const detailsDeps: DetailsWarmDeps = {
-                has: (appId) => memoAchievements(appId) !== undefined,
+                // Complete: the counts, and the latest and rarest unlocked (a game cached with counts only is asked once more).
+                has: achievementsComplete,
                 register: (appId, onDetails) => steamApps()?.RegisterForAppDetails?.(appId, onDetails),
                 sleep,
             };
@@ -127,12 +146,40 @@ export function useWarmup(games: WarmGame[], centre: number, ready: boolean, inf
             };
             // The Clean look shows no description: none to warm.
             const descriptions = async () => {
-                if (settings.get().cleanPage) return;
+                if (!steps.descriptions) return;
                 const lang = await attempt('Steam language', () => getSteamLanguage(), 'english');
                 await warmDescriptions(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), lang, descriptionDeps, isCancelled, changed);
             };
+            const names = new Map(ordered.map((g) => [g.appId, g.name]));
+            const protonGameOf = (appId: number) => ({ appId, name: names.get(appId) ?? '', isShortcut: shortcut(appId) });
+            const protonDeps: ProtonWarmDeps = {
+                known: protonKnown,
+                readCached: (appId) => protonGames.cachedOnly(protonGameOf(appId)),
+                prefetch: (appId) => protonGames.prefetch(protonGameOf(appId)),
+                seed: seedProton,
+                allowNetwork: () => settings.get().autoPreload,
+                sleep,
+            };
+            // Only while ProtonDB is in a Game info slot (it sends the game's app id to ProtonDB). A shortcut goes by the
+            // Steam game of its name (data/protonGame).
+            const proton = usesStat(settings.get().infoSlots, 'protondb')
+                ? warmProton(ordered.map((g) => g.appId), protonDeps, isCancelled, changed)
+                : undefined;
+            // The player count pill (on unless turned off): Steam games only, at Home's age (5 minutes).
+            const players = steps.players
+                ? warmPlayers(ordered.filter((g) => !shortcut(g.appId)).map((g) => g.appId), {
+                    known: playersKnown,
+                    readCached: (appId) => lookupPlayers.cachedOnly(appId),
+                    prefetch: (appId) => lookupPlayers.prefetch(appId, PLAYERS_HOME_MAX_AGE_MS),
+                    seed: seedPlayers,
+                    allowNetwork: () => settings.get().autoPreload,
+                    sleep,
+                }, isCancelled, changed)
+                : undefined;
             await Promise.all([
                 pills,
+                proton,
+                players,
                 descriptions(),
                 art,
                 warmHltb(ordered.map((g) => ({ appId: g.appId, name: g.name, isShortcut: shortcut(g.appId) })), hltbDeps, isCancelled, changed),

@@ -33,6 +33,8 @@ export interface OpenIntent {
     homeDesc?: boolean;
     homeHltb?: boolean;
     homeFamily?: boolean;
+    /** Home showed the player pill: it moved in with the store pill, so the page's is there at once. */
+    homePlayers?: boolean;
     homeMissing?: string[];
     homeUninstall?: boolean;
     /** Home drew a Unifideck game's size column (OpenExtras): the page shows its own at once. */

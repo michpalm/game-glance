@@ -8,24 +8,28 @@ import { browserStores, heroUrls } from './artwork';
 import { markLeaving } from './homeMemory';
 import { playNavSound } from './navSound';
 import { listenOpenCancel, showCancelReturn } from './openCancel';
+import { catchEarlyPress } from './earlyPress';
+import { clearReturn, noteMorphOpen } from './returnNote';
+import { endReturnGlide } from './returnGlide';
 import { takeSteamFocus } from './steamFocus';
 import { createOpenTransition, OpenTransition } from './openTransition';
-import { applyOpening, canvasMeasure, lineMeasure, extrasFlags, missingStats, OpenVariant, openVariant, pageStatsFromChips, readChipTexts, readExtrasAsked, readExtrasSize, readTwinTexts, measureHome, measureCanvasScale, settleTwins, viewportSize } from './openHome';
+import { applyOpening, extrasFlags, measureMorph, missingStats, OpenVariant, openVariant, readChipTexts, readTwinTexts, settleTwins, viewportSize } from './openHome';
 import { TwinSpec, twinSpecs } from './openTwins';
 import { openMotion } from './openMotion';
-import { pageTargets, PageLook } from './openTargets';
+import type { PageLook } from './openTargets';
 import { mountOpenBridge, topBarCopy, withSteamBarBack } from './openBridge';
 import { heroArtFor, heroShownApp } from './HeroBackground';
 import { homeMode } from './mode';
 import { settings } from '../data/settings';
+import type { GameInfoSlots } from '../logic/infoSlots';
 import { clearOpen, markOpen, onOpenReady, OpenIntent } from '../data/openIntent';
 import { pageArrivalSelectors, pageTwinTargets, steamEnterOffCss, steamFooter } from '../styles/theme';
-import { MOUSE_ATTR } from './mouseMode';
 import { findTopBar } from './topBar';
 import { COVERED, handBarBack } from './useHideSteamBar';
 
 /** Opens a game's page directly, without the transition (Play pill fallbacks, Steam call fallbacks). */
 export function openPage(appId: number) {
+    clearReturn();
     markLeaving();
     try {
         Navigation.Navigate(`/library/app/${appId}`);
@@ -68,6 +72,7 @@ function openExternal(url: string | null, what: string) {
 export function openStorePage(appId: number) {
     const url = storeSteamUrl(appId);
     if (!url) return;
+    clearReturn();
     markLeaving();
     try {
         Navigation.NavigateToSteamWeb(url);
@@ -87,6 +92,7 @@ export function openStorePage(appId: number) {
  * No open transition.
  */
 export function openNews(appId: number, gid: string) {
+    clearReturn();
     markLeaving();
     if (!/^\d+$/.test(gid)) {
         openPage(appId);
@@ -97,6 +103,7 @@ export function openNews(appId: number, gid: string) {
 
 /** Opens Steam's Library: its own library-tab call when present, else the /library route. */
 export function openLibrary() {
+    clearReturn();
     try {
         if (typeof Navigation.NavigateToLibraryTab === 'function') Navigation.NavigateToLibraryTab();
         else Navigation.Navigate('/library');
@@ -162,8 +169,11 @@ function urls(read: () => string[]): string[] {
 }
 
 /** The open being started (set by openGame); the controller's hooks take a copy when Home starts moving. */
-/** `extras`: the page's parts Home draws as it turns into the page (openHome.extrasParts words; '' for none). */
-interface OpenContext { root: HTMLElement | null; appId: number; variant: OpenVariant; look: PageLook; intent: OpenIntent; heroUrl: string | null; extras: string }
+/**
+ * `extras`: the page's parts Home draws as it turns into the page (openHome.extrasParts words; '' for none). `slots`: the
+ * Game info slots, which order the page's stats and pick its featured card.
+ */
+interface OpenContext { root: HTMLElement | null; appId: number; variant: OpenVariant; look: PageLook; intent: OpenIntent; heroUrl: string | null; extras: string; slots: GameInfoSlots }
 let next: OpenContext | null = null;
 let active: OpenContext | null = null;
 /** One controller for the session: it must outlive Home, which Steam unmounts once the game page opens. */
@@ -175,17 +185,9 @@ function startHome(c: OpenContext): (() => void) | null {
     if (!root) return null;
     if (c.variant === 'morph') {
         try {
-            const home = measureHome(root);
-            const win = root.ownerDocument?.defaultView;
-            const scale = measureCanvasScale(root);
-            const screen = win ? viewportSize(win) : { width: 0, height: 0 };
-            if (home && scale > 0 && screen.width > 0 && screen.height > 0) {
-                // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
-                const size = c.extras.split(' ').includes('size') ? readExtrasSize(root) : null;
-                const stats = pageStatsFromChips(readChipTexts(root), c.look, size);
-                const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
-                const page = pageTargets(c.look, screen, stats, canvasMeasure(root), { w: store.w, h: store.h }, c.extras ? readExtrasAsked(root) : undefined, lineMeasure(root));
-                const focused = !root.ownerDocument?.documentElement?.hasAttribute(MOUSE_ATTR);
+            const measured = measureMorph(root, c.look, c.extras, c.slots);
+            if (measured) {
+                const { home, page, scale, focused, stats } = measured;
                 // The moving text as page-sized twins (openTwins); without them (any failure) Home's own text morphs as before.
                 let twins: TwinSpec[] = [];
                 try {
@@ -196,7 +198,7 @@ function startHome(c: OpenContext): (() => void) | null {
                 const undoCards = c.look === 'clean' ? prepareCleanOpen(root, home, page, scale) : prepareNormalOpen(root, home, page, scale);
                 let undoPills: (() => void) | null = null;
                 try {
-                    undoPills = preparePillOpen(root, page);
+                    undoPills = preparePillOpen(root, page, c.look === 'clean' ? 'clean' : 'spotlight');
                     const undoOpen = applyOpening(root, 'morph', openMotion(home, page, c.look, scale, focused), null, c.extras, undoCards ? twins.filter((t) => !t.card) : twins);
                     return () => { undoOpen(); undoPills?.(); undoCards?.(); };
                 } catch (error) { undoPills?.(); undoCards?.(); throw error; }
@@ -236,6 +238,7 @@ function controller(): OpenTransition {
             back();
         }, false) : () => undefined,
         onCancelled: () => {
+            clearReturn();
             playNavSound('OutOfGameDetail');
             if (active?.root) showCancelReturn(active.root);
         },
@@ -289,15 +292,38 @@ function controller(): OpenTransition {
  * single entry point for every A that opens a game from Home. Anything that cannot be set up still opens the page,
  * without motion; a press while a transition runs is ignored (before its sound, so a second A does not play it twice).
  */
+let stopEarlyPress: (() => void) | undefined;
+function armEarlyPress(doc: Document | null) {
+    stopEarlyPress?.();
+    stopEarlyPress = undefined;
+    if (!doc) return;
+    try {
+        stopEarlyPress = catchEarlyPress({
+            doc,
+            focused: () => { const selector = pageArrivalSelectors().focus; return selector ? doc.querySelector<HTMLElement>(selector) : null; },
+            press: (el) => el.click(),
+        });
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} Home: early A unavailable`, error);
+    }
+}
+
 export function openGame(appId: number, source?: HTMLElement | null) {
     // The controller would drop this open anyway; the sound, the leaving mark and the pending open must not happen first.
     if (transition?.isRunning()) return;
+    // A way-back glide still running ends at once (its variables must be gone before the open sets its own); the next
+    // way back is noted below only for a morph.
+    endReturnGlide();
+    clearReturn();
+    // An A pressed while the page opens presses its Play row (Play, Install...) as soon as Steam focuses it (home/earlyPress).
+    armEarlyPress(source?.ownerDocument ?? null);
     // Steam's own sound for going into a game's page (every open from Home: a card, the info button, a feed card).
     playNavSound('IntoGameDetail');
     markLeaving();
     try {
         const root = (source?.closest?.('.gh-root') as HTMLElement | null) ?? null;
-        const mode = homeMode(settings.get());
+        const current = settings.get();
+        const mode = homeMode(current);
         const look: PageLook = mode.cleanDetails ? 'clean' : 'spotlight';
         const art = heroArtFor(appId);
         const pageRestyled = mode.gamePage && mode.restyleDetails;
@@ -315,13 +341,18 @@ export function openGame(appId: number, source?: HTMLElement | null) {
         const extras = look === 'spotlight' ? drawn : drawn.split(' ').filter((p) => p === 'pills' || p === 'played' || p === 'size').join(' ');
         // The family library pill moves in with Home's store pill: the page's must not arrive again (it blinked).
         const homeFamily = variant === 'morph' && root ? root.querySelector('.gh-family') !== null : undefined;
+        // The player pill moves in the same way (styles/playersFit placement carried by pillOpen).
+        const homePlayers = variant === 'morph' && root ? root.querySelector('.gh-players') !== null : undefined;
         // The page's stat columns Home showed no chip for (a new game's Play time) arrive instead of popping in.
         const homeMissing = variant === 'morph' && root ? missingStats(readChipTexts(root).map((c) => c.key), extras) : undefined;
         const homeChipKeys = variant === 'morph' && root ? readChipTexts(root).map((c) => c.key) : [];
         // A Unifideck game's Uninstall circle Home draws as it opens (.gh-open-circle): the page's must not arrive again.
         const homeUninstall = variant === 'morph' && root ? root.querySelector('.gh-open-circle') !== null : undefined;
-        const intent: OpenIntent = { look: pageRestyled ? look : 'steam', mode: variant === 'morph' ? 'parts' : 'all', eyebrow, homeCloud, homeBars, homeFamily, homeMissing, homeUninstall, ...extrasFlags(extras, homeChipKeys) };
-        next = { root, appId, variant, look, heroUrl, intent, extras };
+        const intent: OpenIntent = { look: pageRestyled ? look : 'steam', mode: variant === 'morph' ? 'parts' : 'all', eyebrow, homeCloud, homeBars, homeFamily, homePlayers, homeMissing, homeUninstall, ...extrasFlags(extras, homeChipKeys) };
+        next = { root, appId, variant, look, heroUrl, intent, extras, slots: current.infoSlots };
+        // B from this page may glide back (home/returnNote): only after a morph onto the Game Glance page.
+        const win = root?.ownerDocument?.defaultView;
+        if (variant === 'morph' && pageRestyled && win) noteMorphOpen(appId, look, viewportSize(win));
         controller().open(appId, variant);
     } catch (error) {
         // Not reached in practice (the controller never throws); the page must open regardless.
@@ -335,6 +366,7 @@ export function cancelOpen() {
     try {
         transition?.cancel();
         clearOpen();
+        clearReturn();
     } catch (error) {
         console.warn(`${LOG_PREFIX} Home: could not cancel the open transition`, error);
     }

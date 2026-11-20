@@ -19,6 +19,20 @@ function native(){
     stops.push(registerMenuHost(()=>({present:async()=>{},suspend(){},close(){},dispose(){}})));
     return {owner,menu,keyboardDismissals:()=>keyboardDismissals,restoreConfigurator:()=>{restoreConfig=true;}};
 }
+describe('a programmatic main-menu reopen that Game Glance expects (after Power)',()=>{
+    it('goes to Game Glance instead of Steam\'s menu when the handlers reclaim it',()=>{
+        const n=native(),b=discoverMenuRuntime()!,suspended=vi.fn(),reclaim=vi.fn(()=>true);
+        stops.push(b.installIntentHandlers({open:vi.fn(),closed:vi.fn(),suspended,reclaim}));
+        n.menu.OpenSideMenu(1);
+        expect(reclaim).toHaveBeenCalledOnce();expect(suspended).not.toHaveBeenCalled();expect(n.menu.state).not.toBe(1);
+    });
+    it('is Steam\'s as before when nothing is reclaimed, and Quick Access is never asked',()=>{
+        const n=native(),b=discoverMenuRuntime()!,suspended=vi.fn(),reclaim=vi.fn(()=>false);
+        stops.push(b.installIntentHandlers({open:vi.fn(),closed:vi.fn(),suspended,reclaim}));
+        n.menu.OpenSideMenu(2);expect(reclaim).not.toHaveBeenCalled();
+        n.menu.OpenSideMenu(1);expect(reclaim).toHaveBeenCalledOnce();expect(suspended).toHaveBeenCalledWith(true);expect(n.menu.state).toBe(1);
+    });
+});
 describe('native menu ownership',()=>{
     it('releases custom presentation ownership for a programmatic main-menu reopen', () => {
         const n = native(), bindings = discoverMenuRuntime()!, suspended = vi.fn();

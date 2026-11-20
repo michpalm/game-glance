@@ -43,3 +43,17 @@ export function steamSpaceStat(overview: unknown, spaceBytes: number | null | un
     if (onDisk > 0) return null;
     return sizeStat(spaceBytes ?? null, false, locale, label);
 }
+
+/**
+ * What Home's Install pill shows at its right end (as the page's, themeCss.buildInstallSizeCss): the space the game needs
+ * while it is not installed and not downloading, formatted; null otherwise or when unknown. A Unifideck game uses
+ * Unifideck's own install state and size (`unifideck`), a Steam game Steam's. Pure.
+ */
+export function installSizeText(
+    g: { installed: boolean; downloading: boolean; steamBytes: number | null | undefined; unifideck?: { installed: boolean; bytes: number | null | undefined } | null },
+    locale: string,
+): string | null {
+    if (g.downloading) return null;
+    if (g.unifideck) return g.unifideck.installed ? null : formatBytes(g.unifideck.bytes, locale);
+    return g.installed ? null : formatBytes(g.steamBytes, locale);
+}

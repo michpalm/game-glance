@@ -1,10 +1,17 @@
 import { Focusable, Menu, MenuItem, showContextMenu } from '@decky/ui';
 import type { GamepadEvent, NavEntryPositionPreferences } from '@decky/ui';
 import { ComponentType, CSSProperties, ReactNode, useRef, useState } from 'react';
-import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoInformationCircleOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
+import { IoCloud, IoDownload, IoGrid, IoGameControllerOutline, IoPause, IoPlay, IoSettingsOutline } from 'react-icons/io5';
 import { FaDownload, FaPlay } from 'react-icons/fa';
 import { LOG_PREFIX } from '../constants';
 import { markLaunch } from '../data/launchIntent';
+import { useSettings } from '../data/settings';
+import { launchArtLayers } from '../styles/launchArt';
+import { heroArtAspect, heroArtFor } from './HeroBackground';
+import { windowAspect, type HeroFit } from './heroFit';
+import { mountLaunchBridge } from './launchBridge';
+import type { PageShading } from './pageShading';
+import { pageScrims } from '../styles/themeCss';
 import type { CloudState } from './cloud';
 import { opensGameMenu, PREFERRED_CHILD } from './focusZones';
 import { openGameMenu } from './gameMenu';
@@ -12,7 +19,7 @@ import { pressCloud } from './steamCloud';
 import { steamCheckIcon, steamControllerIcon, steamGearIcon, steamStreamMenuClasses } from './steamIcons';
 import { readSteamPill } from './steamPill';
 import { StreamChoice, streamChoices, StreamOverview } from './streaming';
-import { openGame, openLibrary, openPage } from './homeNav';
+import { openLibrary, openPage } from './homeNav';
 import type { DownloadState } from './downloadProgress';
 import { playAction, runGameId } from './homeView';
 import { playNavSound, skipSteamSound } from './navSound';
@@ -131,7 +138,7 @@ function toggleDownload(action: 'pause' | 'resume', appId: number) {
 
 function ActionButton({ className, label, onPress, preferredFocus, fill, setRef, action, style, children }: {
     className: string;
-    /** What the button is (play, controller, menu, info, cloud, library): the open transition finds the buttons by it. */
+    /** What the button is (play, controller, menu, cloud, library): the open transition finds the buttons by it. */
     action?: string;
     /** Receives the button element (the gear: the game menu's anchor for View/Select). */
     setRef?(el: HTMLElement | null): void;
@@ -229,23 +236,35 @@ export function LibraryActionRow({ preferred, buttons }: { preferred?: boolean; 
 }
 
 /**
- * The action row, where Home's focus rests (bumper navigation). With a game selected: the Play pill plus controller,
- * settings and info circles. With the Library card selected (`game` null): a single 280-wide "Open Library" pill. The
+ * The action row, where Home's focus rests (bumper navigation). With a game selected: the Play pill plus controller
+ * and settings circles. With the Library card selected (`game` null): a single 280-wide "Open Library" pill. The
  * pill is the same element either way (the first child), so L1/R1 never drop its focus while the selection moves.
  * The cloud circle (last, only when the game page shows a cloud status) shows the selected game's Steam Cloud state
  * in Steam's own icon and, on a sync problem, A opens Steam's conflict or retry dialog, as the page's status does.
  * The gear (and View/Select or Menu anywhere on the row) opens Steam's game context menu for the selected game, as
  * the game page's gear does (gameMenu; Properties if Steam's menu is unavailable).
- * The info circle opens the game page with the open transition (homeNav.openGame: Home morphs into the page). The
- * Play pill's page fallbacks (Resume,
+ * The game page opens from the game's card (the row has no button for it). The Play pill's page fallbacks (Resume,
  * Install, missing Steam calls) open it directly. For the running game the pill reads Resume and opens its page
  * rather than launching it again. While Steam installs, updates or downloads the game the pill fills left to right
  * with the progress and reads the state and percent (downloadProgress).
  * `preferred`: the pill takes focus when focus enters the row (Home's first focus is the game cards). B goes back to
  * the game cards (`onBack`, focusZones.onBack('actions')).
  */
-export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null, onBack, unifideck = null }: {
+/** Keeps Home's hero on screen while Steam swaps Home for the game's page (launchBridge); only for a game with its own hero art. */
+function bridgeLaunch(appId: number, doc: Document | null, fit: HeroFit, shading: PageShading) {
+    try {
+        const art = heroArtFor(appId);
+        if (!doc || art?.mode !== 'full') return;
+        mountLaunchBridge(doc, launchArtLayers(art.url, fit, heroArtAspect(art.url), windowAspect(doc.defaultView)), pageScrims(shading));
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} Home: launch bridge failed`, error);
+    }
+}
+
+export function ActionRow({ game, running = false, download = null, preferred, buttons, cloud = null, onBack, unifideck = null, installSize = null }: {
     game: HomeGame | null;
+    /** Space required at the Install pill's right end (sizeStat.installSizeText: null while installed or downloading). */
+    installSize?: string | null;
     /** A Unifideck game (its own install state): the pill wears Unifideck's glyphs, as its button on the game page. */
     unifideck?: { installed: boolean } | null;
     /** The selected game's Steam Cloud state (useCloud); null hides the cloud button, as the game page hides its status. */
@@ -258,6 +277,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
     /** B: back to the game cards. */
     onBack?(): void;
 }) {
+    const { heroFit, pageShading } = useSettings();
     const gear = useRef<HTMLElement | null>(null);
     // Bumped once Steam has taken a "Play from" choice, so the pill reads Steam's new action (Stream / Play).
     const [, setStreamVersion] = useState(0);
@@ -314,6 +334,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                             // Steam's Play opens the game's page for its launch screen; the page then shows only the art.
                             if (steamPill.action === 'Play') {
                                 markLaunch(appId);
+                                bridgeLaunch(appId, el?.ownerDocument ?? null, heroFit, pageShading);
                                 playNavSound('LaunchGame'); // Steam's game-start sound, as on the game page
                                 skipSteamSound('IntoGameDetail', PLAY_PAGE_SOUND_MS); // Steam's handler then opens the page
                             }
@@ -328,6 +349,7 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                     steamOr('launch', appId, (api) => {
                         if (!api.RunGame) return false;
                         markLaunch(appId);
+                        bridgeLaunch(appId, el?.ownerDocument ?? null, heroFit, pageShading);
                         playNavSound('LaunchGame'); // Steam's own sound for starting a game
                         api.RunGame(runGameId(appId, game.gameId), '', -1, LAUNCH_SOURCE);
                         return true;
@@ -337,6 +359,8 @@ export function ActionRow({ game, running = false, download = null, preferred, b
                 <span className="gh-btn-icon">{unifideck && !download ? (unifideck.installed ? <FaPlay /> : <FaDownload />) : steamPill ? steamPill.icon : play.label === 'Pause' ? <IoPause /> : play.label === 'Download' || play.label === 'Update' ? <IoDownload /> : <IoPlay />}</span>
                 <span className="gh-btn-label">{playWord}</span>
                 {playFrom && <span className="gh-play-arrow"><PlayFromGlyph /></span>}
+                {/* Before the arrow when the game also has one (its first segment's end, as the page draws it). */}
+                {installSize && <span className="gh-btn-size">{installSize}</span>}
             </ActionButton>
             {playFrom && (
                 <ActionButton
@@ -363,14 +387,6 @@ export function ActionRow({ game, running = false, download = null, preferred, b
             </ActionButton>
             <ActionButton className="gh-btn-circle" label={tr('manage')} action="menu" setRef={(el) => { gear.current = el; }} onPress={(el) => openMenu(el)}>
                 <SteamIcon steam={steamGearIcon()} fallback={<IoSettingsOutline />} />
-            </ActionButton>
-            <ActionButton
-                className="gh-btn-circle"
-                label={tr('gameDetails')}
-                action="info"
-                onPress={(el) => openGame(appId, el)}
-            >
-                <span className="gh-btn-icon"><IoInformationCircleOutline /></span>
             </ActionButton>
             {cloud && (
                 <ActionButton

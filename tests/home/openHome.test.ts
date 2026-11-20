@@ -1,6 +1,7 @@
+import { HOME_CIRCLE } from '../../src/home/circles';
 import { describe, expect, it, vi } from 'vitest';
 import { STANDARD_HERO_ASPECT, fitMask } from '../../src/home/heroFit';
-import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
+import { applyOpening, measureCanvasScale, extrasFlags, readChipTexts, extrasParts, openPlayedMissing, lineMeasure, measureHome, missingStats, mountTwins, readTwinTexts, restTwinsOnExtras, settleTwins, viewportSize, openVariant, pageStatsFromChips, readExtrasAsked } from '../../src/home/openHome';
 import type { TwinSpec } from '../../src/home/openTwins';
 import { BRIDGE_FADE_EASE, mountOpenBridge } from '../../src/home/openBridge';
 
@@ -52,7 +53,7 @@ function home(withPlay = true) {
         ...(withPlay ? { '.gh-actions .gh-btn[data-action="play"]': el(20, 459, 271, 58) } : {}),
         '.gh-source': el(1377, 472, 103, 33),
     }, {
-        '.gh-actions .gh-btn-circle': circles,
+        [`.gh-actions ${HOME_CIRCLE}`]: circles,
         '.gh-chip': [chip('played', 25, false), chip('achievements', 144, true), chip(null, 288, true)],
     });
 }
@@ -131,6 +132,18 @@ describe('applyOpening', () => {
         f.frames.splice(0).forEach((cb) => cb());
         expect(f.attrs.get('data-gh-phase')).toBe('to');
     });
+    it('has the browser work out the start frame before the motion starts, so parts that first appear in it move too', () => {
+        // A layer that only exists while opening (the Play pill's fill, the crisp rings, the panels) has no earlier style to
+        // move from: with the start and the motion set in one style pass it was drawn at its end at once (Ally: the pill at
+        // full width under the buttons still on their way).
+        const f = fakeRoot();
+        const read: Array<string | undefined> = [];
+        (f.root as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () => { read.push(f.attrs.get('data-gh-phase')); return { left: 0, top: 0, width: 0, height: 0 }; };
+        applyOpening(f.root, 'morph', [], null);
+        expect(read).toEqual(['from']);
+        f.frames.splice(0).forEach((cb) => cb());
+        expect(f.attrs.get('data-gh-phase')).toBe('to');
+    });
     it('twins that cannot be drawn: the morph still starts, without them (Home\'s own text morphs)', () => {
         const f = fakeRoot();
         const twin: TwinSpec = { name: 'title', role: 'title', text: 'X', x: 0, y: 0, origin: 'base', from: 'none', to: 'none', accent: false };
@@ -187,6 +200,20 @@ describe('missingStats', () => {
         expect(missingStats(['played'])).toEqual(['achievements', 'hltb']);
         // A column Home drew in its extras layer is there at the hand-over: it does not arrive.
         expect(missingStats(['added', 'achievements', 'hltb'], 'desc played')).toEqual([]);
+    });
+});
+
+describe('openPlayedMissing', () => {
+    const slots = (stats: Array<'played' | 'size' | 'achievements' | 'hltb' | 'protondb' | null>, featured: 'played' | 'hltb' | null) => ({ stats, featured }) as never;
+    it("draws the page's Play time column when it is a stat Home had no chip for (a new game's Added chip)", () => {
+        expect(openPlayedMissing(slots(['played', 'size', 'achievements'], 'hltb'), ['added', 'size', 'achievements'])).toBe(true);
+        expect(openPlayedMissing(slots(['played', 'size', 'achievements'], 'hltb'), ['played', 'size', 'achievements'])).toBe(false);
+    });
+    it('not when Play time is the featured card: its card says Total, not a "Play time" column', () => {
+        expect(openPlayedMissing(slots(['size', 'achievements', 'hltb'], 'played'), ['added', 'size', 'achievements', 'hltb'])).toBe(false);
+    });
+    it('not when Play time is in no slot', () => {
+        expect(openPlayedMissing(slots(['size', 'achievements', 'hltb'], null), ['size'])).toBe(false);
     });
 });
 
@@ -270,6 +297,39 @@ describe('pageStatsFromChips', () => {
         const stats = pageStatsFromChips([{ key: 'added', label: 'Added', value: 'Today', bar: false }, chips[2]], 'clean');
         expect(stats.map((s) => s.key)).toEqual(['played', 'hltb']);
         expect(stats[0].value).toBe('0 h');
+    });
+});
+
+describe('pageStatsFromChips follows the Game info slots', () => {
+    const played = { key: 'played', label: 'Play Time', value: '1.9 h', bar: false };
+    const ach = { key: 'achievements', label: 'Achievements', value: '0 / 49', bar: true };
+    const proton = { key: 'protondb', label: 'ProtonDB', value: 'Gold', bar: false };
+    const hltb = { key: 'hltb', label: 'HLTB main', value: '9.1 h', bar: true };
+    it("in slot order, ProtonDB included; HowLongToBeat featured is named as its card's first column, a tile-row card keeps the chip's words", () => {
+        const slots = { stats: ['achievements', 'played', 'hltb'], featured: 'protondb' } as const;
+        expect(pageStatsFromChips([ach, played, hltb, proton], 'spotlight', null, { stats: [...slots.stats], featured: slots.featured }).map((s) => [s.key, s.label, s.value])).toEqual([
+            ['achievements', 'Achievements', '0 / 49'], ['played', 'Play Time', '1.9 h'], ['hltb', 'HLTB main', '9.1 h'], ['protondb', proton.label, 'Gold'],
+        ]);
+        // Play time featured: its card's first row is a tile row, so the chip keeps its words.
+        expect(pageStatsFromChips([ach, played], 'spotlight', null, { stats: ['achievements', null, null], featured: 'played' }).map((s) => s.label)).toEqual(['Achievements', played.label]);
+        expect(pageStatsFromChips([ach, hltb], 'spotlight', null, { stats: ['achievements', null, null], featured: 'hltb' }).map((s) => s.label)).toEqual(['Achievements', 'Main']);
+    });
+    it('HowLongToBeat in a stat slot keeps its words, even without a time (the info card shows it)', () => {
+        const none = { ...hltb, value: '—' };
+        expect(pageStatsFromChips([played, none], 'spotlight', null, { stats: ['played', 'hltb', null], featured: null }).map((s) => [s.key, s.label])).toEqual([['played', 'Play Time'], ['hltb', 'HLTB main']]);
+    });
+    it("Clean: Home's words in slot order", () => {
+        expect(pageStatsFromChips([proton, played], 'clean', null, { stats: ['protondb', 'played', null], featured: null }).map((s) => [s.key, s.label])).toEqual([['protondb', 'ProtonDB'], ['played', 'Play Time']]);
+    });
+});
+
+describe('extrasParts follows the featured stat', () => {
+    const found = { status: 'found' as const, gameId: 1, times: { main: 9, mainExtras: 12, completionist: 24 } };
+    it("draws HowLongToBeat's card only when it is the featured card", () => {
+        expect(extrasParts('Text', found, 'Steam', false, false, 'hltb')).toBe('desc hltb pills');
+        expect(extrasParts('Text', found, 'Steam', false, false, 'protondb')).toBe('desc pills');
+        expect(extrasParts('Text', found, 'Steam', false, false, null)).toBe('desc pills');
+        expect(extrasFlags(extrasParts(null, found, null, false, false, 'played'))).toEqual({});
     });
 });
 
@@ -362,11 +422,10 @@ describe('mountOpenBridge', () => {
 
 describe('the Unifideck size in the open (Home draws it)', () => {
     const chips = [{ key: 'played', label: 'Play Time', value: '0 h', bar: false }, { key: 'hltb', label: 'HLTB Main', value: '12 h', bar: true }];
-    it('the page stats put it right after Played, as the page does', () => {
+    it('is no page stat (Space required is at the Install pill): left out even when passed', () => {
         const size = { label: 'Space required', value: '1.6 GB' };
-        expect(pageStatsFromChips(chips, 'spotlight', size).map((s) => s.key)).toEqual(['played', 'size', 'hltb']);
-        expect(pageStatsFromChips(chips, 'clean', size)[1]).toEqual({ key: 'size', label: 'Space required', value: '1.6 GB', bar: false });
-        expect(pageStatsFromChips(chips, 'clean').map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(pageStatsFromChips(chips, 'spotlight', size).map((s) => s.key)).toEqual(['played', 'hltb']);
+        expect(pageStatsFromChips(chips, 'clean', size).map((s) => s.key)).toEqual(['played', 'hltb']);
     });
     it("is one of the extras' parts when Home knows it", () => {
         expect(extrasParts(null, undefined, 'GOG', false, true)).toBe('pills size');
@@ -387,10 +446,9 @@ describe("a Steam game's Space Required chip (not installed): the page's size st
         { key: 'size', label: 'Space Required', value: '659 MB', bar: false },
         { key: 'hltb', label: 'HLTB main', value: '5 h', bar: true },
     ];
-    it('the page shows the same Space Required, right of Played, with no size passed in', () => {
+    it('a size chip (an older Home) is no page stat any more', () => {
         expect(pageStatsFromChips(home, 'spotlight').map((s) => [s.key, s.label, s.value])).toEqual([
             ['played', 'Played', '0 h'],
-            ['size', 'Space Required', '659 MB'],
             ['hltb', 'Main', '5 h'],
         ]);
     });

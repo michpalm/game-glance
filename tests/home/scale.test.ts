@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIR_ONLY_MIN_HEIGHT, baseCanvas, canvasStyle, defaultGrowth, homeCanvas } from '../../src/home/scale';
+import { AIR_ONLY_MIN_HEIGHT, SIZE_FACTOR, baseCanvas, canvasStyle, defaultGrowth, homeCanvas, sizeFactor } from '../../src/home/scale';
 
 describe('baseCanvas (the authored canvas fitted to the window, before the default growth)', () => {
     it('homeCanvas picks 1440x810 for 1920x1080 with scale 4/3', () => {
@@ -56,22 +56,52 @@ describe('homeCanvas: the default growth (#55)', () => {
         expect(defaultGrowth(800)).toBeCloseTo(1.073, 3);
         expect(defaultGrowth(2000)).toBe(1.1);
     });
-    it('draws the 16:9 canvas that much larger: a shorter logical canvas, a larger scale', () => {
+    it('draws the 16:9 canvas that much larger, times the size factor: a shorter logical canvas, a larger scale', () => {
         const b = baseCanvas(1920, 1080);
         const c = homeCanvas(1920, 1080);
-        const g = defaultGrowth(810);
+        const g = defaultGrowth(810) * SIZE_FACTOR.tv;
         expect(c.logicalHeight).toBeCloseTo(810 / g, 6);
         expect(c.logicalWidth).toBeCloseTo(1440 / g, 6);
         expect(c.scale).toBeCloseTo(b.scale * g, 10);
     });
     it('grows the Deck and an ultrawide screen too, keeping their shapes', () => {
-        expect(homeCanvas(1280, 800).logicalHeight).toBeCloseTo(800 / defaultGrowth(800), 6);
+        expect(homeCanvas(1280, 800).logicalHeight).toBeCloseTo(800 / (defaultGrowth(800) * SIZE_FACTOR.handheld), 6);
         const wide = homeCanvas(2560, 1080);
         expect(wide.logicalWidth * wide.scale).toBeCloseTo(2560, 6);
-        expect(wide.logicalHeight).toBeCloseTo(810 / defaultGrowth(810), 6);
+        expect(wide.logicalHeight).toBeCloseTo(810 / (defaultGrowth(810) * SIZE_FACTOR.tv), 6);
     });
     it('does not grow a window of unknown size', () => {
         for (const [w, h] of [[0, 0], [NaN, NaN], [-5, 10]]) expect(homeCanvas(w, h)).toEqual(baseCanvas(w, h));
+    });
+});
+
+describe('sizeFactor: everything a little smaller, more so on a TV (2026-11-12)', () => {
+    it('is 0.88 on a TV and 0.94 on a handheld', () => {
+        expect(SIZE_FACTOR).toEqual({ tv: 0.88, handheld: 0.94 });
+        expect(sizeFactor(1500, 844)).toBe(0.88); // the Ally docked (1080p TV)
+        expect(sizeFactor(1920, 1080)).toBe(0.88);
+        expect(sizeFactor(2560, 1080)).toBe(0.88); // an ultrawide TV
+        expect(sizeFactor(828, 466)).toBe(0.94); // the Ally handheld
+        expect(sizeFactor(1280, 800)).toBe(0.94); // the Steam Deck
+    });
+    it('switches exactly at the TV threshold the page CSS uses (1408 x 793)', () => {
+        expect(sizeFactor(1408, 793)).toBe(0.88);
+        expect(sizeFactor(1407, 793)).toBe(0.94);
+        expect(sizeFactor(1408, 792)).toBe(0.94);
+    });
+    it('is the handheld factor for an unusable size', () => {
+        for (const [w, h] of [[0, 0], [NaN, NaN], [-5, 10]]) expect(sizeFactor(w, h)).toBe(0.94);
+    });
+    it('makes the Ally docked about 0.96x the authored size and the handheld about 1.02x', () => {
+        expect(homeCanvas(1500, 844).scale / baseCanvas(1500, 844).scale).toBeCloseTo(0.956, 3);
+        expect(homeCanvas(828, 466).scale / baseCanvas(828, 466).scale).toBeCloseTo(1.021, 3);
+    });
+    it('the scaled canvas still spans the width and fits the height', () => {
+        for (const [w, h] of [[1920, 1080], [1500, 844], [828, 466], [1280, 800], [2560, 1080]]) {
+            const c = homeCanvas(w, h);
+            expect(c.logicalWidth * c.scale).toBeCloseTo(w, 6);
+            expect(c.logicalHeight * c.scale).toBeLessThanOrEqual(h + 1e-6);
+        }
     });
 });
 

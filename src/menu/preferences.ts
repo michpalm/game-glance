@@ -6,6 +6,7 @@ export interface MenuPreferences {
     readonly socialKeyboard: SocialKeyboardMode;
     readonly version: 1;
     readonly enabled: boolean;
+    /** Restyle Steam's menus. The key keeps its pre-release name so a saved value carries over; it governs Steam's context menus only. */
     readonly restyleSteamSettings: boolean;
     readonly pins: readonly PinnedSectionId[];
 }

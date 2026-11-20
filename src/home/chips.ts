@@ -1,6 +1,10 @@
-import { formatAchievements, formatBytes, formatHours, minutesToHours } from '../logic/format';
+import { formatAchievements, formatHours, minutesToHours } from '../logic/format';
 import { formatLastPlayed } from './recents';
 import { tr } from '../i18n/steamText';
+import type { ProtonTier } from '../logic/protonTier';
+import type { GameInfoSlots } from '../logic/infoSlots';
+import { protonStat } from '../logic/cleanInfo';
+import { orderBySlots } from '../logic/slotStats';
 
 export interface Chip {
     key: string;
@@ -8,6 +12,8 @@ export interface Chip {
     value: string;
     /** 0..1; drawn as a thin bar under the value. */
     progress?: number;
+    /** A coloured mark before the value, by name (the ProtonDB chip: its rating; homeCss colours it). */
+    tone?: string;
 }
 
 export interface GameChipInput {
@@ -18,19 +24,17 @@ export interface GameChipInput {
     hltbMainHours: number | null;
     /** Set for a game new to the library (never played): when it was added. Replaces Played and Last played. */
     addedAt?: number;
-    /** A Steam game not installed: its installed flag, and the space Steam says it needs (the chip right of Played). */
-    installed?: boolean;
-    spaceBytes?: number | null;
+    /** The game's ProtonDB rating; null or missing (not a Steam game, no rating, not known yet) leaves the chip out. */
+    protonTier?: ProtonTier | null;
 }
 
-export function gameChips(i: GameChipInput, now: number, locale: string): Chip[] {
+/** The game's chips: everything it has, in the order of the user's info slots (a slot with nothing to show closes up). */
+export function gameChips(i: GameChipInput & { slots: GameInfoSlots }, now: number, locale: string): Chip[] {
     const playedHours = minutesToHours(i.playedMinutes);
     const isNew = typeof i.addedAt === 'number' && i.addedAt > 0;
     const chips: Chip[] = isNew
         ? [{ key: 'added', label: tr('added'), value: formatLastPlayed(i.addedAt as number, now, locale) }]
         : [{ key: 'played', label: tr('played'), value: formatHours(playedHours, locale) }];
-    const space = i.installed === false && typeof i.spaceBytes === 'number' ? formatBytes(i.spaceBytes, locale) : null;
-    if (space) chips.splice(1, 0, { key: 'size', label: tr('spaceRequired'), value: space });
     if (i.achievements && i.achievements.total > 0) {
         const { achieved, total } = i.achievements;
         chips.push({
@@ -50,7 +54,8 @@ export function gameChips(i: GameChipInput, now: number, locale: string): Chip[]
     } else {
         chips.push({ key: 'hltb', label: 'HLTB main', value: '—' });
     }
-    return chips;
+    if (i.protonTier) chips.push(protonStat(i.protonTier));
+    return orderBySlots(chips, i.slots);
 }
 
 export interface LibraryChipInput {

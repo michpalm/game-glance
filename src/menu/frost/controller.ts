@@ -28,7 +28,7 @@ export interface FrostClock {
 interface Session {
     generation:number; presented:boolean; signature?:string; frame?:FrostFrame;
     request?:string; key?:string; token?:string; activating?:boolean; homeActive?:boolean;
-    /** This opening showed frost; a re-measure (a resize, the live bell count) may bring it back. */
+    /** This opening showed frost (native or Home); a re-measure (a resize, the game showing) may bring it back. */
     hadFrost?:boolean;
     sequence:number; timer?:ReturnType<typeof setInterval>; renewing?:boolean;
     settled?:boolean; waiters:(()=>void)[];
@@ -102,7 +102,11 @@ export function createFrostController({bridge,home,clock=globalThis,takeWarmup}:
             if(s.signature&&s.signature!==signature)void clear(s);
             const changed=s.signature!==signature;s.signature=signature;s.frame=frame;
             if(frame.context.background==='steam'){
-                if(s.homeActive||!s.presented)s.homeActive=home?.apply(frame)??false;
+                // A new allocation (the display scale changed) cleared it: frost this opening showed is placed again.
+                if(s.homeActive||!s.presented||s.hadFrost)s.homeActive=home?.apply(frame)??false;
+                // Home frost counts as frost this opening showed: when the game's window replaces the Steam logo (or the
+                // display scale changes) under the open menu, the in-game frost comes in, fading, without a reopen.
+                if(s.homeActive)s.hadFrost=true;
                 settle(s);
             }else if(s.token)update(s,frame);
             else if(changed)prepare(s,frame);

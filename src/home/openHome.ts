@@ -1,10 +1,15 @@
 import type { HomeRects, MotionVar } from './openMotion';
+import { HOME_CIRCLE } from './circles';
 import { STANDARD_HERO_ASPECT, fitMask, windowAspect } from './heroFit';
-import type { Box, ExtraColumn, ExtrasAsked, LineMeasure, Measure, PageLook, PageStat, StatKey } from './openTargets';
+import { pageTargets, type Box, type ExtraColumn, type ExtrasAsked, type LineMeasure, type Measure, type PageLook, type PageStat, type PageTargets, type StatKey } from './openTargets';
+import { limitFromShells } from '../styles/playersFit';
 import type { HltbResult } from '../data/hltb';
 import { settleDelta, TwinSpec } from './openTwins';
 import { tr } from '../i18n/steamText';
 import { LOG_PREFIX } from '../constants';
+import { DEFAULT_SLOTS, FeaturedId, GameInfoSlots } from '../logic/infoSlots';
+import { orderBySlots } from '../logic/slotStats';
+import { MOUSE_ATTR } from './mouseMode';
 
 /**
  * Spotlight Home's side of the open transition: which variant runs (openVariant), Home's boxes (measureHome), the
@@ -45,6 +50,14 @@ export function viewportSize(win: {
 }
 
 /** The page's stat columns (Play time, Achievements, HowLongToBeat Main) Home showed no chip for, by Home's chip keys. Pure. */
+/**
+ * Whether Home draws the page's Play time column as it opens (OpenExtras `playedMissing`): Play time is in a stat slot and
+ * Home showed no chip for it (a new game's Added chip). Not when Play time is the featured card: its card arrives with the page. Pure.
+ */
+export function openPlayedMissing(slots: GameInfoSlots, chipKeys: string[]): boolean {
+    return slots.stats.includes('played') && !chipKeys.includes('played');
+}
+
 export function missingStats(chipKeys: string[], drawn = ''): string[] {
     const extras = drawn.split(/\s+/);
     return ['played', 'achievements', 'hltb'].filter((key) => !chipKeys.includes(key) && !extras.includes(key));
@@ -71,9 +84,11 @@ export function measureHome(root: Element | null): HomeRects | null {
         const canvas = boxOf(root.querySelector('.gh-canvas'));
         const titleSlot = boxOf(root.querySelector('.gh-title-slot'));
         const eyebrow = boxOf(root.querySelector('.gh-eyebrow'));
-        const play = boxOf(root.querySelector('.gh-actions .gh-btn[data-action="play"]'));
+        const playElement = root.querySelector('.gh-actions .gh-btn[data-action="play"]');
+        const play = boxOf(playElement);
         if (!canvas || !titleSlot || !eyebrow || !play) return null;
-        const circleEls = [...root.querySelectorAll('.gh-actions .gh-btn-circle')];
+        const playStyle = playElement && root.ownerDocument?.defaultView?.getComputedStyle(playElement);
+        const circleEls = [...root.querySelectorAll(`.gh-actions ${HOME_CIRCLE}`)];
         const info = circleEls.findIndex((c) => c.getAttribute('data-action') === 'info');
         const chips = drawnChips(root).map((chip) => ({
             key: chip.getAttribute('data-chip') ?? '',
@@ -89,6 +104,7 @@ export function measureHome(root: Element | null): HomeRects | null {
             titleText: root.querySelector('.gh-title-slot .gh-title') !== null,
             eyebrow,
             play,
+            playBorder: playStyle ? { left: parseFloat(playStyle.borderLeftWidth), top: parseFloat(playStyle.borderTopWidth) } : undefined,
             circles: circleEls.map((c) => boxOf(c)!),
             infoCircle: info >= 0 ? info : null,
             store: boxOf(root.querySelector('.gh-source')),
@@ -263,6 +279,14 @@ export function applyOpening(root: HTMLElement, variant: OpenVariant, vars: Moti
             console.warn(`${LOG_PREFIX} Home: could not rest the text twins on the extras`, error);
         }
     }
+    // The start frame must be styled before the motion is set: a frame callback runs before that frame's style pass, so
+    // both would land in one pass, and a layer that first exists while opening (the Play pill's fill, the crisp rings, the
+    // panels) has nothing to move from and is drawn at its end at once. Reading a box makes the browser style it now.
+    try {
+        root.getBoundingClientRect?.();
+    } catch {
+        // without it those layers skip their motion; the rest still moves
+    }
     let live = true;
     const start = () => {
         if (live) root.setAttribute('data-gh-phase', 'to');
@@ -340,14 +364,22 @@ export function lineMeasure(root: Element): LineMeasure {
 export interface ChipText { key: string; label: string; value: string; bar: boolean }
 
 /**
- * The page's stat columns, as Home can know them from its chips (the same Steam words and numbers): Spotlight calls
- * HowLongToBeat's column "Main"; Clean keeps Home's texts and bars. A new
- * game's Added chip stands for the page's Play time of 0 h. Only these three; a Unifideck size column is not known
- * here (its column then makes the page's others sit a little further right, which the hand-over's fade covers). Pure.
+ * The words a Spotlight featured card puts over its first value (components/FeaturedCard: logic/hltbCardView, featuredViews),
+ * which the featured chip's label becomes. Achievements', Play time's and ProtonDB's first row is a tile row whose label
+ * Home does not draw (the latest unlock, the last played date, the report count): the chip keeps its own words.
  */
-/** `size`: a Unifideck game's size column as Home draws it (OpenExtras), right after Played as on the page. */
-export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { label: string; value: string } | null): PageStat[] {
+const FEATURED_FIRST_LABEL: Partial<Record<FeaturedId, string>> = { hltb: 'Main' };
+
+/**
+ * The page's stat columns, as Home can know them from its chips (the same Steam words and numbers), in the order of the
+ * user's Game info slots (`slots`), as the page shows them. Spotlight names the featured stat as its card names its
+ * first column (HowLongToBeat's "Main", Play time's "Total", ProtonDB's "Rating"); Clean keeps Home's texts and bars. A
+ * new game's Added chip stands for the page's Play time of 0 h. `size`: a Unifideck game's size column as Home draws it
+ * (OpenExtras), in the size slot as on the page. Pure.
+ */
+export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { label: string; value: string } | null, slots: GameInfoSlots = DEFAULT_SLOTS): PageStat[] {
     const byKey = new Map(chips.map((c) => [c.key, c]));
+    const featured = look === 'spotlight' ? slots.featured : null;
     const out: PageStat[] = [];
     const played = byKey.get('played');
     if (played) out.push({ key: 'played', label: played.label, value: played.value, bar: look === 'clean' && played.bar });
@@ -358,10 +390,14 @@ export function pageStatsFromChips(chips: ChipText[], look: PageLook, size?: { l
     const add = (key: StatKey, label: string, value: string, bar: boolean) => out.push({ key, label, value, bar: look === 'clean' && bar });
     const ach = byKey.get('achievements');
     if (ach) add('achievements', ach.label, ach.value, ach.bar);
+    const proton = byKey.get('protondb');
+    if (proton) add('protondb', proton.label, proton.value, proton.bar);
     const hltb = byKey.get('hltb');
-    // Spotlight's card has no Main column without a time (no match: Home's chip says '—'), so the chip has no target there.
-    if (hltb && (look !== 'spotlight' || /\d/.test(hltb.value))) add('hltb', look === 'spotlight' ? 'Main' : hltb.label, hltb.value, hltb.bar);
-    return out;
+    // HowLongToBeat's card has no Main column without a time (no match: Home's chip says '—'), so the chip has no target
+    // there; in the info card (a stat slot) the page shows the '—' too.
+    if (hltb && (featured !== 'hltb' || /\d/.test(hltb.value))) add('hltb', hltb.label, hltb.value, hltb.bar);
+    const named = out.map((s) => (featured !== null && s.key === featured && FEATURED_FIRST_LABEL[featured] ? { ...s, label: FEATURED_FIRST_LABEL[featured]! } : s));
+    return orderBySlots(named, slots);
 }
 
 /** The Unifideck size column Home drew in its extras layer (OpenExtras), or null. */
@@ -395,16 +431,20 @@ export function readChipTexts(root: Element): ChipText[] {
 
 /**
  * The page's parts Home can draw as it turns into the page's Spotlight look (SpotlightHome's .gh-open-extras), as
- * data-gh-extras words: `desc` when it has the description's text, `hltb` when HowLongToBeat found the game with a Main
+ * data-gh-extras words: `desc` when it has the description's text, `hltb` when HowLongToBeat is the `featured` card and found the game with a Main
  * time (without one the page writes "—" there, which Home's chip would not cover), `pills` when it knows the store (the
  * page's own store pill, and family pill, drawn at the page's size: Home's scaled one is a little narrower), `played` when
  * Home shows no Play time chip (a new game's Added chip): the page's Play time column, so it is there at the hand-over. Pure.
  */
-export function extrasParts(description: string | null | undefined, hltb: HltbResult | undefined, source?: string | null, playedMissing = false, size = false): string {
+export function extrasParts(
+    description: string | null | undefined, hltb: HltbResult | undefined, source?: string | null, playedMissing = false, size = false, featured: FeaturedId | null = 'hltb',
+): string {
     const parts: string[] = [];
     if (description && description.trim()) parts.push('desc');
     // The card's inside: its times, or (no match) its "No Matches Found" lines, which otherwise arrived after the hand-over.
-    if ((hltb?.status === 'found' && hltb.times.main !== null) || hltb?.status === 'notFound') parts.push('hltb');
+    // Only when HowLongToBeat is the featured card: another featured card's parts arrive with the page.
+    const hltbCard = featured === 'hltb' && ((hltb?.status === 'found' && hltb.times.main !== null) || hltb?.status === 'notFound');
+    if (hltbCard) parts.push('hltb');
     if (source) parts.push('pills');
     if (playedMissing) parts.push('played');
     if (size) parts.push('size');
@@ -432,4 +472,47 @@ export function readExtrasAsked(root: Element): ExtrasAsked {
         value: column.querySelector('.gh-x-value')?.textContent?.trim() ?? '',
     }));
     return { columns, bar: root.querySelector('.gh-open-extras .gh-x-bar') !== null };
+}
+
+/**
+ * The player pill's fit line on Home (spec 2026-11-12-player-count-pill): Home's own cards are hidden at rest, so it is
+ * the page's right-hand card from the page model the open flies to (openTargets.pageTargets), in client px. Null (the
+ * row) when Home can't be measured.
+ */
+export function homePlayersLimit(root: Element, look: PageLook, slots: GameInfoSlots): number | null {
+    try {
+        const home = measureHome(root);
+        const win = root.ownerDocument?.defaultView;
+        if (!home || !win) return null;
+        const screen = viewportSize(win);
+        if (!(screen.width > 0 && screen.height > 0)) return null;
+        const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
+        const page = pageTargets(look, screen, pageStatsFromChips(readChipTexts(root), look, null, slots), canvasMeasure(root), { w: store.w, h: store.h }, undefined, lineMeasure(root), slots.featured);
+        return limitFromShells(look, page.shells, page.d ?? 1);
+    } catch {
+        return null;
+    }
+}
+
+/** Home measured and the page's targets for the morph (shared by the open and the way back's glide). */
+export interface MorphMeasure { home: HomeRects; page: PageTargets; scale: number; focused: boolean; stats: PageStat[] }
+
+/**
+ * Measures Home and aims it at `look`'s page layout (pageTargets): null when anything required is missing. `extras`: the
+ * page's parts Home draws as it turns into it (extrasParts words; '' for none). Opened with a mouse, the page shows no
+ * focus look (`focused` false).
+ */
+export function measureMorph(root: HTMLElement, look: PageLook, extras: string, slots: GameInfoSlots): MorphMeasure | null {
+    const home = measureHome(root);
+    const win = root.ownerDocument?.defaultView;
+    const scale = measureCanvasScale(root);
+    const screen = win ? viewportSize(win) : { width: 0, height: 0 };
+    if (!home || !(scale > 0) || !(screen.width > 0) || !(screen.height > 0)) return null;
+    // A Unifideck game's size column Home drew: the page has it right after Played, so the columns land where the page puts them.
+    const size = extras.split(' ').includes('size') ? readExtrasSize(root) : null;
+    const stats = pageStatsFromChips(readChipTexts(root), look, size, slots);
+    const store = home.store ?? { x: 0, y: 0, w: 0, h: 0 };
+    const page = pageTargets(look, screen, stats, canvasMeasure(root), { w: store.w, h: store.h }, extras ? readExtrasAsked(root) : undefined, lineMeasure(root), slots.featured);
+    const focused = !root.ownerDocument?.documentElement?.hasAttribute(MOUSE_ATTR);
+    return { home, page, scale, focused, stats };
 }
